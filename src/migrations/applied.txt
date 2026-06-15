@@ -1,0 +1,13 @@
+Applied migrations:
+1781189300_gaf_planilla_initial at 2026-06-11T14:57:22.090Z
+1781193233_fix_auto_green_status at 2026-06-11T15:54:58.990Z
+1781200000_add_event_type_rules at 2026-06-11T19:26:53.676Z
+1781204800_add_doc_option_to_rules at 2026-06-11T20:49:36.443Z
+1781208060_reclassify_tardiness_rules at 2026-06-11T21:32:11.697Z
+1781272800_add_classification_config at 2026-06-12T14:06:07.489Z
+1781274000_seed_event_type_rules_and_config at 2026-06-12T14:16:36.052Z
+1781274500_fix_pay_impacts_and_holiday at 2026-06-12T14:19:17.813Z
+1781274600_fix_feriado_rule_and_pay_impacts at 2026-06-12T14:20:58.657Z
+1781274800_cleanup_obsolete_config_keys at 2026-06-12T14:32:51.317Z
+1781275000_retroactive_reclassify_all_periods at 2026-06-12T14:36:44.539Z
+1781275100_import_excel_operator_resolved at 2026-06-12T14:52:23.209Z
