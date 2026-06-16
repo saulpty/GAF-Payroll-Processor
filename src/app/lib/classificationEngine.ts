@@ -263,6 +263,7 @@ export interface ClassificationConfig {
   non_grace_auto_resolve: boolean;          // default true — non-grace late auto-resolves GREEN/Unpaid
   non_grace_auto_impact: string;            // default 'Unpaid (without Grace)'
   early_leave_auto_impact: string;          // default '' (operator decides)
+  full_day_absence_discount_minutes: number; // default 420 (flat "7 paid hours" policy)
 }
 
 export const DEFAULT_CLASSIFICATION_CONFIG: ClassificationConfig = {
@@ -270,6 +271,7 @@ export const DEFAULT_CLASSIFICATION_CONFIG: ClassificationConfig = {
   non_grace_auto_resolve: true,
   non_grace_auto_impact: 'Unpaid (without Grace)',
   early_leave_auto_impact: '',
+  full_day_absence_discount_minutes: 420,
 };
 
 /** Build a ClassificationConfig from raw DB rows (key/value pairs). */
@@ -283,6 +285,7 @@ export function buildClassificationConfig(
     non_grace_auto_resolve: get('non_grace_auto_resolve', 'true') === 'true',
     non_grace_auto_impact: get('non_grace_auto_impact', 'Unpaid (without Grace)'),
     early_leave_auto_impact: get('early_leave_auto_impact', ''),
+    full_day_absence_discount_minutes: parseInt(get('full_day_absence_discount_minutes', '420'), 10) || 420,
   };
 }
 
@@ -419,13 +422,16 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
       // Teramind entry/exit for this employee on this date
       let tmEntry = teramindData.get(emp.teramind_email)?.get(dateStr) || null;
 
-      // Mid-day pull: assign default exit 4:00 PM if exit is missing/before end
+      // Mid-day pull: Teramind was exported before the day ended, so exits look
+      // artificially early. If the recorded exit is well before the scheduled end,
+      // backfill it to the employee's scheduled end (DST-aware) — NOT a hardcoded
+      // clock time. Schedules end at 3/4/5 PM depending on the person and season.
       if (tmEntry && midDayPull) {
         const exitMins = tmEntry.exit.getHours() * 60 + tmEntry.exit.getMinutes();
         const schedEndMins = parseTimeToMinutes(sched.end);
         if (exitMins < schedEndMins - 30) {
           const defaultExit = new Date(tmEntry.exit);
-          defaultExit.setHours(16, 0, 0, 0);
+          defaultExit.setHours(Math.floor(schedEndMins / 60), schedEndMins % 60, 0, 0);
           tmEntry = { entry: tmEntry.entry, exit: defaultExit };
         }
       }
@@ -569,8 +575,8 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
           auto_notes: 'NO DATA + NO FORM (Suggested: Unpaid)',
           initial_status: 'RED',
         });
-        // Fixed 420 min discount
-        entry.discount_total_minutes = 420;
+        // Flat full-day absence discount (configurable; default 420 = 7 paid hours).
+        entry.discount_total_minutes = cfg.full_day_absence_discount_minutes;
         results.push(entry);
         continue;
       }
