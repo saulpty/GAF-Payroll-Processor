@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { teramindToPanama, normalizeName, type DstWindow } from './classificationEngine';
+import { teramindToPanama, normalizeName, toLocalYMD, type DstWindow } from './classificationEngine';
 
 export interface TeramindRawRow {
   email: string;  // raw value from file — may be a name, email, or PC identifier
@@ -147,7 +147,7 @@ export function processTeramindData(
 
     const panamaStart = teramindToPanama(rawStart, dstWindows);
     const panamaEnd   = teramindToPanama(rawEnd,   dstWindows);
-    const dateKey = panamaStart.toISOString().slice(0, 10);
+    const dateKey = toLocalYMD(panamaStart);
 
     if (!map.has(email)) map.set(email, new Map());
     const dayMap = map.get(email)!;

@@ -87,6 +87,16 @@ export function formatWorkDate(d: Date): string {
   return `${y}-${m}-${day} (${dayName})`;
 }
 
+/** Format a Date as local-calendar "YYYY-MM-DD".
+ *  Uses the same local fields as formatWorkDate so date-keys and displayed
+ *  work-dates always agree — independent of the runtime timezone. */
+export function toLocalYMD(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 /** Format Date as 12-hr "8:07 AM" */
 export function formatTime12(d: Date): string {
   let h = d.getHours();
@@ -308,7 +318,7 @@ function dateRange(start: string, end: string): Date[] {
 }
 
 function toYMD(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return toLocalYMD(d);
 }
 
 /** Returns true if this Monday row belongs to the given employee.
