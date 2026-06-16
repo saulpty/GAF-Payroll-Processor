@@ -172,23 +172,36 @@ export function getSchedule(
   return { start, end, grace };
 }
 
-/** Compute discount_total_minutes per Section 6.3 */
+/** Compute discount_total_minutes per Section 6.3.
+ *  Discounts are keyed off the EVENT TYPE in each slot, not the slot number —
+ *  "Tardanza" and "Salida Temprano" can each land in slot 1 or slot 2 depending
+ *  on what else happened that day, so we look for them in either slot.
+ */
 export function computeDiscount(entry: Partial<PayrollEntry>): number {
-  let discount = 0;
+  const et1 = entry.event_type_1 || '';
+  const et2 = entry.event_type_2 || '';
   const pi1 = entry.pay_impact_1 || '';
   const pi2 = entry.pay_impact_2 || '';
-  const et2 = entry.event_type_2 || '';
   const lm = entry.late_minutes || 0;
   const lag = entry.late_after_grace || 0;
   const elm = entry.early_leave_minutes || 0;
 
-  if (pi1 === 'Unpaid (with Grace)') discount += lag;
-  if (pi1 === 'Unpaid (without Grace)' || pi1 === 'Unpaid') discount += lm;
-
   const unpaidImpacts = ['', 'Unpaid', 'Unpaid (with Grace)', 'Unpaid (without Grace)'];
-  if (et2 === 'Salida Temprano' && unpaidImpacts.includes(pi2)) {
+  let discount = 0;
+
+  // Tardiness — discount applies to whichever slot holds "Tardanza".
+  const tardinessPi = et1 === 'Tardanza' ? pi1 : et2 === 'Tardanza' ? pi2 : null;
+  if (tardinessPi !== null) {
+    if (tardinessPi === 'Unpaid (with Grace)') discount += lag;
+    if (tardinessPi === 'Unpaid (without Grace)' || tardinessPi === 'Unpaid') discount += lm;
+  }
+
+  // Early leave — discount applies to whichever slot holds "Salida Temprano".
+  const earlyPi = et1 === 'Salida Temprano' ? pi1 : et2 === 'Salida Temprano' ? pi2 : null;
+  if (earlyPi !== null && unpaidImpacts.includes(earlyPi)) {
     discount += elm;
   }
+
   return discount;
 }
 
@@ -298,12 +311,24 @@ function toYMD(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Returns true if this Monday row belongs to the given employee (email-first, name fallback) */
-function rowMatchesEmp(rowEmail: string | undefined, rowName: string, empEmail: string, empName: string): boolean {
+/** Returns true if this Monday row belongs to the given employee.
+ *  Order: email-first, then alias resolution via nameMap, then direct name match.
+ *  nameMap (normalized name -> employee id, built from display_name + aliases) is
+ *  what lets board rows that use a name variant still attach to the right person. */
+function rowMatchesEmp(
+  rowEmail: string | undefined,
+  rowName: string,
+  empEmail: string,
+  empName: string,
+  empId?: number,
+  nameMap?: Map<string, number>,
+): boolean {
   if (rowEmail && rowEmail.trim()) {
     return rowEmail.trim().toLowerCase() === empEmail.toLowerCase();
   }
-  return normalizeName(rowName) === normalizeName(empName);
+  const norm = normalizeName(rowName);
+  if (nameMap && empId !== undefined && nameMap.get(norm) === empId) return true;
+  return norm === normalizeName(empName);
 }
 
 function permissionCoversDate(perm: MondayPermissionRow, dateStr: string): boolean {
@@ -314,7 +339,7 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
   const {
     periodName, employees, dstWindows, holidays, teramindData,
     mondayAttendance, mondayAdjustments, mondayPermissions,
-    outageDates, midDayPull, excludedEmployeeIds,
+    outageDates, midDayPull, excludedEmployeeIds, nameMap,
   } = input;
 
   const cfg: ClassificationConfig = { ...DEFAULT_CLASSIFICATION_CONFIG, ...(input.config ?? {}) };
@@ -365,8 +390,8 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
       if (isWeekend) {
         // Only create if there is any data for this employee on this day
         const tmData = teramindData.get(emp.teramind_email)?.get(dateStr);
-        const hasMonday = mondayAttendance.some(r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name) && r.date === dateStr)
-          || mondayPermissions.some(r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name) && permissionCoversDate(r, dateStr));
+        const hasMonday = mondayAttendance.some(r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && r.date === dateStr)
+          || mondayPermissions.some(r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && permissionCoversDate(r, dateStr));
         if (tmData || hasMonday) {
           const entryT = tmData ? formatTime12(tmData.entry) : null;
           const exitT = tmData ? formatTime12(tmData.exit) : null;
@@ -400,16 +425,16 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
 
       // Attendance/absence forms for this employee+date
       const absenceForms = mondayAttendance.filter(
-        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name) && r.date === dateStr && r.type === 'Absence'
+        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && r.date === dateStr && r.type === 'Absence'
       );
       const tardinessForms = mondayAttendance.filter(
-        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name) && r.date === dateStr && r.type === 'Tardiness'
+        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && r.date === dateStr && r.type === 'Tardiness'
       );
       const adjustments = mondayAdjustments.filter(
-        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name) && r.date === dateStr
+        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && r.date === dateStr
       );
       const permissions = mondayPermissions.filter(
-        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name) && permissionCoversDate(r, dateStr)
+        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && permissionCoversDate(r, dateStr)
       );
 
       // ── Step 1: Holiday ──
