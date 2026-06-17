@@ -11,3 +11,5 @@ Applied migrations:
 1781274800_cleanup_obsolete_config_keys at 2026-06-12T14:32:51.317Z
 1781275000_retroactive_reclassify_all_periods at 2026-06-12T14:36:44.539Z
 1781275100_import_excel_operator_resolved at 2026-06-12T14:52:23.209Z
+1781400000_us_eastern_schedules at 2026-06-17T18:39:23.987Z
+1781400100_history_panama_to_eastern at 2026-06-17T18:39:23.987Z

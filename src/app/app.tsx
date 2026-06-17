@@ -20,6 +20,7 @@ import AdminMacbookSwap from '@/app/pages/admin/AdminMacbookSwap';
 import PeriodLog from '@/app/pages/PeriodLog';
 import Attendance from '@/app/pages/Attendance';
 
+// datasource reconnected — migrations will apply on load
 function App() {
   return (
     <BrowserRouter>
