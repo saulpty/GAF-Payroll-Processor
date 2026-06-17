@@ -7,7 +7,8 @@ import loadSchedulesAction from '@/actions/loadSchedules';
 import upsertScheduleAction from '@/actions/upsertSchedule';
 
 type Schedule = { id: number; schedule_name: string; dst_start: string; dst_end: string; standard_start: string; standard_end: string; grace_minutes: number; notes: string };
-const EMPTY: Partial<Schedule> = { schedule_name: '', dst_start: '8:00 AM', dst_end: '4:00 PM', standard_start: '9:00 AM', standard_end: '5:00 PM', grace_minutes: 10, notes: '' };
+// Times are stored in US Eastern: dst_* = Summer (ET), standard_* = Winter (ET).
+const EMPTY: Partial<Schedule> = { schedule_name: '', dst_start: '9:00 AM', dst_end: '5:00 PM', standard_start: '9:00 AM', standard_end: '5:00 PM', grace_minutes: 10, notes: '' };
 
 export default function AdminSchedules() {
   const [schedules, , , reload] = useLoadAction(loadSchedulesAction, [] as Schedule[]);
@@ -28,12 +29,17 @@ export default function AdminSchedules() {
         <Button size="sm" onClick={() => setEditing({ ...EMPTY })}><Plus className="w-4 h-4 mr-1" />Add</Button>
       </div>
 
+      <p className="text-xs text-muted-foreground mb-4">
+        Times are in <span className="font-medium">US Eastern</span>. Summer and Winter are the same for most
+        people — set them differently only for teams that don't follow US daylight saving (e.g. Arizona).
+      </p>
+
       {editing && (
         <Card className="mb-4 border-blue-300">
           <CardHeader><CardTitle className="text-sm">{editing.id ? 'Edit Schedule' : 'New Schedule'}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-3 mb-3">
-              {[['schedule_name','Name'],['dst_start','DST Start'],['dst_end','DST End'],['standard_start','Std Start'],['standard_end','Std End'],['notes','Notes']].map(([f, l]) => (
+              {[['schedule_name','Name'],['dst_start','Summer Start (ET)'],['dst_end','Summer End (ET)'],['standard_start','Winter Start (ET)'],['standard_end','Winter End (ET)'],['notes','Notes']].map(([f, l]) => (
                 <div key={f}>
                   <label className="text-xs font-medium block mb-1">{l}</label>
                   <input className="w-full border rounded px-2 py-1.5 text-sm"
@@ -59,7 +65,7 @@ export default function AdminSchedules() {
       <div className="rounded-lg border overflow-auto">
         <table className="w-full text-sm border-collapse">
           <thead className="bg-slate-100">
-            <tr>{['Name','DST Start','DST End','Std Start','Std End','Grace','Notes',''].map(h=><th key={h} className="px-3 py-2 text-left border-b border-r last:border-r-0 font-semibold whitespace-nowrap">{h}</th>)}</tr>
+            <tr>{['Name','Summer Start (ET)','Summer End (ET)','Winter Start (ET)','Winter End (ET)','Grace','Notes',''].map(h=><th key={h} className="px-3 py-2 text-left border-b border-r last:border-r-0 font-semibold whitespace-nowrap">{h}</th>)}</tr>
           </thead>
           <tbody>
             {(schedules as Schedule[]).map(s => (

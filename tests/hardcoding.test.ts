@@ -10,7 +10,7 @@ import {
 const DAY = '2026-06-15'; // Monday, DST in effect
 const DST = [{ year: 2026, us_dst_start: '2026-03-08', us_dst_end: '2026-11-01' }];
 
-// A normal Eastern-synced employee: Panama 8-4 in summer == 9-5 US Eastern.
+// A normal Eastern-synced employee, schedule stored in US Eastern: constant 9-5.
 function emp(over: Partial<EmployeeRecord> = {}): EmployeeRecord {
   return {
     id: 1,
@@ -19,8 +19,8 @@ function emp(over: Partial<EmployeeRecord> = {}): EmployeeRecord {
     is_grace_list: false,
     is_macbook_swap: false,
     schedule_name: 'Standard',
-    dst_start: '8:00 AM',
-    dst_end: '4:00 PM',
+    dst_start: '9:00 AM',
+    dst_end: '5:00 PM',
     standard_start: '9:00 AM',
     standard_end: '5:00 PM',
     grace_minutes: 10,
