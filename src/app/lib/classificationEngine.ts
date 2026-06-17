@@ -106,11 +106,16 @@ export function formatTime12(d: Date): string {
   return `${h}:${min} ${ampm}`;
 }
 
-/** Parse "8:00 AM" to minutes-since-midnight */
+/** Parse "8:00 AM" to minutes-since-midnight. Returns 0 for blank input; a
+ *  non-blank value that doesn't parse is a data error (e.g. a malformed schedule
+ *  time) — we warn and fall back to 0 rather than failing silently. */
 export function parseTimeToMinutes(t: string): number {
   if (!t) return 0;
   const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
-  if (!m) return 0;
+  if (!m) {
+    console.warn(`[parseTimeToMinutes] unparseable time "${t}" - treated as 00:00; check the schedule values.`);
+    return 0;
+  }
   let h = parseInt(m[1]);
   const min = parseInt(m[2]);
   const ampm = m[3].toUpperCase();
