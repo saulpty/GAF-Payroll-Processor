@@ -10,16 +10,17 @@ import {
 const DAY = '2026-06-15'; // Monday, DST in effect
 const DST = [{ year: 2026, us_dst_start: '2026-03-08', us_dst_end: '2026-11-01' }];
 
+// A normal Eastern-synced employee: Panama 8-4 in summer == 9-5 US Eastern.
 function emp(over: Partial<EmployeeRecord> = {}): EmployeeRecord {
   return {
     id: 1,
-    display_name: 'Favian Fortune',
-    teramind_email: 'favian@gaf.com',
+    display_name: 'Standard Employee',
+    teramind_email: 'emp@gaf.com',
     is_grace_list: false,
     is_macbook_swap: false,
-    schedule_name: 'Favian Fortune schedule',
-    dst_start: '9:00 AM',
-    dst_end: '5:00 PM',
+    schedule_name: 'Standard',
+    dst_start: '8:00 AM',
+    dst_end: '4:00 PM',
     standard_start: '9:00 AM',
     standard_end: '5:00 PM',
     grace_minutes: 10,
@@ -51,7 +52,7 @@ function baseInput(over: Partial<EngineInput>): EngineInput {
 // SCHEDULED end, not a hardcoded 4:00 PM. Favian works 9–5, so an early
 // Teramind exit (1:00 PM) must become 5:00 PM with zero early-leave.
 test('H2: mid-day pull backfills exit to the scheduled end (9-5 employee)', () => {
-  const tm = new Map([['favian@gaf.com', new Map([[DAY, {
+  const tm = new Map([['emp@gaf.com', new Map([[DAY, {
     entry: new Date(2026, 5, 15, 9, 0),
     exit: new Date(2026, 5, 15, 13, 0), // 1:00 PM — pulled mid-day
   }]])]]);

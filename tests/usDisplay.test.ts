@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getSchedule, type EmployeeRecord } from '../src/app/lib/classificationEngine.ts';
 
-// Display model: everything is shown in US Eastern time for the US owners.
-// In US Eastern, the workday window is CONSTANT year-round (the standard_* pair).
-// The dst_* pair is the Panama representation of that same window and must NOT be
-// used for display. So getSchedule should return standard_* regardless of season.
+// Display model: everything is shown in US Eastern. For Eastern-synced employees
+// (Standard, Monique) the US-Eastern window is CONSTANT year-round because their
+// Panama hours shift with DST: summer 8-4 Panama + 1hr == 9-5 Eastern == winter
+// 9-5. (Employees whose team ignores DST, e.g. Favian/Arizona, are covered in
+// easternSchedule.test.ts.)
 
 const DST_WINDOWS = [{ year: 2026, us_dst_start: '2026-03-08', us_dst_end: '2026-11-01' }];
 
