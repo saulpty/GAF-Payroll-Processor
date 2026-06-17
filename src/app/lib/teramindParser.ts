@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { teramindToPanama, normalizeName, toLocalYMD, type DstWindow } from './classificationEngine';
+import { normalizeName, toLocalYMD, type DstWindow } from './classificationEngine';
 
 export interface TeramindRawRow {
   email: string;  // raw value from file — may be a name, email, or PC identifier
@@ -145,19 +145,21 @@ export function processTeramindData(
       continue;
     }
 
-    const panamaStart = teramindToPanama(rawStart, dstWindows);
-    const panamaEnd   = teramindToPanama(rawEnd,   dstWindows);
-    const dateKey = toLocalYMD(panamaStart);
+    // Teramind already reports in US Eastern — the app's display timezone — so we
+    // keep the raw times (no Panama conversion). dstWindows is unused here now.
+    const displayStart = rawStart;
+    const displayEnd   = rawEnd;
+    const dateKey = toLocalYMD(displayStart);
 
     if (!map.has(email)) map.set(email, new Map());
     const dayMap = map.get(email)!;
 
     if (!dayMap.has(dateKey)) {
-      dayMap.set(dateKey, { entry: panamaStart, exit: panamaEnd });
+      dayMap.set(dateKey, { entry: displayStart, exit: displayEnd });
     } else {
       const cur = dayMap.get(dateKey)!;
-      if (panamaStart < cur.entry) cur.entry = panamaStart;
-      if (panamaEnd   > cur.exit)  cur.exit  = panamaEnd;
+      if (displayStart < cur.entry) cur.entry = displayStart;
+      if (displayEnd   > cur.exit)  cur.exit  = displayEnd;
     }
   }
 
