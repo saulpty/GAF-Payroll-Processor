@@ -169,15 +169,19 @@ export function normalizeName(s: string): string {
     .trim();
 }
 
-/** Get schedule times for a given date (DST-aware) */
+/** Get schedule times for a given date, in the DISPLAY timezone (US Eastern).
+ *  The app shows everything in US Eastern for the US owners. US business hours
+ *  are constant year-round, so the schedule is always the `standard_*` pair —
+ *  that IS the US-Eastern wall-clock schedule. The `dst_*` pair is the Panama
+ *  representation of the same window (summer 8-4 == 9-5 Eastern) and is not used
+ *  for display. `date`/`dstWindows` are kept for signature stability. */
 export function getSchedule(
   emp: EmployeeRecord,
   date: Date,
   dstWindows: DstWindow[]
 ): { start: string; end: string; grace: string } {
-  const dst = isDst(date, dstWindows);
-  const start = dst ? emp.dst_start : emp.standard_start;
-  const end = dst ? emp.dst_end : emp.standard_end;
+  const start = emp.standard_start;
+  const end = emp.standard_end;
   const grace = addMinutesToTimeStr(start, emp.grace_minutes);
   return { start, end, grace };
 }
