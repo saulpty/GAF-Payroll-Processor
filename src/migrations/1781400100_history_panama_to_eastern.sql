@@ -2,9 +2,14 @@
 --
 -- During US DST, Eastern = Panama + 1 hour, so we shift the DISPLAY-time columns
 -- (entry_time, exit_time, scheduled_start, scheduled_end, grace_until) by +1 hour
--- for every row whose workdate falls inside a US DST window. The relative columns
--- (late/early/discount) and all statuses/events/impacts are LEFT UNCHANGED — pay
--- is unaffected. Output format is normalized to 'H:MI AM'.
+-- for DST-period rows. The relative columns (late/early/discount) and all
+-- statuses/events/impacts are LEFT UNCHANGED — pay is unaffected. Output format
+-- is normalized to 'H:MI AM'.
+--
+-- SCOPE: only the FIVE original seeded historical periods (Q2-Mar..Q2-May 2026),
+-- which hold the 2,140 Panama-time rows. New runs (and the operator's "test"
+-- period) are produced by the current engine ALREADY in US Eastern, so they are
+-- excluded here — shifting them would double-count the hour.
 --
 -- SAFETY:
 --   * Guarded by classification_config.history_tz_converted='true' (won't re-run).
@@ -54,11 +59,12 @@ BEGIN
       WHEN pe.grace_until ~* '(am|pm)\s*$' THEN regexp_replace(to_char(to_timestamp(btrim(pe.grace_until), 'HH12:MI AM') + interval '1 hour', 'HH12:MI AM'), '^0', '')
       WHEN pe.grace_until ~ '^\s*\d{1,2}:\d{2}(:\d{2})?\s*$' THEN regexp_replace(to_char(to_timestamp(btrim(pe.grace_until), 'HH24:MI:SS') + interval '1 hour', 'HH12:MI AM'), '^0', '')
       ELSE pe.grace_until END
-  WHERE EXISTS (
-    SELECT 1 FROM dst_calendar d
-    WHERE left(pe.work_date, 10)::date >= d.us_dst_start
-      AND left(pe.work_date, 10)::date <  d.us_dst_end
-  );
+  WHERE pe.period_name IN ('Q2-Mar-2026','Q1-Apr-2026','Q2-Apr-2026','Q1-May-2026','Q2-May-2026')
+    AND EXISTS (
+      SELECT 1 FROM dst_calendar d
+      WHERE left(pe.work_date, 10)::date >= d.us_dst_start
+        AND left(pe.work_date, 10)::date <  d.us_dst_end
+    );
 
   GET DIAGNOSTICS v_rows = ROW_COUNT;
   RAISE NOTICE 'Shifted % payroll rows +1hr (Panama -> US Eastern).', v_rows;
@@ -80,8 +86,9 @@ END $$;
 --   scheduled_start = regexp_replace(to_char(to_timestamp(btrim(pe.scheduled_start), 'HH12:MI AM') - interval '1 hour', 'HH12:MI AM'), '^0', ''),
 --   scheduled_end   = regexp_replace(to_char(to_timestamp(btrim(pe.scheduled_end),   'HH12:MI AM') - interval '1 hour', 'HH12:MI AM'), '^0', ''),
 --   grace_until     = regexp_replace(to_char(to_timestamp(btrim(pe.grace_until),     'HH12:MI AM') - interval '1 hour', 'HH12:MI AM'), '^0', '')
--- WHERE EXISTS (SELECT 1 FROM dst_calendar d
---   WHERE left(pe.work_date,10)::date >= d.us_dst_start AND left(pe.work_date,10)::date < d.us_dst_end)
+-- WHERE pe.period_name IN ('Q2-Mar-2026','Q1-Apr-2026','Q2-Apr-2026','Q1-May-2026','Q2-May-2026')
+--   AND EXISTS (SELECT 1 FROM dst_calendar d
+--     WHERE left(pe.work_date,10)::date >= d.us_dst_start AND left(pe.work_date,10)::date < d.us_dst_end)
 --   AND pe.entry_time ~* '(am|pm)\s*$';  -- by now all times are 'H:MI AM' format
 -- DELETE FROM classification_config WHERE key = 'history_tz_converted';
 -- ============================================================================
