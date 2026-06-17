@@ -175,22 +175,22 @@ export function normalizeName(s: string): string {
 }
 
 /** Get schedule times for a given date, in the DISPLAY timezone (US Eastern).
- *  Schedule columns are stored in Panama time. During US DST, Eastern = Panama +
- *  1 hour, so we shift the `dst_*` (summer-Panama) pair up an hour to express it
- *  in Eastern; in winter Panama == Eastern, so `standard_*` is used as-is.
+ *  Schedule columns are stored directly in US Eastern: `dst_*` is the Summer (ET)
+ *  pair and `standard_*` is the Winter (ET) pair. We pick the summer pair during
+ *  US DST and the winter pair otherwise — no conversion (stored value == shown).
  *
- *  For Eastern-synced employees this yields a constant schedule (e.g. summer
- *  8-4 Panama -> 9-5 Eastern == winter 9-5). For employees whose team ignores
- *  DST (e.g. Favian, Arizona: stored 9-5 both seasons) it correctly produces
- *  9-5 in winter and 10-6 in summer. */
+ *  For Eastern-synced employees the two pairs are identical (e.g. 9-5 / 9-5). For
+ *  employees whose team ignores US DST (e.g. Favian, Arizona) they differ — 10-6
+ *  summer / 9-5 winter. (The `dst_*`/`standard_*` column names are historical;
+ *  they now hold Eastern summer/winter values.) */
 export function getSchedule(
   emp: EmployeeRecord,
   date: Date,
   dstWindows: DstWindow[]
 ): { start: string; end: string; grace: string } {
-  const dst = isDst(date, dstWindows);
-  const start = dst ? addMinutesToTimeStr(emp.dst_start, 60) : emp.standard_start;
-  const end = dst ? addMinutesToTimeStr(emp.dst_end, 60) : emp.standard_end;
+  const summer = isDst(date, dstWindows);
+  const start = summer ? emp.dst_start : emp.standard_start;
+  const end = summer ? emp.dst_end : emp.standard_end;
   const grace = addMinutesToTimeStr(start, emp.grace_minutes);
   return { start, end, grace };
 }
