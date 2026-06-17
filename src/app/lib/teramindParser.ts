@@ -121,6 +121,7 @@ export function processTeramindData(
   knownEmails?: Set<string>
 ): Map<string, Map<string, { entry: Date; exit: Date }>> {
   const map = new Map<string, Map<string, { entry: Date; exit: Date }>>();
+  const unresolvedSeen = new Set<string>();
 
   for (const row of rows) {
     if (!row.email || !row.timeStarted || !row.timeFinished) continue;
@@ -130,7 +131,11 @@ export function processTeramindData(
     if (resolver && knownEmails) {
       const resolved = resolveTeramindIdentifier(row.email, resolver, knownEmails);
       if (!resolved) {
-        // Log once per unresolved identifier
+        const idKey = row.email.trim().toLowerCase();
+        if (!unresolvedSeen.has(idKey)) {
+          unresolvedSeen.add(idKey);
+          console.warn(`[Teramind] no employee match for "${row.email}" - its rows are skipped (add a name alias if this is a real employee).`);
+        }
         continue;
       }
       email = resolved;
