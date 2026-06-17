@@ -18,8 +18,12 @@
 --  * Reported vs Unreported now keys off whether a GAF form was filed
 --    (documentation = 'Form Submitted'), rather than merely whether the day was a
 --    Tardanza -- the old logic marked almost every late day as "Reported".
+--
+-- DROP first to allow column type changes (e.g. date column type fix).
 
-CREATE OR REPLACE VIEW public.v_attendance_daily AS
+DROP VIEW IF EXISTS public.v_attendance_daily;
+
+CREATE VIEW public.v_attendance_daily AS
 WITH
 base AS (
   SELECT

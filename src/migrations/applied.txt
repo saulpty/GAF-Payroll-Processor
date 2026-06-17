@@ -13,3 +13,4 @@ Applied migrations:
 1781275100_import_excel_operator_resolved at 2026-06-12T14:52:23.209Z
 1781400000_us_eastern_schedules at 2026-06-17T18:39:23.987Z
 1781400100_history_panama_to_eastern at 2026-06-17T18:39:23.987Z
+1781400200_attendance_use_stored_late_minutes at 2026-06-17T21:01:59.247Z
