@@ -128,13 +128,18 @@ function addMinutesToTimeStr(t: string, mins: number): string {
   return formatTime12(fakeDate);
 }
 
-/** Check if a date is within US DST window */
+/** Check if a date is within the US DST window.
+ *  Defensive about DB types: SQL drivers may return the integer `year` as a
+ *  string and the date bounds as full timestamps, so coerce year with Number()
+ *  and take only the YYYY-MM-DD prefix. Without this, a string year matched
+ *  nothing and isDst silently returned false (no DST offset ever applied). */
 export function isDst(date: Date, dstWindows: DstWindow[]): boolean {
   const year = date.getFullYear();
-  const win = dstWindows.find(w => w.year === year);
+  const win = dstWindows.find(w => Number(w.year) === year);
   if (!win) return false;
-  const start = new Date(win.us_dst_start + 'T00:00:00');
-  const end = new Date(win.us_dst_end + 'T00:00:00');
+  const start = new Date(String(win.us_dst_start).slice(0, 10) + 'T00:00:00');
+  const end = new Date(String(win.us_dst_end).slice(0, 10) + 'T00:00:00');
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
   return date >= start && date < end;
 }
 
@@ -170,18 +175,22 @@ export function normalizeName(s: string): string {
 }
 
 /** Get schedule times for a given date, in the DISPLAY timezone (US Eastern).
- *  The app shows everything in US Eastern for the US owners. US business hours
- *  are constant year-round, so the schedule is always the `standard_*` pair —
- *  that IS the US-Eastern wall-clock schedule. The `dst_*` pair is the Panama
- *  representation of the same window (summer 8-4 == 9-5 Eastern) and is not used
- *  for display. `date`/`dstWindows` are kept for signature stability. */
+ *  Schedule columns are stored in Panama time. During US DST, Eastern = Panama +
+ *  1 hour, so we shift the `dst_*` (summer-Panama) pair up an hour to express it
+ *  in Eastern; in winter Panama == Eastern, so `standard_*` is used as-is.
+ *
+ *  For Eastern-synced employees this yields a constant schedule (e.g. summer
+ *  8-4 Panama -> 9-5 Eastern == winter 9-5). For employees whose team ignores
+ *  DST (e.g. Favian, Arizona: stored 9-5 both seasons) it correctly produces
+ *  9-5 in winter and 10-6 in summer. */
 export function getSchedule(
   emp: EmployeeRecord,
   date: Date,
   dstWindows: DstWindow[]
 ): { start: string; end: string; grace: string } {
-  const start = emp.standard_start;
-  const end = emp.standard_end;
+  const dst = isDst(date, dstWindows);
+  const start = dst ? addMinutesToTimeStr(emp.dst_start, 60) : emp.standard_start;
+  const end = dst ? addMinutesToTimeStr(emp.dst_end, 60) : emp.standard_end;
   const grace = addMinutesToTimeStr(start, emp.grace_minutes);
   return { start, end, grace };
 }
