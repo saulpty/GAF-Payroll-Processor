@@ -6,8 +6,8 @@ export function loadAttendanceEmployees() {
     query: `
       SELECT
         e.id,
-        e.display_name AS name,
-        e.teramind_email AS email,
+        e.display_name    AS name,
+        e.teramind_email  AS email,
         COALESCE(e.role, '')    AS role,
         COALESCE(e.manager, '') AS manager,
         s.schedule_name,

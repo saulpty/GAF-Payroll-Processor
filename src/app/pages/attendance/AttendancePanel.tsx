@@ -1,6 +1,10 @@
 import { X } from 'lucide-react';
-import { EmpStats, AttendanceRow } from '@/app/lib/attendanceStats';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { EmpStats, AttendanceRow, computeArrivalScatter, ArrivalPoint } from '@/app/lib/attendanceStats';
+import {
+  ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, ReferenceLine, Cell,
+  BarChart, Bar,
+} from 'recharts';
 
 type Props = {
   stats: EmpStats | null;
@@ -24,27 +28,75 @@ function MiniKpi({ label, value, color }: { label: string; value: string | numbe
   );
 }
 
+/** Format minutes-since-midnight back to "H:MM AM/PM" for axis/tooltip */
+function fmtMinutes(min: number): string {
+  const h24 = Math.floor(min / 60);
+  const m = min % 60;
+  const ampm = h24 >= 12 ? 'PM' : 'AM';
+  const h12 = h24 % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+const SCATTER_LEGEND = [
+  { label: 'On Time',   color: '#34c759' },
+  { label: '1–10 min',  color: '#ff9f0a' },
+  { label: '11–30 min', color: '#ff6b00' },
+  { label: '31+ min',   color: '#ff3b30' },
+  { label: 'Excused',   color: '#8e8e93' },
+  { label: 'Permission',color: '#af52de' },
+];
+
+type ScatterTooltipProps = {
+  active?: boolean;
+  payload?: { payload: ArrivalPoint }[];
+};
+
+function ArrivalTooltip({ active, payload }: ScatterTooltipProps) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0].payload;
+  return (
+    <div className="bg-white border border-border rounded-lg shadow-md px-3 py-2 text-xs">
+      <div className="font-semibold mb-0.5">{p.date}</div>
+      <div>Arrival: <span className="font-medium">{p.entry_time ?? '—'}</span></div>
+      <div>Status: <span className="font-medium" style={{ color: p.color }}>{p.status}</span></div>
+      {p.minutes_late > 0 && <div>Min Late: <span className="font-medium">{p.minutes_late}</span></div>}
+    </div>
+  );
+}
+
 export function AttendancePanel({ stats, onClose }: Props) {
   if (!stats) return null;
 
   const arrivalData = [
-    { name: 'On Time',   value: stats.onTime,    color: '#34c759' },
-    { name: '1–10m',     value: stats.b1to10,    color: '#ff9f0a' },
-    { name: '11–30m',    value: stats.b11to30,   color: '#ff6b00' },
-    { name: '31+m',      value: stats.b31plus,   color: '#ff3b30' },
-    { name: 'Excused',   value: stats.excused,   color: '#636366' },
-    { name: 'Permission',value: stats.permission, color: '#af52de' },
+    { name: 'On Time',    value: stats.onTime,     color: '#34c759' },
+    { name: '1–10m',      value: stats.b1to10,     color: '#ff9f0a' },
+    { name: '11–30m',     value: stats.b11to30,    color: '#ff6b00' },
+    { name: '31+m',       value: stats.b31plus,    color: '#ff3b30' },
+    { name: 'Excused',    value: stats.excused,    color: '#636366' },
+    { name: 'Permission', value: stats.permission, color: '#af52de' },
   ].filter(d => d.value > 0);
 
   const reportingData = [
-    { name: 'On Time',    value: stats.onTime,       color: '#34c759' },
-    { name: 'Reported',   value: stats.reported,     color: '#ff9f0a' },
-    { name: 'Unreported', value: stats.unreported,   color: '#ff3b30' },
-    { name: 'Excused',    value: stats.excused,      color: '#636366' },
-    { name: 'Permission', value: stats.permission,   color: '#af52de' },
+    { name: 'On Time',    value: stats.onTime,     color: '#34c759' },
+    { name: 'Reported',   value: stats.reported,   color: '#ff9f0a' },
+    { name: 'Unreported', value: stats.unreported, color: '#ff3b30' },
+    { name: 'Excused',    value: stats.excused,    color: '#636366' },
+    { name: 'Permission', value: stats.permission, color: '#af52de' },
   ].filter(d => d.value > 0);
 
   const recentRows = [...stats.rows].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
+
+  // Arrival scatter data (chronological)
+  const scatterPoints = computeArrivalScatter(stats.rows);
+  // For the connecting line we only use rows with actual entry times
+  const linePoints = scatterPoints.filter(p => p.minutesSinceMidnight !== null);
+
+  // Y-axis ticks: 7:00 AM to 1:00 PM in 30-min steps
+  const yTicks = [7*60, 7*60+30, 8*60, 8*60+30, 9*60, 9*60+10, 9*60+30, 10*60, 11*60, 12*60, 13*60];
+
+  // X-axis: show a tick every ~10 points to avoid crowding
+  const step = Math.max(1, Math.floor(scatterPoints.length / 10));
+  const xTickIndices = new Set(scatterPoints.map((_, i) => i).filter(i => i % step === 0));
 
   return (
     <>
@@ -67,15 +119,84 @@ export function AttendancePanel({ stats, onClose }: Props) {
         <div className="p-7 flex flex-col gap-6">
           {/* Mini KPIs */}
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            <MiniKpi label="Days"       value={stats.days}                   color="#0071e3" />
-            <MiniKpi label="On Time"    value={stats.onTime}                 color="#34c759" />
-            <MiniKpi label="Reported"   value={stats.reported}               color="#ff9f0a" />
-            <MiniKpi label="Unreported" value={stats.unreported}             color="#ff3b30" />
-            <MiniKpi label="Avg Min"    value={stats.avgMinLate.toFixed(1)}  color="#636366" />
+            <MiniKpi label="Days"       value={stats.days}                    color="#0071e3" />
+            <MiniKpi label="On Time"    value={stats.onTime}                  color="#34c759" />
+            <MiniKpi label="Reported"   value={stats.reported}                color="#ff9f0a" />
+            <MiniKpi label="Unreported" value={stats.unreported}              color="#ff3b30" />
+            <MiniKpi label="Avg Min"    value={stats.avgMinLate.toFixed(1)}   color="#636366" />
             <MiniKpi label="% On-Time"  value={`${stats.pctOnTime.toFixed(0)}%`} color="#34c759" />
           </div>
 
-          {/* Arrival chart */}
+          {/* Day-by-day arrival scatter */}
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold mb-1">
+              <div className="w-0.5 h-3.5 bg-primary rounded-full" />
+              Arrival Trend (Day-by-Day)
+            </div>
+            <div className="text-xs text-muted-foreground mb-2">
+              Each dot = one workday. Color = lateness bracket. Blue line traces chronological sequence.
+            </div>
+            {/* Legend */}
+            <div className="flex flex-wrap gap-3 mb-3">
+              {SCATTER_LEGEND.map(l => (
+                <div key={l.label} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: l.color }} />
+                  {l.label}
+                </div>
+              ))}
+            </div>
+            <div className="bg-white border border-border rounded-xl p-4" style={{ height: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={scatterPoints}
+                  margin={{ top: 8, right: 12, left: 10, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5ea" />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 10 }}
+                    interval={step - 1}
+                    angle={-35}
+                    textAnchor="end"
+                    height={42}
+                  />
+                  <YAxis
+                    domain={[7 * 60, 13 * 60]}
+                    ticks={yTicks}
+                    tickFormatter={fmtMinutes}
+                    tick={{ fontSize: 10 }}
+                    width={62}
+                  />
+                  <Tooltip content={<ArrivalTooltip />} />
+                  {/* Reference bands */}
+                  <ReferenceLine y={9 * 60}       stroke="#34c759" strokeDasharray="4 3" strokeWidth={1.5}
+                    label={{ value: '9:00 AM', position: 'insideTopRight', fontSize: 9, fill: '#34c759' }} />
+                  <ReferenceLine y={9 * 60 + 10}  stroke="#ff9f0a" strokeDasharray="4 3" strokeWidth={1}
+                    label={{ value: '9:10', position: 'insideTopRight', fontSize: 9, fill: '#ff9f0a' }} />
+                  <ReferenceLine y={9 * 60 + 30}  stroke="#ff6b00" strokeDasharray="4 3" strokeWidth={1}
+                    label={{ value: '9:30', position: 'insideTopRight', fontSize: 9, fill: '#ff6b00' }} />
+                  {/* Connecting line (chronological) */}
+                  <Line
+                    dataKey="minutesSinceMidnight"
+                    stroke="#1B3A6B"
+                    strokeWidth={1.5}
+                    dot={false}
+                    activeDot={false}
+                    connectNulls={false}
+                    isAnimationActive={false}
+                  />
+                  {/* Scatter dots */}
+                  <Scatter dataKey="minutesSinceMidnight" isAnimationActive={false}>
+                    {scatterPoints.map((p, i) => (
+                      <Cell key={i} fill={p.color} stroke="#fff" strokeWidth={1} r={4} />
+                    ))}
+                  </Scatter>
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Arrival breakdown bar */}
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold mb-3">
               <div className="w-0.5 h-3.5 bg-primary rounded-full" />

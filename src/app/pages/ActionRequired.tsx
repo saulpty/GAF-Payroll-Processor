@@ -8,6 +8,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { TimeInput } from '@/app/components/TimeInput';
 import loadActionRequiredAction from '@/actions/loadActionRequired';
 import loadCommittedEntriesAction from '@/actions/loadCommittedEntries';
 import updatePayrollEntryAction from '@/actions/updatePayrollEntry';
@@ -471,14 +472,14 @@ export default function ActionRequired() {
                       <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0, 10)}</td>
                       {/* Entry/Exit */}
                       <td className="px-2 py-1.5 border-r min-w-28 bg-blue-50/40">
-                        <input className="w-full border rounded px-1.5 py-1 text-xs bg-white font-mono"
+                        <TimeInput className="w-full border rounded px-1.5 py-1 text-xs bg-white font-mono"
                           value={edit.entry_time} placeholder="e.g. 9:00 AM"
-                          onChange={e => setEditField(row.id, 'entry_time', e.target.value, row)} />
+                          onChange={v => setEditField(row.id, 'entry_time', v, row)} />
                       </td>
                       <td className="px-2 py-1.5 border-r min-w-28 bg-blue-50/40">
-                        <input className="w-full border rounded px-1.5 py-1 text-xs bg-white font-mono"
+                        <TimeInput className="w-full border rounded px-1.5 py-1 text-xs bg-white font-mono"
                           value={edit.exit_time} placeholder="e.g. 5:00 PM"
-                          onChange={e => setEditField(row.id, 'exit_time', e.target.value, row)} />
+                          onChange={v => setEditField(row.id, 'exit_time', v, row)} />
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap border-r text-slate-500 text-[11px]">{row.scheduled_start}–{row.scheduled_end}</td>
                       <td className="px-3 py-2 text-center border-r">
