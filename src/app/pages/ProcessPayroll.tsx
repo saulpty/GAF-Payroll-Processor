@@ -116,6 +116,11 @@ export default function ProcessPayroll() {
   const [teramindRows, setTeramindRows] = useState<ReturnType<typeof parseTeramindFile>>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Single-employee re-run
+  const [singleEmpMode, setSingleEmpMode] = useState(false);
+  const [singleEmpIds, setSingleEmpIds] = useState<number[]>([]);
+  const [singleEmpSearch, setSingleEmpSearch] = useState('');
+
   // Run state
   const [status, setStatus] = useState<RunStatus>('idle');
   const [runLog, setRunLog] = useState<{ text: string; ts: string }[]>([]);
@@ -293,7 +298,13 @@ export default function ProcessPayroll() {
 
     try {
       if (isRerun) {
-        const ok = window.confirm(`"${periodName}" already has data. Re-running will replace all entries for this period. Continue?`);
+        const empName = singleEmpMode && singleEmpIds.length > 0
+          ? singleEmpIds.map(id => (employees as Employee[]).find(e => e.id === id)?.display_name ?? `#${id}`).join(', ')
+          : null;
+        const msg = empName
+          ? `Re-run for: ${empName} — their entries will be overwritten. Everyone else's work is preserved. Continue?`
+          : `"${periodName}" already has data. Re-running will replace ALL entries for this period. Continue?`;
+        const ok = window.confirm(msg);
         if (!ok) { setStatus('idle'); setProgress(0); return; }
       }
 
@@ -397,7 +408,7 @@ export default function ProcessPayroll() {
     log('Running classification engine…');
     setProgress(50);
 
-    const entries = runClassificationEngine({
+    const allEntries = runClassificationEngine({
       periodName,
       startDate,
       endDate,
@@ -415,6 +426,15 @@ export default function ProcessPayroll() {
       config: buildClassificationConfig(cfgRows),
     });
 
+    const entries = singleEmpMode && singleEmpIds.length > 0
+      ? allEntries.filter(e => singleEmpIds.includes(e.employee_id))
+      : allEntries;
+
+    if (singleEmpMode && singleEmpIds.length > 0) {
+      const names = singleEmpIds.map(id => (employees as Employee[]).find(e => e.id === id)?.display_name ?? `#${id}`).join(', ');
+      log(`Single-employee mode: processing only ${names} (${entries.length} entries).`);
+    }
+
     log(`Engine produced ${entries.length} entries. Saving to database…`);
     let green = 0, yellow = 0, red = 0, saved = 0;
     const BATCH = 5;
@@ -430,9 +450,11 @@ export default function ProcessPayroll() {
       if (Math.floor(saved / 50) > Math.floor((saved - BATCH) / 50)) log(`Saved ${saved}/${entries.length} entries…`);
     }
 
-    const empCount = new Set(entries.map(e => e.employee_id)).size;
-    const dayCount = new Set(entries.map(e => e.work_date)).size;
-    await upsertPer({ period_name: periodName, start_date: startDate, end_date: endDate, employee_count: empCount, day_count: dayCount, green_count: green, yellow_count: yellow, red_count: red });
+    if (!singleEmpMode) {
+      const empCount = new Set(entries.map(e => e.employee_id)).size;
+      const dayCount = new Set(entries.map(e => e.work_date)).size;
+      await upsertPer({ period_name: periodName, start_date: startDate, end_date: endDate, employee_count: empCount, day_count: dayCount, green_count: green, yellow_count: yellow, red_count: red });
+    }
 
     log(`✓ Done — ${green} GREEN · ${yellow} YELLOW · ${red} RED`);
     setResult({ green, yellow, red, total: green + yellow + red });
@@ -471,7 +493,7 @@ export default function ProcessPayroll() {
       !empSearch || e.display_name.toLowerCase().includes(empSearch.toLowerCase())
     ), [employees, empSearch]);
 
-  const formReady = periodName && startDate && endDate && teramindFile;
+  const formReady = periodName && startDate && endDate && teramindFile && (!singleEmpMode || singleEmpIds.length > 0);
 
   // ── render ────────────────────────────────────────────────────────────────
 
@@ -503,9 +525,59 @@ export default function ProcessPayroll() {
                 disabled={isRunning}
               />
               {isRerun && (
-                <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> This period already exists — re-run will overwrite.
-                </p>
+                <div className="mt-1 space-y-1.5">
+                  <p className="text-[11px] text-amber-600 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> This period already exists — re-run will overwrite all entries.
+                  </p>
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-slate-700">
+                    <input
+                      type="checkbox"
+                      className="w-3 h-3 accent-blue-600"
+                      checked={singleEmpMode}
+                      onChange={e => { setSingleEmpMode(e.target.checked); setSingleEmpIds([]); setSingleEmpSearch(''); }}
+                      disabled={isRunning}
+                    />
+                    <span className="font-medium">Re-run for one employee only</span>
+                    <span className="text-muted-foreground">(preserves everyone else's resolved work)</span>
+                  </label>
+                  {singleEmpMode && (
+                    <div className="mt-1 border rounded-lg p-2 bg-blue-50/60 space-y-1">
+                      <p className="text-[11px] font-medium text-blue-800">Select employee to re-process:</p>
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                        <input
+                          className="w-full border rounded pl-7 pr-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-300"
+                          placeholder="Search employee…"
+                          value={singleEmpSearch}
+                          onChange={e => setSingleEmpSearch(e.target.value)}
+                          disabled={isRunning}
+                        />
+                      </div>
+                      <div className="max-h-32 overflow-y-auto border rounded bg-white">
+                        {(employees as Employee[])
+                          .filter(e => !singleEmpSearch || e.display_name.toLowerCase().includes(singleEmpSearch.toLowerCase()))
+                          .map(e => (
+                            <label key={e.id}
+                              className={`flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-blue-50 transition-colors ${singleEmpIds.includes(e.id) ? 'bg-blue-100 font-semibold text-blue-800' : ''}`}>
+                              <input
+                                type="checkbox"
+                                className="w-3 h-3 accent-blue-600"
+                                checked={singleEmpIds.includes(e.id)}
+                                onChange={() => setSingleEmpIds(prev => prev.includes(e.id) ? prev.filter(x => x !== e.id) : [...prev, e.id])}
+                                disabled={isRunning}
+                              />
+                              {e.display_name}
+                            </label>
+                          ))}
+                      </div>
+                      {singleEmpIds.length > 0 && (
+                        <p className="text-[11px] text-blue-700 font-medium">
+                          ✓ Will re-process ({singleEmpIds.length}): {singleEmpIds.map(id => (employees as Employee[]).find(e => e.id === id)?.display_name).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             <div>
@@ -527,7 +599,11 @@ export default function ProcessPayroll() {
               <select className="border rounded px-2 py-1 text-xs bg-white"
                 onChange={e => {
                   const p = existingPeriods.find(x => x.period_name === e.target.value);
-                  if (p) { setStartDate(p.start_date?.slice(0, 10) || ''); setEndDate(p.end_date?.slice(0, 10) || ''); }
+                  if (p) {
+                    setPeriodName(p.period_name);
+                    setStartDate(p.start_date?.slice(0, 10) || '');
+                    setEndDate(p.end_date?.slice(0, 10) || '');
+                  }
                   e.target.value = '';
                 }}
                 defaultValue="">
@@ -584,7 +660,7 @@ export default function ProcessPayroll() {
         </StepCard>
 
         {/* ── Step 3: Options ─────────────────────────────── */}
-        <StepCard number={3} icon={<Settings2 className="w-4 h-4" />} title="Options" complete={false} optional>
+        <StepCard number={3} icon={<Settings2 className="w-4 h-4" />} title="Options" complete={false} optional collapsible>
           {/* Outage dates */}
           <div className="mb-4">
             <label className="text-xs font-medium block mb-1.5 text-slate-600">
@@ -839,21 +915,28 @@ export default function ProcessPayroll() {
 
 // ── StepCard ──────────────────────────────────────────────────────────────────
 
-function StepCard({ number, icon, title, complete, optional = false, children }: {
+function StepCard({ number, icon, title, complete, optional = false, collapsible = false, children }: {
   number: number; icon: React.ReactNode; title: string;
-  complete: boolean; optional?: boolean; children: React.ReactNode;
+  complete: boolean; optional?: boolean; collapsible?: boolean; children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(!collapsible);
   return (
     <div className={`mb-4 border rounded-xl overflow-hidden transition-colors ${complete ? 'border-green-300' : 'border-slate-200'}`}>
-      <div className={`flex items-center gap-3 px-4 py-3 border-b ${complete ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
+      <div
+        className={`flex items-center gap-3 px-4 py-3 border-b ${complete ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'} ${collapsible ? 'cursor-pointer select-none' : ''}`}
+        onClick={() => collapsible && setOpen(o => !o)}
+      >
         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${complete ? 'bg-green-500 text-white' : 'bg-white border-2 border-slate-300 text-slate-500'}`}>
           {complete ? <CheckCircle className="w-3.5 h-3.5" /> : number}
         </div>
         <span className={`text-sm font-semibold ${complete ? 'text-green-800' : 'text-slate-700'}`}>{title}</span>
         <span className="ml-1 text-muted-foreground">{icon}</span>
-        {optional && <Badge variant="outline" className="ml-auto text-[10px] font-normal">Optional</Badge>}
+        {optional && <Badge variant="outline" className="ml-2 text-[10px] font-normal">Optional</Badge>}
+        {collapsible && (
+          <ChevronRight className={`w-4 h-4 ml-auto text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
+        )}
       </div>
-      <div className="p-4">{children}</div>
+      {open && <div className="p-4">{children}</div>}
     </div>
   );
 }
