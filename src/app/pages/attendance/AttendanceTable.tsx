@@ -64,6 +64,8 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
           <thead>
             <tr>
               <Th label="Employee"       col="name" />
+              <Th label="Role"           col="role" />
+              <Th label="Manager"        col="manager" />
               <Th label="Schedule"       col="schedule" />
               <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40 border-b border-border whitespace-nowrap">Status</th>
               <Th label="Days"           col="days" />
@@ -80,13 +82,15 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
           </thead>
           <tbody>
             {sorted.length === 0 && (
-              <tr><td colSpan={13} className="px-4 py-12 text-center text-muted-foreground">No data</td></tr>
+              <tr><td colSpan={15} className="px-4 py-12 text-center text-muted-foreground">No data</td></tr>
             )}
             {sorted.map(s => (
               <tr key={s.email}
                 className="border-b border-border/60 hover:bg-blue-50/60 cursor-pointer transition-colors"
                 onClick={() => onRowClick(s.email)}>
                 <td className="px-3 py-2.5 font-semibold text-foreground whitespace-nowrap">{s.name}</td>
+                <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.role || <span className="text-slate-300">—</span>}</td>
+                <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.manager || <span className="text-slate-300">—</span>}</td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.schedule}</td>
                 <td className="px-3 py-2.5"><StatusBadge pct={s.pctOnTime} /></td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{s.days}</td>

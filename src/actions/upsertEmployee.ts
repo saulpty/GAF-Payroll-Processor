@@ -5,13 +5,13 @@ function upsertEmployee() {
     datasourceName: 'GAF Planilla DB',
     query: `
       INSERT INTO employees (display_name, teramind_email, company_domain, schedule_id,
-        is_grace_list, is_macbook_swap, excluded_from_payroll, active, notes)
+        is_grace_list, is_macbook_swap, excluded_from_payroll, active, notes, role, manager)
       VALUES (
         {{params.display_name}}, {{params.teramind_email}}, {{params.company_domain}},
         {{params.schedule_id}}::bigint,
         {{params.is_grace_list}}::boolean, {{params.is_macbook_swap}}::boolean,
         {{params.excluded_from_payroll}}::boolean, {{params.active}}::boolean,
-        {{params.notes}}
+        {{params.notes}}, {{params.role}}, {{params.manager}}
       )
       ON CONFLICT (teramind_email) DO UPDATE SET
         display_name            = EXCLUDED.display_name,
@@ -21,7 +21,10 @@ function upsertEmployee() {
         is_macbook_swap         = EXCLUDED.is_macbook_swap,
         excluded_from_payroll   = EXCLUDED.excluded_from_payroll,
         active                  = EXCLUDED.active,
-        notes                   = EXCLUDED.notes;
+        notes                   = EXCLUDED.notes,
+        -- keep existing role/manager when the caller doesn't supply them
+        role                    = COALESCE(EXCLUDED.role, employees.role),
+        manager                 = COALESCE(EXCLUDED.manager, employees.manager);
     `,
   });
 }

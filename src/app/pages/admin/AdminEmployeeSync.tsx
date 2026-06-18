@@ -26,6 +26,8 @@ type MondayEmp = {
   companyEmail: string;
   teramindEmail?: string;
   allEmails?: string[];
+  role?: string;
+  manager?: string;
 };
 
 type SyncStatus = 'matched' | 'new' | 'missing';
@@ -53,10 +55,17 @@ function extractEmail(col: { text: string; value: string } | undefined): string 
 
 function parseMondayDirectory(raw: unknown): MondayEmp[] {
   try {
-    const data = (raw as { data?: { boards?: { items_page?: { items?: unknown[] } }[] } })?.data;
-    const items = data?.boards?.[0]?.items_page?.items ?? [];
+    const data = (raw as { data?: { boards?: { columns?: { id: string; title: string }[]; items_page?: { items?: unknown[] } }[] } })?.data;
+    const board = data?.boards?.[0];
+    const items = board?.items_page?.items ?? [];
+    // column id -> lowercased title, so role/manager can be found by title
+    const colTitles = new Map<string, string>((board?.columns ?? []).map(c => [c.id, (c.title || '').toLowerCase()]));
     return (items as { id: string; name: string; column_values: { id: string; text: string; value: string }[] }[]).map(item => {
       const cols = item.column_values ?? [];
+      const byTitle = (re: RegExp) =>
+        (cols.find(c => re.test(colTitles.get(c.id) || ''))?.text || '').trim();
+      const role    = byTitle(/\b(role|puesto|cargo|position|posici|title|job)\b/);
+      const manager = byTitle(/\b(manager|supervisor|jefe|gerente|reports?\s*to|lead|boss)\b/);
 
       // Collect ALL columns that contain an email address — we'll pick the best match
       const emailCols = cols.filter(c => extractEmail(c) !== '');
@@ -83,6 +92,8 @@ function parseMondayDirectory(raw: unknown): MondayEmp[] {
         companyEmail,
         teramindEmail,
         allEmails: emailCols.map(c => extractEmail(c)).filter(Boolean),
+        role,
+        manager,
       };
     }).filter(e => e.name?.trim());
   } catch {
@@ -223,6 +234,8 @@ export default function AdminEmployeeSync() {
         is_macbook_swap: false,
         active: true,
         notes: 'Added via Monday directory sync',
+        role: me.role || null,
+        manager: me.manager || null,
       });
       setDone(p => ({ ...p, [key]: true }));
       reloadEmps();

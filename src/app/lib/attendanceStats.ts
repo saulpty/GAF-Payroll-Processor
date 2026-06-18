@@ -16,6 +16,8 @@ export type AttendanceRow = {
 export type EmpInfo = {
   email: string;
   name: string;
+  role: string;
+  manager: string;
   schedule_name: string;
   standard_start: string;
   standard_end: string;
@@ -28,6 +30,8 @@ export function isExcluded(status: string) {
 export type EmpStats = {
   email: string;
   name: string;
+  role: string;
+  manager: string;
   schedule: string;
   days: number;
   onTime: number;
@@ -73,6 +77,8 @@ export function computeEmployeeStats(
     return {
       email,
       name: info?.name ?? email,
+      role: info?.role ?? '',
+      manager: info?.manager ?? '',
       schedule: info ? `${info.standard_start} – ${info.standard_end}` : '—',
       days, onTime, totalLate: reported + unreported,
       reported, unreported, excused, permission,
