@@ -3,7 +3,7 @@ import { useLoadAction, useMutateAction } from '@uibakery/data';
 import {
   AlertTriangle, CheckCircle, Loader2, ChevronUp, ChevronDown,
   ChevronsUpDown, Search, X, Edit2, GitCommit, ChevronRight,
-  Square, CheckSquare, Send,
+  Square, CheckSquare, Send, ClipboardList,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -340,7 +340,25 @@ export default function ActionRequired() {
 
       {/* ── Empty states ────────────────────────────────────────── */}
       {!selectedPeriod && (
-        <Card className="flex-1"><CardContent className="pt-12 text-center text-muted-foreground text-sm">Select a pay period above to review unresolved entries.</CardContent></Card>
+        <Card className="flex-1">
+          <CardContent className="flex flex-col items-center justify-center py-24 gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+              <ClipboardList className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-foreground mb-1">No Pay Period Selected</p>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Choose a pay period from the dropdown above to review and resolve unresolved entries.
+              </p>
+            </div>
+            {unresolvedCount > 0 && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span><strong>{unresolvedCount}</strong> entries still need attention across all periods.</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
       {selectedPeriod && loading && (
         <div className="flex items-center gap-2 text-muted-foreground text-sm mt-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading entries…</div>

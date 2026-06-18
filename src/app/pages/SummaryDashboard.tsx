@@ -3,6 +3,7 @@ import { useLoadAction } from '@uibakery/data';
 import {
   BarChart2, Users, Clock, AlertTriangle, CheckCircle2,
   TrendingDown, Calendar, Filter, ChevronUp, ChevronDown, Minus,
+  TriangleAlert, CircleCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -70,8 +71,6 @@ const PIE_COLORS = [C.navy, C.teal, C.amber, C.red, C.slate, C.indigo];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const toHrs = (m: number) => (m / 60).toFixed(1);
-const fmt = (n: number) => n?.toLocaleString() ?? '0';
-const pct = (n: number, d: number) => d ? ((n / d) * 100).toFixed(1) + '%' : '—';
 
 type SortDir = 'asc' | 'desc' | null;
 
@@ -110,10 +109,19 @@ export default function SummaryDashboard() {
   const [allPeriodData, allLoading] = useLoadAction(loadSummaryAllPeriodsAction, [] as PeriodRow[]);
 
   const [selectedPeriod, setSelectedPeriod] = useState('');
-  const [params, setParams] = useState({ periodName: '' });
+
+  const handlePeriodChange = (p: string) => {
+    setSelectedPeriod(p);
+    setEmpSearch('');
+    setStatusFilter('all');
+    setSortCol('total_discount_minutes');
+    setSortDir('desc');
+  };
+
+  // rows auto-load when selectedPeriod changes
   const [rows, empLoading] = useLoadAction(
-    loadSummaryDashboardAction, [] as SummaryRow[], params,
-    { enabled: !!params.periodName }
+    loadSummaryDashboardAction, [] as SummaryRow[], { periodName: selectedPeriod },
+    { enabled: !!selectedPeriod }
   );
 
   const [empSearch, setEmpSearch] = useState('');
@@ -122,7 +130,11 @@ export default function SummaryDashboard() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'issues' | 'ready'>('all');
 
   const data = rows as SummaryRow[];
-  const periodData = (allPeriodData as PeriodRow[]).filter(p => p.period_name !== 'june q1 test ');
+  // Filter out test/draft periods (those whose names start with a digit or contain real date patterns)
+  const periodData = (allPeriodData as PeriodRow[]).filter(p => {
+    const n = p.period_name?.toLowerCase().trim();
+    return n && !n.includes('test') && !n.includes('draft');
+  });
 
   // ── KPI totals ──
   const totals = useMemo(() => data.reduce(
@@ -154,8 +166,8 @@ export default function SummaryDashboard() {
   }));
 
   // ── Pie: event type breakdown for selected period ──
-  const eventPie = params.periodName ? (() => {
-    const period = periodData.find(p => p.period_name === params.periodName);
+  const eventPie = selectedPeriod ? (() => {
+    const period = periodData.find(p => p.period_name === selectedPeriod);
     if (!period) return [];
     return [
       { name: 'Tardanza',       value: period.tardanza_count },
@@ -170,7 +182,7 @@ export default function SummaryDashboard() {
   // ── Employee table ──
   const filteredEmps = useMemo(() => {
     let list = [...data];
-    if (empSearch) list = list.filter(r => r.employee_name.toLowerCase().includes(empSearch.toLowerCase()));
+    if (empSearch) list = list.filter(r => r.employee_name?.toLowerCase().includes(empSearch.toLowerCase()));
     if (statusFilter === 'issues') list = list.filter(r => r.red_count > 0 || r.yellow_count > 0);
     if (statusFilter === 'ready') list = list.filter(r => r.all_ready);
     if (sortCol) {
@@ -209,32 +221,28 @@ export default function SummaryDashboard() {
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted-foreground" />
           <select
-            className="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm min-w-48 focus:outline-none focus:ring-2"
-            style={{ '--tw-ring-color': C.navy } as React.CSSProperties}
+            className="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm min-w-48 focus:outline-none focus:ring-2 focus:ring-blue-300"
             value={selectedPeriod}
-            onChange={e => setSelectedPeriod(e.target.value)}
+            onChange={e => handlePeriodChange(e.target.value)}
           >
             <option value="">All periods (trend view)</option>
             {(periods as { period_name: string }[])
-              .filter(p => p.period_name !== 'june q1 test ')
+              .filter(p => {
+                const n = p.period_name?.toLowerCase().trim();
+                return n && !n.includes('test') && !n.includes('draft');
+              })
               .map(p => (
                 <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
               ))}
           </select>
-          {selectedPeriod && (
-            <button
-              className="px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm hover:opacity-90 transition"
-              style={{ background: C.navy }}
-              onClick={() => setParams({ periodName: selectedPeriod })}
-            >
-              Load Detail
-            </button>
+          {empLoading && selectedPeriod && (
+            <span className="text-xs text-muted-foreground animate-pulse ml-1">Loading…</span>
           )}
         </div>
       </div>
 
       {/* ── KPI Cards (shown when period loaded) ── */}
-      {params.periodName && data.length > 0 && (
+      {selectedPeriod && data.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <KpiCard label="Employees" value={data.length} icon={<Users className="w-5 h-5" />} color={C.navy} />
           <KpiCard label="Discount Hours" value={toHrs(totals.discount) + 'h'} sub="total unpaid time" icon={<Clock className="w-5 h-5" />} color={C.red} />
@@ -258,9 +266,9 @@ export default function SummaryDashboard() {
               <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Loading…</div>
             ) : (
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={statusChart} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                <BarChart data={statusChart} margin={{ top: 4, right: 16, left: 0, bottom: 46 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={46} interval={0} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -277,9 +285,11 @@ export default function SummaryDashboard() {
         <Card className="shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">
-              {params.periodName ? `Event Mix — ${params.periodName}` : 'Event Type Mix'}
+              {selectedPeriod ? `Event Mix — ${selectedPeriod}` : 'Event Type Mix'}
             </CardTitle>
-            <p className="text-xs text-muted-foreground">Select a period and load detail</p>
+            <p className="text-xs text-muted-foreground">
+              {selectedPeriod ? 'Event breakdown for selected period' : 'Select a period to see event breakdown'}
+            </p>
           </CardHeader>
           <CardContent className="p-4 pt-0">
             {eventPie.length > 0 ? (
@@ -315,9 +325,9 @@ export default function SummaryDashboard() {
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={discountTrend} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+            <LineChart data={discountTrend} margin={{ top: 4, right: 16, left: 0, bottom: 46 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={46} interval={0} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />
               <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -330,25 +340,25 @@ export default function SummaryDashboard() {
       </Card>
 
       {/* ── Per-employee table ── */}
-      {params.periodName && (
+      {selectedPeriod && (
         <Card className="shadow-sm">
           <CardHeader className="flex-row items-center justify-between pb-3" style={{ flexDirection: 'row' }}>
             <div>
-              <CardTitle className="text-sm font-semibold">Employee Detail — {params.periodName}</CardTitle>
+              <CardTitle className="text-sm font-semibold">Employee Detail — {selectedPeriod}</CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">{filteredEmps.length} of {data.length} employees</p>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex rounded-lg border overflow-hidden text-xs">
                 {(['all', 'issues', 'ready'] as const).map(f => (
                   <button key={f} onClick={() => setStatusFilter(f)}
-                    className={`px-3 py-1.5 font-medium transition-colors ${
-                      statusFilter === f
-                        ? 'text-white'
-                        : 'text-muted-foreground hover:bg-muted'
+                    className={`flex items-center gap-1 px-3 py-1.5 font-medium transition-colors ${
+                      statusFilter === f ? 'text-white' : 'text-muted-foreground hover:bg-muted'
                     }`}
                     style={statusFilter === f ? { background: C.navy } : {}}
                   >
-                    {f === 'all' ? 'All' : f === 'issues' ? '⚠ Has Issues' : '✓ Ready'}
+                    {f === 'all' && 'All'}
+                    {f === 'issues' && <><TriangleAlert className="w-3 h-3" /> Has Issues</>}
+                    {f === 'ready'  && <><CircleCheck  className="w-3 h-3" /> Ready</>}
                   </button>
                 ))}
               </div>

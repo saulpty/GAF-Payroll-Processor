@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { Users, Plus, Loader2, Save, Search, X } from 'lucide-react';
+import { Users, Plus, Loader2, Save, Search, X, Clock, Laptop, Ban, CheckCircle2, LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,11 +25,11 @@ const EMPTY_EMP: Partial<EmpRow> = {
 
 type FlagKey = 'is_grace_list' | 'is_macbook_swap' | 'excluded_from_payroll' | 'active';
 
-const FLAG_META: { key: FlagKey; label: string; tip: string; danger?: boolean }[] = [
-  { key: 'is_grace_list',         label: 'Grace ⏱',    tip: 'Gets 10-min tardiness grace period before flagging' },
-  { key: 'is_macbook_swap',       label: 'Macbook 💻',  tip: 'Missing Teramind data defaults to GREEN (not flagged absent)' },
-  { key: 'excluded_from_payroll', label: 'Excluded 🚫', tip: 'Skipped entirely during payroll processing runs', danger: true },
-  { key: 'active',                label: 'Active ✓',    tip: 'Inactive employees are excluded from payroll runs', danger: true },
+const FLAG_META: { key: FlagKey; label: string; icon: LucideIcon; tip: string; danger?: boolean }[] = [
+  { key: 'is_grace_list',         label: 'Grace',    icon: Clock,         tip: 'Gets 10-min tardiness grace period before flagging' },
+  { key: 'is_macbook_swap',       label: 'Macbook',  icon: Laptop,        tip: 'Missing Teramind data defaults to GREEN (not flagged absent)' },
+  { key: 'excluded_from_payroll', label: 'Excluded', icon: Ban,           tip: 'Skipped entirely during payroll processing runs', danger: true },
+  { key: 'active',                label: 'Active',   icon: CheckCircle2,  tip: 'Inactive employees are excluded from payroll runs', danger: true },
 ];
 
 export default function AdminEmployees() {
@@ -141,6 +141,7 @@ export default function AdminEmployees() {
                     className="w-3.5 h-3.5"
                     checked={!!editing[f.key]}
                     onChange={e => setEditing(prev => ({ ...prev!, [f.key]: e.target.checked }))} />
+                  <f.icon className={`w-3.5 h-3.5 ${f.danger ? 'text-red-500' : 'text-slate-500'}`} />
                   <span className={`text-sm ${f.danger ? 'text-red-700 font-medium' : 'text-slate-700'}`}>{f.label}</span>
                 </label>
               ))}
@@ -192,7 +193,10 @@ export default function AdminEmployees() {
               {FLAG_META.map(f => (
                 <th key={f.key} title={f.tip}
                   className="px-3 py-2.5 text-center font-semibold border-b border-r whitespace-nowrap cursor-help">
-                  {f.label}
+                  <span className="flex items-center justify-center gap-1">
+                    <f.icon className={`w-3 h-3 ${f.danger ? 'text-red-500' : 'text-slate-500'}`} />
+                    {f.label}
+                  </span>
                 </th>
               ))}
               <th className="px-3 py-2.5 border-b w-14" />
@@ -230,8 +234,10 @@ export default function AdminEmployees() {
       {/* Legend */}
       <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
         {FLAG_META.map(f => (
-          <span key={f.key} title={f.tip} className="cursor-help flex items-center gap-1">
-            <span className="font-medium text-slate-700">{f.label}</span> — {f.tip}
+          <span key={f.key} title={f.tip} className="cursor-help flex items-center gap-1.5">
+            <f.icon className={`w-3 h-3 shrink-0 ${f.danger ? 'text-red-400' : 'text-slate-400'}`} />
+            <span className={`font-medium ${f.danger ? 'text-red-700' : 'text-slate-700'}`}>{f.label}</span>
+            <span>— {f.tip}</span>
           </span>
         ))}
       </div>
