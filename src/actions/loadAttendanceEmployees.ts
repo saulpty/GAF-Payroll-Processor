@@ -8,6 +8,8 @@ export function loadAttendanceEmployees() {
         e.id,
         e.display_name AS name,
         e.teramind_email AS email,
+        COALESCE(e.role, '')    AS role,
+        COALESCE(e.manager, '') AS manager,
         s.schedule_name,
         s.standard_start,
         s.standard_end

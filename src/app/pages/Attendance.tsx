@@ -23,6 +23,8 @@ export default function Attendance() {
   const [dateTo,   setDateTo]   = useState(today);
   const [tab,      setTab]      = useState<Tab>('dashboard');
   const [search,   setSearch]   = useState('');
+  const [manager,  setManager]  = useState('');
+  const [role,     setRole]     = useState('');
   const [panelEmail, setPanelEmail] = useState<string | null>(null);
 
   // Load data
@@ -45,21 +47,43 @@ export default function Attendance() {
     return m;
   }, [emps]);
 
-  const emails = useMemo(() => new Set(emps.map(e => e.email)), [emps]);
-
-  const empStats = useMemo(
-    () => computeEmployeeStats(rows, empMap, emails),
-    [rows, empMap, emails],
+  // Manager / Role filter options (from the directory)
+  const managers = useMemo(
+    () => [...new Set(emps.map(e => e.manager).filter(Boolean))].sort(),
+    [emps],
+  );
+  const roles = useMemo(
+    () => [...new Set(emps.map(e => e.role).filter(Boolean))].sort(),
+    [emps],
   );
 
-  const kpis = useMemo(() => computeCompanyKpis(rows), [rows]);
+  // Emails matching the active manager/role filters, and rows scoped to them.
+  const matchEmails = useMemo(
+    () => new Set(
+      emps
+        .filter(e => (!manager || e.manager === manager) && (!role || e.role === role))
+        .map(e => e.email),
+    ),
+    [emps, manager, role],
+  );
+  const filteredRows = useMemo(
+    () => rows.filter(r => matchEmails.has(r.email)),
+    [rows, matchEmails],
+  );
+
+  const empStats = useMemo(
+    () => computeEmployeeStats(filteredRows, empMap, matchEmails),
+    [filteredRows, empMap, matchEmails],
+  );
+
+  const kpis = useMemo(() => computeCompanyKpis(filteredRows), [filteredRows]);
 
   const panelStats = panelEmail ? empStats.find(s => s.email === panelEmail) ?? null : null;
 
   const loading = loadingRows || loadingEmps;
 
   const setPreset = (days: number) => { setDateFrom(daysAgo(days)); setDateTo(today); };
-  const reset = () => { setDateFrom(daysAgo(30)); setDateTo(today); setSearch(''); };
+  const reset = () => { setDateFrom(daysAgo(30)); setDateTo(today); setSearch(''); setManager(''); setRole(''); };
 
   const tabCls = (t: Tab) =>
     `px-5 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === t
@@ -80,6 +104,23 @@ export default function Attendance() {
           <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">To</span>
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
             className="h-8 px-2.5 text-sm border border-border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30" />
+        </div>
+        <div className="w-px h-6 bg-border" />
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Manager</span>
+          <select value={manager} onChange={e => setManager(e.target.value)}
+            className="h-8 px-2 text-sm border border-border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="">All</option>
+            {managers.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Role</span>
+          <select value={role} onChange={e => setRole(e.target.value)}
+            className="h-8 px-2 text-sm border border-border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <option value="">All</option>
+            {roles.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
         </div>
         <div className="w-px h-6 bg-border" />
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Quick</span>
@@ -154,7 +195,7 @@ export default function Attendance() {
 
             {/* Trends tab */}
             {tab === 'trends' && (
-              <AttendanceTrends rows={rows} empStats={empStats} />
+              <AttendanceTrends rows={filteredRows} empStats={empStats} />
             )}
           </>
         ) : null}
