@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { TimeInput } from '@/app/components/TimeInput';
 import loadPayrollMasterAction from '@/actions/loadPayrollMaster';
 import countPayrollMasterAction from '@/actions/countPayrollMaster';
 import loadPeriodsAction from '@/actions/loadPeriods';
@@ -461,19 +462,19 @@ export default function PayrollMaster() {
 
                       {/* Editable: Entry Time */}
                       <td className="px-2 py-1.5 border-r min-w-28 bg-blue-50/50">
-                        <input
+                        <TimeInput
                           className="w-full border rounded px-1.5 py-1 text-xs bg-white font-mono"
                           value={edit.entry_time}
-                          onChange={e => setEditField(row.id, 'entry_time', e.target.value, row)}
+                          onChange={v => setEditField(row.id, 'entry_time', v, row)}
                           placeholder="e.g. 9:00 AM"
                         />
                       </td>
                       {/* Editable: Exit Time */}
                       <td className="px-2 py-1.5 border-r min-w-28 bg-blue-50/50">
-                        <input
+                        <TimeInput
                           className="w-full border rounded px-1.5 py-1 text-xs bg-white font-mono"
                           value={edit.exit_time}
-                          onChange={e => setEditField(row.id, 'exit_time', e.target.value, row)}
+                          onChange={v => setEditField(row.id, 'exit_time', v, row)}
                           placeholder="e.g. 5:00 PM"
                         />
                       </td>

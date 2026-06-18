@@ -14,3 +14,7 @@ Applied migrations:
 1781400000_us_eastern_schedules at 2026-06-17T18:39:23.987Z
 1781400100_history_panama_to_eastern at 2026-06-17T18:39:23.987Z
 1781400200_attendance_use_stored_late_minutes at 2026-06-17T21:01:59.247Z
+1781400400_update_directory_board_config at 2026-06-18T14:29:30.367Z
+1781400500_fix_entry_time_lowercase_ampm at 2026-06-18T16:23:09.072Z
+1781400600_fix_entry_time_format_string at 2026-06-18T16:24:15.944Z
+1781400700_fix_entry_time_no_minutes at 2026-06-18T16:39:09.549Z

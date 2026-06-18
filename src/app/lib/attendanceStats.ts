@@ -113,6 +113,74 @@ export function computeCompanyKpis(rows: AttendanceRow[]): CompanyKpis {
   return { daysTracked, onTime, lateReported, lateUnreported, excused, permission, avgMinLate, onTimeRate };
 }
 
+// ── Arrival scatter (day-by-day) ──────────────────────────────────────────
+
+export type ArrivalPoint = {
+  date: string;       // "YYYY-MM-DD" — used as X label
+  label: string;      // short formatted date
+  minutesSinceMidnight: number | null;  // Y axis value
+  color: string;      // dot color based on bucket/status
+  status: string;
+  entry_time: string | null;
+  minutes_late: number;
+};
+
+/** Convert "HH:MM" (24h) string to minutes since midnight */
+function hmToMinutes(hm: string | null): number | null {
+  if (!hm) return null;
+  const [h, m] = hm.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+const BUCKET_COLORS: Record<string, string> = {
+  'On Time':             '#34c759',
+  'late_1to10':          '#ff9f0a',
+  'late_11to30':         '#ff6b00',
+  'late_830plus':        '#ff3b30',
+  'Excused (PTO/FH/Perm)': '#8e8e93',
+  'Permission':          '#af52de',
+};
+
+function arrivalColor(row: AttendanceRow): string {
+  if (row.status === 'Excused (PTO/FH/Perm)') return BUCKET_COLORS['Excused (PTO/FH/Perm)'];
+  if (row.status === 'Permission') return BUCKET_COLORS['Permission'];
+  if (row.status === 'On Time') return BUCKET_COLORS['On Time'];
+  return BUCKET_COLORS[row.bucket ?? 'late_830plus'] ?? '#ff3b30';
+}
+
+/** Normalize a date value that may arrive as a Date object or ISO string → "YYYY-MM-DD" */
+function toDateStr(val: unknown): string {
+  if (!val) return '';
+  if (val instanceof Date) return val.toISOString().slice(0, 10);
+  const s = String(val);
+  return s.slice(0, 10);
+}
+
+function fmtShortDate(dateStr: string): string {
+  const safe = toDateStr(dateStr);
+  if (!safe) return '—';
+  const d = new Date(safe + 'T00:00:00');
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export function computeArrivalScatter(rows: AttendanceRow[]): ArrivalPoint[] {
+  return [...rows]
+    .map(r => ({ ...r, date: toDateStr(r.date) }))
+    .filter(r => r.date.length === 10)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(r => ({
+      date: r.date,
+      label: fmtShortDate(r.date),
+      minutesSinceMidnight: hmToMinutes(r.entry_time),
+      color: arrivalColor(r),
+      status: r.status,
+      entry_time: r.entry_time,
+      minutes_late: r.minutes_late,
+    }));
+}
+
 // Trends helpers
 export type TrendPoint = {
   key: string;
@@ -124,7 +192,10 @@ export type TrendPoint = {
 };
 
 function isoWeekMonday(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
+  const safe = toDateStr(dateStr);
+  if (!safe) return '';
+  const d = new Date(safe + 'T00:00:00');
+  if (isNaN(d.getTime())) return '';
   const day = d.getDay();
   const diff = (day === 0 ? -6 : 1 - day);
   const mon = new Date(d.getTime() + diff * 86400000);
@@ -132,7 +203,7 @@ function isoWeekMonday(dateStr: string): string {
 }
 
 function monthKey(dateStr: string): string {
-  return dateStr.slice(0, 7); // "YYYY-MM"
+  return toDateStr(dateStr).slice(0, 7); // "YYYY-MM"
 }
 
 function fmtMonth(key: string): string {
@@ -154,7 +225,10 @@ export function computeTrends(
 
   rows.forEach(r => {
     if (isExcluded(r.status)) return;
-    const key = gran === 'month' ? monthKey(r.date) : isoWeekMonday(r.date);
+    const dateNorm = toDateStr(r.date);
+    if (!dateNorm) return;
+    const key = gran === 'month' ? monthKey(dateNorm) : isoWeekMonday(dateNorm);
+    if (!key) return;
     const label = gran === 'month' ? fmtMonth(key) : fmtWeek(key);
     if (!groups.has(key)) groups.set(key, { key, label, tracked: 0, onTime: 0, sumMin: 0, isPartial: false });
     const g = groups.get(key)!;
@@ -170,7 +244,7 @@ export function computeTrends(
     const last = sorted[sorted.length - 1];
     const today = new Date().toISOString().slice(0, 10);
     if (gran === 'month') {
-      const maxDay = rows.filter(r => r.date.slice(0, 7) === last.key).reduce((m, r) => r.date > m ? r.date : m, '');
+      const maxDay = rows.map(r => toDateStr(r.date)).filter(d => d.slice(0, 7) === last.key).reduce((m, d) => d > m ? d : m, '');
       last.isPartial = maxDay.slice(8, 10) < '25';
     } else {
       // partial week if today's ISO week is the same week
