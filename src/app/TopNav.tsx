@@ -3,21 +3,23 @@ import { cn } from '@/lib/utils';
 import {
   PlayCircle, AlertTriangle, TableIcon, BarChart2,
   Settings, History, ChevronDown, Activity,
+  Users, RefreshCw, Tag, Clock, CalendarDays, Globe2,
+  SlidersHorizontal, ShieldCheck, Laptop, FileSpreadsheet,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useLoadAction } from '@uibakery/data';
 import loadUnresolvedCountAction from '@/actions/loadUnresolvedCount';
 
 const ADMIN_LINKS = [
-  { to: '/admin/employees', label: 'Employees' },
-  { to: '/admin/directory-sync', label: 'Directory Sync' },
-  { to: '/admin/aliases', label: 'Name Aliases' },
-  { to: '/admin/schedules', label: 'Schedules' },
-  { to: '/admin/holidays', label: 'Holidays' },
-  { to: '/admin/dst-calendar', label: 'DST Calendar' },
-  { to: '/admin/lookups', label: 'Rules & Config' },
-  { to: '/admin/grace-list', label: 'Grace List' },
-  { to: '/admin/macbook-swap', label: 'Macbook Swap' },
+  { to: '/admin/employees',     label: 'Employees',     icon: Users },
+  { to: '/admin/directory-sync',label: 'Directory Sync',icon: RefreshCw },
+  { to: '/admin/aliases',       label: 'Name Aliases',  icon: Tag },
+  { to: '/admin/schedules',     label: 'Schedules',     icon: Clock },
+  { to: '/admin/holidays',      label: 'Holidays',      icon: CalendarDays },
+  { to: '/admin/dst-calendar',  label: 'DST Calendar',  icon: Globe2 },
+  { to: '/admin/lookups',       label: 'Rules & Config', icon: SlidersHorizontal },
+  { to: '/admin/grace-list',    label: 'Grace List',    icon: ShieldCheck },
+  { to: '/admin/macbook-swap',  label: 'Macbook Exceptions', icon: Laptop },
 ];
 
 export default function TopNav() {
@@ -104,6 +106,11 @@ export default function TopNav() {
           <span>Attendance</span>
         </NavLink>
 
+        <NavLink to="/hrk-summary" className={({ isActive }) => linkCls(isActive)}>
+          <FileSpreadsheet className="w-4 h-4" />
+          <span>HRK Summary</span>
+        </NavLink>
+
         {/* Admin dropdown */}
         <div className="relative" ref={adminRef}>
           <button
@@ -128,13 +135,14 @@ export default function TopNav() {
                   onClick={() => setAdminOpen(false)}
                   className={({ isActive }) =>
                     cn(
-                      'block px-4 py-2 text-sm transition-colors',
+                      'flex items-center gap-2.5 px-4 py-2 text-sm transition-colors',
                       isActive
                         ? 'bg-blue-50 text-blue-800 font-medium'
                         : 'text-slate-700 hover:bg-slate-50'
                     )
                   }
                 >
+                  <l.icon className="w-3.5 h-3.5 shrink-0 opacity-70" />
                   {l.label}
                 </NavLink>
               ))}

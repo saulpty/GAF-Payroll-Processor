@@ -3,7 +3,7 @@ import { useLoadAction, useMutateAction } from '@uibakery/data';
 import {
   AlertTriangle, CheckCircle, Loader2, ChevronUp, ChevronDown,
   ChevronsUpDown, Search, X, Edit2, GitCommit, ChevronRight,
-  Square, CheckSquare, Send,
+  Square, CheckSquare, Send, ClipboardList, RotateCcw,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -130,6 +130,7 @@ export default function ActionRequired() {
   const [sortDir, setSortDir] = useState<SortDir>(null);
   // Track IDs committed this session for highlighting
   const [sessionCommitted, setSessionCommitted] = useState<Set<number>>(new Set());
+  const [revertingIds, setRevertingIds] = useState<Set<number>>(new Set());
 
   const unresolvedCount = (unresolvedData as { count: number }[])[0]?.count ?? 0;
   const impactOptions = (payImpacts as { name: string }[]).map(p => p.name);
@@ -249,6 +250,29 @@ export default function ActionRequired() {
     await reloadCommitted();
   };
 
+  const handleRevert = async (r: CommittedRow) => {
+    setRevertingIds(prev => new Set(prev).add(r.id));
+    try {
+      await updateEntry({
+        id: r.id,
+        event_type_1: r.event_type_1,
+        pay_impact_1: r.pay_impact_1,
+        event_type_2: r.event_type_2,
+        pay_impact_2: r.pay_impact_2,
+        documentation: r.documentation,
+        notes: r.notes,
+        discount_total_minutes: r.discount_total_minutes,
+        payroll_ready: 'NO',
+        status_current: r.initial_status,
+      });
+      setSessionCommitted(prev => { const s = new Set(prev); s.delete(r.id); return s; });
+      await reload();
+      await reloadCommitted();
+    } finally {
+      setRevertingIds(prev => { const s = new Set(prev); s.delete(r.id); return s; });
+    }
+  };
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir(d => d === 'asc' ? 'desc' : d === 'desc' ? null : 'asc');
@@ -340,7 +364,25 @@ export default function ActionRequired() {
 
       {/* ── Empty states ────────────────────────────────────────── */}
       {!selectedPeriod && (
-        <Card className="flex-1"><CardContent className="pt-12 text-center text-muted-foreground text-sm">Select a pay period above to review unresolved entries.</CardContent></Card>
+        <Card className="flex-1">
+          <CardContent className="flex flex-col items-center justify-center py-24 gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+              <ClipboardList className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-foreground mb-1">No Pay Period Selected</p>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Choose a pay period from the dropdown above to review and resolve unresolved entries.
+              </p>
+            </div>
+            {unresolvedCount > 0 && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span><strong>{unresolvedCount}</strong> entries still need attention across all periods.</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
       {selectedPeriod && loading && (
         <div className="flex items-center gap-2 text-muted-foreground text-sm mt-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading entries…</div>
@@ -574,6 +616,7 @@ export default function ActionRequired() {
                       <th className="px-3 py-2 text-left text-xs font-semibold text-green-700 border-r">Doc</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-green-700 border-r">Notes</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-green-700">Updated</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-green-700"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -604,6 +647,18 @@ export default function ActionRequired() {
                           <td className="px-3 py-2 border-r text-slate-600">{r.documentation || <span className="text-slate-300">—</span>}</td>
                           <td className="px-3 py-2 border-r text-slate-500 max-w-40 truncate">{r.notes || <span className="text-slate-300">—</span>}</td>
                           <td className="px-3 py-2 text-slate-400 text-[11px] font-mono whitespace-nowrap">{r.updated_at?.slice(0, 16).replace('T', ' ')}</td>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              title={`Revert to ${r.initial_status}`}
+                              disabled={revertingIds.has(r.id)}
+                              onClick={() => handleRevert(r)}
+                              className="p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+                            >
+                              {revertingIds.has(r.id)
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <RotateCcw className="w-3.5 h-3.5" />}
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}

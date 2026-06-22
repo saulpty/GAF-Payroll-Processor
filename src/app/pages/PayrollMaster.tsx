@@ -3,7 +3,7 @@ import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { useSearchParams } from 'react-router-dom';
 import {
   TableIcon, Download, Loader2, ChevronUp, ChevronDown,
-  ChevronsUpDown, Search, X, CheckCircle, Edit2,
+  ChevronsUpDown, Search, X, CheckCircle, Edit2, SquareCheck, Undo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +41,17 @@ type EditState = {
 type SortDir = 'asc' | 'desc' | null;
 type SortKey = keyof EntryRow | null;
 type ActiveTab = 'ALL' | 'GREEN' | 'YELLOW' | 'RED';
+
+type BulkEdit = {
+  event_type_1?: string; pay_impact_1?: string;
+  event_type_2?: string; pay_impact_2?: string;
+  notes?: string;
+};
+
+type UndoSnapshot = {
+  ids: number[];
+  before: Record<number, { event_type_1: string; pay_impact_1: string; event_type_2: string; pay_impact_2: string; notes: string; discount_total_minutes: number; payroll_ready: string; status_current: string }>;
+};
 
 const PAGE_SIZE = 500;
 
@@ -82,6 +93,13 @@ export default function PayrollMaster() {
   const [savingId, setSavingId] = useState<number | null>(null);
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
   const [toastMsg, setToastMsg] = useState('');
+
+  // ── Multi-select + bulk edit ──────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkEdit, setBulkEdit] = useState<BulkEdit>({});
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [undoSnapshot, setUndoSnapshot] = useState<UndoSnapshot | null>(null);
 
   const [params, setParams] = useState({
     periodName: searchParams.get('period') || '',
@@ -212,6 +230,87 @@ export default function PayrollMaster() {
     await reload();
   };
 
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds(prev => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return s;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback((ids: number[]) => {
+    setSelectedIds(prev => {
+      if (ids.every(id => prev.has(id))) return new Set();
+      return new Set(ids);
+    });
+  }, []);
+
+  const handleBulkSave = async () => {
+    const targetRows = filtered.filter(r => selectedIds.has(r.id));
+    if (targetRows.length === 0) return;
+    // Build undo snapshot
+    const before: UndoSnapshot['before'] = {};
+    for (const r of targetRows) {
+      before[r.id] = {
+        event_type_1: r.event_type_1, pay_impact_1: r.pay_impact_1,
+        event_type_2: r.event_type_2, pay_impact_2: r.pay_impact_2,
+        notes: r.notes, discount_total_minutes: r.discount_total_minutes,
+        payroll_ready: r.payroll_ready, status_current: r.status_current,
+      };
+    }
+    setUndoSnapshot({ ids: targetRows.map(r => r.id), before });
+    setBulkSaving(true);
+    setShowBulkConfirm(false);
+    try {
+      for (const r of targetRows) {
+        const merged = {
+          event_type_1: bulkEdit.event_type_1 !== undefined ? bulkEdit.event_type_1 : (r.event_type_1 || ''),
+          pay_impact_1: bulkEdit.pay_impact_1 !== undefined ? bulkEdit.pay_impact_1 : (r.pay_impact_1 || ''),
+          event_type_2: bulkEdit.event_type_2 !== undefined ? bulkEdit.event_type_2 : (r.event_type_2 || ''),
+          pay_impact_2: bulkEdit.pay_impact_2 !== undefined ? bulkEdit.pay_impact_2 : (r.pay_impact_2 || ''),
+          notes: bulkEdit.notes !== undefined ? bulkEdit.notes : (r.notes || ''),
+          late_minutes: r.late_minutes, late_after_grace: r.late_after_grace,
+          early_leave_minutes: r.early_leave_minutes, initial_status: r.initial_status,
+        };
+        const derived = computeDerivedFields(merged);
+        await updateEntry({
+          id: r.id,
+          event_type_1: merged.event_type_1, pay_impact_1: merged.pay_impact_1,
+          event_type_2: merged.event_type_2, pay_impact_2: merged.pay_impact_2,
+          documentation: r.documentation, notes: merged.notes,
+          discount_total_minutes: derived.discount_total_minutes,
+          payroll_ready: derived.payroll_ready, status_current: derived.status_current,
+        });
+      }
+      setSelectedIds(new Set());
+      setBulkEdit({});
+      setToastMsg(`✓ Bulk saved ${targetRows.length} rows`);
+      setTimeout(() => setToastMsg(''), 3500);
+      await reload();
+    } finally { setBulkSaving(false); }
+  };
+
+  const handleUndo = async () => {
+    if (!undoSnapshot) return;
+    setBulkSaving(true);
+    try {
+      for (const id of undoSnapshot.ids) {
+        const snap = undoSnapshot.before[id];
+        await updateEntry({
+          id, event_type_1: snap.event_type_1, pay_impact_1: snap.pay_impact_1,
+          event_type_2: snap.event_type_2, pay_impact_2: snap.pay_impact_2,
+          documentation: '', notes: snap.notes,
+          discount_total_minutes: snap.discount_total_minutes,
+          payroll_ready: snap.payroll_ready, status_current: snap.status_current,
+        });
+      }
+      setUndoSnapshot(null);
+      setToastMsg('↩ Bulk edit undone');
+      setTimeout(() => setToastMsg(''), 3000);
+      await reload();
+    } finally { setBulkSaving(false); }
+  };
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       const next = sortDir === 'asc' ? 'desc' : null;
@@ -311,9 +410,17 @@ export default function PayrollMaster() {
           <h1 className="text-xl font-bold">Payroll Master</h1>
           {total > 0 && <span className="text-sm text-muted-foreground">{total.toLocaleString()} rows</span>}
         </div>
-        <Button variant="outline" size="sm" onClick={exportCsv} disabled={loading || filtered.length === 0}>
-          <Download className="w-4 h-4 mr-2" />Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          {undoSnapshot && (
+            <Button variant="outline" size="sm" className="text-amber-700 border-amber-300 hover:bg-amber-50"
+              disabled={bulkSaving} onClick={handleUndo}>
+              <Undo2 className="w-3.5 h-3.5 mr-1.5" />Undo Bulk
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={exportCsv} disabled={loading || filtered.length === 0}>
+            <Download className="w-4 h-4 mr-2" />Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filters row */}
@@ -415,11 +522,105 @@ export default function PayrollMaster() {
             <span className="text-xs text-muted-foreground ml-auto">{filtered.length} of {tabCounts[activeTab]} rows</span>
           </div>
 
+          {/* Bulk edit toolbar */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 flex-wrap shrink-0 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5">
+              <span className="text-sm font-semibold text-blue-700">
+                <SquareCheck className="w-4 h-4 inline mr-1" />{selectedIds.size} rows selected
+              </span>
+              <div className="w-px h-5 bg-blue-200" />
+              <select className="border rounded px-2 py-1 text-xs bg-white" value={bulkEdit.event_type_1 ?? ''}
+                onChange={e => setBulkEdit(p => ({ ...p, event_type_1: e.target.value }))}>
+                <option value="">Event 1 (unchanged)</option>
+                {eventOpts.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              <select className="border rounded px-2 py-1 text-xs bg-white" value={bulkEdit.pay_impact_1 ?? ''}
+                onChange={e => setBulkEdit(p => ({ ...p, pay_impact_1: e.target.value }))}>
+                <option value="">Impact 1 (unchanged)</option>
+                {impactOptions.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              <select className="border rounded px-2 py-1 text-xs bg-white" value={bulkEdit.event_type_2 ?? ''}
+                onChange={e => setBulkEdit(p => ({ ...p, event_type_2: e.target.value }))}>
+                <option value="">Event 2 (unchanged)</option>
+                {eventOpts.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              <select className="border rounded px-2 py-1 text-xs bg-white" value={bulkEdit.pay_impact_2 ?? ''}
+                onChange={e => setBulkEdit(p => ({ ...p, pay_impact_2: e.target.value }))}>
+                <option value="">Impact 2 (unchanged)</option>
+                {impactOptions.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              <input className="border rounded px-2 py-1 text-xs bg-white w-36" placeholder="Notes (unchanged)"
+                value={bulkEdit.notes ?? ''}
+                onChange={e => setBulkEdit(p => ({ ...p, notes: e.target.value }))} />
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={Object.keys(bulkEdit).length === 0 || bulkSaving}
+                onClick={() => setShowBulkConfirm(true)}>
+                {bulkSaving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                Apply to {selectedIds.size} rows
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setSelectedIds(new Set()); setBulkEdit({}); }}>
+                <X className="w-3 h-3 mr-1" />Clear
+              </Button>
+              {undoSnapshot && (
+                <Button size="sm" variant="outline" className="text-amber-700 border-amber-300 hover:bg-amber-50"
+                  disabled={bulkSaving} onClick={handleUndo}>
+                  <Undo2 className="w-3 h-3 mr-1" />Undo last bulk
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Bulk confirm modal */}
+          {showBulkConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+              <div className="bg-white rounded-xl shadow-xl border border-border p-6 max-w-lg w-full mx-4">
+                <h3 className="font-bold text-lg mb-1">Confirm Bulk Edit</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  You are about to apply changes to <strong>{selectedIds.size} rows</strong>. Only filled fields will be overwritten.
+                </p>
+                <div className="bg-slate-50 rounded-lg border p-3 mb-4 text-sm space-y-1.5">
+                  {bulkEdit.event_type_1 !== undefined && <div><span className="font-medium text-slate-600">Event 1 →</span> <span className="text-slate-900">{bulkEdit.event_type_1 || '(clear)'}</span></div>}
+                  {bulkEdit.pay_impact_1 !== undefined && <div><span className="font-medium text-slate-600">Impact 1 →</span> <span className="text-slate-900">{bulkEdit.pay_impact_1 || '(clear)'}</span></div>}
+                  {bulkEdit.event_type_2 !== undefined && <div><span className="font-medium text-slate-600">Event 2 →</span> <span className="text-slate-900">{bulkEdit.event_type_2 || '(clear)'}</span></div>}
+                  {bulkEdit.pay_impact_2 !== undefined && <div><span className="font-medium text-slate-600">Impact 2 →</span> <span className="text-slate-900">{bulkEdit.pay_impact_2 || '(clear)'}</span></div>}
+                  {bulkEdit.notes !== undefined && <div><span className="font-medium text-slate-600">Notes →</span> <span className="text-slate-900">"{bulkEdit.notes}"</span></div>}
+                </div>
+                <div className="bg-slate-50 rounded-lg border p-3 mb-4 max-h-40 overflow-y-auto">
+                  <p className="text-xs font-semibold text-slate-500 mb-1.5">Affected rows:</p>
+                  {filtered.filter(r => selectedIds.has(r.id)).map(r => (
+                    <div key={r.id} className="text-xs text-slate-700 flex gap-2">
+                      <span className="font-medium">{r.employee_name}</span>
+                      <span className="text-slate-400">{r.work_date.slice(0,10)}</span>
+                      <span className="text-slate-500">{r.event_type_1}{r.pay_impact_1 ? ` / ${r.pay_impact_1}` : ''}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-amber-600 mb-4">⚠ This action will overwrite existing data. An undo option will be available immediately after.</p>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowBulkConfirm(false)}>Cancel</Button>
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleBulkSave} disabled={bulkSaving}>
+                    {bulkSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                    Confirm & Save
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Table */}
           <div className="flex-1 min-h-0 rounded-lg border shadow-sm overflow-auto">
             <table className="w-full text-xs border-collapse" style={{ minWidth: 1400 }}>
               <thead className="sticky top-0 z-20">
                 <tr className="bg-slate-100 border-b-2 border-slate-300">
+                  <th className="w-8 px-2 py-2.5 border-r">
+                    <input
+                      type="checkbox"
+                      className="rounded"
+                      checked={filtered.length > 0 && filtered.every(r => selectedIds.has(r.id))}
+                      onChange={() => toggleSelectAll(filtered.map(r => r.id))}
+                      title="Select all visible rows"
+                    />
+                  </th>
                   <Th col="employee_name" label="Employee" className="sticky left-0 bg-slate-100 z-30 min-w-36" />
                   <Th col="work_date" label="Date" />
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700">
@@ -456,7 +657,10 @@ export default function PayrollMaster() {
                   const rowBg = dirty ? (row.status_current === 'RED' ? 'bg-[#FFE4E4]' : row.status_current === 'YELLOW' ? 'bg-[#FFF3CD]' : 'bg-blue-50') : sc.bg;
 
                   return (
-                    <tr key={row.id} className={`${rowBg} border-b hover:brightness-[0.97] transition-colors`}>
+                    <tr key={row.id} className={`${rowBg} border-b hover:brightness-[0.97] transition-colors ${selectedIds.has(row.id) ? 'ring-1 ring-inset ring-blue-400' : ''}`}>
+                      <td className="w-8 px-2 py-2 border-r text-center">
+                        <input type="checkbox" className="rounded" checked={selectedIds.has(row.id)} onChange={() => toggleSelect(row.id)} />
+                      </td>
                       <td className={`px-3 py-2 font-medium whitespace-nowrap border-r sticky left-0 z-10 ${rowBg}`}>{row.employee_name}</td>
                       <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0,10)}</td>
 

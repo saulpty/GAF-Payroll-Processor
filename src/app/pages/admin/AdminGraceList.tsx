@@ -1,5 +1,5 @@
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { Clock, Plus, X } from 'lucide-react';
+import { Clock, Plus, X, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -13,7 +13,11 @@ export default function AdminGraceList() {
   const [updateFlag] = useMutateAction(updateEmployeeFlagAction);
   const [addId, setAddId] = useState<number | ''>('');
 
+  const [search, setSearch] = useState('');
   const graceList = (employees as EmpRow[]).filter(e => e.is_grace_list);
+  const graceListFiltered = graceList.filter(e =>
+    !search || e.display_name.toLowerCase().includes(search.toLowerCase())
+  );
   const nonGrace = (employees as EmpRow[]).filter(e => !e.is_grace_list && e.active);
 
   const remove = async (emp: EmpRow) => {
@@ -50,9 +54,22 @@ export default function AdminGraceList() {
           </div>
         </CardContent>
       </Card>
+      {graceList.length > 0 && (
+        <div className="relative mb-2">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search grace list…"
+            className="w-full h-8 pl-8 pr-3 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+      )}
       <div className="rounded-lg border">
         {graceList.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No employees on grace list.</p>}
-        {graceList.map(emp => (
+        {graceList.length > 0 && graceListFiltered.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-6">No matches for "{search}".</p>
+        )}
+        {graceListFiltered.map(emp => (
           <div key={emp.id} className="flex items-center justify-between px-4 py-2 border-b last:border-b-0 hover:bg-slate-50">
             <span className="text-sm font-medium">{emp.display_name}</span>
             <Button size="sm" variant="outline" className="text-xs h-6 px-2 text-red-600" onClick={() => remove(emp)}>

@@ -1,5 +1,5 @@
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { Laptop, Plus, X } from 'lucide-react';
+import { Laptop, Plus, X, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -13,7 +13,11 @@ export default function AdminMacbookSwap() {
   const [updateFlag] = useMutateAction(updateEmployeeFlagAction);
   const [addId, setAddId] = useState<number | ''>('');
 
+  const [search, setSearch] = useState('');
   const macList = (employees as EmpRow[]).filter(e => e.is_macbook_swap);
+  const macListFiltered = macList.filter(e =>
+    !search || e.display_name.toLowerCase().includes(search.toLowerCase())
+  );
   const nonMac = (employees as EmpRow[]).filter(e => !e.is_macbook_swap && e.active);
 
   const remove = async (emp: EmpRow) => {
@@ -32,13 +36,13 @@ export default function AdminMacbookSwap() {
   return (
     <div className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Laptop className="w-6 h-6" /><h2 className="text-xl font-bold">Macbook-Swap List</h2>
+        <Laptop className="w-6 h-6" /><h2 className="text-xl font-bold">Macbook Exceptions</h2>
       </div>
       <p className="text-sm text-muted-foreground mb-4">
         These employees use a Macbook instead of Teramind-tracked machines. Missing Teramind data defaults to the scheduled entry/exit (GREEN) rather than flagging as absent.
       </p>
       <Card className="mb-4">
-        <CardHeader><CardTitle className="text-sm">Add Employee to Macbook-Swap List</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm">Add Employee to Macbook Exceptions</CardTitle></CardHeader>
         <CardContent>
           <div className="flex gap-2">
             <select className="border rounded px-2 py-1.5 text-sm flex-1"
@@ -50,9 +54,22 @@ export default function AdminMacbookSwap() {
           </div>
         </CardContent>
       </Card>
+      {macList.length > 0 && (
+        <div className="relative mb-2">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search exceptions list…"
+            className="w-full h-8 pl-8 pr-3 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+      )}
       <div className="rounded-lg border">
-        {macList.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No employees on Macbook-swap list.</p>}
-        {macList.map(emp => (
+        {macList.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No employees on Macbook Exceptions list.</p>}
+        {macList.length > 0 && macListFiltered.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-6">No matches for "{search}".</p>
+        )}
+        {macListFiltered.map(emp => (
           <div key={emp.id} className="flex items-center justify-between px-4 py-2 border-b last:border-b-0 hover:bg-slate-50">
             <span className="text-sm font-medium">{emp.display_name}</span>
             <Button size="sm" variant="outline" className="text-xs h-6 px-2 text-red-600" onClick={() => remove(emp)}>

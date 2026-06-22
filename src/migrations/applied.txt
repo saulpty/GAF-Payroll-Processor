@@ -18,3 +18,8 @@ Applied migrations:
 1781400500_fix_entry_time_lowercase_ampm at 2026-06-18T16:23:09.072Z
 1781400600_fix_entry_time_format_string at 2026-06-18T16:24:15.944Z
 1781400700_fix_entry_time_no_minutes at 2026-06-18T16:39:09.549Z
+1781401000_create_hrk_exports_table at 2026-06-18T19:18:43.204Z
+1781401100_fix_tz_shift_post_migration_periods at 2026-06-22T19:59:37.844Z
+1781401200_fix_auto_notes_after_tz_correction at 2026-06-22T20:01:02.874Z
+1781401300_fix_view_remove_dst_display_offset at 2026-06-22T20:10:14.603Z
+1781401400_revert_tz_shift_corrupted_periods at 2026-06-22T20:14:30.951Z

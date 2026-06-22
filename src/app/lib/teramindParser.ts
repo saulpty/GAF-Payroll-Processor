@@ -12,9 +12,13 @@ export interface TeramindRawRow {
  *  Column detection is fuzzy — matches common Teramind header variants.
  */
 export function parseTeramindFile(buffer: ArrayBuffer, fileName: string): TeramindRawRow[] {
-  const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+  // cellDates: false — let SheetJS give us raw values; date cells come out as
+  // formatted strings (e.g. "2026-06-17 09:57:00") or numeric serials.
+  // We do NOT use cellDates:true because SheetJS stores those as UTC Date objects,
+  // and any Date→string→Date round-trip risks a 1-hour shift in DST environments.
+  const wb = XLSX.read(buffer, { type: 'array', cellDates: false });
   const sheet = wb.Sheets[wb.SheetNames[0]];
-  // Convert to array-of-arrays to preserve raw cell order
+  // Convert to array-of-arrays; raw:false so numeric serials are formatted as strings
   const aoa: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd hh:mm:ss' });
 
   if (aoa.length < 2) {
@@ -111,6 +115,28 @@ export function resolveTeramindIdentifier(
   return resolver.get(normalizeName(raw)) ?? null;
 }
 
+/**
+ * Parse a datetime string as wall-clock time with NO timezone interpretation.
+ * Handles "YYYY-MM-DD HH:MM:SS", "YYYY-MM-DD HH:MM", and Excel-style variants.
+ * Returns a Date whose .getHours()/.getMinutes() equal the literal HH:MM in the string.
+ * Uses a local Date constructor with explicit components so the runtime timezone
+ * never shifts the value — critical because Teramind times are already US Eastern.
+ */
+function parseWallClock(s: string): Date | null {
+  if (!s) return null;
+  // Match "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DD HH:MM"
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (m) {
+    const [, yr, mo, dy, hh, mm, ss] = m;
+    // new Date(y, m, d, h, min, s) uses LOCAL time — which is what we want,
+    // because getHours() is also local, so they always agree regardless of server TZ.
+    return new Date(+yr, +mo - 1, +dy, +hh, +mm, +(ss ?? 0));
+  }
+  // Fallback: try native parse (may be wrong in some TZ, but better than nothing)
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 /** Group rows by teramind_email → date (YYYY-MM-DD) → { entry, exit }.
  *  Pass resolver + knownEmails so name-based rows get mapped to the right email key.
  */
@@ -143,17 +169,15 @@ export function processTeramindData(
       email = row.email.trim().toLowerCase();
     }
 
-    const rawStart = new Date(row.timeStarted);
-    const rawEnd   = new Date(row.timeFinished);
-    if (isNaN(rawStart.getTime()) || isNaN(rawEnd.getTime())) {
+    // Parse as wall-clock time — no timezone conversion ever.
+    // Teramind exports are already in US Eastern; we must NOT let JS Date()
+    // shift the value based on server/browser locale.
+    const displayStart = parseWallClock(row.timeStarted);
+    const displayEnd   = parseWallClock(row.timeFinished);
+    if (!displayStart || !displayEnd) {
       console.warn('[Teramind] Unparseable dates:', row.timeStarted, row.timeFinished);
       continue;
     }
-
-    // Teramind already reports in US Eastern — the app's display timezone — so we
-    // keep the raw times (no Panama conversion). dstWindows is unused here now.
-    const displayStart = rawStart;
-    const displayEnd   = rawEnd;
     const dateKey = toLocalYMD(displayStart);
 
     if (!map.has(email)) map.set(email, new Map());
