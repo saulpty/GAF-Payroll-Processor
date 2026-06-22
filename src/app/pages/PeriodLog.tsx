@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { History, Loader2, Trash2, ArrowRight, AlertCircle } from 'lucide-react';
+import { History, Loader2, Trash2, ArrowRight, AlertCircle, FileSpreadsheet, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import deletePeriodAction from '@/actions/deletePeriod';
 import deletePeriodEntriesAction from '@/actions/deletePeriodEntries';
 import deletePeriodSnapshotsAction from '@/actions/deletePeriodSnapshots';
+import loadHrkExportsAction from '@/actions/loadHrkExports';
 
 type Period = {
   period_name: string; start_date: string; end_date: string;
@@ -13,11 +14,24 @@ type Period = {
   green_count: number; yellow_count: number; red_count: number; notes: string;
 };
 
+type HrkExport = {
+  id: number; period_name: string; exported_at: string; exported_by: string; summary_json: string;
+};
+
+function escapeCsv(v: string | number | null | undefined): string {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
 export default function PeriodLog() {
   const [periods, loading, , refetch] = useLoadAction(loadPeriodsAction, [] as Period[]);
   const [deletePeriod, deleting] = useMutateAction(deletePeriodAction);
   const [deletePeriodEntries] = useMutateAction(deletePeriodEntriesAction);
   const [deletePeriodSnapshots] = useMutateAction(deletePeriodSnapshotsAction);
+  const [hrkExports] = useLoadAction(loadHrkExportsAction, [] as HrkExport[]);
+  const exportList = hrkExports as HrkExport[];
   const [deletingName, setDeletingName] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -91,8 +105,69 @@ export default function PeriodLog() {
 
       {loading && <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>}
 
+      {/* HRK Exports */}
+      {exportList.length > 0 && (
+        <div className="mt-8">
+          <div className="flex items-center gap-2 mb-3">
+            <FileSpreadsheet className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-lg font-bold text-slate-800">HRK Summaries</h2>
+            <span className="text-sm text-muted-foreground">({exportList.length} exports)</span>
+          </div>
+          <div className="rounded-lg border overflow-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead className="bg-indigo-50 sticky top-0">
+                <tr>
+                  {['Period', 'Exported At', 'Exported By', 'Employees', ''].map((h, i) => (
+                    <th key={i} className="px-3 py-2 text-left font-semibold border-b border-r last:border-r-0 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {exportList.map(ex => {
+                  let employeeCount = 0;
+                  try { employeeCount = JSON.parse(ex.summary_json).length; } catch { /* ignore */ }
+                  const reDownload = () => {
+                    try {
+                      const rows = JSON.parse(ex.summary_json);
+                      const headers = ['Employee','Total Worked Hours','Total Discount Hours','Incapacidad Days','Incapacidad Dates','Constancia Médica','Constancia Médica Dates & Hours','PTO Days','PTO Dates','Hire Date','Notes'];
+                      const lines = [headers.join(','), ...rows.map((r: Record<string, unknown>) =>
+                        [r.employee, r.total_worked_hours, r.total_discount_hours, r.incapacidad_days, r.incapacidad_dates, r.constancia_days, r.constancia_dates_hours, r.pto_days, r.pto_dates, r.hire_date ?? '', r.notes].map(escapeCsv).join(',')
+                      )];
+                      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `HRK_Summary_${ex.period_name.replace(/\s+/g,'_')}_${ex.exported_at.slice(0,10)}.csv`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch { /* ignore */ }
+                  };
+                  return (
+                    <tr key={ex.id} className="border-b hover:bg-indigo-50/50">
+                      <td className="px-3 py-2 border-r font-semibold text-indigo-700">{ex.period_name}</td>
+                      <td className="px-3 py-2 border-r text-xs text-muted-foreground whitespace-nowrap">{ex.exported_at?.slice(0,16).replace('T',' ')}</td>
+                      <td className="px-3 py-2 border-r text-xs text-muted-foreground">{ex.exported_by || '—'}</td>
+                      <td className="px-3 py-2 border-r text-center">{employeeCount}</td>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          onClick={reDownload}
+                          title="Re-download CSV"
+                          className="p-1 rounded hover:bg-indigo-100 text-indigo-500 hover:text-indigo-700 transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {!loading && (
-        <div className="rounded-lg border overflow-auto">
+        <div className="rounded-lg border overflow-auto mt-4">
           <table className="w-full text-sm border-collapse">
             <thead className="bg-slate-100 sticky top-0">
               <tr>

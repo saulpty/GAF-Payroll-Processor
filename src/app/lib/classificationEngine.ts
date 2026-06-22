@@ -200,12 +200,27 @@ export function getSchedule(
   return { start, end, grace };
 }
 
+// Full-day unpaid event types — these consume an entire day's worth of hours
+const FULL_DAY_UNPAID_EVENTS = [
+  'Permiso No remunerado',
+  'Ausencia Injustificada',
+  'Ausencia Justificada.',
+  'Ausencia Justificada',
+  'Unpaid Leave',
+  'Leave Without Pay',
+  'LWOP',
+];
+
+const FULL_DAY_DISCOUNT_MINUTES = 480; // 8h default; classificationEngine cfg overrides this at run-time
+
 /** Compute discount_total_minutes per Section 6.3.
  *  Discounts are keyed off the EVENT TYPE in each slot, not the slot number —
  *  "Tardanza" and "Salida Temprano" can each land in slot 1 or slot 2 depending
  *  on what else happened that day, so we look for them in either slot.
+ *  Full-day unpaid events (Permiso No remunerado, absences, etc.) with pay_impact
+ *  "Unpaid" produce a full-day discount.
  */
-export function computeDiscount(entry: Partial<PayrollEntry>): number {
+export function computeDiscount(entry: Partial<PayrollEntry>, fullDayMinutes = FULL_DAY_DISCOUNT_MINUTES): number {
   const et1 = entry.event_type_1 || '';
   const et2 = entry.event_type_2 || '';
   const pi1 = entry.pay_impact_1 || '';
@@ -216,6 +231,13 @@ export function computeDiscount(entry: Partial<PayrollEntry>): number {
 
   const unpaidImpacts = ['', 'Unpaid', 'Unpaid (with Grace)', 'Unpaid (without Grace)'];
   let discount = 0;
+
+  // Full-day unpaid events — check both slots
+  for (const [et, pi] of [[et1, pi1], [et2, pi2]] as [string, string][]) {
+    if (FULL_DAY_UNPAID_EVENTS.includes(et) && pi === 'Unpaid') {
+      discount = Math.max(discount, fullDayMinutes);
+    }
+  }
 
   // Tardiness — discount applies to whichever slot holds "Tardanza".
   const tardinessPi = et1 === 'Tardanza' ? pi1 : et2 === 'Tardanza' ? pi2 : null;
@@ -245,12 +267,12 @@ export function computeDiscount(entry: Partial<PayrollEntry>): number {
  * considered resolved — the operator must confirm/change them in Action Required.
  * Those rows keep payroll_ready=NO until the operator explicitly saves.
  */
-export function computeDerivedFields(entry: Partial<PayrollEntry>): {
+export function computeDerivedFields(entry: Partial<PayrollEntry>, fullDayMinutes?: number): {
   discount_total_minutes: number;
   payroll_ready: string;
   status_current: string;
 } {
-  const discount = computeDiscount(entry);
+  const discount = computeDiscount(entry, fullDayMinutes);
   const et1 = entry.event_type_1 || '';
   const et2 = entry.event_type_2 || '';
   const pi1 = entry.pay_impact_1 || '';

@@ -4,7 +4,7 @@ import {
   PlayCircle, AlertTriangle, TableIcon, BarChart2,
   Settings, History, ChevronDown, Activity,
   Users, RefreshCw, Tag, Clock, CalendarDays, Globe2,
-  SlidersHorizontal, ShieldCheck, Laptop,
+  SlidersHorizontal, ShieldCheck, Laptop, FileSpreadsheet,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useLoadAction } from '@uibakery/data';
@@ -104,6 +104,11 @@ export default function TopNav() {
         <NavLink to="/attendance" className={({ isActive }) => linkCls(isActive)}>
           <Activity className="w-4 h-4" />
           <span>Attendance</span>
+        </NavLink>
+
+        <NavLink to="/hrk-summary" className={({ isActive }) => linkCls(isActive)}>
+          <FileSpreadsheet className="w-4 h-4" />
+          <span>HRK Summary</span>
         </NavLink>
 
         {/* Admin dropdown */}

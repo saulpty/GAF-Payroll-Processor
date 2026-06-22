@@ -1,18 +1,18 @@
-# UX/UI Improvement Tasks
+# Task Plan
 
-## High Priority
-- [x] #1 SummaryDashboard: auto-load on period change (remove "Load Detail" button)
-- [x] #2 SummaryDashboard: remove hardcoded `june q1 test` filter (move to smart filter)
-- [x] #3 PeriodLog: add arrow icon affordance + footer summary row
-- [x] #4 ActionRequired: improved empty state when no period selected
-- [x] #5 PayrollMaster: Enter key triggers applyFilters — already implemented
+## 1. Move "Sync Hire Dates" to AdminEmployeeSync page
+[x] Add fetchMondayStartDates + updateEmployeeStartDate to AdminEmployeeSync
+[x] Add hire date column to parseMondayDirectory output
+[x] Add "Sync Hire Dates" section alongside existing sync UI
+[x] Remove Sync Hire Dates button from HrkSummary page
 
-## Medium Priority
-- [x] #6 TopNav: add icons to Admin sub-menu items + rename Macbook Swap → Macbook Exceptions
-- [x] #7 AdminGraceList + AdminMacbookSwap: add search filter input
-- [x] #8 ProcessPayroll: outage dates already use date input (confirmed)
-- [x] #9 SummaryDashboard: fix chart X-axis label rotation (bar + trend charts)
-- [x] #10 SummaryDashboard: replace emoji with Lucide icons in status filter buttons
-- [x] #11 AdminEmployees: replace emoji labels in flag badges with Lucide icons
-- [x] #12 PeriodLog: replace window.confirm with custom AlertDialog modal
-- [x] #13 Shadcn components not needed (no Radix primitives available)
+## 2. PayrollMaster: multi-select + bulk edit with confirmation popup + undo
+[x] Add checkbox column to PayrollMaster table
+[x] Add "select all filtered" checkbox in header
+[x] Bulk edit toolbar when rows selected (event1, impact1, event2, impact2, notes)
+[x] Confirmation popup showing summary of changes before saving
+[x] Undo last bulk save
+
+## 3. Fix "Permiso No remunerado" + Unpaid discount not applying for Winston Carrillo
+[x] Inspect computeDiscount — "Permiso No remunerado" with pay_impact Unpaid is not a Tardanza/Salida Temprano so discount=0
+[x] Fix computeDiscount to handle full-day unpaid events (Permiso No remunerado, Ausencia Injustificada etc.) → use full_day_absence_discount_minutes

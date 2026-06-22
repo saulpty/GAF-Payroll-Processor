@@ -19,6 +19,7 @@ import AdminGraceList from '@/app/pages/admin/AdminGraceList';
 import AdminMacbookSwap from '@/app/pages/admin/AdminMacbookSwap';
 import PeriodLog from '@/app/pages/PeriodLog';
 import Attendance from '@/app/pages/Attendance';
+import HrkSummary from '@/app/pages/HrkSummary';
 
 // datasource reconnected — migrations will apply on load
 function App() {
@@ -47,6 +48,7 @@ function App() {
             </Route>
             <Route path="/period-log" element={<PeriodLog />} />
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/hrk-summary" element={<HrkSummary />} />
           </Routes>
         </main>
       </div>

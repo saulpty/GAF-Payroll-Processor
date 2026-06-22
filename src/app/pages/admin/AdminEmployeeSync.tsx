@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { RefreshCw, CheckCircle, XCircle, AlertTriangle, Users, Loader2, Tag, UserCog, ChevronDown, ChevronRight } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle, AlertTriangle, Users, Loader2, Tag, UserCog, ChevronDown, ChevronRight, CalendarDays } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ import updateEmployeeRoleManagerAction from '@/actions/updateEmployeeRoleManager
 import upsertEmployeeAction from '@/actions/upsertEmployee';
 import loadSchedulesAction from '@/actions/loadSchedules';
 import loadNameAliasesAction from '@/actions/loadNameAliases';
+import fetchMondayStartDatesAction from '@/actions/fetchMondayStartDates';
+import updateEmployeeStartDateAction from '@/actions/updateEmployeeStartDate';
 
 type DbEmployee = {
   id: number; display_name: string; teramind_email: string;
@@ -23,6 +25,7 @@ type NameAlias = { alias_text: string; employee_id: number; display_name: string
 type MondayEmp = {
   id: string; name: string; email: string; companyEmail: string;
   teramindEmail?: string; allEmails?: string[]; role?: string; manager?: string;
+  startDate?: string;
 };
 type SyncStatus = 'matched' | 'new' | 'missing';
 type SyncRow = {
@@ -71,12 +74,25 @@ function parseMondayDirectory(raw: unknown): MondayEmp[] {
         emailCols[0];
       const companyEmail = extractEmail(companyEmailCol);
       const teramindEmail = extractEmail(teramindEmailCol !== companyEmailCol ? teramindEmailCol : undefined);
+      // Start Date column — stored in value JSON: {"date":"2024-01-15"}
+      const startDateCol = cols.find(c => /start.?date/i.test(colTitles.get(c.id) || ''));
+      let startDate: string | undefined;
+      if (startDateCol) {
+        try {
+          const parsed = JSON.parse(startDateCol.value || '{}');
+          if (parsed?.date && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)) startDate = parsed.date;
+        } catch { /* ignore */ }
+        if (!startDate && startDateCol.text) {
+          const m = startDateCol.text.match(/(\d{4}-\d{2}-\d{2})/);
+          if (m) startDate = m[1];
+        }
+      }
       return {
         id: item.id, name: item.name,
         email: companyEmail || teramindEmail,
         companyEmail, teramindEmail,
         allEmails: emailCols.map(c => extractEmail(c)).filter(Boolean),
-        role, manager,
+        role, manager, startDate,
       };
     }).filter(e => e.name?.trim());
   } catch { return []; }
@@ -144,11 +160,16 @@ export default function AdminEmployeeSync() {
   const [updateRoleManager] = useMutateAction(updateEmployeeRoleManagerAction);
   const [upsertEmp] = useMutateAction(upsertEmployeeAction);
 
+  const [fetchStartDates] = useMutateAction(fetchMondayStartDatesAction);
+  const [updateStartDate] = useMutateAction(updateEmployeeStartDateAction);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [debugMode, setDebugMode] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncAllDone, setSyncAllDone] = useState(false);
+  const [hireSyncStatus, setHireSyncStatus] = useState<'idle' | 'syncing' | 'done' | 'error'>('idle');
+  const [hireSyncCount, setHireSyncCount] = useState(0);
+  const [hireSyncError, setHireSyncError] = useState('');
 
   const mondayEmps = parseMondayDirectory(directoryRaw);
   const dbEmps = allEmployees as DbEmployee[];
@@ -266,6 +287,59 @@ export default function AdminEmployeeSync() {
       setSyncAllDone(true);
       reloadEmps();
     } finally { setSyncingAll(false); }
+  };
+
+  // Hire date sync — uses the already-loaded directoryRaw (same board) to extract start dates
+  // Falls back to fetchMondayStartDates if directoryRaw not yet loaded
+  const handleSyncHireDates = async () => {
+    setHireSyncStatus('syncing');
+    setHireSyncCount(0);
+    setHireSyncError('');
+    try {
+      // Use already-loaded directory data if available, otherwise fetch fresh
+      const raw = (directoryRaw !== null && mondayEmps.length > 0)
+        ? directoryRaw
+        : await fetchStartDates({});
+      // Build name→date map from parsed monday emps (already have startDate)
+      const entries: [string, string][] = [];
+      const sourceEmps: MondayEmp[] = (directoryRaw !== null && mondayEmps.length > 0)
+        ? mondayEmps
+        : (() => {
+            // Parse fresh fetch
+            try {
+              type B = { data?: { boards?: { columns?: {id:string;title:string}[]; items_page?: { items?: {name:string;column_values:{id:string;text:string;value:string}[]}[] } }[] } };
+              const board = (raw as B)?.data?.boards?.[0];
+              if (!board) return [] as MondayEmp[];
+              const colTitles = new Map<string,string>((board.columns ?? []).map(c => [c.id, (c.title||'').toLowerCase()]));
+              return (board.items_page?.items ?? []).map(item => {
+                const cols = item.column_values ?? [];
+                const startDateCol = cols.find(c => /start.?date/i.test(colTitles.get(c.id)||''));
+                let startDate: string | undefined;
+                if (startDateCol) {
+                  try { const p = JSON.parse(startDateCol.value||'{}'); if (p?.date) startDate = p.date; } catch { /* */ }
+                  if (!startDate && startDateCol.text) { const m = startDateCol.text.match(/(\d{4}-\d{2}-\d{2})/); if (m) startDate = m[1]; }
+                }
+                return { id: item.name, name: item.name, email: '', companyEmail: '', startDate } as MondayEmp;
+              });
+            } catch { return [] as MondayEmp[]; }
+          })();
+      for (const emp of sourceEmps) {
+        if (emp.startDate) entries.push([emp.name, emp.startDate]);
+      }
+      console.log('[HireSync] start dates found:', entries.length, entries);
+      if (entries.length === 0) { setHireSyncStatus('done'); return; }
+      let count = 0;
+      for (const [name, date] of entries) {
+        try { await updateStartDate({ display_name: name, start_date: date }); count++; } catch (e) { console.warn('[HireSync] failed for', name, e); }
+      }
+      setHireSyncCount(count);
+      setHireSyncStatus('done');
+      reloadEmps();
+    } catch (e) {
+      console.error('[HireSync] error:', e);
+      setHireSyncError(String(e));
+      setHireSyncStatus('error');
+    }
   };
 
   const defaultScheduleId = (schedules as Schedule[])[0]?.id ?? 1;
@@ -548,6 +622,43 @@ export default function AdminEmployeeSync() {
           </div>
         </Section>
       )}
+
+      {/* ── Hire Date Sync ── */}
+      <Card className="border-teal-200 bg-teal-50/30">
+        <CardHeader className="py-3 px-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <CardTitle className="text-teal-800 flex items-center gap-2 text-base font-semibold">
+              <CalendarDays className="w-4 h-4" />
+              Hire Date Sync (Start Date from Monday)
+            </CardTitle>
+            <Button
+              size="sm"
+              disabled={hireSyncStatus === 'syncing'}
+              onClick={handleSyncHireDates}
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              {hireSyncStatus === 'syncing'
+                ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Syncing…</>
+                : hireSyncStatus === 'done'
+                ? <><CheckCircle className="w-3.5 h-3.5 mr-1.5" />Synced {hireSyncCount} employees</>
+                : <><CalendarDays className="w-3.5 h-3.5 mr-1.5" />Sync Hire Dates</>}
+            </Button>
+          </div>
+          {hireSyncStatus === 'done' && (
+            <p className="text-xs text-teal-700 mt-1">
+              Updated start_date for {hireSyncCount} employees from the "Start Date" column on board 8661565945.
+            </p>
+          )}
+          {hireSyncStatus === 'error' && (
+            <p className="text-xs text-red-600 mt-1">Error: {hireSyncError}. Check the Monday.com API connection.</p>
+          )}
+          {hireSyncStatus === 'idle' && (
+            <p className="text-xs text-teal-600 mt-1">
+              Pulls the "Start Date" column from the Monday Employee Directory board and updates employee hire dates in the DB.
+            </p>
+          )}
+        </CardHeader>
+      </Card>
 
       {/* ── In DB, Not in Monday ── */}
       {missing.length > 0 && (
