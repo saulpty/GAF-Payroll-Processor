@@ -677,10 +677,10 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
             initial_status = 'GREEN';
             autoNotes = `Late ${late_minutes} min, within grace (${emp.grace_minutes} min), form filed. Auto-resolved: Paid (Grace).`;
           } else if (hasTardForm && late_minutes > emp.grace_minutes) {
-            // Form filed but exceeded grace → full tardiness is Unpaid, auto GREEN
-            pi1 = cfg.non_grace_auto_impact;
+            // Form filed but exceeded grace → only discount minutes past grace, Unpaid (with Grace), GREEN
+            pi1 = 'Unpaid (with Grace)';
             initial_status = 'GREEN';
-            autoNotes = `Late ${late_minutes} min — exceeds grace of ${emp.grace_minutes} min. Form filed but grace exceeded. Auto-resolved: ${cfg.non_grace_auto_impact}.`;
+            autoNotes = `Late ${late_minutes} min (${late_after_grace} after grace). Form filed. Auto-resolved: Unpaid (with Grace).`;
           } else {
             // No form filed → Unpaid auto GREEN (same as non-grace)
             pi1 = cfg.non_grace_auto_impact;

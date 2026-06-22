@@ -23,3 +23,5 @@ Applied migrations:
 1781401200_fix_auto_notes_after_tz_correction at 2026-06-22T20:01:02.874Z
 1781401300_fix_view_remove_dst_display_offset at 2026-06-22T20:10:14.603Z
 1781401400_revert_tz_shift_corrupted_periods at 2026-06-22T20:14:30.951Z
+1781401500_fix_nongrace_tardanza_status_to_green at 2026-06-22T20:48:01.134Z
+1781401600_fix_grace_list_tardanza_planilla2 at 2026-06-22T20:56:19.882Z
