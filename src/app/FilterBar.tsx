@@ -7,26 +7,36 @@ import loadPeriodsAction from '@/actions/loadPeriods';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import type { EmpInfo } from '@/app/lib/attendanceStats';
 
-// Which controls appear on which routes
-const ROUTE_CONFIG: Record<string, { period?: boolean; dateRange?: boolean; employee?: boolean; role?: boolean; manager?: boolean }> = {
-  '/summary':         { period: true, employee: true },
-  '/action-required': { period: true, employee: true },
-  '/payroll-master':  { period: true, employee: true },
-  '/hrk-summary':     { period: true },
-  '/process':         { dateRange: true },
-  '/attendance':      { dateRange: true, employee: true, role: true, manager: true },
-  '/attendance/employees': { dateRange: true, employee: true, role: true, manager: true },
-  '/attendance/trends':    { dateRange: true, role: true, manager: true },
+type RouteConfig = {
+  period?: boolean; dateRange?: boolean; employee?: boolean;
+  role?: boolean; manager?: boolean; statusTab?: boolean; pmTab?: boolean;
 };
 
-function getConfig(pathname: string) {
+const ROUTE_CONFIG: Record<string, RouteConfig> = {
+  '/summary':               { period: true, employee: true },
+  '/action-required':       { period: true, employee: true, statusTab: true },
+  '/payroll-master':        { period: true, employee: true, pmTab: true },
+  '/hrk-summary':           { period: true },
+  '/process':               { dateRange: true },
+  '/attendance':            { dateRange: true, employee: true, role: true, manager: true },
+  '/attendance/employees':  { dateRange: true, employee: true, role: true, manager: true },
+  '/attendance/trends':     { dateRange: true, role: true, manager: true },
+};
+
+function getConfig(pathname: string): RouteConfig | null {
   if (ROUTE_CONFIG[pathname]) return ROUTE_CONFIG[pathname];
-  // prefix match for /attendance/*
   for (const key of Object.keys(ROUTE_CONFIG)) {
     if (key !== '/' && pathname.startsWith(key + '/')) return ROUTE_CONFIG[key];
   }
   return null;
 }
+
+const PM_TAB_STYLES: Record<string, { active: string; idle: string; dot?: string }> = {
+  ALL:    { active: 'bg-slate-700 text-white', idle: 'bg-white text-slate-600 hover:bg-slate-50' },
+  GREEN:  { active: 'bg-green-600 text-white', idle: 'bg-white text-green-700 hover:bg-green-50', dot: 'bg-green-400' },
+  YELLOW: { active: 'bg-amber-500 text-white', idle: 'bg-white text-amber-700 hover:bg-amber-50', dot: 'bg-amber-300' },
+  RED:    { active: 'bg-red-600 text-white',   idle: 'bg-white text-red-700 hover:bg-red-50',     dot: 'bg-red-400' },
+};
 
 export default function FilterBar() {
   const location = useLocation();
@@ -39,6 +49,8 @@ export default function FilterBar() {
     employee, setEmployee,
     role, setRole,
     manager, setManager,
+    statusTab, setStatusTab,
+    pmTab, setPmTab,
     hasAny, clearAll,
   } = useGlobalFilters();
 
@@ -52,11 +64,9 @@ export default function FilterBar() {
     });
 
   const emps = empsRaw as EmpInfo[];
-
   const managers = useMemo(() => [...new Set(emps.map(e => e.manager).filter(Boolean))].sort(), [emps]);
   const roles    = useMemo(() => [...new Set(emps.map(e => e.role).filter(Boolean))].sort(),    [emps]);
 
-  // Don't render if no config for this route
   if (!cfg) return null;
 
   const inputCls = 'h-8 px-2.5 text-sm border border-border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30';
@@ -70,17 +80,13 @@ export default function FilterBar() {
       {cfg.period && (
         <>
           <label className={labelCls}>Period</label>
-          <select
-            value={period}
-            onChange={e => setPeriod(e.target.value)}
-            className={inputCls + ' min-w-40'}
-          >
+          <select value={period} onChange={e => setPeriod(e.target.value)} className={inputCls + ' min-w-40'}>
             <option value="">All periods</option>
             {periods.map(p => (
               <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
             ))}
           </select>
-          {(cfg.dateRange || cfg.employee || cfg.role || cfg.manager) && divider}
+          {(cfg.dateRange || cfg.employee || cfg.role || cfg.manager || cfg.statusTab || cfg.pmTab) && divider}
         </>
       )}
 
@@ -89,7 +95,7 @@ export default function FilterBar() {
           <label className={labelCls}>From</label>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inputCls} />
           <label className={labelCls}>To</label>
-          <input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   className={inputCls} />
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={inputCls} />
           {(cfg.employee || cfg.role || cfg.manager) && divider}
         </>
       )}
@@ -97,14 +103,9 @@ export default function FilterBar() {
       {cfg.employee && (
         <>
           <label className={labelCls}>Employee</label>
-          <input
-            type="text"
-            value={employee}
-            onChange={e => setEmployee(e.target.value)}
-            placeholder="Search…"
-            className={inputCls + ' w-44'}
-          />
-          {(cfg.role || cfg.manager) && divider}
+          <input type="text" value={employee} onChange={e => setEmployee(e.target.value)}
+            placeholder="Search…" className={inputCls + ' w-44'} />
+          {(cfg.role || cfg.manager || cfg.statusTab || cfg.pmTab) && divider}
         </>
       )}
 
@@ -129,11 +130,43 @@ export default function FilterBar() {
         </>
       )}
 
+      {cfg.statusTab && (
+        <div className="flex rounded-lg border overflow-hidden shadow-sm h-8">
+          {(['RED', 'YELLOW'] as const).map(tab => {
+            const isActive = statusTab === tab;
+            const cls = tab === 'RED'
+              ? isActive ? 'bg-red-600 text-white' : 'bg-white text-red-700 hover:bg-red-50'
+              : isActive ? 'bg-amber-500 text-white' : 'bg-white text-amber-700 hover:bg-amber-50';
+            return (
+              <button key={tab} onClick={() => setStatusTab(tab)}
+                className={`flex items-center gap-1.5 px-3 text-xs font-semibold border-r last:border-r-0 transition-colors ${cls}`}>
+                <span className={`w-2 h-2 rounded-full ${tab === 'RED' ? 'bg-red-400' : 'bg-amber-300'} ${isActive ? 'opacity-70' : ''}`} />
+                {tab}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {cfg.pmTab && (
+        <div className="flex rounded-lg border overflow-hidden shadow-sm h-8">
+          {(['ALL', 'GREEN', 'YELLOW', 'RED'] as const).map(tab => {
+            const s = PM_TAB_STYLES[tab];
+            const isActive = pmTab === tab;
+            return (
+              <button key={tab} onClick={() => setPmTab(tab)}
+                className={`flex items-center gap-1.5 px-3 text-xs font-semibold border-r last:border-r-0 transition-colors ${isActive ? s.active : s.idle}`}>
+                {s.dot && <span className={`w-2 h-2 rounded-full ${s.dot} ${isActive ? 'opacity-70' : 'opacity-60'}`} />}
+                {tab}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {hasAny && (
-        <button
-          onClick={clearAll}
-          className="ml-auto flex items-center gap-1 text-xs text-slate-500 hover:text-red-600 border border-slate-200 hover:border-red-300 rounded-lg px-2.5 h-7 transition-colors"
-        >
+        <button onClick={clearAll}
+          className="ml-auto flex items-center gap-1 text-xs text-slate-500 hover:text-red-600 border border-slate-200 hover:border-red-300 rounded-lg px-2.5 h-7 transition-colors">
           <X className="w-3 h-3" />
           Clear filters
         </button>

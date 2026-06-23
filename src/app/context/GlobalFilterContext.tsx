@@ -18,6 +18,10 @@ export interface GlobalFilters {
   setRole: (v: string) => void;
   manager: string;
   setManager: (v: string) => void;
+  statusTab: 'RED' | 'YELLOW';
+  setStatusTab: (v: 'RED' | 'YELLOW') => void;
+  pmTab: 'ALL' | 'GREEN' | 'YELLOW' | 'RED';
+  setPmTab: (v: 'ALL' | 'GREEN' | 'YELLOW' | 'RED') => void;
   hasAny: boolean;
   clearAll: () => void;
 }
@@ -34,6 +38,8 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
   const [employee, setEmployee] = useState('');
   const [role,     setRole]     = useState('');
   const [manager,  setManager]  = useState('');
+  const [statusTab, setStatusTab] = useState<'RED' | 'YELLOW'>('RED');
+  const [pmTab, setPmTab] = useState<'ALL' | 'GREEN' | 'YELLOW' | 'RED'>('ALL');
 
   const hasAny = !!(period || employee || role || manager ||
     dateFrom !== DEFAULT_FROM || dateTo !== TODAY);
@@ -54,10 +60,12 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     employee, setEmployee,
     role, setRole,
     manager, setManager,
+    statusTab, setStatusTab,
+    pmTab, setPmTab,
     hasAny,
     clearAll,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [period, dateFrom, dateTo, employee, role, manager, hasAny]);
+  }), [period, dateFrom, dateTo, employee, role, manager, statusTab, pmTab, hasAny]);
 
   return (
     <GlobalFilterContext.Provider value={value}>
