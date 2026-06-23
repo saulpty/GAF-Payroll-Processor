@@ -6,6 +6,7 @@ import { useMemo } from 'react';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import type { EmpInfo } from '@/app/lib/attendanceStats';
+import type { DayPreset } from '@/app/context/GlobalFilterContext';
 
 type RouteConfig = {
   period?: boolean; dateRange?: boolean; employee?: boolean;
@@ -20,7 +21,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   '/process':               { dateRange: true },
   '/attendance':            { dateRange: true, employee: true, role: true, manager: true },
   '/attendance/employees':  { dateRange: true, employee: true, role: true, manager: true },
-  '/attendance/trends':     { dateRange: true, role: true, manager: true },
+  '/attendance/trends':     { dateRange: true, employee: true, role: true, manager: true },
 };
 
 function getConfig(pathname: string): RouteConfig | null {
@@ -38,6 +39,8 @@ const PM_TAB_STYLES: Record<string, { active: string; idle: string; dot?: string
   RED:    { active: 'bg-red-600 text-white',   idle: 'bg-white text-red-700 hover:bg-red-50',     dot: 'bg-red-400' },
 };
 
+const DAY_PRESETS: DayPreset[] = [30, 60, 90];
+
 export default function FilterBar() {
   const location = useLocation();
   const cfg = getConfig(location.pathname);
@@ -46,6 +49,7 @@ export default function FilterBar() {
     period, setPeriod,
     dateFrom, setDateFrom,
     dateTo, setDateTo,
+    dayPreset, setDayPreset,
     employee, setEmployee,
     role, setRole,
     manager, setManager,
@@ -73,6 +77,9 @@ export default function FilterBar() {
   const labelCls = 'text-[10px] font-bold uppercase tracking-widest text-slate-400';
   const divider  = <div className="w-px h-5 bg-slate-200" />;
 
+  // Whether this route is an attendance route (shows presets)
+  const isAttendance = location.pathname.startsWith('/attendance');
+
   return (
     <div className="shrink-0 bg-white border-b border-slate-100 px-4 py-2 flex items-center gap-3 flex-wrap z-30 shadow-sm">
       <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -92,6 +99,29 @@ export default function FilterBar() {
 
       {cfg.dateRange && (
         <>
+          {/* Quick-preset buttons — attendance only */}
+          {isAttendance && (
+            <div className="flex items-center gap-1">
+              {DAY_PRESETS.map(days => {
+                const isActive = dayPreset === days;
+                return (
+                  <button
+                    key={days}
+                    onClick={() => setDayPreset(isActive ? null : days)}
+                    className={[
+                      'h-8 px-3 rounded-lg text-xs font-semibold border transition-colors select-none',
+                      isActive
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                        : 'bg-white text-slate-600 border-border hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700',
+                    ].join(' ')}
+                  >
+                    {days}d
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <label className={labelCls}>From</label>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inputCls} />
           <label className={labelCls}>To</label>

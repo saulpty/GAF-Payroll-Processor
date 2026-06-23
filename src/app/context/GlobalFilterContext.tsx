@@ -5,6 +5,8 @@ import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 function fmt(d: Date) { return d.toISOString().slice(0, 10); }
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return fmt(d); }
 
+export type DayPreset = 30 | 60 | 90 | null;
+
 export interface GlobalFilters {
   period: string;
   setPeriod: (v: string) => void;
@@ -12,6 +14,8 @@ export interface GlobalFilters {
   setDateFrom: (v: string) => void;
   dateTo: string;
   setDateTo: (v: string) => void;
+  dayPreset: DayPreset;
+  setDayPreset: (v: DayPreset) => void;
   employee: string;
   setEmployee: (v: string) => void;
   role: string;
@@ -26,28 +30,45 @@ export interface GlobalFilters {
   clearAll: () => void;
 }
 
-const TODAY = fmt(new Date());
+const TODAY       = fmt(new Date());
 const DEFAULT_FROM = daysAgo(30);
 
 const GlobalFilterContext = createContext<GlobalFilters | null>(null);
 
 export function GlobalFilterProvider({ children }: { children: ReactNode }) {
-  const [period,   setPeriod]   = useState('');
-  const [dateFrom, setDateFrom] = useState(DEFAULT_FROM);
-  const [dateTo,   setDateTo]   = useState(TODAY);
-  const [employee, setEmployee] = useState('');
-  const [role,     setRole]     = useState('');
-  const [manager,  setManager]  = useState('');
+  const [period,    setPeriod]    = useState('');
+  const [dateFrom,  setDateFromRaw] = useState(DEFAULT_FROM);
+  const [dateTo,    setDateToRaw]   = useState(TODAY);
+  const [dayPreset, setDayPresetRaw] = useState<DayPreset>(30);
+  const [employee,  setEmployee]  = useState('');
+  const [role,      setRole]      = useState('');
+  const [manager,   setManager]   = useState('');
   const [statusTab, setStatusTab] = useState<'RED' | 'YELLOW'>('RED');
-  const [pmTab, setPmTab] = useState<'ALL' | 'GREEN' | 'YELLOW' | 'RED'>('ALL');
+  const [pmTab,     setPmTab]     = useState<'ALL' | 'GREEN' | 'YELLOW' | 'RED'>('ALL');
+
+  // Wrappers that clear the preset when the user edits dates manually
+  const setDateFrom = (v: string) => { setDateFromRaw(v); setDayPresetRaw(null); };
+  const setDateTo   = (v: string) => { setDateToRaw(v);   setDayPresetRaw(null); };
+
+  // Preset setter: also updates the actual date range
+  const setDayPreset = (v: DayPreset) => {
+    if (v === null) {
+      setDayPresetRaw(null);
+    } else {
+      setDayPresetRaw(v);
+      setDateFromRaw(daysAgo(v));
+      setDateToRaw(TODAY);
+    }
+  };
 
   const hasAny = !!(period || employee || role || manager ||
     dateFrom !== DEFAULT_FROM || dateTo !== TODAY);
 
   const clearAll = () => {
     setPeriod('');
-    setDateFrom(DEFAULT_FROM);
-    setDateTo(TODAY);
+    setDayPresetRaw(30);
+    setDateFromRaw(DEFAULT_FROM);
+    setDateToRaw(TODAY);
     setEmployee('');
     setRole('');
     setManager('');
@@ -57,6 +78,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     period, setPeriod,
     dateFrom, setDateFrom,
     dateTo, setDateTo,
+    dayPreset, setDayPreset,
     employee, setEmployee,
     role, setRole,
     manager, setManager,
@@ -65,7 +87,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     hasAny,
     clearAll,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [period, dateFrom, dateTo, employee, role, manager, statusTab, pmTab, hasAny]);
+  }), [period, dateFrom, dateTo, dayPreset, employee, role, manager, statusTab, pmTab, hasAny]);
 
   return (
     <GlobalFilterContext.Provider value={value}>

@@ -144,9 +144,19 @@ export function AttendancePanel({ stats, onClose }: Props) {
   return (
     <>
       {/* Overlay */}
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      {/* Panel — wider: max-w-3xl */}
-      <div className="fixed top-0 right-0 bottom-0 w-full max-w-3xl bg-white z-50 overflow-y-auto shadow-2xl flex flex-col">
+      <div
+        className="fixed inset-0 bg-black/30 z-40"
+        style={{ animation: 'fadeIn 200ms ease both' }}
+        onClick={onClose}
+      />
+      {/* Panel — at least 50vw wide */}
+      <div
+        className="fixed top-0 right-0 bottom-0 bg-white z-50 overflow-y-auto shadow-2xl flex flex-col"
+        style={{
+          width: 'clamp(520px, 55vw, 900px)',
+          animation: 'slideInRight 280ms cubic-bezier(0.22, 0.68, 0, 1.1) both',
+        }}
+      >
 
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-border px-7 py-5 flex items-start justify-between z-10">

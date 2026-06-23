@@ -17,7 +17,6 @@ import AdminHolidays from '@/app/pages/admin/AdminHolidays';
 import AdminDstCalendar from '@/app/pages/admin/AdminDstCalendar';
 import AdminLookups from '@/app/pages/admin/AdminLookups';
 import AdminEmployeeSync from '@/app/pages/admin/AdminEmployeeSync';
-
 import PeriodLog from '@/app/pages/PeriodLog';
 import Attendance from '@/app/pages/Attendance';
 import HrkSummary from '@/app/pages/HrkSummary';
@@ -45,12 +44,10 @@ function App() {
                 <Route path="dst-calendar" element={<AdminDstCalendar />} />
                 <Route path="lookups" element={<AdminLookups />} />
                 <Route path="directory-sync" element={<AdminEmployeeSync />} />
-
               </Route>
               <Route path="/period-log" element={<PeriodLog />} />
-              <Route path="/attendance" element={<Attendance />} />
-              <Route path="/attendance/employees" element={<Attendance initialTab="employees" />} />
-              <Route path="/attendance/trends" element={<Attendance initialTab="trends" />} />
+              {/* Single instance — tab driven by URL, no remount on tab switch */}
+              <Route path="/attendance/*" element={<Attendance />} />
               <Route path="/hrk-summary" element={<HrkSummary />} />
             </Routes>
           </main>
