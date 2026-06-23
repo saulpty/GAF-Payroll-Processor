@@ -56,7 +56,7 @@ function buildCsv(rows: HrkRow[]): string {
       r.incapacidad_days, r.incapacidad_dates,
       r.constancia_days, r.constancia_dates_hours,
       r.pto_days, r.pto_dates,
-      r.hire_date ?? '', r.notes,
+      r.hire_date ? r.hire_date.slice(0, 10) : '', r.notes,
     ].map(escapeCsv).join(',')),
   ];
   return lines.join('\n');
@@ -344,7 +344,7 @@ function HrkTableRow({ row, striped, dirty, onEdit }: HrkTableRowProps) {
         left
         onChange={v => onEdit(row.employee, 'pto_dates', v)}
       />
-      <Td left muted={!row.hire_date}>{row.hire_date || '—'}</Td>
+      <Td left muted={!row.hire_date}>{row.hire_date ? row.hire_date.slice(0, 10) : '—'}</Td>
       <TdEdit
         value={row.notes}
         left
