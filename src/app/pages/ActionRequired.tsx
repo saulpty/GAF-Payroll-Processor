@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import {
   AlertTriangle, CheckCircle, Loader2, ChevronUp, ChevronDown,
   ChevronsUpDown, Search, X, Edit2, GitCommit, ChevronRight,
@@ -14,7 +15,6 @@ import loadCommittedEntriesAction from '@/actions/loadCommittedEntries';
 import updatePayrollEntryAction from '@/actions/updatePayrollEntry';
 import updateEntryExitAction from '@/actions/updateEntryExit';
 import loadEventTypeRulesAction from '@/actions/loadEventTypeRules';
-import loadPeriodsAction from '@/actions/loadPeriods';
 import loadPayImpactsAction from '@/actions/loadPayImpacts';
 import loadDocumentationOptionsAction from '@/actions/loadDocumentationOptions';
 import loadEventTypesAction from '@/actions/loadEventTypes';
@@ -105,15 +105,14 @@ function BroadcastSelect({ value, options, placeholder, broadcasting, onChange }
 }
 
 export default function ActionRequired() {
-  const [periods] = useLoadAction(loadPeriodsAction, [] as { period_name: string; start_date: string }[]);
+  const { period: selectedPeriod, employee: globalEmployee } = useGlobalFilters();
   const [payImpacts] = useLoadAction(loadPayImpactsAction, [] as { name: string }[]);
   const [docOptions] = useLoadAction(loadDocumentationOptionsAction, [] as { name: string }[]);
   const [eventTypes] = useLoadAction(loadEventTypesAction, [] as { id: number; name: string }[]);
   const [unresolvedData] = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
   const [eventRulesRaw] = useLoadAction(loadEventTypeRulesAction, [] as { event_type: string; default_pay_impact: string; default_doc_option: string }[]);
 
-  const [selectedPeriod, setSelectedPeriod] = useState('');
-  const [params, setParams] = useState({ periodName: '' });
+  const [params, setParams] = useState({ periodName: selectedPeriod });
   const [rows, loading, , reload] = useLoadAction(loadActionRequiredAction, [] as EntryRow[], params, { enabled: !!params.periodName });
   const [committedRows, , , reloadCommitted] = useLoadAction(loadCommittedEntriesAction, [] as CommittedRow[], params, { enabled: !!params.periodName });
   const [updateEntry, saving] = useMutateAction(updatePayrollEntryAction);
@@ -145,16 +144,16 @@ export default function ActionRequired() {
     return m;
   }, [eventRulesRaw]);
 
-  const handlePeriodChange = (p: string) => {
-    setSelectedPeriod(p);
-    setParams({ periodName: p });
+  // Sync params when global period changes
+  useEffect(() => {
+    setParams({ periodName: selectedPeriod });
     setEdits({});
     setSelected(new Set());
     setSessionCommitted(new Set());
     setSearch('');
     setSortKey(null);
     setSortDir(null);
-  };
+  }, [selectedPeriod]);
 
   const getEdit = useCallback((row: EntryRow): EditState =>
     edits[row.id] ?? {
@@ -287,8 +286,9 @@ export default function ActionRequired() {
 
   const filtered = useMemo(() => {
     let out = tabRows;
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    const searchTerm = search.trim() || globalEmployee.trim();
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
       out = out.filter(r => r.employee_name.toLowerCase().includes(q) || r.work_date.toLowerCase().includes(q));
     }
     if (sortKey && sortDir) {
@@ -353,13 +353,11 @@ export default function ActionRequired() {
           <h1 className="text-xl font-bold">Action Required</h1>
           {unresolvedCount > 0 && <Badge variant="destructive" className="text-xs">{unresolvedCount} unresolved</Badge>}
         </div>
-        <select className="border rounded-md px-3 py-2 text-sm min-w-52 bg-white"
-          value={selectedPeriod} onChange={e => handlePeriodChange(e.target.value)}>
-          <option value="">— Select pay period —</option>
-          {(periods as { period_name: string }[]).map(p => (
-            <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
-          ))}
-        </select>
+        {selectedPeriod && (
+          <span className="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-2 rounded-lg">
+            {selectedPeriod}
+          </span>
+        )}
       </div>
 
       {/* ── Empty states ────────────────────────────────────────── */}
@@ -372,7 +370,7 @@ export default function ActionRequired() {
             <div className="text-center">
               <p className="font-semibold text-foreground mb-1">No Pay Period Selected</p>
               <p className="text-sm text-muted-foreground max-w-xs">
-                Choose a pay period from the dropdown above to review and resolve unresolved entries.
+                Choose a pay period from the Period filter above to review and resolve unresolved entries.
               </p>
             </div>
             {unresolvedCount > 0 && (

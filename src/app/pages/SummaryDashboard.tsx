@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useLoadAction } from '@uibakery/data';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import {
   BarChart2, Users, Clock, AlertTriangle, CheckCircle2,
-  TrendingDown, Calendar, Filter, ChevronUp, ChevronDown, Minus,
+  TrendingDown, Calendar, ChevronUp, ChevronDown, Minus,
   TriangleAlert, CircleCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +13,6 @@ import {
 } from 'recharts';
 import loadSummaryDashboardAction from '@/actions/loadSummaryDashboard';
 import loadSummaryAllPeriodsAction from '@/actions/loadSummaryAllPeriods';
-import loadPeriodsAction from '@/actions/loadPeriods';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type SummaryRow = {
@@ -105,18 +105,8 @@ function KpiCard({ label, value, sub, icon, color }: {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function SummaryDashboard() {
-  const [periods] = useLoadAction(loadPeriodsAction, [] as { period_name: string }[]);
+  const { period: selectedPeriod } = useGlobalFilters();
   const [allPeriodData, allLoading] = useLoadAction(loadSummaryAllPeriodsAction, [] as PeriodRow[]);
-
-  const [selectedPeriod, setSelectedPeriod] = useState('');
-
-  const handlePeriodChange = (p: string) => {
-    setSelectedPeriod(p);
-    setEmpSearch('');
-    setStatusFilter('all');
-    setSortCol('total_discount_minutes');
-    setSortDir('desc');
-  };
 
   // rows auto-load when selectedPeriod changes
   const [rows, empLoading] = useLoadAction(
@@ -124,6 +114,7 @@ export default function SummaryDashboard() {
     { enabled: !!selectedPeriod }
   );
 
+  const { employee: globalEmployee } = useGlobalFilters();
   const [empSearch, setEmpSearch] = useState('');
   const [sortCol, setSortCol] = useState<keyof SummaryRow | ''>('total_discount_minutes');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -182,7 +173,8 @@ export default function SummaryDashboard() {
   // ── Employee table ──
   const filteredEmps = useMemo(() => {
     let list = [...data];
-    if (empSearch) list = list.filter(r => r.employee_name?.toLowerCase().includes(empSearch.toLowerCase()));
+    const searchTerm = empSearch || globalEmployee;
+    if (searchTerm) list = list.filter(r => r.employee_name?.toLowerCase().includes(searchTerm.toLowerCase()));
     if (statusFilter === 'issues') list = list.filter(r => r.red_count > 0 || r.yellow_count > 0);
     if (statusFilter === 'ready') list = list.filter(r => r.all_ready);
     if (sortCol) {
@@ -219,24 +211,13 @@ export default function SummaryDashboard() {
           <p className="text-sm text-muted-foreground mt-0.5">Cross-period analytics & per-employee breakdown</p>
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <select
-            className="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm min-w-48 focus:outline-none focus:ring-2 focus:ring-blue-300"
-            value={selectedPeriod}
-            onChange={e => handlePeriodChange(e.target.value)}
-          >
-            <option value="">All periods (trend view)</option>
-            {(periods as { period_name: string }[])
-              .filter(p => {
-                const n = p.period_name?.toLowerCase().trim();
-                return n && !n.includes('test') && !n.includes('draft');
-              })
-              .map(p => (
-                <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
-              ))}
-          </select>
           {empLoading && selectedPeriod && (
             <span className="text-xs text-muted-foreground animate-pulse ml-1">Loading…</span>
+          )}
+          {selectedPeriod && (
+            <span className="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
+              {selectedPeriod}
+            </span>
           )}
         </div>
       </div>

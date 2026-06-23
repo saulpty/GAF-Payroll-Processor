@@ -1,18 +1,13 @@
-# Task Plan
+# Nav + Shared Filter Revamp
 
-## 1. Move "Sync Hire Dates" to AdminEmployeeSync page
-[x] Add fetchMondayStartDates + updateEmployeeStartDate to AdminEmployeeSync
-[x] Add hire date column to parseMondayDirectory output
-[x] Add "Sync Hire Dates" section alongside existing sync UI
-[x] Remove Sync Hire Dates button from HrkSummary page
+## Tasks
 
-## 2. PayrollMaster: multi-select + bulk edit with confirmation popup + undo
-[x] Add checkbox column to PayrollMaster table
-[x] Add "select all filtered" checkbox in header
-[x] Bulk edit toolbar when rows selected (event1, impact1, event2, impact2, notes)
-[x] Confirmation popup showing summary of changes before saving
-[x] Undo last bulk save
-
-## 3. Fix "Permiso No remunerado" + Unpaid discount not applying for Winston Carrillo
-[x] Inspect computeDiscount — "Permiso No remunerado" with pay_impact Unpaid is not a Tardanza/Salida Temprano so discount=0
-[x] Fix computeDiscount to handle full-day unpaid events (Permiso No remunerado, Ausencia Injustificada etc.) → use full_day_absence_discount_minutes
+- [x] Create `app/context/GlobalFilterContext.tsx` — period, dateFrom, dateTo, employee, role, manager
+- [x] Rewrite `app/TopNav.tsx` — 3 grouped dropdown menus (Payroll, Attendance, Admin)
+- [x] Create `app/FilterBar.tsx` — route-aware shared filter strip below nav
+- [x] Update `app/app.tsx` — wrap in GlobalFilterProvider, add FilterBar
+- [x] Update `app/pages/SummaryDashboard.tsx` — read period from context
+- [x] Update `app/pages/ActionRequired.tsx` — read period from context
+- [x] Update `app/pages/PayrollMaster.tsx` — read period + employee from context
+- [x] Update `app/pages/HrkSummary.tsx` — read period from context
+- [x] Update `app/pages/Attendance.tsx` — read dateFrom/dateTo/manager/role/employee from context

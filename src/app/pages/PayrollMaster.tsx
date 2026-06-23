@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { useSearchParams } from 'react-router-dom';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import {
   TableIcon, Download, Loader2, ChevronUp, ChevronDown,
   ChevronsUpDown, Search, X, CheckCircle, Edit2, SquareCheck, Undo2,
@@ -10,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { TimeInput } from '@/app/components/TimeInput';
 import loadPayrollMasterAction from '@/actions/loadPayrollMaster';
 import countPayrollMasterAction from '@/actions/countPayrollMaster';
-import loadPeriodsAction from '@/actions/loadPeriods';
+
 import loadPayImpactsAction from '@/actions/loadPayImpacts';
 import loadDocumentationOptionsAction from '@/actions/loadDocumentationOptions';
 import loadEventTypesAction from '@/actions/loadEventTypes';
@@ -70,7 +71,6 @@ function SortIcon({ col, sortKey, sortDir }: { col: string; sortKey: SortKey; so
 
 export default function PayrollMaster() {
   const [searchParams] = useSearchParams();
-  const [periods] = useLoadAction(loadPeriodsAction, [] as { period_name: string }[]);
   const [payImpacts] = useLoadAction(loadPayImpactsAction, [] as { name: string }[]);
   const [docOptions] = useLoadAction(loadDocumentationOptionsAction, [] as { name: string }[]);
   const [eventTypes] = useLoadAction(loadEventTypesAction, [] as { name: string }[]);
@@ -78,8 +78,7 @@ export default function PayrollMaster() {
   const [updateEntry, saving] = useMutateAction(updatePayrollEntryAction);
   const [updateTimes] = useMutateAction(updateEntryExitAction);
 
-  const [filterPeriod, setFilterPeriod] = useState(searchParams.get('period') || '');
-  const [filterEmployee, setFilterEmployee] = useState('');
+  const { period: globalPeriod, employee: globalEmployee } = useGlobalFilters();
   const [filterEvent, setFilterEvent] = useState('');
   const [filterImpact, setFilterImpact] = useState('');
   const [hideOnTime, setHideOnTime] = useState(false);
@@ -102,16 +101,20 @@ export default function PayrollMaster() {
   const [undoSnapshot, setUndoSnapshot] = useState<UndoSnapshot | null>(null);
 
   const [params, setParams] = useState({
-    periodName: searchParams.get('period') || '',
-    employeeName: '',
+    periodName: searchParams.get('period') || globalPeriod || '',
+    employeeName: globalEmployee || '',
     status: '',
     offset: 0,
   });
 
+  // Sync params when global period or employee changes
   useEffect(() => {
-    const p = searchParams.get('period');
-    if (p) { setFilterPeriod(p); setParams(prev => ({ ...prev, periodName: p })); }
-  }, [searchParams]);
+    const p = searchParams.get('period') || globalPeriod;
+    setParams(prev => ({ ...prev, periodName: p || '', employeeName: globalEmployee || '', offset: 0 }));
+    setPage(0);
+    setEdits({});
+    setSavedIds(new Set());
+  }, [globalPeriod, globalEmployee, searchParams]);
 
   const [rows, loading, , reload] = useLoadAction(loadPayrollMasterAction, [] as EntryRow[], params);
   const [countData] = useLoadAction(countPayrollMasterAction, [] as { total: number }[], {
@@ -131,11 +134,7 @@ export default function PayrollMaster() {
     return m;
   }, [eventRulesRaw]);
 
-  const applyFilters = useCallback(() => {
-    setPage(0);
-    setParams({ periodName: filterPeriod, employeeName: filterEmployee, status: '', offset: 0 });
-    setEdits({}); setSavedIds(new Set());
-  }, [filterPeriod, filterEmployee]);
+
 
   // "On time full shift" = GREEN status with no events, no late/early minutes
   const isOnTimeFullShift = (r: EntryRow) =>
@@ -423,28 +422,8 @@ export default function PayrollMaster() {
         </div>
       </div>
 
-      {/* Filters row */}
+      {/* Section-specific filters */}
       <div className="flex gap-2 shrink-0 flex-wrap items-center">
-        <select className="border rounded-md px-3 py-2 text-sm min-w-44 bg-white"
-          value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}>
-          <option value="">All Periods</option>
-          {(periods as { period_name: string }[]).map(p => (
-            <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
-          ))}
-        </select>
-        <input className="border rounded-md px-3 py-2 text-sm w-44 bg-white"
-          placeholder="Employee…"
-          value={filterEmployee} onChange={e => setFilterEmployee(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && applyFilters()} />
-        <Button size="sm" onClick={applyFilters}>Apply</Button>
-        <Button size="sm" variant="outline" onClick={() => {
-          setFilterPeriod(''); setFilterEmployee('');
-          setParams({ periodName: '', employeeName: '', status: '', offset: 0 });
-          setPage(0); setEdits({}); setSavedIds(new Set());
-        }}>Clear</Button>
-
-        <div className="w-px h-6 bg-slate-200 mx-1" />
-
         {/* Event filter */}
         <select className="border rounded-md px-3 py-2 text-sm min-w-40 bg-white"
           value={filterEvent} onChange={e => setFilterEvent(e.target.value)}>

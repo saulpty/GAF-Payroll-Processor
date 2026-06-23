@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { Download, FileSpreadsheet, Calendar, RefreshCw, Save, Undo2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,13 +75,13 @@ function downloadCsv(content: string, filename: string) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function HrkSummary() {
+  const { period: globalPeriod } = useGlobalFilters();
   const [periods] = useLoadAction(loadPeriodsAction, [] as PeriodOption[]);
   const periodList = periods as PeriodOption[];
 
-  const [selectedPeriod, setSelectedPeriod] = useState('');
   const activePeriod = useMemo(
-    () => selectedPeriod || (periodList[0]?.period_name ?? ''),
-    [selectedPeriod, periodList]
+    () => globalPeriod || (periodList[0]?.period_name ?? ''),
+    [globalPeriod, periodList]
   );
 
   const [rawData, loading, error, reload] = useLoadAction(
@@ -178,15 +179,9 @@ export default function HrkSummary() {
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-slate-500" />
-            <select
-              value={activePeriod}
-              onChange={e => setSelectedPeriod(e.target.value)}
-              className="h-8 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            >
-              {periodList.map(p => (
-                <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
-              ))}
-            </select>
+            <span className="text-sm font-medium text-slate-500 bg-slate-100 px-3 h-8 flex items-center rounded-md">
+              {activePeriod || 'No period selected'}
+            </span>
           </div>
 
           <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>

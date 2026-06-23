@@ -1,9 +1,9 @@
-import { X } from 'lucide-react';
+import { X, Briefcase, User } from 'lucide-react';
 import { EmpStats, AttendanceRow, computeArrivalScatter, ArrivalPoint } from '@/app/lib/attendanceStats';
 import {
   ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Cell,
-  BarChart, Bar,
+  PieChart, Pie, Legend,
 } from 'recharts';
 
 type Props = {
@@ -12,11 +12,11 @@ type Props = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  'On Time':             '#34c759',
-  'Late - Reported':     '#ff9f0a',
-  'Late - Unreported':   '#ff3b30',
+  'On Time':               '#34c759',
+  'Late - Reported':       '#ff9f0a',
+  'Late - Unreported':     '#ff3b30',
   'Excused (PTO/FH/Perm)': '#636366',
-  'Permission':          '#af52de',
+  'Permission':            '#af52de',
 };
 
 function MiniKpi({ label, value, color }: { label: string; value: string | number; color: string }) {
@@ -28,13 +28,20 @@ function MiniKpi({ label, value, color }: { label: string; value: string | numbe
   );
 }
 
-/** Format minutes-since-midnight back to "H:MM AM/PM" for axis/tooltip */
+/** Format minutes-since-midnight back to "H:MM AM/PM" */
 function fmtMinutes(min: number): string {
   const h24 = Math.floor(min / 60);
   const m = min % 60;
   const ampm = h24 >= 12 ? 'PM' : 'AM';
   const h12 = h24 % 12 || 12;
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+/** Normalize any date value to YYYY-MM-DD */
+function toDateStr(val: unknown): string {
+  if (!val) return '';
+  if (val instanceof Date) return val.toISOString().slice(0, 10);
+  return String(val).slice(0, 10);
 }
 
 const SCATTER_LEGEND = [
@@ -45,6 +52,9 @@ const SCATTER_LEGEND = [
   { label: 'Excused',   color: '#8e8e93' },
   { label: 'Permission',color: '#af52de' },
 ];
+
+// Fixed Y position for excused/permission dots (above the normal working range)
+const EXCUSED_Y = 7 * 60 - 20; // 6:40 — rendered above 7:00 line
 
 type ScatterTooltipProps = {
   active?: boolean;
@@ -61,6 +71,32 @@ function ArrivalTooltip({ active, payload }: ScatterTooltipProps) {
       <div>Status: <span className="font-medium" style={{ color: p.color }}>{p.status}</span></div>
       {p.minutes_late > 0 && <div>Min Late: <span className="font-medium">{p.minutes_late}</span></div>}
     </div>
+  );
+}
+
+// Custom donut label
+function DonutLabel({ cx, cy, total }: { cx: number; cy: number; total: number }) {
+  return (
+    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" className="fill-foreground">
+      <tspan x={cx} dy="-6" fontSize="22" fontWeight="700">{total}</tspan>
+      <tspan x={cx} dy="18" fontSize="10" fill="#94a3b8">days</tspan>
+    </text>
+  );
+}
+
+// Custom legend renderer for donuts
+function renderLegend(props: { payload?: { value: string; color: string; payload: { value: number } }[] }) {
+  const items = props.payload ?? [];
+  return (
+    <ul className="flex flex-col gap-1 pl-2">
+      {items.map((e, i) => (
+        <li key={i} className="flex items-center gap-1.5 text-[11px] text-slate-600">
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: e.color }} />
+          <span>{e.value}</span>
+          <span className="font-semibold ml-auto pl-3">{e.payload.value}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -84,34 +120,56 @@ export function AttendancePanel({ stats, onClose }: Props) {
     { name: 'Permission', value: stats.permission, color: '#af52de' },
   ].filter(d => d.value > 0);
 
-  const recentRows = [...stats.rows].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
+  const recentRows = [...stats.rows]
+    .sort((a, b) => toDateStr(b.date).localeCompare(toDateStr(a.date)))
+    .slice(0, 20);
 
-  // Arrival scatter data (chronological)
-  const scatterPoints = computeArrivalScatter(stats.rows);
-  // For the connecting line we only use rows with actual entry times
-  const linePoints = scatterPoints.filter(p => p.minutesSinceMidnight !== null);
+  // Arrival scatter — show excused/permission at a fixed Y so they appear
+  const scatterPoints = computeArrivalScatter(stats.rows).map(p => ({
+    ...p,
+    // if no entry time (excused/permission), plot at fixed top position
+    minutesSinceMidnight: p.minutesSinceMidnight ?? (
+      (p.status === 'Excused (PTO/FH/Perm)' || p.status === 'Permission')
+        ? EXCUSED_Y
+        : null
+    ),
+  }));
 
-  // Y-axis ticks: 7:00 AM to 1:00 PM in 30-min steps
-  const yTicks = [7*60, 7*60+30, 8*60, 8*60+30, 9*60, 9*60+10, 9*60+30, 10*60, 11*60, 12*60, 13*60];
-
-  // X-axis: show a tick every ~10 points to avoid crowding
+  const yTicks = [EXCUSED_Y, 7*60, 7*60+30, 8*60, 8*60+30, 9*60, 9*60+10, 9*60+30, 10*60, 11*60];
   const step = Math.max(1, Math.floor(scatterPoints.length / 10));
-  const xTickIndices = new Set(scatterPoints.map((_, i) => i).filter(i => i % step === 0));
+
+  const totalArrival   = arrivalData.reduce((s, d) => s + d.value, 0);
+  const totalReporting = reportingData.reduce((s, d) => s + d.value, 0);
 
   return (
     <>
       {/* Overlay */}
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      {/* Panel */}
-      <div className="fixed top-0 right-0 bottom-0 w-full max-w-2xl bg-white z-50 overflow-y-auto shadow-2xl flex flex-col">
+      {/* Panel — wider: max-w-3xl */}
+      <div className="fixed top-0 right-0 bottom-0 w-full max-w-3xl bg-white z-50 overflow-y-auto shadow-2xl flex flex-col">
+
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-border px-7 py-5 flex items-start justify-between z-10">
           <div>
             <div className="text-xl font-bold tracking-tight">{stats.name}</div>
-            <div className="text-sm text-muted-foreground mt-0.5">{stats.schedule}</div>
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
+              <span className="text-sm text-muted-foreground">{stats.schedule}</span>
+              {stats.role && (
+                <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">
+                  <Briefcase className="w-3 h-3" />
+                  {stats.role}
+                </span>
+              )}
+              {stats.manager && (
+                <span className="flex items-center gap-1 text-xs bg-slate-50 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full font-medium">
+                  <User className="w-3 h-3" />
+                  {stats.manager}
+                </span>
+              )}
+            </div>
           </div>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-border transition-colors">
+            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-border transition-colors shrink-0 ml-4">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -119,11 +177,11 @@ export function AttendancePanel({ stats, onClose }: Props) {
         <div className="p-7 flex flex-col gap-6">
           {/* Mini KPIs */}
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            <MiniKpi label="Days"       value={stats.days}                    color="#0071e3" />
-            <MiniKpi label="On Time"    value={stats.onTime}                  color="#34c759" />
-            <MiniKpi label="Reported"   value={stats.reported}                color="#ff9f0a" />
-            <MiniKpi label="Unreported" value={stats.unreported}              color="#ff3b30" />
-            <MiniKpi label="Avg Min"    value={stats.avgMinLate.toFixed(1)}   color="#636366" />
+            <MiniKpi label="Days"       value={stats.days}                        color="#0071e3" />
+            <MiniKpi label="On Time"    value={stats.onTime}                      color="#34c759" />
+            <MiniKpi label="Reported"   value={stats.reported}                    color="#ff9f0a" />
+            <MiniKpi label="Unreported" value={stats.unreported}                  color="#ff3b30" />
+            <MiniKpi label="Avg Min"    value={stats.avgMinLate.toFixed(1)}       color="#636366" />
             <MiniKpi label="% On-Time"  value={`${stats.pctOnTime.toFixed(0)}%`} color="#34c759" />
           </div>
 
@@ -133,10 +191,9 @@ export function AttendancePanel({ stats, onClose }: Props) {
               <div className="w-0.5 h-3.5 bg-primary rounded-full" />
               Arrival Trend (Day-by-Day)
             </div>
-            <div className="text-xs text-muted-foreground mb-2">
-              Each dot = one workday. Color = lateness bracket. Blue line traces chronological sequence.
-            </div>
-            {/* Legend */}
+            <p className="text-xs text-muted-foreground mb-2">
+              Each dot = one workday. Excused / Permission days are plotted at the top.
+            </p>
             <div className="flex flex-wrap gap-3 mb-3">
               {SCATTER_LEGEND.map(l => (
                 <div key={l.label} className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -147,10 +204,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
             </div>
             <div className="bg-white border border-border rounded-xl p-4" style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={scatterPoints}
-                  margin={{ top: 8, right: 12, left: 10, bottom: 0 }}
-                >
+                <ComposedChart data={scatterPoints} margin={{ top: 8, right: 12, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e5ea" />
                   <XAxis
                     dataKey="label"
@@ -161,21 +215,21 @@ export function AttendancePanel({ stats, onClose }: Props) {
                     height={42}
                   />
                   <YAxis
-                    domain={[7 * 60, 13 * 60]}
+                    domain={[EXCUSED_Y - 5, 11 * 60]}
                     ticks={yTicks}
-                    tickFormatter={fmtMinutes}
+                    tickFormatter={v => v === EXCUSED_Y ? 'Excused' : fmtMinutes(v)}
                     tick={{ fontSize: 10 }}
-                    width={62}
+                    width={66}
                   />
                   <Tooltip content={<ArrivalTooltip />} />
-                  {/* Reference bands */}
-                  <ReferenceLine y={9 * 60}       stroke="#34c759" strokeDasharray="4 3" strokeWidth={1.5}
+                  <ReferenceLine y={EXCUSED_Y} stroke="#8e8e93" strokeDasharray="4 3" strokeWidth={1}
+                    label={{ value: 'Excused/Perm', position: 'insideTopRight', fontSize: 9, fill: '#8e8e93' }} />
+                  <ReferenceLine y={9 * 60} stroke="#34c759" strokeDasharray="4 3" strokeWidth={1.5}
                     label={{ value: '9:00 AM', position: 'insideTopRight', fontSize: 9, fill: '#34c759' }} />
-                  <ReferenceLine y={9 * 60 + 10}  stroke="#ff9f0a" strokeDasharray="4 3" strokeWidth={1}
+                  <ReferenceLine y={9 * 60 + 10} stroke="#ff9f0a" strokeDasharray="4 3" strokeWidth={1}
                     label={{ value: '9:10', position: 'insideTopRight', fontSize: 9, fill: '#ff9f0a' }} />
-                  <ReferenceLine y={9 * 60 + 30}  stroke="#ff6b00" strokeDasharray="4 3" strokeWidth={1}
+                  <ReferenceLine y={9 * 60 + 30} stroke="#ff6b00" strokeDasharray="4 3" strokeWidth={1}
                     label={{ value: '9:30', position: 'insideTopRight', fontSize: 9, fill: '#ff6b00' }} />
-                  {/* Connecting line (chronological) */}
                   <Line
                     dataKey="minutesSinceMidnight"
                     stroke="#1B3A6B"
@@ -185,7 +239,6 @@ export function AttendancePanel({ stats, onClose }: Props) {
                     connectNulls={false}
                     isAnimationActive={false}
                   />
-                  {/* Scatter dots */}
                   <Scatter dataKey="minutesSinceMidnight" isAnimationActive={false}>
                     {scatterPoints.map((p, i) => (
                       <Cell key={i} fill={p.color} stroke="#fff" strokeWidth={1} r={4} />
@@ -196,45 +249,76 @@ export function AttendancePanel({ stats, onClose }: Props) {
             </div>
           </div>
 
-          {/* Arrival breakdown bar */}
-          <div>
-            <div className="flex items-center gap-2 text-sm font-semibold mb-3">
-              <div className="w-0.5 h-3.5 bg-primary rounded-full" />
-              Arrival Breakdown
+          {/* Arrival + Reporting donuts side by side */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Arrival Breakdown donut */}
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold mb-3">
+                <div className="w-0.5 h-3.5 bg-primary rounded-full" />
+                Arrival Breakdown
+              </div>
+              <div className="bg-white border border-border rounded-xl p-4" style={{ height: 220 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={arrivalData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="40%"
+                      cy="50%"
+                      innerRadius={52}
+                      outerRadius={78}
+                      paddingAngle={2}
+                      isAnimationActive={false}
+                    >
+                      {arrivalData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                    </Pie>
+                    <DonutLabel cx={arrivalData.length ? 90 : 110} cy={110} total={totalArrival} />
+                    <Legend
+                      layout="vertical"
+                      align="right"
+                      verticalAlign="middle"
+                      content={renderLegend as unknown as React.FC}
+                    />
+                    <Tooltip formatter={(v, n) => [v, n]} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <div className="bg-white border border-border rounded-xl p-4" style={{ height: 200 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={arrivalData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5ea" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {arrivalData.map((d, i) => <Cell key={i} fill={d.color} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
 
-          {/* Reporting chart */}
-          <div>
-            <div className="flex items-center gap-2 text-sm font-semibold mb-3">
-              <div className="w-0.5 h-3.5 bg-primary rounded-full" />
-              Reporting Breakdown
-            </div>
-            <div className="bg-white border border-border rounded-xl p-4" style={{ height: 200 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={reportingData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5ea" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {reportingData.map((d, i) => <Cell key={i} fill={d.color} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            {/* Reporting Breakdown donut */}
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold mb-3">
+                <div className="w-0.5 h-3.5 bg-primary rounded-full" />
+                Reporting Breakdown
+              </div>
+              <div className="bg-white border border-border rounded-xl p-4" style={{ height: 220 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={reportingData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="40%"
+                      cy="50%"
+                      innerRadius={52}
+                      outerRadius={78}
+                      paddingAngle={2}
+                      isAnimationActive={false}
+                    >
+                      {reportingData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                    </Pie>
+                    <DonutLabel cx={arrivalData.length ? 90 : 110} cy={110} total={totalReporting} />
+                    <Legend
+                      layout="vertical"
+                      align="right"
+                      verticalAlign="middle"
+                      content={renderLegend as unknown as React.FC}
+                    />
+                    <Tooltip formatter={(v, n) => [v, n]} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
@@ -256,8 +340,8 @@ export function AttendancePanel({ stats, onClose }: Props) {
                 </thead>
                 <tbody>
                   {recentRows.map((r: AttendanceRow, i: number) => (
-                    <tr key={i} className="border-b border-border/50">
-                      <td className="px-3 py-2 font-mono">{r.date}</td>
+                    <tr key={i} className="border-b border-border/50 hover:bg-muted/20">
+                      <td className="px-3 py-2 font-mono">{toDateStr(r.date)}</td>
                       <td className="px-3 py-2">{r.entry_time ?? '—'}</td>
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center gap-1">
