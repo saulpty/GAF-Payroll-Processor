@@ -299,7 +299,7 @@ export function computeDerivedFields(entry: Partial<PayrollEntry>, fullDayMinute
 // ── Classification config (DB-driven, editable) ─────────────────────────────
 
 export interface ClassificationConfig {
-  tft_late_red_threshold_minutes: number;   // default 30
+
   non_grace_auto_resolve: boolean;          // default true — non-grace late auto-resolves GREEN/Unpaid
   non_grace_auto_impact: string;            // default 'Unpaid (without Grace)'
   early_leave_auto_impact: string;          // default '' (operator decides)
@@ -307,7 +307,6 @@ export interface ClassificationConfig {
 }
 
 export const DEFAULT_CLASSIFICATION_CONFIG: ClassificationConfig = {
-  tft_late_red_threshold_minutes: 30,
   non_grace_auto_resolve: true,
   non_grace_auto_impact: 'Unpaid (without Grace)',
   early_leave_auto_impact: '',
@@ -321,7 +320,7 @@ export function buildClassificationConfig(
   const get = (k: string, fallback: string) =>
     rows.find(r => r.key === k)?.value ?? fallback;
   return {
-    tft_late_red_threshold_minutes: parseInt(get('tft_late_red_threshold_minutes', '30'), 10) || 30,
+
     non_grace_auto_resolve: get('non_grace_auto_resolve', 'true') === 'true',
     non_grace_auto_impact: get('non_grace_auto_impact', 'Unpaid (without Grace)'),
     early_leave_auto_impact: get('early_leave_auto_impact', ''),
@@ -532,15 +531,16 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
             et1 = 'PTO';
             pi1 = 'Paid';
           } else if (rtLower.includes('time for time')) {
-            pi1 = 'Paid via Time-for-Time';
+            pi1 = '';
           }
         }
+        const isTftPerm = rtLower.includes('time for time');
         const entry = buildEntry({ ...baseEntry }, {
           event_type_1: et1, pay_impact_1: pi1,
           event_type_2: '', pay_impact_2: '',
           documentation: 'Form Submitted', notes: '',
-          auto_notes: `Permission: ${fullDayPerm.requestType}`,
-          initial_status: 'GREEN',
+          auto_notes: `Permission: ${fullDayPerm.requestType}${isTftPerm ? ' — TFT on file, operator must review.' : ''}`,
+          initial_status: isTftPerm ? 'YELLOW' : 'GREEN',
         });
         results.push(entry);
         continue;
@@ -636,11 +636,12 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
       const early_leave_minutes = Math.max(0, schedEndMins - exitMins);
 
       const hasTardForm = tardinessForms.length > 0;
-      // TFT = Time-for-Time: require explicit "time for time", "tft", or "time adjustment"
-      // — "time" or "adjustment" alone are NOT sufficient to avoid false positives
+      // TFT = Time-for-Time detection:
+      // Adjustments board (compensation type): "Time for Time", "Late Time Payback (Tardiness Compensation)", "tft", "time adjustment"
+      // Permissions board (permission type): "Time for Time", "Time for Time (days)", "tft"
       const hasTft = adjustments.some(a => {
           const t = a.adjustmentType.toLowerCase();
-          return t.includes('time for time') || t.includes('tft') || t.includes('time adjustment');
+          return t.includes('time for time') || t.includes('tft') || t.includes('time adjustment') || t.includes('late time payback');
         }) || permissions.some(p => {
           const t = p.requestType.toLowerCase();
           return t.includes('time for time') || t.includes('tft');
@@ -654,17 +655,12 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
       if (late_minutes > 0) {
         et1 = 'Tardanza';
 
-        // Rule: TFT on file + late > threshold → RED, operator must review
-        if (hasTft && late_minutes > cfg.tft_late_red_threshold_minutes) {
+        // Rule: TFT on file → always YELLOW regardless of minutes late.
+        // Operator reviews and sets pay impact manually.
+        if (hasTft) {
           pi1 = '';
-          initial_status = 'RED';
-          autoNotes = `Late ${late_minutes} min. TFT on file but late > ${cfg.tft_late_red_threshold_minutes} min — escalated to RED for review.`;
-
-        // Rule: TFT on file + late ≤ threshold → YELLOW, operator verifies
-        } else if (hasTft) {
-          pi1 = '';
-          autoNotes = `Late ${late_minutes} min. TFT on file — verify.`;
           initial_status = 'YELLOW';
+          autoNotes = `Late ${late_minutes} min. TFT on file — operator must review.`;
 
         // Grace-list employees
         // Policy: grace only applies if (a) form filed AND (b) late ≤ grace_minutes.
