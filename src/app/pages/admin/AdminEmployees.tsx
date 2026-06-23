@@ -88,8 +88,6 @@ export default function AdminEmployees() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <Users className="w-6 h-6 text-slate-600" />
-          <h2 className="text-xl font-bold">Employees</h2>
           <div className="flex gap-2">
             <Badge variant="outline" className="text-xs">{activeCount} active</Badge>
             {inactiveCount > 0 && <Badge variant="secondary" className="text-xs">{inactiveCount} inactive</Badge>}

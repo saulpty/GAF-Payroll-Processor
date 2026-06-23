@@ -116,10 +116,12 @@ export default function PayrollMaster() {
     setSavedIds(new Set());
   }, [globalPeriod, globalEmployee, searchParams]);
 
-  const [rows, loading, , reload] = useLoadAction(loadPayrollMasterAction, [] as EntryRow[], params);
+  const hasPeriod = !!params.periodName;
+
+  const [rows, loading, , reload] = useLoadAction(loadPayrollMasterAction, [] as EntryRow[], params, { enabled: hasPeriod });
   const [countData] = useLoadAction(countPayrollMasterAction, [] as { total: number }[], {
     periodName: params.periodName, employeeName: params.employeeName, status: params.status,
-  });
+  }, { enabled: hasPeriod });
 
   const total = (countData as { total: number }[])[0]?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -394,6 +396,18 @@ export default function PayrollMaster() {
     </th>
   );
 
+  if (!hasPeriod) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-8">
+        <TableIcon className="w-10 h-10 text-slate-300" />
+        <h2 className="text-lg font-semibold text-slate-600">Select a Period</h2>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          Use the <span className="font-medium text-slate-700">Period</span> filter above to choose a payroll period before loading records.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full p-6 gap-4 overflow-hidden">
       {toastMsg && (
@@ -405,8 +419,6 @@ export default function PayrollMaster() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3 shrink-0">
         <div className="flex items-center gap-3">
-          <TableIcon className="w-6 h-6 text-green-600" />
-          <h1 className="text-xl font-bold">Payroll Master</h1>
           {total > 0 && <span className="text-sm text-muted-foreground">{total.toLocaleString()} rows</span>}
         </div>
         <div className="flex items-center gap-2">

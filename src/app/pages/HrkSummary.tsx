@@ -167,13 +167,7 @@ export default function HrkSummary() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center">
-            <FileSpreadsheet className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">HRK Summary</h1>
-            <p className="text-xs text-slate-500">Payroll export for HR consultant</p>
-          </div>
+          <p className="text-xs text-slate-500">Payroll export for HR consultant</p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">

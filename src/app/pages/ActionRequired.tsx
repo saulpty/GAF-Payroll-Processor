@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import {
-  AlertTriangle, CheckCircle, Loader2, ChevronUp, ChevronDown,
+  CheckCircle, Loader2, ChevronUp, ChevronDown,
   ChevronsUpDown, Search, X, Edit2, GitCommit, ChevronRight,
   Square, CheckSquare, Send, ClipboardList, RotateCcw,
 } from 'lucide-react';
@@ -18,7 +18,7 @@ import loadEventTypeRulesAction from '@/actions/loadEventTypeRules';
 import loadPayImpactsAction from '@/actions/loadPayImpacts';
 import loadDocumentationOptionsAction from '@/actions/loadDocumentationOptions';
 import loadEventTypesAction from '@/actions/loadEventTypes';
-import loadUnresolvedCountAction from '@/actions/loadUnresolvedCount';
+
 import { computeDerivedFields } from '@/app/lib/classificationEngine';
 
 type EntryRow = {
@@ -109,7 +109,7 @@ export default function ActionRequired() {
   const [payImpacts] = useLoadAction(loadPayImpactsAction, [] as { name: string }[]);
   const [docOptions] = useLoadAction(loadDocumentationOptionsAction, [] as { name: string }[]);
   const [eventTypes] = useLoadAction(loadEventTypesAction, [] as { id: number; name: string }[]);
-  const [unresolvedData] = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
+
   const [eventRulesRaw] = useLoadAction(loadEventTypeRulesAction, [] as { event_type: string; default_pay_impact: string; default_doc_option: string }[]);
 
   const [params, setParams] = useState({ periodName: selectedPeriod });
@@ -131,7 +131,7 @@ export default function ActionRequired() {
   const [sessionCommitted, setSessionCommitted] = useState<Set<number>>(new Set());
   const [revertingIds, setRevertingIds] = useState<Set<number>>(new Set());
 
-  const unresolvedCount = (unresolvedData as { count: number }[])[0]?.count ?? 0;
+
   const impactOptions = (payImpacts as { name: string }[]).map(p => p.name);
   const docOpts = (docOptions as { name: string }[]).map(d => d.name);
   const eventOpts = (eventTypes as { name: string }[]).map(e => e.name);
@@ -346,19 +346,6 @@ export default function ActionRequired() {
   return (
     <div className="flex flex-col h-full p-5 gap-4 overflow-hidden">
 
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="w-6 h-6 text-yellow-500 shrink-0" />
-          <h1 className="text-xl font-bold">Action Required</h1>
-          {unresolvedCount > 0 && <Badge variant="destructive" className="text-xs">{unresolvedCount} unresolved</Badge>}
-        </div>
-        {selectedPeriod && (
-          <span className="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-2 rounded-lg">
-            {selectedPeriod}
-          </span>
-        )}
-      </div>
 
       {/* ── Empty states ────────────────────────────────────────── */}
       {!selectedPeriod && (
@@ -373,12 +360,7 @@ export default function ActionRequired() {
                 Choose a pay period from the Period filter above to review and resolve unresolved entries.
               </p>
             </div>
-            {unresolvedCount > 0 && (
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span><strong>{unresolvedCount}</strong> entries still need attention across all periods.</span>
-              </div>
-            )}
+
           </CardContent>
         </Card>
       )}
@@ -585,7 +567,7 @@ export default function ActionRequired() {
             className="w-full flex items-center gap-3 px-4 py-3 bg-green-50 border-b border-green-200 hover:bg-green-100 transition-colors text-left"
           >
             <GitCommit className="w-4 h-4 text-green-600 shrink-0" />
-            <span className="text-sm font-semibold text-green-800">Committed → On the way to GREEN</span>
+            <span className="text-sm font-semibold text-green-800">Committed to GREEN</span>
             <Badge className="bg-green-600 text-white text-xs ml-1">{committed.length}</Badge>
             {sessionCommitted.size > 0 && (
               <span className="text-xs text-green-600 font-medium ml-1">({sessionCommitted.size} this session)</span>

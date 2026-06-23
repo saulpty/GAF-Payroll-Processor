@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { History, Loader2, Trash2, ArrowRight, AlertCircle, FileSpreadsheet, Download } from 'lucide-react';
+import { Loader2, Trash2, ArrowRight, AlertCircle, FileSpreadsheet, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import deletePeriodAction from '@/actions/deletePeriod';
@@ -98,9 +98,7 @@ export default function PeriodLog() {
       )}
 
       <div className="flex items-center gap-3 mb-6">
-        <History className="w-6 h-6 text-slate-600" />
-        <h1 className="text-2xl font-bold">Period Log</h1>
-        <span className="text-sm text-muted-foreground">({allPeriods.length} periods)</span>
+        <span className="text-sm text-muted-foreground">{allPeriods.length} periods</span>
       </div>
 
       {loading && <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>}

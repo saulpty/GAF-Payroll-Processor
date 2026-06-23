@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { Tag, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import loadNameAliasesAdminAction from '@/actions/loadNameAliasesAdmin';
@@ -35,9 +35,7 @@ export default function AdminAliases() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Tag className="w-6 h-6" /><h2 className="text-xl font-bold">Name Aliases</h2>
-      </div>
+
       <p className="text-sm text-muted-foreground mb-4">
         Maps variant name spellings from Monday.com boards to canonical employees. Matching is case- and accent-insensitive.
       </p>
