@@ -343,6 +343,7 @@ export interface EngineInput {
   mondayPermissions: MondayPermissionRow[];
   outageDates: string[];       // YYYY-MM-DD strings
   midDayPull: boolean;
+  midDayPullDate?: string;     // YYYY-MM-DD date the export was pulled (defaults to today)
   excludedEmployeeIds: number[];
   nameMap: Map<string, number>;   // normalized name → employee id (built from display_name + aliases)
   config?: ClassificationConfig;  // optional; falls back to DEFAULT_CLASSIFICATION_CONFIG
@@ -391,7 +392,7 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
   const {
     periodName, employees, dstWindows, holidays, teramindData,
     mondayAttendance, mondayAdjustments, mondayPermissions,
-    outageDates, midDayPull, excludedEmployeeIds, nameMap,
+    outageDates, midDayPull, midDayPullDate, excludedEmployeeIds, nameMap,
   } = input;
 
   const cfg: ClassificationConfig = { ...DEFAULT_CLASSIFICATION_CONFIG, ...(input.config ?? {}) };
@@ -462,10 +463,11 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
       let tmEntry = teramindData.get(emp.teramind_email)?.get(dateStr) || null;
 
       // Mid-day pull: Teramind was exported before the day ended, so exits look
-      // artificially early. If the recorded exit is well before the scheduled end,
-      // backfill it to the employee's scheduled end (DST-aware) — NOT a hardcoded
-      // clock time. Schedules end at 3/4/5 PM depending on the person and season.
-      if (tmEntry && midDayPull) {
+      // artificially early. Only apply the backfill on the specific date the export
+      // was pulled (midDayPullDate, defaults to today). Prior days in the period
+      // already have complete data and should NOT be altered.
+      const pullDate = midDayPullDate ?? toLocalYMD(new Date());
+      if (tmEntry && midDayPull && dateStr === pullDate) {
         const exitMins = tmEntry.exit.getHours() * 60 + tmEntry.exit.getMinutes();
         const schedEndMins = parseTimeToMinutes(sched.end);
         if (exitMins < schedEndMins - 30) {

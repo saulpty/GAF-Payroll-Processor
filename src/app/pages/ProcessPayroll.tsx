@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { useNavigate } from 'react-router-dom';
 
@@ -89,6 +90,7 @@ function PeriodCard({ p, unresolvedCount, onClick }: { p: Period; unresolvedCoun
 
 export default function ProcessPayroll() {
   const navigate = useNavigate();
+  const { bumpPeriodsVersion } = useGlobalFilters();
   const [employees] = useLoadAction(loadEmployeesAction, [] as Employee[]);
   const [dstCalendar] = useLoadAction(loadDstCalendarAction, [] as DstWindow[]);
   const [holidays] = useLoadAction(loadHolidaysAction, [] as { date: string; name: string }[]);
@@ -421,6 +423,7 @@ export default function ProcessPayroll() {
       mondayPermissions: permissions,
       outageDates,
       midDayPull,
+      midDayPullDate: midDayPull ? new Date().toLocaleDateString('en-CA') : undefined,
       excludedEmployeeIds: excludedIds,
       nameMap,
       config: buildClassificationConfig(cfgRows),
@@ -454,6 +457,7 @@ export default function ProcessPayroll() {
       const empCount = new Set(entries.map(e => e.employee_id)).size;
       const dayCount = new Set(entries.map(e => e.work_date)).size;
       await upsertPer({ period_name: periodName, start_date: startDate, end_date: endDate, employee_count: empCount, day_count: dayCount, green_count: green, yellow_count: yellow, red_count: red });
+      bumpPeriodsVersion();
     }
 
     log(`✓ Done — ${green} GREEN · ${yellow} YELLOW · ${red} RED`);

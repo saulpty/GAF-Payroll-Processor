@@ -8,6 +8,8 @@ function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); 
 export type DayPreset = 30 | 60 | 90 | null;
 
 export interface GlobalFilters {
+  periodsVersion: number;
+  bumpPeriodsVersion: () => void;
   period: string;
   setPeriod: (v: string) => void;
   dateFrom: string;
@@ -36,6 +38,8 @@ const DEFAULT_FROM = daysAgo(30);
 const GlobalFilterContext = createContext<GlobalFilters | null>(null);
 
 export function GlobalFilterProvider({ children }: { children: ReactNode }) {
+  const [periodsVersion, setPeriodsVersion] = useState(0);
+  const bumpPeriodsVersion = () => setPeriodsVersion(v => v + 1);
   const [period,    setPeriod]    = useState('');
   const [dateFrom,  setDateFromRaw] = useState(DEFAULT_FROM);
   const [dateTo,    setDateToRaw]   = useState(TODAY);
@@ -75,6 +79,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
   };
 
   const value = useMemo(() => ({
+    periodsVersion, bumpPeriodsVersion,
     period, setPeriod,
     dateFrom, setDateFrom,
     dateTo, setDateTo,

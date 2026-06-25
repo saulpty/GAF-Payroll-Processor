@@ -27,3 +27,4 @@ Applied migrations:
 1781401600_fix_grace_list_tardanza_planilla2 at 2026-06-22T20:56:19.882Z
 1781401700_fix_grace_list_tardanza_all_periods at 2026-06-22T21:00:27.287Z
 1781401800_fix_tft_red_to_yellow_all_periods at 2026-06-23T18:59:16.596Z
+1781401900_fix_ampm_entry_times_planilla2_junio at 2026-06-25T20:02:54.452Z

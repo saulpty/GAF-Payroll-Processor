@@ -2,7 +2,7 @@ import { useLocation } from 'react-router-dom';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useLoadAction } from '@uibakery/data';
 import { X, SlidersHorizontal } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import type { EmpInfo } from '@/app/lib/attendanceStats';
@@ -46,6 +46,7 @@ export default function FilterBar() {
   const cfg = getConfig(location.pathname);
 
   const {
+    periodsVersion,
     period, setPeriod,
     dateFrom, setDateFrom,
     dateTo, setDateTo,
@@ -58,8 +59,16 @@ export default function FilterBar() {
     hasAny, clearAll,
   } = useGlobalFilters();
 
-  const [periodsRaw] = useLoadAction(loadPeriodsAction, [] as { period_name: string }[]);
+  const [periodsRaw, , , refetchPeriods] = useLoadAction(loadPeriodsAction, [] as { period_name: string }[]);
   const [empsRaw]    = useLoadAction(loadAttendanceEmployeesAction, [] as EmpInfo[]);
+
+  const versionRef = useRef(periodsVersion);
+  useEffect(() => {
+    if (periodsVersion !== versionRef.current) {
+      versionRef.current = periodsVersion;
+      refetchPeriods();
+    }
+  }, [periodsVersion, refetchPeriods]);
 
   const periods = (periodsRaw as { period_name: string }[])
     .filter(p => !!p.period_name?.trim());

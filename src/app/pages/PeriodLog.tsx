@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { Loader2, Trash2, ArrowRight, AlertCircle, FileSpreadsheet, Download } from 'lucide-react';
+import { Loader2, Trash2, ArrowRight, AlertCircle, FileSpreadsheet, Download, Pencil, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import deletePeriodAction from '@/actions/deletePeriod';
 import deletePeriodEntriesAction from '@/actions/deletePeriodEntries';
 import deletePeriodSnapshotsAction from '@/actions/deletePeriodSnapshots';
+import renamePeriodAction from '@/actions/renamePeriod';
 import loadHrkExportsAction from '@/actions/loadHrkExports';
 
 type Period = {
@@ -26,16 +28,23 @@ function escapeCsv(v: string | number | null | undefined): string {
 }
 
 export default function PeriodLog() {
+  const { bumpPeriodsVersion, period: globalPeriod, setPeriod: setGlobalPeriod } = useGlobalFilters();
   const [periods, loading, , refetch] = useLoadAction(loadPeriodsAction, [] as Period[]);
   const [deletePeriod, deleting] = useMutateAction(deletePeriodAction);
   const [deletePeriodEntries] = useMutateAction(deletePeriodEntriesAction);
   const [deletePeriodSnapshots] = useMutateAction(deletePeriodSnapshotsAction);
+  const [renamePeriod, renaming] = useMutateAction(renamePeriodAction);
   const [hrkExports] = useLoadAction(loadHrkExportsAction, [] as HrkExport[]);
   const exportList = hrkExports as HrkExport[];
   const [deletingName, setDeletingName] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const [confirmPeriod, setConfirmPeriod] = useState<string | null>(null);
+
+  // Rename state
+  const [renamingPeriod, setRenamingPeriod] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState('');
 
   const handleDelete = async (e: React.MouseEvent, periodName: string) => {
     e.stopPropagation();
@@ -50,9 +59,45 @@ export default function PeriodLog() {
       await deletePeriodEntries({ periodName: confirmPeriod });
       await deletePeriodSnapshots({ periodName: confirmPeriod });
       await deletePeriod({ periodName: confirmPeriod });
+      // If deleted period was selected in global filter, clear it
+      if (globalPeriod === confirmPeriod) setGlobalPeriod('');
       refetch();
+      bumpPeriodsVersion();
     } finally {
       setDeletingName(null);
+    }
+  };
+
+  const startRename = (e: React.MouseEvent, periodName: string) => {
+    e.stopPropagation();
+    setRenamingPeriod(periodName);
+    setRenameValue(periodName);
+    setRenameError('');
+  };
+
+  const cancelRename = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setRenamingPeriod(null);
+    setRenameValue('');
+    setRenameError('');
+  };
+
+  const confirmRename = async (e: React.MouseEvent, oldName: string) => {
+    e.stopPropagation();
+    const newName = renameValue.trim();
+    if (!newName) { setRenameError('Name cannot be empty.'); return; }
+    if (newName === oldName) { cancelRename(); return; }
+    const existingNames = (periods as Period[]).map(p => p.period_name);
+    if (existingNames.includes(newName)) { setRenameError('A period with that name already exists.'); return; }
+    try {
+      await renamePeriod({ oldName, newName });
+      // If the renamed period was active in the global filter, update it
+      if (globalPeriod === oldName) setGlobalPeriod(newName);
+      setRenamingPeriod(null);
+      refetch();
+      bumpPeriodsVersion();
+    } catch {
+      setRenameError('Rename failed. Please try again.');
     }
   };
 
@@ -147,11 +192,8 @@ export default function PeriodLog() {
                       <td className="px-3 py-2 border-r text-xs text-muted-foreground">{ex.exported_by || '—'}</td>
                       <td className="px-3 py-2 border-r text-center">{employeeCount}</td>
                       <td className="px-3 py-2 text-center">
-                        <button
-                          onClick={reDownload}
-                          title="Re-download CSV"
-                          className="p-1 rounded hover:bg-indigo-100 text-indigo-500 hover:text-indigo-700 transition-colors"
-                        >
+                        <button onClick={reDownload} title="Re-download CSV"
+                          className="p-1 rounded hover:bg-indigo-100 text-indigo-500 hover:text-indigo-700 transition-colors">
                           <Download className="w-4 h-4" />
                         </button>
                       </td>
@@ -175,40 +217,78 @@ export default function PeriodLog() {
               </tr>
             </thead>
             <tbody>
-              {allPeriods.map(p => (
-                <tr
-                  key={p.period_name}
-                  className="border-b hover:bg-blue-50 cursor-pointer group"
-                  onClick={() => navigate(`/payroll-master?period=${encodeURIComponent(p.period_name)}`)}
-                >
-                  <td className="px-3 py-2 border-r font-semibold text-blue-700">{p.period_name}</td>
-                  <td className="px-3 py-2 border-r font-mono text-xs whitespace-nowrap">
-                    {p.start_date?.slice(0,10)} → {p.end_date?.slice(0,10)}
-                  </td>
-                  <td className="px-3 py-2 border-r text-xs text-muted-foreground whitespace-nowrap">{p.processed_at?.slice(0,16)}</td>
-                  <td className="px-3 py-2 border-r text-center">{p.employee_count}</td>
-                  <td className="px-3 py-2 border-r text-center">{p.day_count}</td>
-                  <td className="px-3 py-2 border-r text-center font-semibold text-green-700 bg-[#C6EFCE]">{p.green_count}</td>
-                  <td className="px-3 py-2 border-r text-center font-semibold text-yellow-700 bg-[#FFEB9C]">{p.yellow_count}</td>
-                  <td className="px-3 py-2 border-r text-center font-semibold text-red-700 bg-[#FFC7CE]">{p.red_count}</td>
-                  <td className="px-3 py-2 border-r text-xs text-muted-foreground">{p.notes}</td>
-                  <td className="px-3 py-2 border-r text-center">
-                    <ArrowRight className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </td>
-                  <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
-                    <button
-                      className="p-1 rounded hover:bg-red-100 text-red-400 hover:text-red-700 disabled:opacity-40 transition-colors"
-                      title="Delete period"
-                      disabled={deleting || deletingName === p.period_name}
-                      onClick={e => handleDelete(e, p.period_name)}
-                    >
-                      {deletingName === p.period_name
-                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                        : <Trash2 className="w-4 h-4" />}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {allPeriods.map(p => {
+                const isRenaming = renamingPeriod === p.period_name;
+                return (
+                  <tr
+                    key={p.period_name}
+                    className="border-b hover:bg-blue-50 cursor-pointer group"
+                    onClick={() => !isRenaming && navigate(`/payroll-master?period=${encodeURIComponent(p.period_name)}`)}
+                  >
+                    {/* Period name cell — inline rename */}
+                    <td className="px-3 py-2 border-r font-semibold text-blue-700 min-w-[180px]" onClick={e => isRenaming && e.stopPropagation()}>
+                      {isRenaming ? (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1">
+                            <input
+                              autoFocus
+                              value={renameValue}
+                              onChange={e => { setRenameValue(e.target.value); setRenameError(''); }}
+                              onKeyDown={e => { if (e.key === 'Enter') confirmRename(e as unknown as React.MouseEvent, p.period_name); if (e.key === 'Escape') cancelRename(); }}
+                              className="flex-1 px-2 py-1 text-sm border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-300 text-slate-800"
+                              onClick={e => e.stopPropagation()}
+                            />
+                            <button onClick={e => confirmRename(e, p.period_name)} disabled={renaming}
+                              className="p-1 rounded text-green-600 hover:bg-green-100 disabled:opacity-40" title="Save rename">
+                              {renaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            </button>
+                            <button onClick={cancelRename} className="p-1 rounded text-slate-400 hover:bg-slate-100" title="Cancel">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          {renameError && <p className="text-xs text-red-600">{renameError}</p>}
+                        </div>
+                      ) : (
+                        p.period_name
+                      )}
+                    </td>
+                    <td className="px-3 py-2 border-r font-mono text-xs whitespace-nowrap">
+                      {p.start_date?.slice(0,10)} → {p.end_date?.slice(0,10)}
+                    </td>
+                    <td className="px-3 py-2 border-r text-xs text-muted-foreground whitespace-nowrap">{p.processed_at?.slice(0,16)}</td>
+                    <td className="px-3 py-2 border-r text-center">{p.employee_count}</td>
+                    <td className="px-3 py-2 border-r text-center">{p.day_count}</td>
+                    <td className="px-3 py-2 border-r text-center font-semibold text-green-700 bg-[#C6EFCE]">{p.green_count}</td>
+                    <td className="px-3 py-2 border-r text-center font-semibold text-yellow-700 bg-[#FFEB9C]">{p.yellow_count}</td>
+                    <td className="px-3 py-2 border-r text-center font-semibold text-red-700 bg-[#FFC7CE]">{p.red_count}</td>
+                    <td className="px-3 py-2 border-r text-xs text-muted-foreground">{p.notes}</td>
+                    <td className="px-3 py-2 border-r text-center">
+                      <ArrowRight className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </td>
+                    <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          className="p-1 rounded hover:bg-blue-100 text-blue-400 hover:text-blue-700 transition-colors"
+                          title="Rename period"
+                          onClick={e => startRename(e, p.period_name)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          className="p-1 rounded hover:bg-red-100 text-red-400 hover:text-red-700 disabled:opacity-40 transition-colors"
+                          title="Delete period"
+                          disabled={deleting || deletingName === p.period_name}
+                          onClick={e => handleDelete(e, p.period_name)}
+                        >
+                          {deletingName === p.period_name
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {allPeriods.length === 0 && (
                 <tr><td colSpan={11} className="text-center py-8 text-muted-foreground text-sm">No periods processed yet.</td></tr>
               )}
