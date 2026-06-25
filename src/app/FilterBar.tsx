@@ -62,10 +62,7 @@ export default function FilterBar() {
   const [empsRaw]    = useLoadAction(loadAttendanceEmployeesAction, [] as EmpInfo[]);
 
   const periods = (periodsRaw as { period_name: string }[])
-    .filter(p => {
-      const n = p.period_name?.toLowerCase().trim();
-      return n && !n.includes('test') && !n.includes('draft');
-    });
+    .filter(p => !!p.period_name?.trim());
 
   const emps = empsRaw as EmpInfo[];
   const managers = useMemo(() => [...new Set(emps.map(e => e.manager).filter(Boolean))].sort(), [emps]);
