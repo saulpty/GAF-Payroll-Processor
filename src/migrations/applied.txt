@@ -29,3 +29,4 @@ Applied migrations:
 1781401800_fix_tft_red_to_yellow_all_periods at 2026-06-23T18:59:16.596Z
 1781401900_fix_ampm_entry_times_planilla2_junio at 2026-06-25T20:02:54.452Z
 1781402000_add_work_days_to_schedules at 2026-06-29T15:10:25.924Z
+1781402100_add_soft_delete_to_payroll_entries at 2026-06-29T17:15:14.436Z

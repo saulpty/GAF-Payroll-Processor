@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import {
   TableIcon, Download, Loader2, ChevronUp, ChevronDown,
-  ChevronsUpDown, X, CheckCircle, Edit2, SquareCheck, Undo2,
+  ChevronsUpDown, X, CheckCircle, Edit2, SquareCheck, Undo2, Trash2, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,7 @@ import loadEventTypesAction from '@/actions/loadEventTypes';
 import loadEventTypeRulesAction from '@/actions/loadEventTypeRules';
 import updatePayrollEntryAction from '@/actions/updatePayrollEntry';
 import updateEntryExitAction from '@/actions/updateEntryExit';
+import softDeletePayrollEntryAction from '@/actions/softDeletePayrollEntry';
 import { computeDerivedFields, computeDiscount } from '@/app/lib/classificationEngine';
 
 type EntryRow = {
@@ -69,6 +70,13 @@ function SortIcon({ col, sortKey, sortDir }: { col: string; sortKey: SortKey; so
     : <ChevronDown className="w-3 h-3 inline ml-0.5 text-blue-600" />;
 }
 
+/** Shorten very long names to "First Last" (first token + last token). */
+function shortName(full: string): string {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length <= 2) return full;
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
 export default function PayrollMaster() {
   const [searchParams] = useSearchParams();
   const [payImpacts] = useLoadAction(loadPayImpactsAction, [] as { name: string }[]);
@@ -77,6 +85,7 @@ export default function PayrollMaster() {
   const [eventRulesRaw] = useLoadAction(loadEventTypeRulesAction, [] as { event_type: string; default_pay_impact: string }[]);
   const [updateEntry, saving] = useMutateAction(updatePayrollEntryAction);
   const [updateTimes] = useMutateAction(updateEntryExitAction);
+  const [softDeleteEntry] = useMutateAction(softDeletePayrollEntryAction);
 
   const { period: globalPeriod, employee: globalEmployee, pmTab: activeTab, setPmTab: setActiveTab } = useGlobalFilters();
   const [filterEvent, setFilterEvent] = useState('');
@@ -98,6 +107,8 @@ export default function PayrollMaster() {
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [undoSnapshot, setUndoSnapshot] = useState<UndoSnapshot | null>(null);
+  const [deleteConfirmRow, setDeleteConfirmRow] = useState<EntryRow | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [params, setParams] = useState({
     periodName: searchParams.get('period') || globalPeriod || '',
@@ -311,6 +322,21 @@ export default function PayrollMaster() {
     } finally { setBulkSaving(false); }
   };
 
+  const handleDelete = async () => {
+    if (!deleteConfirmRow) return;
+    const row = deleteConfirmRow;
+    setDeleteConfirmRow(null);
+    setDeletingId(row.id);
+    try {
+      await softDeleteEntry({ id: row.id, deletedBy: 'user' });
+      setToastMsg(`🗑 ${row.employee_name} — ${row.work_date.slice(0, 10)} deleted`);
+      setTimeout(() => setToastMsg(''), 3500);
+      await reload();
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       const next = sortDir === 'asc' ? 'desc' : null;
@@ -395,6 +421,41 @@ export default function PayrollMaster() {
       {toastMsg && (
         <div className="fixed top-4 right-4 z-50 bg-green-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm">
           <CheckCircle className="w-4 h-4" />{toastMsg}
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {deleteConfirmRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl border border-border p-6 max-w-md w-full mx-4">
+            <div className="flex items-start gap-3 mb-4">
+              <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-foreground mb-1">Delete Payroll Entry?</p>
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to delete the entry for{' '}
+                  <span className="font-medium text-foreground">{deleteConfirmRow.employee_name}</span>{' '}
+                  on <span className="font-medium text-foreground">{deleteConfirmRow.work_date.slice(0, 10)}</span>?
+                  <br />
+                  <span className="text-xs mt-1 block text-slate-500">This row will be moved to Deleted Items and can be restored from the Period Log.</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+                onClick={() => setDeleteConfirmRow(null)}
+              >
+                No, cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                onClick={handleDelete}
+              >
+                Yes, delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -547,15 +608,16 @@ export default function PayrollMaster() {
                       title="Select all visible rows"
                     />
                   </th>
-                  <Th col="employee_name" label="Employee" className="sticky left-0 bg-slate-100 z-30 min-w-36" />
-                  <Th col="work_date" label="Date" />
+                  <Th col="employee_name" label="Employee" className="sticky left-8 bg-slate-100 z-30 w-48 min-w-[12rem] max-w-[12rem]" />
+                  <th className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-slate-100 sticky left-[240px] z-30 w-8" title="Delete" />
+                  <Th col="work_date" label="Date" className="w-28 min-w-[6rem]" />
                   <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-24">
                     <Edit2 className="w-3 h-3 inline mr-1" />Entry
                   </th>
                   <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-24">
                     <Edit2 className="w-3 h-3 inline mr-1" />Exit
                   </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r text-slate-500">Sched</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r text-slate-500">Schedule</th>
                   <Th col="late_minutes" label="Late m" />
                   <Th col="early_leave_minutes" label="Early m" />
                   <Th col="discount_total_minutes" label="Disc m" />
@@ -567,12 +629,11 @@ export default function PayrollMaster() {
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r text-slate-500">Auto-Notes</th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r">Notes</th>
                   <Th col="status_current" label="Status" />
-                  <th className="w-16 px-2 py-2.5" />
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && (
-                  <tr><td colSpan={17} className="px-4 py-8 text-center text-muted-foreground text-sm">No records match the current filters.</td></tr>
+                  <tr><td colSpan={18} className="px-4 py-8 text-center text-muted-foreground text-sm">No records match the current filters.</td></tr>
                 )}
                 {filtered.map(row => {
                   const edit = getEdit(row);
@@ -587,7 +648,40 @@ export default function PayrollMaster() {
                       <td className="w-8 px-2 py-2 border-r text-center">
                         <input type="checkbox" className="rounded" checked={selectedIds.has(row.id)} onChange={() => toggleSelect(row.id)} />
                       </td>
-                      <td className={`px-3 py-2 font-medium whitespace-nowrap border-r sticky left-0 z-10 ${rowBg}`}>{row.employee_name}</td>
+                      <td className={`px-2 py-1.5 border-r sticky left-8 z-10 w-48 min-w-[12rem] max-w-[12rem] ${rowBg}`}>
+                        <div className="flex items-center gap-1 w-full overflow-hidden">
+                          <span className="font-medium text-sm truncate flex-1 min-w-0" title={row.employee_name}>
+                            {shortName(row.employee_name)}
+                          </span>
+                          {/* Inline save — only visible when dirty or just saved */}
+                          <span className="shrink-0">
+                            {saved && !dirty ? (
+                              <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                            ) : dirty ? (
+                              <button
+                                className="text-[10px] h-5 px-1.5 rounded bg-[#1B3A6B] hover:bg-[#152d54] text-white font-semibold disabled:opacity-50 transition-colors leading-none"
+                                disabled={isSavingRow || saving}
+                                onClick={() => handleSave(row)}
+                              >
+                                {isSavingRow ? <Loader2 className="w-3 h-3 animate-spin inline" /> : 'Save'}
+                              </button>
+                            ) : null}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Delete — sticky, always visible */}
+                      <td className={`px-1 py-1.5 text-center border-r sticky left-[240px] z-10 ${rowBg}`}>
+                        <button
+                          title="Delete entry"
+                          disabled={deletingId === row.id}
+                          onClick={() => setDeleteConfirmRow(row)}
+                          className="p-1 rounded hover:bg-red-100 text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+                        >
+                          {deletingId === row.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      </td>
                       <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0,10)}</td>
 
                       {/* Editable: Entry Time */}
@@ -697,21 +791,6 @@ export default function PayrollMaster() {
                         </span>
                       </td>
 
-                      {/* Save */}
-                      <td className="px-2 py-1.5 text-center">
-                        {saved && !dirty ? (
-                          <span className="inline-flex items-center gap-1 text-green-700 text-[11px] font-medium">
-                            <CheckCircle className="w-3.5 h-3.5" />Saved
-                          </span>
-                        ) : (
-                          <Button size="sm" variant={dirty ? 'default' : 'outline'}
-                            className={`text-xs h-7 px-3 ${dirty ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
-                            disabled={isSavingRow || saving || !dirty}
-                            onClick={() => handleSave(row)}>
-                            {isSavingRow ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
-                          </Button>
-                        )}
-                      </td>
                     </tr>
                   );
                 })}

@@ -1,5 +1,7 @@
-# HRK Summary Calculation Fixes
+# Soft-Delete Payroll Entries + Period Log Deleted Items
 
-[x] 1. Fix SQL: 104-base worked hours, new-hire partial base, filter pre-hire entries, fix constancia parsing from notes, flag Winston-style ambiguous notes
-[x] 2. Add constancia_hours column to HrkRow type and CSV/display in HrkSummary.tsx
-[x] 3. Lint
+[x] 1. Migration: add `deleted_at` and `deleted_by` to `payroll_entries`
+[x] 2. Actions: `softDeletePayrollEntry`, `restorePayrollEntry`, `loadDeletedEntries`
+[x] 3. Update `loadPayrollMaster` and `countPayrollMaster` to exclude deleted rows
+[x] 4. PayrollMaster: add delete button per row + confirm dialog
+[x] 5. PeriodLog: add "Deleted Items" collapsible section with restore button

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { Loader2, Trash2, ArrowRight, AlertCircle, FileSpreadsheet, Download, Pencil, Check, X } from 'lucide-react';
+import { Loader2, Trash2, ArrowRight, AlertCircle, FileSpreadsheet, Download, Pencil, Check, X, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import loadPeriodsAction from '@/actions/loadPeriods';
@@ -9,6 +9,8 @@ import deletePeriodEntriesAction from '@/actions/deletePeriodEntries';
 import deletePeriodSnapshotsAction from '@/actions/deletePeriodSnapshots';
 import renamePeriodAction from '@/actions/renamePeriod';
 import loadHrkExportsAction from '@/actions/loadHrkExports';
+import loadDeletedEntriesAction from '@/actions/loadDeletedEntries';
+import restorePayrollEntryAction from '@/actions/restorePayrollEntry';
 
 type Period = {
   period_name: string; start_date: string; end_date: string;
@@ -18,6 +20,15 @@ type Period = {
 
 type HrkExport = {
   id: number; period_name: string; exported_at: string; exported_by: string; summary_json: string;
+};
+
+type DeletedEntry = {
+  id: number; period_name: string; employee_name: string; work_date: string;
+  entry_time: string | null; exit_time: string | null;
+  scheduled_start: string; scheduled_end: string;
+  late_minutes: number; early_leave_minutes: number; discount_total_minutes: number;
+  event_type_1: string; pay_impact_1: string; event_type_2: string; pay_impact_2: string;
+  status_current: string; deleted_at: string; deleted_by: string;
 };
 
 function escapeCsv(v: string | number | null | undefined): string {
@@ -36,7 +47,13 @@ export default function PeriodLog() {
   const [renamePeriod, renaming] = useMutateAction(renamePeriodAction);
   const [hrkExports] = useLoadAction(loadHrkExportsAction, [] as HrkExport[]);
   const exportList = hrkExports as HrkExport[];
+  const [deletedEntriesRaw, deletedLoading, , refetchDeleted] = useLoadAction(loadDeletedEntriesAction, [] as DeletedEntry[], { periodName: '' });
+  const [restoreEntry] = useMutateAction(restorePayrollEntryAction);
+  const deletedEntries = deletedEntriesRaw as DeletedEntry[];
   const [deletingName, setDeletingName] = useState<string | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [restoringId, setRestoringId] = useState<number | null>(null);
+  const [restoreConfirmEntry, setRestoreConfirmEntry] = useState<DeletedEntry | null>(null);
   const navigate = useNavigate();
 
   const [confirmPeriod, setConfirmPeriod] = useState<string | null>(null);
@@ -101,6 +118,19 @@ export default function PeriodLog() {
     }
   };
 
+  const handleRestore = async () => {
+    if (!restoreConfirmEntry) return;
+    const entry = restoreConfirmEntry;
+    setRestoreConfirmEntry(null);
+    setRestoringId(entry.id);
+    try {
+      await restoreEntry({ id: entry.id });
+      await refetchDeleted();
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
   const allPeriods = periods as Period[];
   const totals = allPeriods.reduce(
     (acc, p) => ({
@@ -145,6 +175,36 @@ export default function PeriodLog() {
       <div className="flex items-center gap-3 mb-6">
         <span className="text-sm text-muted-foreground">{allPeriods.length} periods</span>
       </div>
+
+      {/* Restore confirmation dialog */}
+      {restoreConfirmEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl border border-border p-6 max-w-md w-full mx-4">
+            <div className="flex items-start gap-3 mb-4">
+              <RotateCcw className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-foreground mb-1">Restore Entry?</p>
+                <p className="text-sm text-muted-foreground">
+                  Restore the entry for{' '}
+                  <span className="font-medium text-foreground">{restoreConfirmEntry.employee_name}</span>{' '}
+                  on <span className="font-medium text-foreground">{restoreConfirmEntry.work_date.slice(0, 10)}</span>{' '}
+                  back into period <span className="font-medium text-foreground">"{restoreConfirmEntry.period_name}"</span>?
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+                onClick={() => setRestoreConfirmEntry(null)}
+              >No, cancel</button>
+              <button
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                onClick={handleRestore}
+              >Yes, restore</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading && <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>}
 
@@ -205,6 +265,80 @@ export default function PeriodLog() {
           </div>
         </div>
       )}
+
+      {/* Deleted Items section */}
+      <div className="mt-8">
+        <button
+          className="flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900 mb-3 select-none"
+          onClick={() => setShowDeleted(v => !v)}
+        >
+          {showDeleted ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          <Trash2 className="w-4 h-4 text-red-400" />
+          Deleted Items
+          {deletedEntries.length > 0 && (
+            <span className="ml-1 bg-red-100 text-red-700 text-xs font-bold rounded-full px-2 py-0.5">{deletedEntries.length}</span>
+          )}
+        </button>
+        {showDeleted && (
+          deletedLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="w-4 h-4 animate-spin" />Loading…</div>
+          ) : deletedEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">No deleted entries.</p>
+          ) : (
+            <div className="rounded-lg border overflow-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead className="bg-red-50 sticky top-0">
+                  <tr>
+                    {['Period', 'Employee', 'Date', 'Entry', 'Exit', 'Schedule', 'Late m', 'Early m', 'Disc m', 'Event 1', 'Impact 1', 'Event 2', 'Impact 2', 'Status', 'Deleted At', 'Deleted By', ''].map((h, i) => (
+                      <th key={i} className="px-3 py-2 text-left text-xs font-semibold border-b border-r last:border-r-0 whitespace-nowrap text-red-800">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {deletedEntries.map(entry => (
+                    <tr key={entry.id} className="border-b hover:bg-red-50/50 opacity-75">
+                      <td className="px-3 py-2 border-r text-xs font-medium text-slate-600">{entry.period_name}</td>
+                      <td className="px-3 py-2 border-r text-xs font-medium">{entry.employee_name}</td>
+                      <td className="px-3 py-2 border-r text-xs font-mono">{entry.work_date.slice(0, 10)}</td>
+                      <td className="px-3 py-2 border-r text-xs font-mono">{entry.entry_time || '—'}</td>
+                      <td className="px-3 py-2 border-r text-xs font-mono">{entry.exit_time || '—'}</td>
+                      <td className="px-3 py-2 border-r text-xs text-slate-500">{entry.scheduled_start}–{entry.scheduled_end}</td>
+                      <td className="px-3 py-2 border-r text-xs text-center">{entry.late_minutes > 0 ? <span className="text-red-600 font-semibold">{entry.late_minutes}</span> : '—'}</td>
+                      <td className="px-3 py-2 border-r text-xs text-center">{entry.early_leave_minutes > 0 ? <span className="text-orange-600 font-semibold">{entry.early_leave_minutes}</span> : '—'}</td>
+                      <td className="px-3 py-2 border-r text-xs text-center">{entry.discount_total_minutes > 0 ? entry.discount_total_minutes : '—'}</td>
+                      <td className="px-3 py-2 border-r text-xs">{entry.event_type_1 || '—'}</td>
+                      <td className="px-3 py-2 border-r text-xs">{entry.pay_impact_1 || '—'}</td>
+                      <td className="px-3 py-2 border-r text-xs">{entry.event_type_2 || '—'}</td>
+                      <td className="px-3 py-2 border-r text-xs">{entry.pay_impact_2 || '—'}</td>
+                      <td className="px-3 py-2 border-r text-xs">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          entry.status_current === 'GREEN' ? 'bg-green-100 text-green-700' :
+                          entry.status_current === 'YELLOW' ? 'bg-amber-100 text-amber-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>{entry.status_current}</span>
+                      </td>
+                      <td className="px-3 py-2 border-r text-xs text-muted-foreground whitespace-nowrap">{entry.deleted_at?.slice(0, 16).replace('T', ' ')}</td>
+                      <td className="px-3 py-2 border-r text-xs text-muted-foreground">{entry.deleted_by || '—'}</td>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          title="Restore entry"
+                          disabled={restoringId === entry.id}
+                          onClick={() => setRestoreConfirmEntry(entry)}
+                          className="p-1 rounded hover:bg-blue-100 text-blue-400 hover:text-blue-700 disabled:opacity-40 transition-colors"
+                        >
+                          {restoringId === entry.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <RotateCcw className="w-4 h-4" />}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
+      </div>
 
       {!loading && (
         <div className="rounded-lg border overflow-auto mt-4">
