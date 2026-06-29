@@ -18,7 +18,7 @@ import loadEventTypesAction from '@/actions/loadEventTypes';
 import loadEventTypeRulesAction from '@/actions/loadEventTypeRules';
 import updatePayrollEntryAction from '@/actions/updatePayrollEntry';
 import updateEntryExitAction from '@/actions/updateEntryExit';
-import { computeDerivedFields } from '@/app/lib/classificationEngine';
+import { computeDerivedFields, computeDiscount } from '@/app/lib/classificationEngine';
 
 type EntryRow = {
   id: number; period_name: string; employee_name: string; work_date: string;
@@ -612,7 +612,26 @@ export default function PayrollMaster() {
                       <td className="px-3 py-2 whitespace-nowrap border-r text-slate-500 text-[11px]">{row.scheduled_start}–{row.scheduled_end}</td>
                       <td className="px-3 py-2 text-center border-r">{row.late_minutes > 0 ? <span className="text-red-700 font-semibold">{row.late_minutes}</span> : <span className="text-slate-300">—</span>}</td>
                       <td className="px-3 py-2 text-center border-r">{row.early_leave_minutes > 0 ? <span className="text-orange-600 font-semibold">{row.early_leave_minutes}</span> : <span className="text-slate-300">—</span>}</td>
-                      <td className="px-3 py-2 text-center border-r font-semibold">{row.discount_total_minutes > 0 ? row.discount_total_minutes : <span className="text-slate-300">—</span>}</td>
+                      {(() => {
+                        const liveDiscount = computeDiscount({
+                          event_type_1: edit.event_type_1,
+                          pay_impact_1: edit.pay_impact_1,
+                          event_type_2: edit.event_type_2,
+                          pay_impact_2: edit.pay_impact_2,
+                          late_minutes: row.late_minutes,
+                          late_after_grace: row.late_after_grace,
+                          early_leave_minutes: row.early_leave_minutes,
+                        });
+                        const changed = liveDiscount !== row.discount_total_minutes && edits[row.id] !== undefined;
+                        return (
+                          <td className="px-3 py-2 text-center border-r font-semibold">
+                            {liveDiscount > 0
+                              ? <span className={changed ? 'text-amber-600' : undefined}>{liveDiscount}</span>
+                              : <span className="text-slate-300">—</span>
+                            }
+                          </td>
+                        );
+                      })()}
 
                       {/* Editable: Event Type 1 */}
                       <td className="px-2 py-1.5 border-r min-w-36">

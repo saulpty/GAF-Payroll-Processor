@@ -13,20 +13,23 @@ import saveHrkExportAction from '@/actions/saveHrkExport';
 type HrkRow = {
   employee: string;
   hire_date: string | null;
+  base_hours: number;
   total_worked_hours: number;
   total_discount_hours: number;
   incapacidad_days: number;
   incapacidad_dates: string;
   constancia_days: number;
+  constancia_hours: number;
   constancia_dates_hours: string;
   pto_days: number;
   pto_dates: string;
   notes: string;
+  needs_constancia_review: boolean;
 };
 
 type EditableFields = Pick<HrkRow,
   'incapacidad_days' | 'incapacidad_dates' |
-  'constancia_days' | 'constancia_dates_hours' |
+  'constancia_days' | 'constancia_hours' | 'constancia_dates_hours' |
   'pto_days' | 'pto_dates' | 'notes'
 >;
 
@@ -44,17 +47,19 @@ function escapeCsv(v: string | number | null | undefined): string {
 
 function buildCsv(rows: HrkRow[]): string {
   const headers = [
-    'Employee', 'Total Worked Hours', 'Total Discount Hours',
+    'Employee', 'Base Hours', 'Total Worked Hours', 'Total Discount Hours',
     'Incapacidad Days', 'Incapacidad Dates',
-    'Constancia Médica', 'Constancia Médica Dates & Hours',
+    'Constancia Médica Days', 'Constancia Médica Hours', 'Constancia Médica Dates & Hours',
     'PTO Days', 'PTO Dates', 'Hire Date', 'Notes',
   ];
   const lines = [
     headers.join(','),
     ...rows.map(r => [
-      r.employee, r.total_worked_hours, r.total_discount_hours,
+      r.employee,
+      r.base_hours,
+      r.total_worked_hours, r.total_discount_hours,
       r.incapacidad_days, r.incapacidad_dates,
-      r.constancia_days, r.constancia_dates_hours,
+      r.constancia_days, r.constancia_hours, r.constancia_dates_hours,
       r.pto_days, r.pto_dates,
       r.hire_date ? r.hire_date.slice(0, 10) : '', r.notes,
     ].map(escapeCsv).join(',')),
@@ -155,6 +160,7 @@ export default function HrkSummary() {
 
 
   // ── Stats ─────────────────────────────────────────────────────────────────
+  const reviewFlags = effectiveRows.filter(r => r.needs_constancia_review);
   const hasMedical = effectiveRows.some(r => Number(r.incapacidad_days) > 0 || Number(r.constancia_days) > 0);
   const hasPto = effectiveRows.some(r => Number(r.pto_days) > 0);
   const totalDiscountHours = effectiveRows.reduce((s, r) => s + Number(r.total_discount_hours), 0);
@@ -217,6 +223,12 @@ export default function HrkSummary() {
           ⚠ Hire dates are not set. Go to Admin → Directory Sync → "Sync Hire Dates" to pull from Monday.
         </p>
       )}
+      {reviewFlags.length > 0 && (
+        <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-3 py-2">
+          ⚠ {reviewFlags.length} employee{reviewFlags.length > 1 ? 's' : ''} have notes mentioning "constancia" but are not tagged Constancia Médica — manual review needed:{' '}
+          {reviewFlags.map(r => r.employee).join(', ')}
+        </p>
+      )}
 
       {/* Stats */}
       {effectiveRows.length > 0 && (
@@ -261,12 +273,14 @@ export default function HrkSummary() {
                 <thead>
                   <tr className="bg-slate-50 border-b">
                     <Th left>Employee</Th>
+                    <Th>Base Hrs</Th>
                     <Th>Worked Hrs</Th>
                     <Th>Discount Hrs</Th>
                     <Th>Incap. Days</Th>
                     <Th left>Incapacidad Dates</Th>
-                    <Th>Const. Méd.</Th>
-                    <Th left>Const. Méd. Dates & Hrs</Th>
+                    <Th>Const. Days</Th>
+                    <Th>Const. Hrs</Th>
+                    <Th left>Const. Dates & Hrs</Th>
                     <Th>PTO Days</Th>
                     <Th left>PTO Dates</Th>
                     <Th left>Hire Date</Th>
@@ -308,7 +322,12 @@ function HrkTableRow({ row, striped, dirty, onEdit }: HrkTableRowProps) {
 
   return (
     <tr className={`${base} ${dirtyRing}`}>
-      <Td left bold>{row.employee}</Td>
+      <Td left bold>
+        {row.needs_constancia_review
+          ? <span title="Constancia mentioned in notes but not tagged — review needed">⚠ {row.employee}</span>
+          : row.employee}
+      </Td>
+      <Td muted>{row.base_hours}</Td>
       <Td>{row.total_worked_hours}</Td>
       <Td warn={Number(row.total_discount_hours) > 0}>{row.total_discount_hours}</Td>
       <TdEdit
@@ -327,6 +346,12 @@ function HrkTableRow({ row, striped, dirty, onEdit }: HrkTableRowProps) {
         type="number"
         warn={Number(row.constancia_days) > 0}
         onChange={v => onEdit(row.employee, 'constancia_days', Number(v))}
+      />
+      <TdEdit
+        value={String(row.constancia_hours)}
+        type="number"
+        warn={Number(row.constancia_hours) > 0}
+        onChange={v => onEdit(row.employee, 'constancia_hours', Number(v))}
       />
       <TdEdit
         value={row.constancia_dates_hours}

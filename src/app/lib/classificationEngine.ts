@@ -12,6 +12,26 @@ export interface EmployeeRecord {
   standard_start: string;
   standard_end: string;
   grace_minutes: number;
+  /** Comma-separated working day abbreviations, e.g. "Mon,Tue,Wed,Thu,Fri" or "Sat,Sun".
+   *  Absent/empty = treat as Mon–Fri for backwards compatibility. */
+  work_days?: string;
+}
+
+// Day-of-week index → abbreviation (matches JS Date.getDay() 0=Sun)
+const DOW_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+const DEFAULT_WORK_DAYS_SET = new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+
+/** Parse work_days string into a Set of day abbreviations. Falls back to Mon–Fri. */
+function parseWorkDays(workDays: string | undefined): Set<string> {
+  if (!workDays || !workDays.trim()) return new Set(DEFAULT_WORK_DAYS_SET);
+  const parsed = workDays.split(',').map(d => d.trim()).filter(Boolean);
+  return parsed.length > 0 ? new Set(parsed) : new Set(DEFAULT_WORK_DAYS_SET);
+}
+
+/** Returns true if the given date is a scheduled workday for this employee. */
+function isScheduledWorkDay(date: Date, workDays: string | undefined): boolean {
+  const abbr = DOW_ABBR[date.getDay()];
+  return parseWorkDays(workDays).has(abbr);
 }
 
 export interface DstWindow {
@@ -408,7 +428,6 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
 
     for (const date of allDates) {
       const dateStr = toYMD(date);
-      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       const sched = getSchedule(emp, date, dstWindows);
       const wd = formatWorkDate(date);
 
@@ -439,23 +458,37 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
         continue;
       }
 
-      // ── Weekend ── (not silently dropped — flagged YELLOW)
-      if (isWeekend) {
-        // Only create if there is any data for this employee on this day
+      // ── Non-scheduled day (weekend for Mon–Fri workers, or weekday for weekend-shift workers) ──
+      if (!isScheduledWorkDay(date, emp.work_days)) {
+        // Always skip if no data at all for this day.
         const tmData = teramindData.get(emp.teramind_email)?.get(dateStr);
-        const hasMonday = mondayAttendance.some(r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && r.date === dateStr)
-          || mondayPermissions.some(r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && permissionCoversDate(r, dateStr));
-        if (tmData || hasMonday) {
+        const hasAbsenceOrPermForm = mondayAttendance.some(
+          r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && r.date === dateStr
+        ) || mondayPermissions.some(
+          r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && permissionCoversDate(r, dateStr)
+        );
+
+        // Rule: silently skip if Teramind shows a punch but NO form was submitted.
+        // (Employee punched on an off-day but no one reported anything — not a payroll event.)
+        if (tmData && !hasAbsenceOrPermForm) {
+          console.log(`[ClassEngine] Skipping off-day punch for ${emp.display_name} on ${dateStr} — no form submitted.`);
+          continue;
+        }
+
+        // Only create an entry if there is a form (or both data + form)
+        if (hasAbsenceOrPermForm) {
           const entryT = tmData ? formatTime12(tmData.entry) : null;
           const exitT = tmData ? formatTime12(tmData.exit) : null;
+          const dowName = DOW_ABBR[date.getDay()];
           const entry = buildEntry({ ...baseEntry, entry_time: entryT, exit_time: exitT }, {
             event_type_1: '', pay_impact_1: '', event_type_2: '', pay_impact_2: '',
-            documentation: '', notes: '',
-            auto_notes: 'Weekend activity detected — operator review required.',
+            documentation: 'Form Submitted', notes: '',
+            auto_notes: `${dowName} is not a scheduled workday — form submitted. Operator review required.`,
             initial_status: 'YELLOW',
           });
           results.push(entry);
         }
+        // else: no data + no form on an off-day → silently skip (not a payroll event)
         continue;
       }
 

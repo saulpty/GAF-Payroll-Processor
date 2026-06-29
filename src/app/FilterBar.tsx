@@ -5,6 +5,7 @@ import { X, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useEffect, useRef } from 'react';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
+import loadActionRequiredCountsAction from '@/actions/loadActionRequiredCounts';
 import type { EmpInfo } from '@/app/lib/attendanceStats';
 import type { DayPreset } from '@/app/context/GlobalFilterContext';
 
@@ -61,6 +62,14 @@ export default function FilterBar() {
 
   const [periodsRaw, , , refetchPeriods] = useLoadAction(loadPeriodsAction, [] as { period_name: string }[]);
   const [empsRaw]    = useLoadAction(loadAttendanceEmployeesAction, [] as EmpInfo[]);
+
+  type CountsRow = { red_count: number; yellow_count: number };
+  const [countsRaw] = useLoadAction(
+    loadActionRequiredCountsAction,
+    [] as CountsRow[],
+    { params: { periodName: period } },
+  );
+  const counts = (countsRaw as CountsRow[])[0] ?? { red_count: 0, yellow_count: 0 };
 
   const versionRef = useRef(periodsVersion);
   useEffect(() => {
@@ -173,11 +182,23 @@ export default function FilterBar() {
             const cls = tab === 'RED'
               ? isActive ? 'bg-red-600 text-white' : 'bg-white text-red-700 hover:bg-red-50'
               : isActive ? 'bg-amber-500 text-white' : 'bg-white text-amber-700 hover:bg-amber-50';
+            const tabCount = tab === 'RED' ? counts.red_count : counts.yellow_count;
             return (
               <button key={tab} onClick={() => setStatusTab(tab)}
                 className={`flex items-center gap-1.5 px-3 text-xs font-semibold border-r last:border-r-0 transition-colors ${cls}`}>
                 <span className={`w-2 h-2 rounded-full ${tab === 'RED' ? 'bg-red-400' : 'bg-amber-300'} ${isActive ? 'opacity-70' : ''}`} />
                 {tab}
+                {tabCount > 0 && (
+                  <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
+                    isActive
+                      ? 'bg-white/25 text-white'
+                      : tab === 'RED'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {tabCount}
+                  </span>
+                )}
               </button>
             );
           })}

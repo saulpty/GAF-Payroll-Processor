@@ -39,6 +39,7 @@ type Employee = {
   is_grace_list: boolean; is_macbook_swap: boolean;
   schedule_name: string; dst_start: string; dst_end: string;
   standard_start: string; standard_end: string; grace_minutes: number;
+  work_days?: string;
 };
 type Period = {
   period_name: string; start_date: string; end_date: string;

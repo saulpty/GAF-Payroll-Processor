@@ -19,12 +19,12 @@ const SECTIONS = [
     label: 'Payroll',
     icon: TableIcon,
     home: '/summary',
-    color: 'from-blue-600 to-blue-500',
-    activeBg: 'bg-blue-600',
-    hoverBg: 'hover:bg-blue-700',
-    ring: 'ring-blue-300',
-    subActiveBg: 'bg-blue-600/15 text-blue-700 font-semibold',
-    subHover: 'hover:bg-blue-50 text-slate-600',
+    color: 'from-[#1B3A6B] to-[#254d8e]',
+    activeBg: 'bg-[#1B3A6B]',
+    hoverBg: 'hover:bg-[#152d54]',
+    ring: 'ring-[#1B3A6B]/30',
+    subActiveBg: 'bg-[#1B3A6B]/10 text-[#1B3A6B] font-semibold',
+    subHover: 'hover:bg-[#1B3A6B]/5 text-slate-600',
     paths: ['/summary', '/process', '/action-required', '/payroll-master', '/hrk-summary', '/period-log'],
     links: [
       { to: '/summary',         label: 'Dashboard',      icon: BarChart2 },
@@ -40,12 +40,12 @@ const SECTIONS = [
     label: 'Attendance',
     icon: Activity,
     home: '/attendance',
-    color: 'from-emerald-600 to-emerald-500',
-    activeBg: 'bg-emerald-600',
-    hoverBg: 'hover:bg-emerald-700',
-    ring: 'ring-emerald-300',
-    subActiveBg: 'bg-emerald-600/15 text-emerald-700 font-semibold',
-    subHover: 'hover:bg-emerald-50 text-slate-600',
+    color: 'from-[#2AA876] to-[#22966a]',
+    activeBg: 'bg-[#2AA876]',
+    hoverBg: 'hover:bg-[#22966a]',
+    ring: 'ring-[#2AA876]/30',
+    subActiveBg: 'bg-[#2AA876]/10 text-[#1e7a56] font-semibold',
+    subHover: 'hover:bg-[#2AA876]/5 text-slate-600',
     paths: ['/attendance'],
     links: [
       { to: '/attendance',          label: 'Dashboard', icon: Activity },
@@ -58,12 +58,12 @@ const SECTIONS = [
     label: 'Admin',
     icon: Settings,
     home: '/admin/employees',
-    color: 'from-violet-600 to-violet-500',
-    activeBg: 'bg-violet-600',
-    hoverBg: 'hover:bg-violet-700',
-    ring: 'ring-violet-300',
-    subActiveBg: 'bg-violet-600/15 text-violet-700 font-semibold',
-    subHover: 'hover:bg-violet-50 text-slate-600',
+    color: 'from-[#1B3A6B] to-[#2AA876]',
+    activeBg: 'bg-slate-700',
+    hoverBg: 'hover:bg-slate-800',
+    ring: 'ring-slate-300',
+    subActiveBg: 'bg-slate-700/10 text-slate-800 font-semibold',
+    subHover: 'hover:bg-slate-100 text-slate-600',
     paths: ['/admin'],
     links: [
       { to: '/admin/employees',      label: 'Employees',          icon: Users },
@@ -111,18 +111,25 @@ export default function TopNav() {
   }, [activeSection]);
 
   return (
-    <header className="shrink-0 h-14 bg-white border-b border-slate-200 shadow-sm flex items-center px-4 gap-0 z-40 overflow-hidden">
+    <header className="shrink-0 h-14 bg-white border-b border-slate-200 shadow-sm flex items-center px-4 gap-0 z-40 overflow-hidden" style={{ borderBottomColor: '#e8edf5' }}>
       {/* Brand */}
       <div
-        className="flex items-center gap-2 mr-4 cursor-pointer select-none shrink-0"
+        className="flex items-center gap-2.5 mr-4 cursor-pointer select-none shrink-0"
         onClick={() => navigate('/summary')}
       >
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-400 flex items-center justify-center font-black text-white text-xs tracking-tight shadow">
-          GAF
+        {/* GAF Healthcare logomark: navy shield with teal heartbeat */}
+        <div className="w-8 h-8 rounded-lg bg-[#1B3A6B] flex items-center justify-center shadow-sm shrink-0 overflow-hidden">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Heart/pulse line — teal */}
+            <polyline points="2,10 5,10 7,6 9,14 11,8 13,10 18,10" stroke="#2AA876" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+          </svg>
         </div>
         <div className="leading-tight hidden sm:block">
-          <div className="text-slate-800 font-bold text-sm">Planilla</div>
-          <div className="text-slate-400 text-[10px]">Payroll System</div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-[#1B3A6B] font-extrabold text-sm tracking-tight">GAF</span>
+            <span className="text-[#2AA876] font-bold text-sm tracking-tight">Healthcare</span>
+          </div>
+          <div className="text-slate-400 text-[10px] tracking-wide">Planilla · Payroll System</div>
         </div>
       </div>
 
