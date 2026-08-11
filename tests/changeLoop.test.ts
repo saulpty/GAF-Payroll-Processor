@@ -53,3 +53,47 @@ test('a clean, in-scope change reports nothing out of scope', () => {
   rmSync(baseline, { recursive: true, force: true });
   rmSync(incoming, { recursive: true, force: true });
 });
+
+// UIB adding a file nobody asked for is collateral damage too.
+test('a file added outside the requested scope is reported', () => {
+  const baseline = tmp(), incoming = tmp();
+
+  for (const d of [baseline, incoming]) {
+    write(d, 'app/pages/PeriodLog.tsx', 'export const PeriodLog = 1;\n');
+  }
+  write(incoming, 'app/pages/PeriodLog.tsx', 'export const PeriodLog = 2;\n');
+  write(incoming, 'app/lib/unexpectedHelper.ts', 'export const x = 1;\n');
+
+  const result = mirrorDirectory(incoming, baseline);
+  const requestedScope = ['app/pages/PeriodLog.tsx'];
+  const outOfScope = [...result.added, ...result.changed, ...result.removed]
+    .filter((f) => !requestedScope.includes(f));
+
+  assert.deepEqual(outOfScope, ['app/lib/unexpectedHelper.ts'],
+    'an unrequested new file must be surfaced');
+
+  rmSync(baseline, { recursive: true, force: true });
+  rmSync(incoming, { recursive: true, force: true });
+});
+
+// UIB deleting a file nobody asked it to delete is the most dangerous case.
+test('a file deleted outside the requested scope is reported', () => {
+  const baseline = tmp(), incoming = tmp();
+
+  for (const d of [baseline, incoming]) {
+    write(d, 'app/pages/PeriodLog.tsx', 'export const PeriodLog = 1;\n');
+  }
+  write(incoming, 'app/pages/PeriodLog.tsx', 'export const PeriodLog = 2;\n');
+  write(baseline, 'app/lib/stillNeeded.ts', 'export const y = 2;\n');
+
+  const result = mirrorDirectory(incoming, baseline);
+  const requestedScope = ['app/pages/PeriodLog.tsx'];
+  const outOfScope = [...result.added, ...result.changed, ...result.removed]
+    .filter((f) => !requestedScope.includes(f));
+
+  assert.deepEqual(outOfScope, ['app/lib/stillNeeded.ts'],
+    'an unrequested deletion must be surfaced');
+
+  rmSync(baseline, { recursive: true, force: true });
+  rmSync(incoming, { recursive: true, force: true });
+});

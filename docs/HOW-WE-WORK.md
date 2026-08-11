@@ -15,7 +15,8 @@ edited. Your employees use it. The database lives here. If UIB disappeared,
 the app would be gone. **UIB is the truth.**
 
 **2. Your laptop — a copy for checking things.**
-A folder at `Documents\GAF-HR-Hub`. It is a photocopy of UIB's code. It does
+A folder at `Documents\GAF-Payroll-Processor` (being renamed to
+`Documents\GAF-HR-Hub`). It is a photocopy of UIB's code. It does
 not run. Nothing here affects the live app. Its whole job is to let us
 answer one question: *what exactly changed?*
 
@@ -105,6 +106,9 @@ send it back to UIB with the exact list of what it broke.**
 
 Step 5 is the entire point of this setup. It's the difference between
 "I think that worked" and "I know what that changed."
+
+The precise commands behind steps 2, 5 and 6 are in
+[CHANGE-LOOP.md](CHANGE-LOOP.md) — that is Claude's runbook, not yours.
 
 ---
 

@@ -1,5 +1,10 @@
 # The UIB change loop
 
+> **Who runs this:** Claude, not Saul. This is the operator runbook for the
+> assistant's side of the loop. Saul's side — press Export, paste a prompt,
+> report anything that looks wrong — is in [HOW-WE-WORK.md](HOW-WE-WORK.md).
+> Every command below assumes the repository root as the working directory.
+
 `src/` is a mirror of the UI Bakery export. It is never hand-edited —
 the next sync destroys hand-edits. All application changes go through UIB.
 
@@ -13,10 +18,11 @@ the next sync destroys hand-edits. All application changes go through UIB.
 3. **Execute in UIB.**
 4. **Export and sync.**
    ```bash
+   cd "C:\Users\SaulFallembaum\Documents\GAF-Payroll-Processor"
    node tools/sync-export.mjs "C:/Users/SaulFallembaum/Downloads/GAF HR Hub.zip"
    git status --short
    ```
-   Run this from PowerShell. Under some sandboxed shells `tar` fails with EPERM.
+   Run this from PowerShell — under Git Bash, `tar` fails with EPERM.
 5. **Review.** Every file listed must be one you expected. Anything else is
    collateral damage — send it back to UIB as a correction naming the exact
    files to revert.
@@ -52,11 +58,11 @@ Derived from observed failure modes:
 
 Changes here affect payroll correctness. Review with extra care:
 
-| File | Size |
+| File | Size (bytes) |
 |---|---|
-| `src/app/pages/ProcessPayroll.tsx` | 53 KB |
-| `src/app/pages/PayrollMaster.tsx` | 43 KB |
-| `src/app/pages/admin/AdminEmployeeSync.tsx` | 36 KB |
-| `src/app/lib/classificationEngine.ts` | 35 KB |
-| `src/app/pages/ActionRequired.tsx` | 34 KB |
-| `src/app/pages/admin/AdminLookups.tsx` | 30 KB |
+| `src/app/pages/ProcessPayroll.tsx` | 53,407 |
+| `src/app/pages/PayrollMaster.tsx` | 42,934 |
+| `src/app/pages/admin/AdminEmployeeSync.tsx` | 36,445 |
+| `src/app/lib/classificationEngine.ts` | 35,657 |
+| `src/app/pages/ActionRequired.tsx` | 34,154 |
+| `src/app/pages/admin/AdminLookups.tsx` | 30,751 |
