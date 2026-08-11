@@ -9,12 +9,16 @@ Source: `Downloads\GAF HR Hub.zip` (142 files, uiBakeryVersion 3.192.0-rc.0)
 
 A prior throwaway run by a reviewer measured 18 added / 32 changed / 2 removed
 (same total of 50 non-removal changes). This run measured 17 added / 33
-changed — the boundary between "added" and "changed" is one file, most
-likely `datasources.yml` or `version.yml` being counted differently
-depending on whether the throwaway checkout already had a placeholder for
-it. The removed set is byte-for-byte the required two files, so this is not
-treated as a blocker per the task's stop condition (which only fires on an
-unexpected `removed` list).
+changed. `git show --name-status 26c4acc` reconciles this run's counts
+exactly: 18 `A` (17 files the tool added plus this findings document
+itself, which is not a tool-sync artifact), 33 `M`, and 2 `D`. `datasources.yml`
+is unambiguously `A` (new) and `version.yml` is unambiguously `M`
+(pre-existing), so neither can be the swing file the earlier measurement's
+18/32 split implied — that guess is ruled out by this commit's own status
+output. The earlier throwaway measurement is not reproducible from this
+repository. The removed set is byte-for-byte the required two files, so
+this is not treated as a blocker per the task's stop condition (which only
+fires on an unexpected `removed` list).
 
 ## Idempotency check
 A second run of `node tools/sync-export.mjs "C:\Users\SaulFallembaum\Downloads\GAF HR Hub.zip"`
@@ -69,6 +73,12 @@ No other test references the two APIs that changed alongside this
 (`midDayPullDate`, and the removed `tft_late_red_threshold_minutes` config
 key) — a repo-wide search of `tests/` confirms only this one test touches
 mid-day-pull behavior.
+
+Production path verified intact: `src/app/pages/ProcessPayroll.tsx:427`
+supplies `midDayPullDate` alongside the engine's new gate, and it is the
+only caller of `runClassificationEngine` outside the test suite. The
+backfill still fires in the live app; only the test's input shape was
+stale.
 
 ## Notes
 - `src/AGENTS.md` is 0 bytes in this export — addressed in Task 7.

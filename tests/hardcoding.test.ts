@@ -57,11 +57,36 @@ test('H2: mid-day pull backfills exit to the scheduled end (9-5 employee)', () =
     exit: new Date(2026, 5, 15, 13, 0), // 1:00 PM — pulled mid-day
   }]])]]);
 
-  const result = runClassificationEngine(baseInput({ midDayPull: true, teramindData: tm }));
+  const result = runClassificationEngine(
+    baseInput({ midDayPull: true, midDayPullDate: DAY, teramindData: tm }),
+  );
 
   assert.equal(result.length, 1);
   assert.equal(result[0].exit_time, '5:00 PM');
   assert.equal(result[0].early_leave_minutes, 0);
+});
+
+// H2b: the mid-day backfill must NOT touch prior days. Before UIB added the
+// date gate, a genuine early departure on an earlier day of the period was
+// silently rewritten to the scheduled end, under-docking real early leaves.
+test('H2b: mid-day pull leaves a genuine early exit on a prior day alone', () => {
+  const PRIOR = '2026-06-12';
+  const tm = new Map([['emp@gaf.com', new Map([[PRIOR, {
+    entry: new Date(2026, 5, 12, 9, 0),
+    exit: new Date(2026, 5, 12, 13, 0), // 1:00 PM — a real early departure
+  }]])]]);
+
+  const result = runClassificationEngine(baseInput({
+    midDayPull: true,
+    midDayPullDate: DAY,   // pulling a DIFFERENT day
+    teramindData: tm,
+    startDate: PRIOR,
+    endDate: PRIOR,
+  }));
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0].exit_time, '1:00 PM', 'a prior day must keep its real exit');
+  assert.ok(result[0].early_leave_minutes > 0, 'the early departure must still be counted');
 });
 
 // H3: the full-day no-data absence discount defaults to 420 but is configurable.
