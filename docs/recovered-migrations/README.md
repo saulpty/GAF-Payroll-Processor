@@ -78,7 +78,7 @@ for the Panama/US-Eastern time difference.
 | `1781290300_fix_view_date_tochar` | 2026-06-16 15:16:43 | Fixes the date column a third time — it was still arriving in the app as a full timestamp instead of a plain date because of how the database driver serializes dates; forces a plain "YYYY-MM-DD" string instead. |
 | `1781290400_fix_view_dst_aware` | 2026-06-16 15:22:08 | Makes the Attendance view daylight-saving-time aware. Clock-in times come from Teramind in US Eastern time; this fix converts them to Panama time correctly whether or not the US is currently observing daylight saving. |
 | `1781402200_create_pto_tables` | 2026-07-22 18:08:08 | Creates three new tables (`pto_employees`, `pto_approvals`, `pto_floating_holidays`) for a paid-time-off tracking feature. |
-| `1781402300_deactivate_personal_email_duplicates` | 2026-08-06 19:10:23 | Deactivates 4 duplicate employee records that had been created using personal email addresses, since each of those 4 people already has a correct record under their work email. |
+| `1781402300_deactivate_personal_email_duplicates` | 2026-08-06 19:10:23 | Deactivates 4 employee records (ids 44, 45, 46, 47) that had been created using personal email addresses. Two of the four have a named work-email counterpart; two do not — see below. |
 
 Applied-at times are shown exactly as recorded in the database's
 `uib_migrations` table.
@@ -90,6 +90,34 @@ page or backend action in this app today (confirmed by searching the code
 — see the reconciliation findings doc for the exact search and result).
 They are scaffolding left over from a PTO-tracking feature that was
 started and then set aside; the owner has confirmed it will be rebuilt
-from scratch rather than resumed from these tables. They are harmless
-sitting unused, so no action is being taken on them now — see the findings
-document for the recommendation.
+from scratch rather than resumed from these tables. (Source: the owner,
+directly, in the working session of 2026-08-11 — this is not documented
+anywhere else in this repository.) They are harmless sitting unused, so no
+action is being taken on them now — see the findings document for the
+recommendation.
+
+## About `1781402300_deactivate_personal_email_duplicates`
+
+This migration deactivates four employee rows — ids 44, 45, 46, and 47 —
+that had been created using a personal email address instead of a work
+one. What the migration supports is narrower than "duplicate cleanup" for
+all four: its own per-row comments name a work-email counterpart for only
+**two** of them.
+
+| id | Name | Personal email | Work-email counterpart named? |
+|---|---|---|---|
+| 44 | Isaac Chung | isaac22chung@gmail.com | Yes — id 48 (isaac.c@vitasyahc.com) |
+| 45 | Jean Pierre Montfort | pierre_2207@hotmail.com | No — annotated "personal only, kept but deactivated" |
+| 46 | Cemiriamiz Iglesias | iglesias.cs17@gmail.com | No — annotated "personal only, kept but deactivated" |
+| 47 | Euclides Gonzalez | javierqvistgaard@hotmail.com | Yes — id 49 (javier.g@passiontocarehc.com) |
+
+For ids 44 and 47, the SQL's own comments identify the active row that
+replaces them, so deactivating the personal-email row is straightforwardly
+correct: the person still has an active record under their work email.
+
+For ids 45 and 46, no replacement row is named anywhere in the migration.
+They were deactivated anyway, with no counterpart to carry that person
+forward. **This is worth confirming with the owner:** if these two people
+are still employed, a deactivated record with no active counterpart could
+mean they silently drop out of payroll entirely rather than merely losing
+a duplicate.

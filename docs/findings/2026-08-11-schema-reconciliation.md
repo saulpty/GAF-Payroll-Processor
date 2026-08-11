@@ -158,7 +158,9 @@ long-standing feature and has nothing to do with these three tables.)
 
 **Origin:** abandoned scaffolding. The owner has confirmed this was the
 start of a PTO-tracking feature that was set aside and will be **rebuilt
-from scratch** rather than resumed from this schema.
+from scratch** rather than resumed from this schema. (Source: the owner,
+directly, in the working session of 2026-08-11 — this claim is not backed
+by any artifact elsewhere in this repository.)
 
 **Decision: document only, for now.** Do not drop these tables today.
 Dropping a table is irreversible, and these three are empty of any live
