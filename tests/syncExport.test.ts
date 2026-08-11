@@ -84,11 +84,13 @@ test('mirrorDirectory normalizes CRLF so it reports no spurious change', () => {
 });
 
 test('listFilesRecursive sorts entries that the filesystem returns out of order', () => {
+  // A directory `a` beside a file `a.txt`: the depth-first walk emits
+  // a/b.txt first, but '.' (0x2E) sorts below '/' (0x2F), so correct
+  // order puts a.txt first. Without the sort, these differ.
   const d = tmp();
-  write(d, 'z.txt', 'x');
-  write(d, join('a', 'b.txt'), 'y');
-  write(d, 'm.txt', 'z');
-  assert.deepEqual(listFilesRecursive(d), ['a/b.txt', 'm.txt', 'z.txt']);
+  write(d, join('a', 'b.txt'), 'x');
+  write(d, 'a.txt', 'y');
+  assert.deepEqual(listFilesRecursive(d), ['a.txt', 'a/b.txt']);
   rmSync(d, { recursive: true, force: true });
 });
 
