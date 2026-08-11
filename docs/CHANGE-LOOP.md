@@ -1,0 +1,62 @@
+# The UIB change loop
+
+`src/` is a mirror of the UI Bakery export. It is never hand-edited —
+the next sync destroys hand-edits. All application changes go through UIB.
+
+## Per change
+
+1. **Baseline.** `git status` must be clean. If not, sync and commit first.
+2. **Design the prompt locally.** Read the real code. Write a prompt that
+   names every file that may change, names the functions involved, lists
+   what must not be touched, and states acceptance criteria as observable
+   outcomes. One coherent change per prompt.
+3. **Execute in UIB.**
+4. **Export and sync.**
+   ```bash
+   node tools/sync-export.mjs "C:/Users/SaulFallembaum/Downloads/GAF HR Hub.zip"
+   git status --short
+   ```
+   Run this from PowerShell. Under some sandboxed shells `tar` fails with EPERM.
+5. **Review.** Every file listed must be one you expected. Anything else is
+   collateral damage — send it back to UIB as a correction naming the exact
+   files to revert.
+6. **Test.** `node --test "tests/*.test.ts"`
+7. **Commit,** with a message naming the change that produced it. Or
+   `git checkout -- src/` to discard and retry.
+8. **Back up.** `git push`
+
+## Why the git here is simple
+
+One branch, `main`. No pull requests, no merges, no releases — those are
+collaboration features and there is one person on this project. The only
+remote command in this workflow is `git push` in step 8, and its only job
+is keeping an off-machine copy so the project does not live on one laptop.
+
+If `git push` is ever refused, it means the remote has commits the local
+repository does not — which cannot happen while one person works from one
+machine. Stop and investigate rather than forcing it.
+
+## Prompt rules
+
+Derived from observed failure modes:
+
+- Name every file that may be modified; state no other file may be touched.
+- Name functions and components, not just the feature.
+- State acceptance criteria as observable outcomes.
+- For anything touching times or dates, restate the timezone invariant from
+  `src/AGENTS.md` explicitly. This codebase has ~10 migrations that are all
+  successive fixes to the same timezone bug.
+- One coherent change per prompt. Bundled changes produce unreviewable diffs.
+
+## High-blast-radius files
+
+Changes here affect payroll correctness. Review with extra care:
+
+| File | Size |
+|---|---|
+| `src/app/pages/ProcessPayroll.tsx` | 53 KB |
+| `src/app/pages/PayrollMaster.tsx` | 43 KB |
+| `src/app/pages/admin/AdminEmployeeSync.tsx` | 36 KB |
+| `src/app/lib/classificationEngine.ts` | 35 KB |
+| `src/app/pages/ActionRequired.tsx` | 34 KB |
+| `src/app/pages/admin/AdminLookups.tsx` | 30 KB |
