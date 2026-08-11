@@ -220,7 +220,29 @@ Thumbs.db
 
 - [ ] **Step 5: Renormalize the existing working tree**
 
-`git grep -Il '\r'` reads the index, so committed CRLF must be rewritten, not just configured away.
+*(Corrected 2026-08-11 after implementation revealed the real mechanism.)*
+
+The CRLF was never in git history. This machine has `core.autocrlf=true` set globally, so every commit already stored LF and git was expanding it to CRLF **at checkout**. That is why an export (LF, straight from the zip) appeared to differ from every local file.
+
+Consequently `git add --renormalize .` stages nothing here — the blobs are already correct. What has to change is the working tree on disk, so that the new `eol=lf` attribute takes effect:
+
+```bash
+cd "C:/Users/SaulFallembaum/Documents/GAF-Payroll-Processor"
+git add .gitattributes .gitignore
+git add --renormalize .
+git status --short
+```
+
+If that stages only the two new files, force a working-tree refresh. **Check the tree is clean first** — this deletes tracked files before restoring them, and would destroy uncommitted edits:
+
+```bash
+git status --short          # must be empty apart from the two new files
+git ls-files -z | xargs -0 rm -f
+git checkout-index -f -a
+git status --short          # still only the two new files; content unchanged
+```
+
+`git grep` searches the **working tree**, so the Step 1 test measures exactly the thing this step fixes.
 
 ```bash
 cd "C:/Users/SaulFallembaum/Documents/GAF-Payroll-Processor"
