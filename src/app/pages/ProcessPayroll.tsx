@@ -424,7 +424,9 @@ export default function ProcessPayroll() {
       mondayPermissions: permissions,
       outageDates,
       midDayPull,
-      midDayPullDate: midDayPull ? new Date().toLocaleDateString('en-CA') : undefined,
+      midDayPullDate: midDayPull
+        ? (teramindMaxDate ?? new Date().toLocaleDateString('en-CA'))
+        : undefined,
       excludedEmployeeIds: excludedIds,
       nameMap,
       config: buildClassificationConfig(cfgRows),
@@ -497,6 +499,11 @@ export default function ProcessPayroll() {
     (employees as Employee[]).filter(e =>
       !empSearch || e.display_name.toLowerCase().includes(empSearch.toLowerCase())
     ), [employees, empSearch]);
+
+  const teramindMaxDate = useMemo(() => {
+    const dates = teramindRows.map(r => r.timeStarted?.slice(0, 10)).filter(Boolean);
+    return dates.length ? dates.reduce((a, b) => (a > b ? a : b)) : null;
+  }, [teramindRows]);
 
   const formReady = periodName && startDate && endDate && teramindFile && (!singleEmpMode || singleEmpIds.length > 0);
 
