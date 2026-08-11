@@ -104,7 +104,33 @@ item today — but any future data-repair migration must not rely on
 `resolved_by` as a safety predicate unless something starts writing it
 first.
 
-### 3. Monday.com IDs are still hardcoded in two places
+### 3. Monday.com IDs are still hardcoded in two places — 🟡 PHASE 1 DONE 2026-08-11 (`db47791`)
+
+> **Phase 1 (config corrected) is complete. Phase 2 (code reads config) is still open.**
+>
+> Writing this up revealed the backlog entry was dangerous as originally
+> stated. "Read the IDs from config instead of hardcoding" would have broken
+> the sync, because the config was wrong: `monday_board_directory` held the
+> superseded `8661565945`, `monday_col_directory_role` held the literal
+> string `text` (a column *type*, not an ID), `monday_col_directory_manager`
+> was empty, and the active and email columns had no keys at all. The sync
+> would have searched for a column named `text` and a manager named
+> empty-string — blank roles and managers, no error.
+>
+> Migration `1781803400_fix_monday_directory_config` corrects all five and
+> is verified in the live database. Nothing reads these keys yet, so it
+> changed no behavior.
+>
+> **Phase 2 remains:** parameterize `loadEmployeeDirectory`'s GraphQL body
+> using the `{{params.query}}` pattern that `pullMondayBoard.ts` already
+> uses, and wire `loadClassificationConfig` into `AdminEmployeeSync.tsx`,
+> which does not load config today. Real refactor in a 36 KB file; deserves
+> its own diff.
+>
+> Board `8592460836` confirmed correct by the owner on 2026-08-11, which
+> means migration `1781400400` wrote a wrong board ID into config.
+
+
 **Where:** `src/actions/loadEmployeeDirectory.ts:14` (board id);
 `src/app/pages/admin/AdminEmployeeSync.tsx:68,71,73,76` (four column ids).
 **Risk:** confirmed — the same failure mode that previously caused wrong
