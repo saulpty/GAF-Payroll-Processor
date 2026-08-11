@@ -60,7 +60,11 @@ git rev-list --count archive/staging
 git rev-list --left-right --count fix/discount-and-monday-alias...archive/staging
 ```
 
-Expected: a non-zero commit count, and `14	15` confirming the 15 unique staging commits are reachable from the tag. If the second number is not 15, stop — the tag did not capture the divergent work.
+Expected: a non-zero commit count, and a **right-hand value of `15`** in the second command's output, confirming staging's 15 unique commits are reachable from the tag.
+
+Only the right-hand number is a safety signal. The left-hand number counts commits unique to `fix/discount-and-monday-alias` and grows every time work is committed there — it was 14 when the spec was written and is 16 after the spec and plan commits. Ignore it.
+
+If the right-hand value is not 15, stop — the tag did not capture the divergent work, and deleting `staging` in Step 6 would lose it permanently.
 
 - [ ] **Step 4: Move `main` to the real history**
 
