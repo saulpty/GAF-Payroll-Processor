@@ -161,6 +161,17 @@ change stacks confusion. Better to discard and re-ask cleanly.
 
 ## If something goes wrong
 
+**UIB shows "Runtime errors" with a Fix button** — don't click Fix. Tell me
+first. On 2026-08-11 that banner appeared with eleven errors, and the real
+cause was the database refusing new connections because too many browser
+tabs had the app open. There was nothing wrong with the code. Clicking Fix
+would have sent UIB hunting through working data-loading files for a fault
+that didn't exist — which is exactly how unrelated things get broken.
+
+The tell: if every failing action is a `load…` and they all failed at the
+same moment, it's the database or the network, not your app. Closing extra
+tabs and reloading fixed it completely.
+
 **A change broke the live app** — in UIB, restore a previous version from
 its release history. This still works because we did not connect git. This
 is your fastest undo.
