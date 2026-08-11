@@ -67,7 +67,8 @@ C:\Users\SaulFallembaum\Documents\GAF-HR-Hub\
   src\        verbatim mirror of the UIB export — never hand-edited
   docs\       specs, findings, decisions
   tests\      existing test files, expanded over time
-  exports\    archived raw .zip of each export, timestamped
+  tools\      the export sync tool
+  exports\    archived raw .zip of each export, timestamped (gitignored)
   .claude\    skills, settings
 ```
 
