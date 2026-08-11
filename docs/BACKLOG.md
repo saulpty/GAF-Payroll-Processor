@@ -145,7 +145,17 @@ That value *is* the pull date and should feed `midDayPullDate`.
 
 Covered by tests `H2` and `H2b` in `tests/hardcoding.test.ts`.
 
-### 5. The mid-day pull checkbox label is wrong
+### 5. The mid-day pull checkbox label is wrong — ✅ FIXED 2026-08-11 (`9b6f033`)
+
+> Now reads `— fills missing exits with each employee's scheduled end`.
+>
+> This was the first change made through the export/diff loop with
+> `AGENTS.md` in place, chosen as a deliberate test: a one-line display edit
+> inside `ProcessPayroll.tsx`, the project's largest file at 53 KB and its
+> highest-blast-radius target. UIB changed exactly that one line — 1 file,
+> 1 insertion, 1 deletion — and touched neither the checkbox behavior nor
+> `classificationEngine.ts`. 69 tests still passing.
+
 **Where:** `src/app/pages/ProcessPayroll.tsx:659`
 **Risk:** none to numbers; misleads the operator.
 
