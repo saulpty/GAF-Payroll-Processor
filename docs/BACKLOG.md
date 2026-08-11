@@ -10,14 +10,34 @@ Ordered by risk to payroll correctness, not by effort.
 ## Confirmed issues
 
 ### 1. Full-day absence discount differs by 60 minutes depending on code path
+
+> **RESOLVED BY OWNER, 2026-08-11: 480 minutes (8h) is the correct policy.**
+>
+> No employee was under-paid. The 480 that has actually been applied is right;
+> the 420 in `full_day_absence_discount_minutes` is the wrong number, and the
+> app has been misrepresenting its own behavior rather than miscalculating it.
+>
+> This inverts one part of the finding below: the single path that *does* read
+> the config — the no-data/no-form case at `classificationEngine.ts:654` —
+> applies 420 where policy is 480, so those rows are **under**-docked by an
+> hour. They are flagged RED for operator review, so the error is visible
+> rather than silent, but it is still wrong.
+>
+> **The fix is therefore twofold:** set `full_day_absence_discount_minutes` to
+> 480 so the config states the truth, *and* thread it through the call sites
+> listed below so the value is genuinely configurable rather than
+> coincidentally correct. Doing only the first leaves the same trap for the
+> next person who edits that setting and sees nothing change.
+
 **Where:** `src/app/lib/classificationEngine.ts:234` (hardcoded default),
 `:243` (`computeDiscount` signature), `:295` (`computeDerivedFields`
 forwarding), `:550-582` (Step 2, full-day permission — auto-resolves GREEN),
 `:654` (the one place the config value is actually used), `:802` and `:837`
 (the engine's own two call sites); `src/app/pages/PayrollMaster.tsx:208`,
 `:286`, `:709-719`; `src/app/pages/ActionRequired.tsx:215-229`.
-**Risk:** high — confirmed silent misclassification of real payroll numbers,
-happening automatically today, not just on edit.
+**Risk:** medium — no employee was under-paid (see the resolution above), but
+the config setting does not do what it says, and the one path that honors it
+now applies the wrong number. Fix before anyone touches that setting.
 
 `classificationEngine.ts:234` defines `FULL_DAY_DISCOUNT_MINUTES = 480`
 (8h), the default for `computeDiscount`'s second parameter (`:243`),
