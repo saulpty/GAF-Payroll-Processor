@@ -121,11 +121,30 @@ first.
 > is verified in the live database. Nothing reads these keys yet, so it
 > changed no behavior.
 >
-> **Phase 2 remains:** parameterize `loadEmployeeDirectory`'s GraphQL body
-> using the `{{params.query}}` pattern that `pullMondayBoard.ts` already
-> uses, and wire `loadClassificationConfig` into `AdminEmployeeSync.tsx`,
-> which does not load config today. Real refactor in a 36 KB file; deserves
-> its own diff.
+> **Phase 2 attempted 2026-08-11 and reverted.** The refactor itself was
+> good — `dirCfg` correctly threaded into `parseMondayDirectory` as a
+> parameter, all four column IDs config-driven, warning banner added, clean
+> two-file diff, 69 tests passing. It failed on one detail: the action put
+> `{{params.boardId}}` **inside a quoted string** in its body template. UIB
+> substitutes `{{params.…}}` as a whole value, not within a string, so the
+> placeholder reached Monday.com verbatim and GraphQL returned
+> `PARSING_ERROR`. Directory Sync returned zero employees.
+>
+> Reverted via UIB's checkpoint. Never released, so users were unaffected,
+> and the change never entered git — after the revert the export synced back
+> byte-identical to the last good commit.
+>
+> **The known-good fix**, for whenever this is retried: pass the *entire*
+> query as one parameter, exactly as `src/actions/pullMondayBoard.ts` does —
+> `body: \`{ query: {{params.query}} }\`` in the action, with the page
+> building the query string from `dirCfg.boardId` and passing
+> `{ query: dirQuery }`. Do not interpolate inside a string literal.
+>
+> Also unresolved from that attempt: user-visible copy at
+> `AdminEmployeeSync.tsx:426` and `:696` still hardcodes
+> `color_mkyjv6et`, `text_mm63b2xk` and board `8592460836` in text shown to
+> the operator. Same defect class as the mid-day checkbox label — the copy
+> will lie if config ever changes. Fold this into the retry.
 >
 > Board `8592460836` confirmed correct by the owner on 2026-08-11, which
 > means migration `1781400400` wrote a wrong board ID into config.

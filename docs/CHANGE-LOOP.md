@@ -27,9 +27,55 @@ the next sync destroys hand-edits. All application changes go through UIB.
    collateral damage — send it back to UIB as a correction naming the exact
    files to revert.
 6. **Test.** `node --test "tests/*.test.ts"`
-7. **Commit,** with a message naming the change that produced it. Or
+7. **Load the affected page in the browser.** Mandatory whenever the change
+   touched anything in `src/actions/` — see below.
+8. **Commit,** with a message naming the change that produced it. Or
    `git checkout -- src/` to discard and retry.
-8. **Back up.** `git push`
+9. **Back up.** `git push`
+
+## Step 7 is not optional for action changes
+
+On 2026-08-11 a change to `loadEmployeeDirectory.ts` produced a clean
+two-file diff, passed all 69 tests, respected every do-not-touch
+instruction, and was completely broken. `{{params.boardId}}` had been
+placed inside a quoted string in the action's body template; UI Bakery
+substitutes `{{params.…}}` as a whole value, not as a fragment within a
+string, so the placeholder reached Monday.com verbatim and GraphQL returned
+`PARSING_ERROR`. Directory Sync returned zero employees.
+
+Nothing in the diff or the test suite could have caught that. The tests do
+not exercise UIB actions, and no amount of reading reveals that a template
+will not interpolate. **Only loading the page did.**
+
+UIB's own report at the time read *"Everything looks correct. Both files are
+fully updated."* Treat a model's self-assessment as a claim to verify, never
+as evidence.
+
+**Rule:** if the diff touches `src/actions/`, load the affected page and
+confirm real data appears before committing.
+
+### Telling a real failure from a false alarm
+
+Runtime errors in UIB are not all equal:
+
+| Signal | Infrastructure | Your change |
+|---|---|---|
+| How many actions fail | many, simultaneously | one specific action |
+| Message | `too many connections` | a real error from the API or code |
+| Survives a reload | no | yes, with a fresh request id |
+| Fix | close extra tabs, reload | revert or correct the code |
+
+A fresh `request_id` on each retry proves the failure is deterministic.
+Never click UIB's **Fix** button before making this distinction — it will
+hunt for a code fault that may not exist and edit working files.
+
+### Reverting
+
+UIB's chat history has **"Revert to this checkpoint"** on each message.
+Reverting there restores the builder without touching git. Because commits
+only happen after a diff passes, a broken change never enters git in the
+first place — after a revert, sync the export and `git status` should come
+back clean against the last good commit. On 2026-08-11 it did, exactly.
 
 ## Why the git here is simple
 
