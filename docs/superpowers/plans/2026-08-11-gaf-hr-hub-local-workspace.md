@@ -98,16 +98,22 @@ git branch
 
 Expected: `claude/gaf-hr-hub-local-92331a` and `* main` only. The `claude/` branch survives because its worktree is still checked out; Task 8 removes it.
 
-- [ ] **Step 7: Remove the GitHub remote**
+- [ ] **Step 7: Confirm the remote is retained** *(revised 2026-08-11 — supersedes "remove the GitHub remote")*
+
+The user's objection was to branch/PR/merge/release ceremony, not to GitHub. Steps 5 and 6 eliminate all of that ceremony. `origin` is retained purely as an off-machine backup: without it, the entire history of a production payroll system exists on a single laptop.
 
 ```bash
 cd "C:/Users/SaulFallembaum/Documents/GAF-Payroll-Processor"
-git remote remove origin
 git remote -v
-git branch -a
 ```
 
-Expected: no output from `git remote -v`; no `remotes/origin/*` entries in `git branch -a`.
+Expected: `origin  https://github.com/saulpty/GAF-Payroll-Processor.git` for both fetch and push. If absent, re-add it:
+
+```bash
+git remote add origin https://github.com/saulpty/GAF-Payroll-Processor.git
+```
+
+Do not push or fetch in this task. `remotes/origin/*` entries in `git branch -a` are expected and correct.
 
 - [ ] **Step 8: Confirm nothing was lost**
 
@@ -761,6 +767,18 @@ the next sync destroys hand-edits. All application changes go through UIB.
 6. **Test.** `node --test "tests/*.test.ts"`
 7. **Commit,** with a message naming the change that produced it. Or
    `git checkout -- src/` to discard and retry.
+8. **Back up.** `git push`
+
+## Why the git here is simple
+
+One branch, `main`. No pull requests, no merges, no releases — those are
+collaboration features and there is one person on this project. The only
+remote command in this workflow is `git push` in step 8, and its only job
+is keeping an off-machine copy so the project does not live on one laptop.
+
+If `git push` is ever refused, it means the remote has commits the local
+repository does not — which cannot happen while one person works from one
+machine. Stop and investigate rather than forcing it.
 
 ## Prompt rules
 
@@ -1127,7 +1145,7 @@ Expected: clean status; a single worktree at the **new** path; history intact; t
 
 ```bash
 cd "C:/Users/SaulFallembaum/Documents/GAF-HR-Hub"
-git remote -v                          # expect: no output
+git remote -v                          # expect: origin -> github.com/saulpty/GAF-Payroll-Processor
 git branch                             # expect: * main
 git tag -l "archive/*"                 # expect: archive/staging
 ls src/AGENTS.md && wc -c src/AGENTS.md  # expect: non-zero

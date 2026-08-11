@@ -76,7 +76,13 @@ Renamed from `GAF-Payroll-Processor` to match the UIB project name.
 
 **`src/` is a mirror, not a workspace.** Hand-edits there are silently destroyed by the next export. This rule is the difference between a useful diff and a meaningless one, and it is non-negotiable for the loop in Section 2 to work.
 
-**Git is retained; GitHub is not.** The `origin` remote is removed. Branch handling, based on measured divergence:
+**Git is retained. GitHub is retained as a backup only.** *(Revised 2026-08-11 — originally "GitHub is not retained".)*
+
+The initial decision to drop GitHub rested on a misunderstanding: the user's difficulty was with branches, pull requests, merges, and releases — git *ceremony* — not with remote storage. The branch consolidation below removes all of that ceremony. With a single branch and no collaborators, there is nothing to merge, no pull request to open, and no release to cut.
+
+The `origin` remote is therefore kept, used for one purpose: an off-machine copy. Without it the entire history of a production payroll system exists on a single laptop. `git push` is the only remote command in the workflow. This also preserves the option of UI Bakery's native "Connect Git" integration, which could automate the export loop entirely and requires a remote to target.
+
+Branch handling, based on measured divergence:
 
 - `fix/discount-and-monday-alias` holds the real history — `main` is 0 ahead, 17 behind. `main` fast-forwards to it, then the branch is deleted. `main` becomes the single working branch.
 - `staging` is genuinely divergent: 15 commits not present elsewhere, against 14 the other way. It is **not** deleted. It is preserved as tag `archive/staging` before removal, so the work remains recoverable.
@@ -176,13 +182,14 @@ HIPAA's definition of protected health information excludes employment records h
 | Rename fails due to open file handles | Rename sequenced last; session restarted in new path |
 | Export omits UIB state not represented as files | Exports archived raw in `exports/`; UIB remains source of truth |
 | Migration reconciliation reveals genuine drift needing DB writes | Findings documented and reviewed before any write is proposed |
-| Local git history diverges from a future GitHub restore | Accepted — GitHub is deliberately abandoned |
+| Backup goes stale because pushing is a manual step | `git push` added to the change loop; UIB "Connect Git" evaluated as an automatic alternative |
+| Git ceremony (branches, PRs, merges) reappears and causes confusion again | Single-branch model with no collaborators makes it structurally impossible — there is nothing to branch from or merge into |
 
 ---
 
 ## Success criteria
 
-1. One folder, `Documents\GAF-HR-Hub\`, containing the current app; no remote configured, `main` the only branch, no leftover worktrees, `staging` preserved as tag `archive/staging`.
+1. One folder, `Documents\GAF-HR-Hub\`, containing the current app; `main` the only branch, `origin` retained as a backup remote, no leftover worktrees, `staging` preserved as tag `archive/staging`.
 2. `src/` matches the 2026-08-11 export exactly and is committed.
 3. A UIB change can be exported, diffed, and committed, and the diff correctly identifies files changed outside the requested scope.
 4. `src/AGENTS.md` is non-empty, present in UIB, and covers schema, timezone rules, classification, file map, and hard constraints.
