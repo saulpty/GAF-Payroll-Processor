@@ -656,7 +656,7 @@ export default function ProcessPayroll() {
               <input type="checkbox" className="w-3.5 h-3.5" checked={midDayPull}
                 onChange={e => setMidDayPull(e.target.checked)} disabled={isRunning} />
               <span className="font-medium text-slate-700">Export pulled mid-day</span>
-              <span className="text-muted-foreground text-xs">— assigns 4:00 PM default exit</span>
+              <span className="text-muted-foreground text-xs">— fills missing exits with each employee's scheduled end</span>
             </label>
           </div>
         </StepCard>
