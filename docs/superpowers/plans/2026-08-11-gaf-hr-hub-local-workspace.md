@@ -16,7 +16,7 @@
 - **No database contents leave the machine.** Schema, DDL, counts, and aggregates only; no employee-level rows. Findings recorded with values redacted.
 - **The 2026-08-11 export (`Downloads\GAF HR Hub.zip`) is the source of truth.** Where local and export disagree, the export wins.
 - **Node test command:** `node --test "tests/*.test.ts"` (the bare `tests/` directory form fails with MODULE_NOT_FOUND — the glob is required).
-- **Repo root during Tasks 1–7:** `C:\Users\SaulFallembaum\Documents\GAF-Payroll-Processor`. Renamed to `GAF-HR-Hub` in Task 8 only.
+- **Repo root:** `C:\Users\SaulFallembaum\Documents\GAF-Payroll-Processor`, permanently. The rename to `GAF-HR-Hub` planned for Task 8 was dropped by owner decision on 2026-08-11 — see Task 8. Archive filenames under `exports/` still use the `GAF-HR-Hub` project name, which is correct: that is the UIB project, not the folder.
 
 ---
 
@@ -1102,86 +1102,24 @@ classification model, a file map, and hard constraints."
 
 ---
 
-### Task 8: Rename the folder and remove the last worktree
+### Task 8: Rename the folder and remove the last worktree — DROPPED
 
-**Must be last.** The active session runs inside `.claude\worktrees\gaf-hr-hub-local-92331a`; Windows will not rename a directory a running process holds open. Expect to restart the session in the new path.
-
-**Files:**
-- Modify: directory name and git worktree metadata
-
-**Interfaces:**
-- Consumes: everything above, committed
-- Produces: `C:\Users\SaulFallembaum\Documents\GAF-HR-Hub` with `main` as the only branch
-
-- [ ] **Step 1: Confirm everything is committed first**
-
-```bash
-cd "C:/Users/SaulFallembaum/Documents/GAF-Payroll-Processor"
-git status --short
-git log --oneline -8
-```
-
-Expected: clean tree. Do not proceed otherwise — the rename is disruptive and must not happen over uncommitted work.
-
-- [ ] **Step 2: Remove the last worktree**
-
-This deletes the directory the session is running in. Run it from the repo root, not from inside the worktree.
-
-```bash
-cd "C:/Users/SaulFallembaum/Documents/GAF-Payroll-Processor"
-git worktree remove .claude/worktrees/gaf-hr-hub-local-92331a --force
-git branch -D claude/gaf-hr-hub-local-92331a
-git worktree list
-git branch
-```
-
-Expected: one worktree (the repo root); `* main` the only branch.
-
-If removal fails with a file-in-use error, the session still holds the directory. Hand Step 2 and Step 3 to the user to run in a fresh terminal.
-
-- [ ] **Step 3: Rename the folder**
-
-```bash
-cd "C:/Users/SaulFallembaum/Documents"
-mv GAF-Payroll-Processor GAF-HR-Hub
-ls -d GAF-HR-Hub
-```
-
-If this fails with a permission or lock error, every shell with a working directory inside the folder must be closed first.
-
-- [ ] **Step 4: Verify the repository survived the rename**
-
-Git stores worktree paths as absolute, so the rename can strand metadata.
-
-```bash
-cd "C:/Users/SaulFallembaum/Documents/GAF-HR-Hub"
-git status
-git worktree list
-git log --oneline -3
-node --test "tests/*.test.ts" 2>&1 | tail -8
-```
-
-Expected: clean status; a single worktree at the **new** path; history intact; tests at the recorded pass count. If `git worktree list` still shows the old path, run `git worktree prune` and re-check.
-
-- [ ] **Step 5: Confirm the success criteria**
-
-```bash
-cd "C:/Users/SaulFallembaum/Documents/GAF-HR-Hub"
-git remote -v                          # expect: origin -> github.com/saulpty/GAF-Payroll-Processor
-git branch                             # expect: * main
-git tag -l "archive/*"                 # expect: archive/staging
-ls src/AGENTS.md && wc -c src/AGENTS.md  # expect: non-zero
-ls docs/CHANGE-LOOP.md docs/findings/
-```
-
-- [ ] **Step 6: Commit any path-related fixes**
-
-```bash
-cd "C:/Users/SaulFallembaum/Documents/GAF-HR-Hub"
-git status --short
-```
-
-If clean, nothing to commit — the rename touches no tracked files. If `git worktree prune` altered metadata, no commit is needed either; that state is untracked.
+> **Not done, by owner decision on 2026-08-11.** The rename is cosmetic, and
+> both steps delete the directory the running session occupies, costing a
+> session restart for no functional gain. The folder keeps the name
+> `GAF-Payroll-Processor`; only its name differs from the UIB project.
+>
+> The stale worktree at `.claude/worktrees/gaf-hr-hub-local-92331a` remains.
+> It sits at the repository root commit and holds nothing unique. Remove it
+> opportunistically from a session that is not inside it:
+>
+> ```bash
+> git worktree remove .claude/worktrees/gaf-hr-hub-local-92331a --force
+> git branch -D claude/gaf-hr-hub-local-92331a
+> ```
+>
+> The original step-by-step text is preserved in git history at commit
+> 8cb85b2 should the rename ever be revisited.
 
 ---
 

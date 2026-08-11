@@ -15,10 +15,14 @@ edited. Your employees use it. The database lives here. If UIB disappeared,
 the app would be gone. **UIB is the truth.**
 
 **2. Your laptop — a copy for checking things.**
-A folder at `Documents\GAF-Payroll-Processor` (being renamed to
-`Documents\GAF-HR-Hub`). It is a photocopy of UIB's code. It does
-not run. Nothing here affects the live app. Its whole job is to let us
-answer one question: *what exactly changed?*
+A folder at `Documents\GAF-Payroll-Processor`. It is a photocopy of UIB's
+code. It does not run. Nothing here affects the live app. Its whole job is
+to let us answer one question: *what exactly changed?*
+
+The folder keeps its original name even though the UIB project was renamed
+to *GAF HR Hub*. Renaming it would have bought nothing and cost a session
+restart, so it stays. Only the name differs — the contents mirror *GAF HR
+Hub*.
 
 **3. GitHub — a backup of the copy.**
 An off-site shelf. If your laptop dies, the history survives. That's all it

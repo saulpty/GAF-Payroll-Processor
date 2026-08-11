@@ -63,7 +63,7 @@ Evidence gathered by extracting `Downloads\GAF HR Hub.zip` (142 files) and diffi
 ## Section 1 — Workspace layout
 
 ```
-C:\Users\SaulFallembaum\Documents\GAF-HR-Hub\
+C:\Users\SaulFallembaum\Documents\GAF-Payroll-Processor\
   src\        verbatim mirror of the UIB export — never hand-edited
   docs\       specs, findings, decisions
   tests\      existing test files, expanded over time
@@ -72,7 +72,7 @@ C:\Users\SaulFallembaum\Documents\GAF-HR-Hub\
   .claude\    skills, settings
 ```
 
-Renamed from `GAF-Payroll-Processor` to match the UIB project name.
+*(Revised 2026-08-11 — the folder was originally to be renamed `GAF-HR-Hub` to match the UIB project. The owner chose to skip it: the rename is cosmetic, and it would have cost a session restart because the running session lived inside the directory being moved. The folder keeps its original name; only the name differs from the UIB project.)*
 
 **`src/` is a mirror, not a workspace.** Hand-edits there are silently destroyed by the next export. This rule is the difference between a useful diff and a meaningless one, and it is non-negotiable for the loop in Section 2 to work.
 
@@ -170,6 +170,13 @@ HIPAA's definition of protected health information excludes employment records h
 
 ## Deferred work
 
+**The folder rename and the last worktree.** Both were deliberately dropped on 2026-08-11. The rename is cosmetic. The stale worktree at `.claude\worktrees\gaf-hr-hub-local-92331a` sits at the repository root commit and holds nothing unique, but removing it deletes the directory a running session occupies — so it can only be done from a session that is not inside it. Harmless where it is; clean up opportunistically at the start of some future session with:
+
+```bash
+git worktree remove .claude/worktrees/gaf-hr-hub-local-92331a --force
+git branch -D claude/gaf-hr-hub-local-92331a
+```
+
 **Splitting the oversized files.** The correct long-term fix for unreliable edits, but refactoring a 53 KB file *through* UIB is itself the highest-risk operation available. Each file is split immediately before substantial work begins in it, with the diff net already established. Not done preemptively.
 
 ---
@@ -189,7 +196,7 @@ HIPAA's definition of protected health information excludes employment records h
 
 ## Success criteria
 
-1. One folder, `Documents\GAF-HR-Hub\`, containing the current app; `main` the only branch, `origin` retained as a backup remote, no leftover worktrees, `staging` preserved as tag `archive/staging`.
+1. One folder, `Documents\GAF-Payroll-Processor\`, containing the current app; `main` the only branch, `origin` retained as a backup remote, `staging` preserved as tag `archive/staging`. One stale worktree remains under `.claude\worktrees\` — see Deferred Work.
 2. `src/` matches the 2026-08-11 export exactly and is committed.
 3. A UIB change can be exported, diffed, and committed, and the diff correctly identifies files changed outside the requested scope.
 4. `src/AGENTS.md` is non-empty, present in UIB, and covers schema, timezone rules, classification, file map, and hard constraints.
