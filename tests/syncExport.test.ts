@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  normalizeNewlines, listFilesRecursive, findExportRoot, mirrorDirectory,
+  normalizeNewlines, listFilesRecursive, findExportRoot, mirrorDirectory, syncFile,
 } from '../tools/sync-export.mjs';
 
 function tmp() {
@@ -133,6 +133,45 @@ test('mirrorDirectory reports a real change even when line endings also differ',
 
   assert.deepEqual(result.changed, ['f.ts']);
   assert.equal(readFileSync(join(dest, 'f.ts'), 'utf8'), 'const a = 99;\n');
+  rmSync(src, { recursive: true, force: true });
+  rmSync(dest, { recursive: true, force: true });
+});
+
+test('syncFile reports added when the destination does not exist', () => {
+  const src = tmp(), dest = tmp();
+  write(src, 'f.ts', 'const a = 1;\n');
+  assert.equal(syncFile(join(src, 'f.ts'), join(dest, 'nested', 'f.ts')), 'added');
+  assert.equal(readFileSync(join(dest, 'nested', 'f.ts'), 'utf8'), 'const a = 1;\n');
+  rmSync(src, { recursive: true, force: true });
+  rmSync(dest, { recursive: true, force: true });
+});
+
+test('syncFile reports changed when content genuinely differs', () => {
+  const src = tmp(), dest = tmp();
+  write(src, 'f.ts', 'const a = 99;\n');
+  write(dest, 'f.ts', 'const a = 1;\n');
+  assert.equal(syncFile(join(src, 'f.ts'), join(dest, 'f.ts')), 'changed');
+  assert.equal(readFileSync(join(dest, 'f.ts'), 'utf8'), 'const a = 99;\n');
+  rmSync(src, { recursive: true, force: true });
+  rmSync(dest, { recursive: true, force: true });
+});
+
+test('syncFile reports null but still normalizes a CRLF-only difference', () => {
+  const src = tmp(), dest = tmp();
+  write(src, 'f.ts', 'const a = 1;\n');
+  write(dest, 'f.ts', 'const a = 1;\r\n');
+  assert.equal(syncFile(join(src, 'f.ts'), join(dest, 'f.ts')), null);
+  assert.equal(readFileSync(join(dest, 'f.ts'), 'utf8'), 'const a = 1;\n',
+    'must be normalized on disk even though nothing is reported');
+  rmSync(src, { recursive: true, force: true });
+  rmSync(dest, { recursive: true, force: true });
+});
+
+test('syncFile reports null when the files are already identical', () => {
+  const src = tmp(), dest = tmp();
+  write(src, 'f.ts', 'const a = 1;\n');
+  write(dest, 'f.ts', 'const a = 1;\n');
+  assert.equal(syncFile(join(src, 'f.ts'), join(dest, 'f.ts')), null);
   rmSync(src, { recursive: true, force: true });
   rmSync(dest, { recursive: true, force: true });
 });

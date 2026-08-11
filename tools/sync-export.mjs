@@ -37,6 +37,30 @@ export function listFilesRecursive(root) {
   return out.sort();
 }
 
+/**
+ * Copy one file into place with line endings normalized.
+ *
+ * Returns 'added' when the destination did not exist, 'changed' when its
+ * content genuinely differs, or null when nothing worth reporting changed.
+ * A file whose only difference is CRLF-vs-LF is rewritten on disk but
+ * reported as null — suppressing that noise is the point of this tool.
+ */
+export function syncFile(srcPath, destPath) {
+  const srcBody = normalizeNewlines(readFileSync(srcPath));
+  if (!existsSync(destPath)) {
+    mkdirSync(dirname(destPath), { recursive: true });
+    writeFileSync(destPath, srcBody);
+    return 'added';
+  }
+  const destRaw = readFileSync(destPath);
+  if (!normalizeNewlines(destRaw).equals(srcBody)) {
+    writeFileSync(destPath, srcBody);
+    return 'changed';
+  }
+  if (!destRaw.equals(srcBody)) writeFileSync(destPath, srcBody);
+  return null;
+}
+
 export function findExportRoot(extractDir) {
   if (existsSync(join(extractDir, 'version.yml'))) return extractDir;
   const candidates = readdirSync(extractDir, { withFileTypes: true })
@@ -68,23 +92,9 @@ export function mirrorDirectory(srcDir, destDir) {
   const added = [], changed = [], removed = [];
 
   for (const rel of srcFiles) {
-    const srcBody = normalizeNewlines(readFileSync(join(srcDir, rel)));
-    const destPath = join(destDir, rel);
-    if (!existsSync(destPath)) {
-      mkdirSync(dirname(destPath), { recursive: true });
-      writeFileSync(destPath, srcBody);
-      added.push(rel);
-    } else {
-      const destRaw = readFileSync(destPath);
-      if (!normalizeNewlines(destRaw).equals(srcBody)) {
-        writeFileSync(destPath, srcBody);
-        changed.push(rel);
-      } else if (!destRaw.equals(srcBody)) {
-        // Same content, different line endings: normalize on disk but do
-        // not report it as a change — that noise is what this tool removes.
-        writeFileSync(destPath, srcBody);
-      }
-    }
+    const outcome = syncFile(join(srcDir, rel), join(destDir, rel));
+    if (outcome === 'added') added.push(rel);
+    else if (outcome === 'changed') changed.push(rel);
   }
 
   for (const rel of destFiles) {
@@ -120,20 +130,8 @@ export function syncExport(zipPath, repoRoot) {
         }
         continue;
       }
-      const body = normalizeNewlines(readFileSync(from));
-      const isNew = !existsSync(to);
-      if (isNew) {
-        writeFileSync(to, body);
-        total.added.push(f);
-      } else {
-        const destRaw = readFileSync(to);
-        if (!normalizeNewlines(destRaw).equals(body)) {
-          writeFileSync(to, body);
-          total.changed.push(f);
-        } else if (!destRaw.equals(body)) {
-          writeFileSync(to, body);
-        }
-      }
+      const outcome = syncFile(from, to);
+      if (outcome) total[outcome].push(f);
     }
 
     // Archive the raw zip so the exact UIB output is recoverable.
