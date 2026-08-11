@@ -126,7 +126,23 @@ the directory sync silently reads the wrong board or column and produces
 wrong role/manager/active data with no error. That is the exact precedent
 this failure mode already set.
 
-### 4. `midDayPullDate` is derived from the clock, not the data
+### 4. `midDayPullDate` is derived from the clock, not the data — ✅ FIXED 2026-08-11 (`63afa19`)
+
+> A `teramindMaxDate` memo now derives the pull date from the uploaded rows,
+> falling back to today only when none are loaded. Date taken as the text
+> prefix of the timestamp — no `Date` construction, no timezone conversion.
+>
+> Second test of the loop, and a more demanding one than the label fix: real
+> logic, in the 53 KB file, with a deliberate trap (an instruction not to
+> tidy the duplicated `Coverage:` computation at lines 640-645). UIB changed
+> one file, respected the trap, and its chat opened with *"Reading AGENTS.md
+> and the relevant file sections first"* — the first direct evidence the
+> standing instructions are being read.
+>
+> One nit, not a defect: the memo was placed at line ~503, below its use at
+> line ~427. Legal — `runEngine` only executes after render — but it reads
+> awkwardly. Worth tidying whenever that area is next touched.
+
 **Where:** `src/app/pages/ProcessPayroll.tsx:427`
 **Risk:** low today — confirmed 2026-08-11 that payroll is always processed the
 same calendar day as the pull.
