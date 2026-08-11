@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useLoadAction } from '@uibakery/data';
-import { Search, Calendar, RefreshCw, Activity } from 'lucide-react';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { useLocation } from 'react-router-dom';
+import { Activity } from 'lucide-react';
 import loadAttendanceDailyAction from '@/actions/loadAttendanceDaily';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import {
@@ -11,27 +13,39 @@ import { AttendanceDonuts } from '@/app/pages/attendance/AttendanceDonuts';
 import { AttendanceTable }  from '@/app/pages/attendance/AttendanceTable';
 import { AttendancePanel }  from '@/app/pages/attendance/AttendancePanel';
 import { AttendanceTrends } from '@/app/pages/attendance/AttendanceTrends';
+import { useState } from 'react';
 
 type Tab = 'dashboard' | 'employees' | 'trends';
 
-function fmt(d: Date) { return d.toISOString().slice(0, 10); }
-function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return fmt(d); }
+function tabFromPath(pathname: string): Tab {
+  if (pathname.includes('/employees')) return 'employees';
+  if (pathname.includes('/trends'))    return 'trends';
+  return 'dashboard';
+}
 
 export default function Attendance() {
-  const today = fmt(new Date());
-  const [dateFrom, setDateFrom] = useState(daysAgo(30));
-  const [dateTo,   setDateTo]   = useState(today);
-  const [tab,      setTab]      = useState<Tab>('dashboard');
-  const [search,   setSearch]   = useState('');
-  const [manager,  setManager]  = useState('');
-  const [role,     setRole]     = useState('');
+  const { pathname } = useLocation();
+  const tab: Tab = tabFromPath(pathname);
+
+  const {
+    dateFrom, dateTo,
+    employee: globalEmployee,
+    manager, role,
+  } = useGlobalFilters();
+
   const [panelEmail, setPanelEmail] = useState<string | null>(null);
 
-  // Load data
-  const [rawRows, loadingRows, rowsError, refreshRows] = useLoadAction(
+  // Guard against blank dates (e.g. user clears the input) — fall back to safe defaults
+  function today() { return new Date().toISOString().slice(0, 10); }
+  function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+  const safeFrom = dateFrom || daysAgo(30);
+  const safeTo   = dateTo   || today();
+
+  // Load data — single instance, no remount on tab change
+  const [rawRows, loadingRows, rowsError] = useLoadAction(
     loadAttendanceDailyAction,
     [] as AttendanceRow[],
-    { dateFrom, dateTo, email: '' },
+    { dateFrom: safeFrom, dateTo: safeTo, email: '' },
   );
   const [empList, loadingEmps] = useLoadAction(
     loadAttendanceEmployeesAction,
@@ -47,25 +61,20 @@ export default function Attendance() {
     return m;
   }, [emps]);
 
-  // Manager / Role filter options (from the directory)
-  const managers = useMemo(
-    () => [...new Set(emps.map(e => e.manager).filter(Boolean))].sort(),
-    [emps],
-  );
-  const roles = useMemo(
-    () => [...new Set(emps.map(e => e.role).filter(Boolean))].sort(),
-    [emps],
-  );
-
-  // Emails matching the active manager/role filters, and rows scoped to them.
   const matchEmails = useMemo(
     () => new Set(
       emps
-        .filter(e => (!manager || e.manager === manager) && (!role || e.role === role))
+        .filter(e =>
+          (!manager || e.manager === manager) &&
+          (!role || e.role === role) &&
+          (!globalEmployee || e.name?.toLowerCase().includes(globalEmployee.toLowerCase()) ||
+            e.email?.toLowerCase().includes(globalEmployee.toLowerCase()))
+        )
         .map(e => e.email),
     ),
-    [emps, manager, role],
+    [emps, manager, role, globalEmployee],
   );
+
   const filteredRows = useMemo(
     () => rows.filter(r => matchEmails.has(r.email)),
     [rows, matchEmails],
@@ -79,126 +88,58 @@ export default function Attendance() {
   const kpis = useMemo(() => computeCompanyKpis(filteredRows), [filteredRows]);
 
   const panelStats = panelEmail ? empStats.find(s => s.email === panelEmail) ?? null : null;
-
   const loading = loadingRows || loadingEmps;
 
-  const setPreset = (days: number) => { setDateFrom(daysAgo(days)); setDateTo(today); };
-  const reset = () => { setDateFrom(daysAgo(30)); setDateTo(today); setSearch(''); setManager(''); setRole(''); };
-
-  const tabCls = (t: Tab) =>
-    `px-5 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === t
-      ? 'bg-white shadow-sm text-foreground'
-      : 'text-muted-foreground hover:text-foreground'}`;
-
   return (
-    <div className="flex flex-col min-h-full bg-background">
-      {/* Filter bar */}
-      <div className="bg-white border-b border-border px-6 py-3 flex items-center gap-3 flex-wrap sticky top-0 z-30">
-        <div className="flex items-center gap-1.5 text-sm">
-          <Calendar className="w-4 h-4 text-muted-foreground" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">From</span>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-            className="h-8 px-2.5 text-sm border border-border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30" />
-        </div>
-        <div className="flex items-center gap-1.5 text-sm">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">To</span>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-            className="h-8 px-2.5 text-sm border border-border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30" />
-        </div>
-        <div className="w-px h-6 bg-border" />
-        <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Manager</span>
-          <select value={manager} onChange={e => setManager(e.target.value)}
-            className="h-8 px-2 text-sm border border-border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
-            <option value="">All</option>
-            {managers.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Role</span>
-          <select value={role} onChange={e => setRole(e.target.value)}
-            className="h-8 px-2 text-sm border border-border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30">
-            <option value="">All</option>
-            {roles.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-        </div>
-        <div className="w-px h-6 bg-border" />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Quick</span>
-        {[30, 60, 90].map(d => (
-          <button key={d} onClick={() => setPreset(d)}
-            className="h-8 px-3 text-xs font-semibold border border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition-all">
-            {d}d
-          </button>
-        ))}
-        <div className="w-px h-6 bg-border" />
-        <button onClick={reset}
-          className="h-8 px-3 text-xs border border-border text-muted-foreground rounded-lg hover:bg-muted transition-all">
-          Reset
-        </button>
-        <button onClick={() => refreshRows?.()}
-          className="h-8 px-3 text-xs border border-border text-muted-foreground rounded-lg hover:bg-muted transition-all flex items-center gap-1.5">
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-        <div className="ml-auto flex items-center gap-2 bg-muted rounded-xl p-1">
-          <button className={tabCls('dashboard')} onClick={() => setTab('dashboard')}>Dashboard</button>
-          <button className={tabCls('employees')} onClick={() => setTab('employees')}>Employees</button>
-          <button className={tabCls('trends')}    onClick={() => setTab('trends')}>Trends</button>
-        </div>
-      </div>
+    <div className="flex flex-col h-full bg-background">
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-auto px-4 py-4 w-full">
+        <div className="w-full">
+          {loading && rows.length === 0 && (
+            <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
+              <Activity className="w-5 h-5 animate-pulse" />
+              Loading attendance data…
+            </div>
+          )}
 
-      {/* Body */}
-      <div className="flex-1 px-6 py-6 max-w-screen-xl mx-auto w-full">
-        {loading && rows.length === 0 && (
-          <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
-            <Activity className="w-5 h-5 animate-pulse" />
-            Loading attendance data…
-          </div>
-        )}
+          {rowsError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 mb-4">
+              Error loading data. The view may not be created yet — apply the migration first.
+            </div>
+          )}
 
-        {rowsError && (
-          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 mb-4">
-            Error loading data. The view may not be created yet — apply the migration first.
-          </div>
-        )}
+          {(!loading || rows.length > 0) && (
+            <>
+              {/* KPIs — always visible */}
+              <AttendanceKpis kpis={kpis} />
 
-        {!loading || rows.length > 0 ? (
-          <>
-            {/* KPIs — always visible */}
-            <AttendanceKpis kpis={kpis} />
+              {/* Dashboard tab */}
+              {tab === 'dashboard' && (
+                <AttendanceDonuts kpis={kpis} empStats={empStats} />
+              )}
 
-            {/* Dashboard tab */}
-            {tab === 'dashboard' && (
-              <AttendanceDonuts kpis={kpis} empStats={empStats} />
-            )}
-
-            {/* Employees tab */}
-            {tab === 'employees' && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-base font-semibold">Employee Directory</span>
-                    <span className="bg-muted text-muted-foreground text-xs font-medium px-2.5 py-1 rounded-full">
-                      {empStats.length} employees
-                    </span>
+              {/* Employees tab */}
+              {tab === 'employees' && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-base font-semibold">Employee Directory</span>
+                      <span className="bg-muted text-muted-foreground text-xs font-medium px-2.5 py-1 rounded-full">
+                        {empStats.length} employees
+                      </span>
+                    </div>
                   </div>
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <input value={search} onChange={e => setSearch(e.target.value)}
-                      placeholder="Search employees…"
-                      className="h-8 pl-8 pr-3 text-sm border border-border rounded-lg bg-white w-56 focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                  </div>
+                  <AttendanceTable stats={empStats} onRowClick={setPanelEmail} search={globalEmployee} />
                 </div>
-                <AttendanceTable stats={empStats} onRowClick={setPanelEmail} search={search} />
-              </div>
-            )}
+              )}
 
-            {/* Trends tab */}
-            {tab === 'trends' && (
-              <AttendanceTrends rows={filteredRows} empStats={empStats} />
-            )}
-          </>
-        ) : null}
+              {/* Trends tab */}
+              {tab === 'trends' && (
+                <AttendanceTrends rows={filteredRows} empStats={empStats} search={globalEmployee} />
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Slide panel */}

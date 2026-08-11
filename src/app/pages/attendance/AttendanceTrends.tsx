@@ -8,23 +8,34 @@ import { AttendanceRow, EmpStats, computeTrends, TrendPoint } from '@/app/lib/at
 type Props = {
   rows: AttendanceRow[];
   empStats: EmpStats[];
+  search: string;
 };
 
 type Gran = 'month' | 'week';
 type Metric = 'rate' | 'avg';
 type Cohort = 'all' | 'consistent';
 
-export function AttendanceTrends({ rows, empStats }: Props) {
+export function AttendanceTrends({ rows, empStats, search }: Props) {
   const [gran, setGran]     = useState<Gran>('month');
   const [metric, setMetric] = useState<Metric>('rate');
   const [cohort, setCohort] = useState<Cohort>('all');
-  const [empEmail, setEmpEmail] = useState<string>('all');
 
-  const isSingle = empEmail !== 'all';
+  // If exactly one employee matches the search, auto-switch to single mode
+  const matchedEmps = useMemo(() =>
+    search.trim()
+      ? empStats.filter(s =>
+          s.name.toLowerCase().includes(search.toLowerCase()) ||
+          s.email.toLowerCase().includes(search.toLowerCase())
+        )
+      : empStats,
+    [empStats, search]
+  );
+  const singleEmp = matchedEmps.length === 1 ? matchedEmps[0] : null;
+  const isSingle = singleEmp !== null;
   const isRate = metric === 'rate';
 
   const filteredRows = useMemo(() => {
-    if (isSingle) return rows.filter(r => r.email === empEmail);
+    if (isSingle) return rows.filter(r => r.email === singleEmp!.email);
     if (cohort === 'consistent' && !isSingle) {
       // consistent: employees with records in both earliest and latest complete month
       const months = [...new Set(rows.map(r => r.date.slice(0, 7)))].sort();
@@ -37,7 +48,7 @@ export function AttendanceTrends({ rows, empStats }: Props) {
       return rows.filter(r => consistent.has(r.email));
     }
     return rows;
-  }, [rows, isSingle, empEmail, cohort]);
+  }, [rows, isSingle, singleEmp, cohort]);
 
   const points: TrendPoint[] = useMemo(() => computeTrends(filteredRows, gran), [filteredRows, gran]);
 
@@ -106,14 +117,6 @@ export function AttendanceTrends({ rows, empStats }: Props) {
     <div className="flex flex-col gap-4">
       {/* Controls */}
       <div className="bg-white border border-border rounded-xl px-5 py-3 flex items-center gap-4 flex-wrap shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">View</span>
-          <select value={empEmail} onChange={e => setEmpEmail(e.target.value)}
-            className="h-8 px-2 text-sm border border-border rounded-lg bg-white text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
-            <option value="all">All Employees</option>
-            {empStats.map(s => <option key={s.email} value={s.email}>{s.name}</option>)}
-          </select>
-        </div>
         <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
           {(['month','week'] as Gran[]).map(g => (
             <button key={g} onClick={() => setGran(g)}
@@ -146,10 +149,10 @@ export function AttendanceTrends({ rows, empStats }: Props) {
       {deltaEl}
 
       {/* Chart */}
-      <div className="bg-white border border-border rounded-xl p-5 shadow-sm">
+      <div className="bg-white border border-border rounded-xl p-4 shadow-sm">
         <div className="text-sm font-semibold mb-1">
           {isRate ? 'On-Time Rate' : 'Avg Minutes Late / Workday'} — {gran === 'month' ? 'Monthly' : 'Weekly'}
-          {isSingle ? ` · ${empStats.find(e => e.email === empEmail)?.name ?? empEmail}` : cohort === 'consistent' ? ' · Consistent roster' : ' · Company'}
+          {isSingle ? ` · ${singleEmp!.name}` : cohort === 'consistent' ? ' · Consistent roster' : ' · Company'}
         </div>
         <div className="text-xs text-muted-foreground mb-4">
           {isRate
@@ -157,7 +160,7 @@ export function AttendanceTrends({ rows, empStats }: Props) {
             : 'Average lateness across every tracked workday (on-time counted as 0). Lower is better.'}
           {partialIdx >= 0 ? ` Final period (${chartData[partialIdx]?.label}) is in progress — shown dashed.` : ''}
         </div>
-        <div style={{ height: 260 }}>
+        <div style={{ height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 4, right: 16, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e5ea" />

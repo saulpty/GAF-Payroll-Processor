@@ -11,15 +11,5 @@ Applied migrations:
 1781274800_cleanup_obsolete_config_keys at 2026-06-12T14:32:51.317Z
 1781275000_retroactive_reclassify_all_periods at 2026-06-12T14:36:44.539Z
 1781275100_import_excel_operator_resolved at 2026-06-12T14:52:23.209Z
-1781400000_us_eastern_schedules at 2026-06-17T18:39:23.987Z
-1781400100_history_panama_to_eastern at 2026-06-17T18:39:23.987Z
-1781400200_attendance_use_stored_late_minutes at 2026-06-17T21:01:59.247Z
-1781400400_update_directory_board_config at 2026-06-18T14:29:30.367Z
-1781400500_fix_entry_time_lowercase_ampm at 2026-06-18T16:23:09.072Z
-1781400600_fix_entry_time_format_string at 2026-06-18T16:24:15.944Z
-1781400700_fix_entry_time_no_minutes at 2026-06-18T16:39:09.549Z
-1781401000_create_hrk_exports_table at 2026-06-18T19:18:43.204Z
-1781401100_fix_tz_shift_post_migration_periods at 2026-06-22T19:59:37.844Z
-1781401200_fix_auto_notes_after_tz_correction at 2026-06-22T20:01:02.874Z
-1781401300_fix_view_remove_dst_display_offset at 2026-06-22T20:10:14.603Z
-1781401400_revert_tz_shift_corrupted_periods at 2026-06-22T20:14:30.951Z
+1781803200_fix_directory_sync_emails_and_duplicates at 2026-08-07T16:42:18.972Z
+1781803300_add_missing_name_aliases at 2026-08-10T21:01:02.655Z

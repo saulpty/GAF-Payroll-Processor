@@ -1,23 +1,25 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { useSearchParams } from 'react-router-dom';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import {
   TableIcon, Download, Loader2, ChevronUp, ChevronDown,
-  ChevronsUpDown, Search, X, CheckCircle, Edit2, SquareCheck, Undo2,
+  ChevronsUpDown, X, CheckCircle, Edit2, SquareCheck, Undo2, Trash2, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TimeInput } from '@/app/components/TimeInput';
 import loadPayrollMasterAction from '@/actions/loadPayrollMaster';
 import countPayrollMasterAction from '@/actions/countPayrollMaster';
-import loadPeriodsAction from '@/actions/loadPeriods';
+
 import loadPayImpactsAction from '@/actions/loadPayImpacts';
 import loadDocumentationOptionsAction from '@/actions/loadDocumentationOptions';
 import loadEventTypesAction from '@/actions/loadEventTypes';
 import loadEventTypeRulesAction from '@/actions/loadEventTypeRules';
 import updatePayrollEntryAction from '@/actions/updatePayrollEntry';
 import updateEntryExitAction from '@/actions/updateEntryExit';
-import { computeDerivedFields } from '@/app/lib/classificationEngine';
+import softDeletePayrollEntryAction from '@/actions/softDeletePayrollEntry';
+import { computeDerivedFields, computeDiscount } from '@/app/lib/classificationEngine';
 
 type EntryRow = {
   id: number; period_name: string; employee_name: string; work_date: string;
@@ -68,24 +70,29 @@ function SortIcon({ col, sortKey, sortDir }: { col: string; sortKey: SortKey; so
     : <ChevronDown className="w-3 h-3 inline ml-0.5 text-blue-600" />;
 }
 
+/** Shorten very long names to "First Last" (first token + last token). */
+function shortName(full: string): string {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length <= 2) return full;
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
 export default function PayrollMaster() {
   const [searchParams] = useSearchParams();
-  const [periods] = useLoadAction(loadPeriodsAction, [] as { period_name: string }[]);
   const [payImpacts] = useLoadAction(loadPayImpactsAction, [] as { name: string }[]);
   const [docOptions] = useLoadAction(loadDocumentationOptionsAction, [] as { name: string }[]);
   const [eventTypes] = useLoadAction(loadEventTypesAction, [] as { name: string }[]);
   const [eventRulesRaw] = useLoadAction(loadEventTypeRulesAction, [] as { event_type: string; default_pay_impact: string }[]);
   const [updateEntry, saving] = useMutateAction(updatePayrollEntryAction);
   const [updateTimes] = useMutateAction(updateEntryExitAction);
+  const [softDeleteEntry] = useMutateAction(softDeletePayrollEntryAction);
 
-  const [filterPeriod, setFilterPeriod] = useState(searchParams.get('period') || '');
-  const [filterEmployee, setFilterEmployee] = useState('');
+  const { period: globalPeriod, employee: globalEmployee, pmTab: activeTab, setPmTab: setActiveTab } = useGlobalFilters();
   const [filterEvent, setFilterEvent] = useState('');
   const [filterImpact, setFilterImpact] = useState('');
   const [hideOnTime, setHideOnTime] = useState(false);
   const [page, setPage] = useState(0);
-  const [activeTab, setActiveTab] = useState<ActiveTab>('ALL');
-  const [search, setSearch] = useState('');
+
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
 
@@ -100,23 +107,31 @@ export default function PayrollMaster() {
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [undoSnapshot, setUndoSnapshot] = useState<UndoSnapshot | null>(null);
+  const [deleteConfirmRow, setDeleteConfirmRow] = useState<EntryRow | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [params, setParams] = useState({
-    periodName: searchParams.get('period') || '',
-    employeeName: '',
+    periodName: searchParams.get('period') || globalPeriod || '',
+    employeeName: globalEmployee || '',
     status: '',
     offset: 0,
   });
 
+  // Sync params when global period or employee changes
   useEffect(() => {
-    const p = searchParams.get('period');
-    if (p) { setFilterPeriod(p); setParams(prev => ({ ...prev, periodName: p })); }
-  }, [searchParams]);
+    const p = searchParams.get('period') || globalPeriod;
+    setParams(prev => ({ ...prev, periodName: p || '', employeeName: globalEmployee || '', offset: 0 }));
+    setPage(0);
+    setEdits({});
+    setSavedIds(new Set());
+  }, [globalPeriod, globalEmployee, searchParams]);
 
-  const [rows, loading, , reload] = useLoadAction(loadPayrollMasterAction, [] as EntryRow[], params);
+  const hasPeriod = !!params.periodName;
+
+  const [rows, loading, , reload] = useLoadAction(loadPayrollMasterAction, [] as EntryRow[], params, { enabled: hasPeriod });
   const [countData] = useLoadAction(countPayrollMasterAction, [] as { total: number }[], {
     periodName: params.periodName, employeeName: params.employeeName, status: params.status,
-  });
+  }, { enabled: hasPeriod });
 
   const total = (countData as { total: number }[])[0]?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -131,11 +146,7 @@ export default function PayrollMaster() {
     return m;
   }, [eventRulesRaw]);
 
-  const applyFilters = useCallback(() => {
-    setPage(0);
-    setParams({ periodName: filterPeriod, employeeName: filterEmployee, status: '', offset: 0 });
-    setEdits({}); setSavedIds(new Set());
-  }, [filterPeriod, filterEmployee]);
+
 
   // "On time full shift" = GREEN status with no events, no late/early minutes
   const isOnTimeFullShift = (r: EntryRow) =>
@@ -311,6 +322,21 @@ export default function PayrollMaster() {
     } finally { setBulkSaving(false); }
   };
 
+  const handleDelete = async () => {
+    if (!deleteConfirmRow) return;
+    const row = deleteConfirmRow;
+    setDeleteConfirmRow(null);
+    setDeletingId(row.id);
+    try {
+      await softDeleteEntry({ id: row.id, deletedBy: 'user' });
+      setToastMsg(`🗑 ${row.employee_name} — ${row.work_date.slice(0, 10)} deleted`);
+      setTimeout(() => setToastMsg(''), 3500);
+      await reload();
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       const next = sortDir === 'asc' ? 'desc' : null;
@@ -323,13 +349,6 @@ export default function PayrollMaster() {
 
   const allRows = rows as EntryRow[];
 
-  // Tab counts
-  const tabCounts = useMemo(() => ({
-    ALL: allRows.length,
-    GREEN: allRows.filter(r => r.status_current === 'GREEN').length,
-    YELLOW: allRows.filter(r => r.status_current === 'YELLOW').length,
-    RED: allRows.filter(r => r.status_current === 'RED').length,
-  }), [allRows]);
 
   const filtered = useMemo(() => {
     let out = activeTab === 'ALL' ? allRows : allRows.filter(r => r.status_current === activeTab);
@@ -348,10 +367,6 @@ export default function PayrollMaster() {
         (r.pay_impact_2 || '').toLowerCase().includes(q)
       );
     }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      out = out.filter(r => r.employee_name.toLowerCase().includes(q) || r.work_date.includes(q));
-    }
     if (sortKey && sortDir) {
       out = [...out].sort((a, b) => {
         const cmp = String(a[sortKey] ?? '').localeCompare(String(b[sortKey] ?? ''), undefined, { numeric: true });
@@ -359,7 +374,7 @@ export default function PayrollMaster() {
       });
     }
     return out;
-  }, [allRows, activeTab, hideOnTime, filterEvent, filterImpact, search, sortKey, sortDir]);
+  }, [allRows, activeTab, hideOnTime, filterEvent, filterImpact, sortKey, sortDir]);
 
   const exportCsv = () => {
     const headers = ['Period','Employee','Date','Entry','Exit','Sched','Late','Early','Discount','Event1','Impact1','Event2','Impact2','Doc','Notes','Status','Auto-Notes'];
@@ -379,21 +394,28 @@ export default function PayrollMaster() {
     a.click();
   };
 
-  const TAB_STYLES: Record<ActiveTab, { active: string; idle: string; dot: string }> = {
-    ALL:    { active: 'bg-slate-700 text-white border-slate-700', idle: 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50', dot: 'bg-slate-400' },
-    GREEN:  { active: 'bg-green-600 text-white border-green-600', idle: 'bg-white text-green-700 border-green-300 hover:bg-green-50', dot: 'bg-green-400' },
-    YELLOW: { active: 'bg-amber-500 text-white border-amber-500', idle: 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50', dot: 'bg-amber-300' },
-    RED:    { active: 'bg-red-600 text-white border-red-600',     idle: 'bg-white text-red-700 border-red-300 hover:bg-red-50',     dot: 'bg-red-400' },
-  };
 
-  const Th = ({ col, label, className = '' }: { col: SortKey; label: string; className?: string }) => (
+  const Th = ({ col, label, className = '', style }: { col: SortKey; label: string; className?: string; style?: React.CSSProperties }) => (
     <th
-      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r last:border-r-0 cursor-pointer select-none hover:bg-slate-200 transition-colors ${className}`}
+      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r last:border-r-0 cursor-pointer select-none bg-slate-100 hover:bg-slate-200 transition-colors ${className}`}
+      style={style}
       onClick={() => col && handleSort(col)}
     >
       {label}{col && <SortIcon col={col} sortKey={sortKey} sortDir={sortDir} />}
     </th>
   );
+
+  if (!hasPeriod) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-8">
+        <TableIcon className="w-10 h-10 text-slate-300" />
+        <h2 className="text-lg font-semibold text-slate-600">Select a Period</h2>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          Use the <span className="font-medium text-slate-700">Period</span> filter above to choose a payroll period before loading records.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full p-6 gap-4 overflow-hidden">
@@ -403,14 +425,70 @@ export default function PayrollMaster() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3 shrink-0">
-        <div className="flex items-center gap-3">
-          <TableIcon className="w-6 h-6 text-green-600" />
-          <h1 className="text-xl font-bold">Payroll Master</h1>
-          {total > 0 && <span className="text-sm text-muted-foreground">{total.toLocaleString()} rows</span>}
+      {/* Delete confirmation dialog */}
+      {deleteConfirmRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl border border-border p-6 max-w-md w-full mx-4">
+            <div className="flex items-start gap-3 mb-4">
+              <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-foreground mb-1">Delete Payroll Entry?</p>
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to delete the entry for{' '}
+                  <span className="font-medium text-foreground">{deleteConfirmRow.employee_name}</span>{' '}
+                  on <span className="font-medium text-foreground">{deleteConfirmRow.work_date.slice(0, 10)}</span>?
+                  <br />
+                  <span className="text-xs mt-1 block text-slate-500">This row will be moved to Deleted Items and can be restored from the Period Log.</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+                onClick={() => setDeleteConfirmRow(null)}
+              >
+                No, cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                onClick={handleDelete}
+              >
+                Yes, delete
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+      )}
+
+      {/* Header */}
+      {/* Filters + Export toolbar */}
+      <div className="flex gap-2 shrink-0 flex-wrap items-center">
+        <select className="border rounded-md px-3 py-2 text-sm min-w-40 bg-white"
+          value={filterEvent} onChange={e => setFilterEvent(e.target.value)}>
+          <option value="">All Events</option>
+          {eventOpts.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <select className="border rounded-md px-3 py-2 text-sm min-w-40 bg-white"
+          value={filterImpact} onChange={e => setFilterImpact(e.target.value)}>
+          <option value="">All Pay Impacts</option>
+          {impactOptions.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <button
+          onClick={() => setHideOnTime(v => !v)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+            hideOnTime ? 'bg-green-700 text-white border-green-700' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+          }`}
+        >
+          <span className={`w-2 h-2 rounded-full ${hideOnTime ? 'bg-white' : 'bg-green-400'}`} />
+          {hideOnTime ? 'Showing exceptions only' : 'Hide On-Time Full Shifts'}
+        </button>
+        {(filterEvent || filterImpact || hideOnTime) && (
+          <button onClick={() => { setFilterEvent(''); setFilterImpact(''); setHideOnTime(false); }}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <X className="w-3 h-3" />Clear
+          </button>
+        )}
+        <div className="ml-auto flex items-center gap-2">
           {undoSnapshot && (
             <Button variant="outline" size="sm" className="text-amber-700 border-amber-300 hover:bg-amber-50"
               disabled={bulkSaving} onClick={handleUndo}>
@@ -423,63 +501,6 @@ export default function PayrollMaster() {
         </div>
       </div>
 
-      {/* Filters row */}
-      <div className="flex gap-2 shrink-0 flex-wrap items-center">
-        <select className="border rounded-md px-3 py-2 text-sm min-w-44 bg-white"
-          value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)}>
-          <option value="">All Periods</option>
-          {(periods as { period_name: string }[]).map(p => (
-            <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
-          ))}
-        </select>
-        <input className="border rounded-md px-3 py-2 text-sm w-44 bg-white"
-          placeholder="Employee…"
-          value={filterEmployee} onChange={e => setFilterEmployee(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && applyFilters()} />
-        <Button size="sm" onClick={applyFilters}>Apply</Button>
-        <Button size="sm" variant="outline" onClick={() => {
-          setFilterPeriod(''); setFilterEmployee('');
-          setParams({ periodName: '', employeeName: '', status: '', offset: 0 });
-          setPage(0); setEdits({}); setSavedIds(new Set());
-        }}>Clear</Button>
-
-        <div className="w-px h-6 bg-slate-200 mx-1" />
-
-        {/* Event filter */}
-        <select className="border rounded-md px-3 py-2 text-sm min-w-40 bg-white"
-          value={filterEvent} onChange={e => setFilterEvent(e.target.value)}>
-          <option value="">All Events</option>
-          {eventOpts.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-
-        {/* Pay Impact filter */}
-        <select className="border rounded-md px-3 py-2 text-sm min-w-40 bg-white"
-          value={filterImpact} onChange={e => setFilterImpact(e.target.value)}>
-          <option value="">All Pay Impacts</option>
-          {impactOptions.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-
-        {/* Hide on-time toggle */}
-        <button
-          onClick={() => setHideOnTime(v => !v)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
-            hideOnTime
-              ? 'bg-green-700 text-white border-green-700'
-              : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-          }`}
-        >
-          <span className={`w-2 h-2 rounded-full ${hideOnTime ? 'bg-white' : 'bg-green-400'}`} />
-          {hideOnTime ? 'Showing exceptions only' : 'Hide On-Time Full Shifts'}
-        </button>
-
-        {(filterEvent || filterImpact || hideOnTime) && (
-          <button onClick={() => { setFilterEvent(''); setFilterImpact(''); setHideOnTime(false); }}
-            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-            <X className="w-3 h-3" />Clear filters
-          </button>
-        )}
-      </div>
-
       {loading && (
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <Loader2 className="w-4 h-4 animate-spin" />Loading…
@@ -488,39 +509,6 @@ export default function PayrollMaster() {
 
       {!loading && (
         <div className="flex flex-col flex-1 min-h-0 gap-3">
-          {/* Status tabs + inline search */}
-          <div className="flex items-center gap-3 flex-wrap shrink-0">
-            <div className="flex rounded-lg border overflow-hidden shadow-sm">
-              {(['ALL','GREEN','YELLOW','RED'] as ActiveTab[]).map(tab => {
-                const s = TAB_STYLES[tab];
-                const count = tabCounts[tab];
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => { setActiveTab(tab); setSearch(''); setSortKey(null); setSortDir(null); }}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-r last:border-r-0 transition-colors ${activeTab === tab ? s.active : s.idle}`}
-                  >
-                    {tab !== 'ALL' && <span className={`w-2 h-2 rounded-full ${s.dot} ${activeTab === tab ? 'opacity-100' : 'opacity-60'}`} />}
-                    {tab}
-                    <span className={`text-[10px] rounded-full px-1.5 py-0.5 font-bold ${activeTab === tab ? 'bg-white/20' : tab === 'GREEN' ? 'bg-green-100 text-green-700' : tab === 'YELLOW' ? 'bg-amber-100 text-amber-700' : tab === 'RED' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="relative max-w-64 flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input className="w-full border rounded-md pl-8 pr-8 py-2 text-sm bg-white"
-                placeholder="Filter by name or date…"
-                value={search} onChange={e => setSearch(e.target.value)} />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            <span className="text-xs text-muted-foreground ml-auto">{filtered.length} of {tabCounts[activeTab]} rows</span>
-          </div>
 
           {/* Bulk edit toolbar */}
           {selectedIds.size > 0 && (
@@ -621,15 +609,17 @@ export default function PayrollMaster() {
                       title="Select all visible rows"
                     />
                   </th>
-                  <Th col="employee_name" label="Employee" className="sticky left-0 bg-slate-100 z-30 min-w-36" />
-                  <Th col="work_date" label="Date" />
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700">
+                  <Th col="employee_name" label="Employee" className="sticky left-8 bg-slate-100 z-30" style={{ width: 192, minWidth: 192, maxWidth: 192 }} />
+                  <th className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-slate-100 sticky left-[224px] z-30" style={{ width: 40, minWidth: 40 }} title="Save" />
+                  <th className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-slate-100 sticky left-[264px] z-30" style={{ width: 32, minWidth: 32 }} title="Delete" />
+                  <Th col="work_date" label="Date" style={{ width: 100, minWidth: 100 }} />
+                  <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-24">
                     <Edit2 className="w-3 h-3 inline mr-1" />Entry
                   </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700">
+                  <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-24">
                     <Edit2 className="w-3 h-3 inline mr-1" />Exit
                   </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r text-slate-500">Sched</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r text-slate-500">Schedule</th>
                   <Th col="late_minutes" label="Late m" />
                   <Th col="early_leave_minutes" label="Early m" />
                   <Th col="discount_total_minutes" label="Disc m" />
@@ -638,15 +628,14 @@ export default function PayrollMaster() {
                   <Th col="event_type_2" label="Event 2" />
                   <Th col="pay_impact_2" label="Impact 2" />
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r">Doc</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r text-slate-500">Auto-Notes</th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r">Notes</th>
                   <Th col="status_current" label="Status" />
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r text-slate-500">Auto-Notes</th>
-                  <th className="w-16 px-2 py-2.5" />
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && (
-                  <tr><td colSpan={17} className="px-4 py-8 text-center text-muted-foreground text-sm">No records match the current filters.</td></tr>
+                  <tr><td colSpan={19} className="px-4 py-8 text-center text-muted-foreground text-sm">No records match the current filters.</td></tr>
                 )}
                 {filtered.map(row => {
                   const edit = getEdit(row);
@@ -661,32 +650,82 @@ export default function PayrollMaster() {
                       <td className="w-8 px-2 py-2 border-r text-center">
                         <input type="checkbox" className="rounded" checked={selectedIds.has(row.id)} onChange={() => toggleSelect(row.id)} />
                       </td>
-                      <td className={`px-3 py-2 font-medium whitespace-nowrap border-r sticky left-0 z-10 ${rowBg}`}>{row.employee_name}</td>
+                      <td className={`px-2 py-1.5 border-r sticky left-8 z-10 ${rowBg}`} style={{ width: 192, minWidth: 192, maxWidth: 192 }}>
+                        <span className="font-medium text-sm truncate block" title={row.employee_name}>
+                          {shortName(row.employee_name)}
+                        </span>
+                      </td>
+                      {/* Save — sticky, always visible */}
+                      <td className={`px-1 py-1.5 text-center border-r sticky left-[224px] z-10 ${rowBg}`} style={{ width: 40, minWidth: 40 }}>
+                        {saved && !dirty ? (
+                          <CheckCircle className="w-3.5 h-3.5 text-green-600 mx-auto" />
+                        ) : dirty ? (
+                          <button
+                            className="text-[10px] h-5 px-1.5 rounded bg-[#1B3A6B] hover:bg-[#152d54] text-white font-semibold disabled:opacity-50 transition-colors leading-none w-full"
+                            disabled={isSavingRow || saving}
+                            onClick={() => handleSave(row)}
+                          >
+                            {isSavingRow ? <Loader2 className="w-3 h-3 animate-spin inline" /> : 'Save'}
+                          </button>
+                        ) : null}
+                      </td>
+                      {/* Delete — sticky, always visible */}
+                      <td className={`px-1 py-1.5 text-center border-r sticky left-[264px] z-10 ${rowBg}`}>
+                        <button
+                          title="Delete entry"
+                          disabled={deletingId === row.id}
+                          onClick={() => setDeleteConfirmRow(row)}
+                          className="p-1 rounded hover:bg-red-100 text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+                        >
+                          {deletingId === row.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      </td>
                       <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0,10)}</td>
 
                       {/* Editable: Entry Time */}
-                      <td className="px-2 py-1.5 border-r min-w-28 bg-blue-50/50">
+                      <td className="px-1 py-1.5 border-r w-24 bg-blue-50/50">
                         <TimeInput
-                          className="w-full border rounded px-1.5 py-1 text-xs bg-white font-mono"
+                          className="w-full border rounded px-1 py-1 text-xs bg-white font-mono"
                           value={edit.entry_time}
                           onChange={v => setEditField(row.id, 'entry_time', v, row)}
-                          placeholder="e.g. 9:00 AM"
+                          placeholder="9:00 AM"
                         />
                       </td>
                       {/* Editable: Exit Time */}
-                      <td className="px-2 py-1.5 border-r min-w-28 bg-blue-50/50">
+                      <td className="px-1 py-1.5 border-r w-24 bg-blue-50/50">
                         <TimeInput
-                          className="w-full border rounded px-1.5 py-1 text-xs bg-white font-mono"
+                          className="w-full border rounded px-1 py-1 text-xs bg-white font-mono"
                           value={edit.exit_time}
                           onChange={v => setEditField(row.id, 'exit_time', v, row)}
-                          placeholder="e.g. 5:00 PM"
+                          placeholder="5:00 PM"
                         />
                       </td>
 
                       <td className="px-3 py-2 whitespace-nowrap border-r text-slate-500 text-[11px]">{row.scheduled_start}–{row.scheduled_end}</td>
                       <td className="px-3 py-2 text-center border-r">{row.late_minutes > 0 ? <span className="text-red-700 font-semibold">{row.late_minutes}</span> : <span className="text-slate-300">—</span>}</td>
                       <td className="px-3 py-2 text-center border-r">{row.early_leave_minutes > 0 ? <span className="text-orange-600 font-semibold">{row.early_leave_minutes}</span> : <span className="text-slate-300">—</span>}</td>
-                      <td className="px-3 py-2 text-center border-r font-semibold">{row.discount_total_minutes > 0 ? row.discount_total_minutes : <span className="text-slate-300">—</span>}</td>
+                      {(() => {
+                        const liveDiscount = computeDiscount({
+                          event_type_1: edit.event_type_1,
+                          pay_impact_1: edit.pay_impact_1,
+                          event_type_2: edit.event_type_2,
+                          pay_impact_2: edit.pay_impact_2,
+                          late_minutes: row.late_minutes,
+                          late_after_grace: row.late_after_grace,
+                          early_leave_minutes: row.early_leave_minutes,
+                        });
+                        const changed = liveDiscount !== row.discount_total_minutes && edits[row.id] !== undefined;
+                        return (
+                          <td className="px-3 py-2 text-center border-r font-semibold">
+                            {liveDiscount > 0
+                              ? <span className={changed ? 'text-amber-600' : undefined}>{liveDiscount}</span>
+                              : <span className="text-slate-300">—</span>
+                            }
+                          </td>
+                        );
+                      })()}
 
                       {/* Editable: Event Type 1 */}
                       <td className="px-2 py-1.5 border-r min-w-36">
@@ -733,6 +772,10 @@ export default function PayrollMaster() {
                           {docOpts.map(o => <option key={o} value={o}>{o}</option>)}
                         </select>
                       </td>
+                      {/* Auto-Notes */}
+                      <td className="px-3 py-2 border-r text-slate-500 max-w-48 text-[11px]">
+                        <span title={row.auto_notes} className="block truncate">{row.auto_notes || <span className="text-slate-300">—</span>}</span>
+                      </td>
                       {/* Editable: Notes */}
                       <td className="px-2 py-1.5 border-r min-w-36">
                         <input className="w-full border rounded px-1.5 py-1 text-xs bg-white"
@@ -747,25 +790,7 @@ export default function PayrollMaster() {
                           {row.status_current}
                         </span>
                       </td>
-                      <td className="px-3 py-2 border-r text-slate-500 max-w-48 text-[11px]">
-                        <span title={row.auto_notes} className="block truncate">{row.auto_notes || <span className="text-slate-300">—</span>}</span>
-                      </td>
 
-                      {/* Save */}
-                      <td className="px-2 py-1.5 text-center">
-                        {saved && !dirty ? (
-                          <span className="inline-flex items-center gap-1 text-green-700 text-[11px] font-medium">
-                            <CheckCircle className="w-3.5 h-3.5" />Saved
-                          </span>
-                        ) : (
-                          <Button size="sm" variant={dirty ? 'default' : 'outline'}
-                            className={`text-xs h-7 px-3 ${dirty ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
-                            disabled={isSavingRow || saving || !dirty}
-                            onClick={() => handleSave(row)}>
-                            {isSavingRow ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
-                          </Button>
-                        )}
-                      </td>
                     </tr>
                   );
                 })}

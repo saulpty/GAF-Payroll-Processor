@@ -15,7 +15,7 @@ function DonutChart({ data, colors, centerVal, centerLabel }: {
 }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   return (
-    <div className="relative" style={{ height: 190 }}>
+    <div className="relative" style={{ height: 170 }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie data={data} cx="50%" cy="50%" innerRadius={60} outerRadius={85}
@@ -79,8 +79,8 @@ export function AttendanceDonuts({ kpis, empStats }: { kpis: CompanyKpis; empSta
   const reportPct = totalLate > 0 ? Math.round(kpis.lateReported / totalLate * 100) : 0;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div className="bg-white rounded-xl border border-border shadow-sm p-5">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div className="bg-white rounded-xl border border-border shadow-sm p-4">
         <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Attendance Overview</div>
         <DonutChart data={overviewData} colors={COLORS_OVERVIEW}
           centerVal={`${kpis.onTimeRate.toFixed(0)}%`} centerLabel="On Time" />
@@ -93,7 +93,7 @@ export function AttendanceDonuts({ kpis, empStats }: { kpis: CompanyKpis; empSta
         ]} />
       </div>
 
-      <div className="bg-white rounded-xl border border-border shadow-sm p-5">
+      <div className="bg-white rounded-xl border border-border shadow-sm p-4">
         <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Late Arrivals — By Window</div>
         <DonutChart data={lateData.filter(d => d.value > 0).length > 0 ? lateData : [{ name: 'No data', value: 1 }]}
           colors={COLORS_BUCKETS}
@@ -105,7 +105,7 @@ export function AttendanceDonuts({ kpis, empStats }: { kpis: CompanyKpis; empSta
         ]} />
       </div>
 
-      <div className="bg-white rounded-xl border border-border shadow-sm p-5">
+      <div className="bg-white rounded-xl border border-border shadow-sm p-4">
         <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Reporting Compliance</div>
         <DonutChart data={reportingData} colors={COLORS_REPORTING}
           centerVal={`${reportPct}%`} centerLabel="Reported" />

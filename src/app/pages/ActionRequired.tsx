@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import {
-  AlertTriangle, CheckCircle, Loader2, ChevronUp, ChevronDown,
-  ChevronsUpDown, Search, X, Edit2, GitCommit, ChevronRight,
+  CheckCircle, Loader2, ChevronUp, ChevronDown,
+  ChevronsUpDown, Edit2, GitCommit, ChevronRight, X,
   Square, CheckSquare, Send, ClipboardList, RotateCcw,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,11 +15,10 @@ import loadCommittedEntriesAction from '@/actions/loadCommittedEntries';
 import updatePayrollEntryAction from '@/actions/updatePayrollEntry';
 import updateEntryExitAction from '@/actions/updateEntryExit';
 import loadEventTypeRulesAction from '@/actions/loadEventTypeRules';
-import loadPeriodsAction from '@/actions/loadPeriods';
 import loadPayImpactsAction from '@/actions/loadPayImpacts';
 import loadDocumentationOptionsAction from '@/actions/loadDocumentationOptions';
 import loadEventTypesAction from '@/actions/loadEventTypes';
-import loadUnresolvedCountAction from '@/actions/loadUnresolvedCount';
+
 import { computeDerivedFields } from '@/app/lib/classificationEngine';
 
 type EntryRow = {
@@ -105,34 +105,33 @@ function BroadcastSelect({ value, options, placeholder, broadcasting, onChange }
 }
 
 export default function ActionRequired() {
-  const [periods] = useLoadAction(loadPeriodsAction, [] as { period_name: string; start_date: string }[]);
+  const { period: selectedPeriod, employee: globalEmployee, statusTab: activeTab, setStatusTab: setActiveTab } = useGlobalFilters();
   const [payImpacts] = useLoadAction(loadPayImpactsAction, [] as { name: string }[]);
   const [docOptions] = useLoadAction(loadDocumentationOptionsAction, [] as { name: string }[]);
   const [eventTypes] = useLoadAction(loadEventTypesAction, [] as { id: number; name: string }[]);
-  const [unresolvedData] = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
+
   const [eventRulesRaw] = useLoadAction(loadEventTypeRulesAction, [] as { event_type: string; default_pay_impact: string; default_doc_option: string }[]);
 
-  const [selectedPeriod, setSelectedPeriod] = useState('');
-  const [params, setParams] = useState({ periodName: '' });
+  const [params, setParams] = useState({ periodName: selectedPeriod });
   const [rows, loading, , reload] = useLoadAction(loadActionRequiredAction, [] as EntryRow[], params, { enabled: !!params.periodName });
   const [committedRows, , , reloadCommitted] = useLoadAction(loadCommittedEntriesAction, [] as CommittedRow[], params, { enabled: !!params.periodName });
   const [updateEntry, saving] = useMutateAction(updatePayrollEntryAction);
   const [updateTimes] = useMutateAction(updateEntryExitAction);
 
-  const [activeTab, setActiveTab] = useState<'RED' | 'YELLOW'>('RED');
+
   const [edits, setEdits] = useState<Record<number, EditState>>({});
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [committedOpen, setCommittedOpen] = useState(true);
-  const [search, setSearch] = useState('');
+
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
   // Track IDs committed this session for highlighting
   const [sessionCommitted, setSessionCommitted] = useState<Set<number>>(new Set());
   const [revertingIds, setRevertingIds] = useState<Set<number>>(new Set());
 
-  const unresolvedCount = (unresolvedData as { count: number }[])[0]?.count ?? 0;
+
   const impactOptions = (payImpacts as { name: string }[]).map(p => p.name);
   const docOpts = (docOptions as { name: string }[]).map(d => d.name);
   const eventOpts = (eventTypes as { name: string }[]).map(e => e.name);
@@ -145,16 +144,15 @@ export default function ActionRequired() {
     return m;
   }, [eventRulesRaw]);
 
-  const handlePeriodChange = (p: string) => {
-    setSelectedPeriod(p);
-    setParams({ periodName: p });
+  // Sync params when global period changes
+  useEffect(() => {
+    setParams({ periodName: selectedPeriod });
     setEdits({});
     setSelected(new Set());
     setSessionCommitted(new Set());
-    setSearch('');
     setSortKey(null);
     setSortDir(null);
-  };
+  }, [selectedPeriod]);
 
   const getEdit = useCallback((row: EntryRow): EditState =>
     edits[row.id] ?? {
@@ -287,8 +285,9 @@ export default function ActionRequired() {
 
   const filtered = useMemo(() => {
     let out = tabRows;
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    const searchTerm = globalEmployee.trim();
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
       out = out.filter(r => r.employee_name.toLowerCase().includes(q) || r.work_date.toLowerCase().includes(q));
     }
     if (sortKey && sortDir) {
@@ -298,7 +297,7 @@ export default function ActionRequired() {
       });
     }
     return out;
-  }, [tabRows, search, sortKey, sortDir]);
+  }, [tabRows, globalEmployee, sortKey, sortDir]);
 
   const allFilteredSelected = filtered.length > 0 && filtered.every(r => selected.has(r.id));
   const someSelected = filtered.some(r => selected.has(r.id));
@@ -346,21 +345,6 @@ export default function ActionRequired() {
   return (
     <div className="flex flex-col h-full p-5 gap-4 overflow-hidden">
 
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="w-6 h-6 text-yellow-500 shrink-0" />
-          <h1 className="text-xl font-bold">Action Required</h1>
-          {unresolvedCount > 0 && <Badge variant="destructive" className="text-xs">{unresolvedCount} unresolved</Badge>}
-        </div>
-        <select className="border rounded-md px-3 py-2 text-sm min-w-52 bg-white"
-          value={selectedPeriod} onChange={e => handlePeriodChange(e.target.value)}>
-          <option value="">— Select pay period —</option>
-          {(periods as { period_name: string }[]).map(p => (
-            <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
-          ))}
-        </select>
-      </div>
 
       {/* ── Empty states ────────────────────────────────────────── */}
       {!selectedPeriod && (
@@ -372,15 +356,10 @@ export default function ActionRequired() {
             <div className="text-center">
               <p className="font-semibold text-foreground mb-1">No Pay Period Selected</p>
               <p className="text-sm text-muted-foreground max-w-xs">
-                Choose a pay period from the dropdown above to review and resolve unresolved entries.
+                Choose a pay period from the Period filter above to review and resolve unresolved entries.
               </p>
             </div>
-            {unresolvedCount > 0 && (
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span><strong>{unresolvedCount}</strong> entries still need attention across all periods.</span>
-              </div>
-            )}
+
           </CardContent>
         </Card>
       )}
@@ -401,33 +380,6 @@ export default function ActionRequired() {
       {selectedPeriod && !loading && allRows.length > 0 && (
         <div className="flex flex-col flex-1 min-h-0 gap-3 overflow-hidden">
 
-          {/* Tabs + search */}
-          <div className="flex items-center gap-3 flex-wrap shrink-0">
-            <div className="flex rounded-lg border overflow-hidden shadow-sm">
-              {(['RED', 'YELLOW'] as const).map(tab => {
-                const count = tab === 'RED' ? redRows.length : yellowRows.length;
-                const isActive = activeTab === tab;
-                const cls = tab === 'RED'
-                  ? isActive ? 'bg-red-600 text-white' : 'bg-white text-red-700 hover:bg-red-50'
-                  : isActive ? 'bg-amber-500 text-white' : 'bg-white text-amber-700 hover:bg-amber-50';
-                return (
-                  <button key={tab} onClick={() => { setActiveTab(tab); setSearch(''); setSortKey(null); setSortDir(null); }}
-                    className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border-r last:border-r-0 transition-colors ${cls}`}>
-                    <span className={`w-2.5 h-2.5 rounded-full ${tab === 'RED' ? 'bg-red-400' : 'bg-amber-300'}`} />
-                    {tab}
-                    <span className={`text-xs rounded-full px-1.5 py-0.5 font-bold ${isActive ? 'bg-white/20' : tab === 'RED' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="relative flex-1 max-w-72">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input className="w-full border rounded-md pl-8 pr-8 py-2 text-sm bg-white"
-                placeholder="Filter by name or date…" value={search} onChange={e => setSearch(e.target.value)} />
-              {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>}
-            </div>
-            <span className="text-xs text-muted-foreground ml-auto">{filtered.length} of {tabRows.length} rows</span>
-          </div>
 
           {/* ── Sticky commit bar ──────────────────────────────── */}
           <div className={`shrink-0 transition-all duration-200 ${someSelected ? 'opacity-100' : 'opacity-0 pointer-events-none h-0 overflow-hidden'}`}>
@@ -469,8 +421,8 @@ export default function ActionRequired() {
                   </th>
                   <Th col="employee_name" label="Employee" className="sticky left-8 bg-slate-100 z-30 min-w-36" />
                   <Th col="work_date" label="Date" />
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700"><Edit2 className="w-3 h-3 inline mr-1" />Entry</th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700"><Edit2 className="w-3 h-3 inline mr-1" />Exit</th>
+                  <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-24"><Edit2 className="w-3 h-3 inline mr-1" />Entry</th>
+                  <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-24"><Edit2 className="w-3 h-3 inline mr-1" />Exit</th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r text-slate-500">Sched</th>
                   <Th col="late_minutes" label="Late m" />
                   <Th col="early_leave_minutes" label="Early m" />
@@ -479,8 +431,8 @@ export default function ActionRequired() {
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r">Event 2</th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r">Impact 2</th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r">Doc</th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r">Notes</th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r">Auto-Notes</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r">Notes</th>
                 </tr>
               </thead>
               <tbody>
@@ -513,14 +465,14 @@ export default function ActionRequired() {
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0, 10)}</td>
                       {/* Entry/Exit */}
-                      <td className="px-2 py-1.5 border-r min-w-28 bg-blue-50/40">
-                        <TimeInput className="w-full border rounded px-1.5 py-1 text-xs bg-white font-mono"
-                          value={edit.entry_time} placeholder="e.g. 9:00 AM"
+                      <td className="px-1 py-1.5 border-r w-24 bg-blue-50/40">
+                        <TimeInput className="w-full border rounded px-1 py-1 text-xs bg-white font-mono"
+                          value={edit.entry_time} placeholder="9:00 AM"
                           onChange={v => setEditField(row.id, 'entry_time', v, row)} />
                       </td>
-                      <td className="px-2 py-1.5 border-r min-w-28 bg-blue-50/40">
-                        <TimeInput className="w-full border rounded px-1.5 py-1 text-xs bg-white font-mono"
-                          value={edit.exit_time} placeholder="e.g. 5:00 PM"
+                      <td className="px-1 py-1.5 border-r w-24 bg-blue-50/40">
+                        <TimeInput className="w-full border rounded px-1 py-1 text-xs bg-white font-mono"
+                          value={edit.exit_time} placeholder="5:00 PM"
                           onChange={v => setEditField(row.id, 'exit_time', v, row)} />
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap border-r text-slate-500 text-[11px]">{row.scheduled_start}–{row.scheduled_end}</td>
@@ -560,14 +512,14 @@ export default function ActionRequired() {
                           onChange={v => setEditField(row.id, 'documentation', v, row, filtered)}
                           placeholder="—" options={docOpts} />
                       </td>
+                      {/* Auto-notes */}
+                      <td className="px-3 py-2 border-r text-slate-500 max-w-52 text-[11px]">
+                        <span title={row.auto_notes} className="block truncate">{row.auto_notes || <span className="text-slate-300">—</span>}</span>
+                      </td>
                       {/* Notes */}
                       <td className="px-2 py-1.5 border-r min-w-36">
                         <input className="w-full border rounded px-1.5 py-1 text-xs bg-white" value={edit.notes}
                           placeholder="add note…" onChange={e => setEditField(row.id, 'notes', e.target.value, row)} />
-                      </td>
-                      {/* Auto-notes */}
-                      <td className="px-3 py-2 text-slate-500 max-w-52 text-[11px]">
-                        <span title={row.auto_notes} className="block truncate">{row.auto_notes || <span className="text-slate-300">—</span>}</span>
                       </td>
                     </tr>
                   );
@@ -587,7 +539,7 @@ export default function ActionRequired() {
             className="w-full flex items-center gap-3 px-4 py-3 bg-green-50 border-b border-green-200 hover:bg-green-100 transition-colors text-left"
           >
             <GitCommit className="w-4 h-4 text-green-600 shrink-0" />
-            <span className="text-sm font-semibold text-green-800">Committed → On the way to GREEN</span>
+            <span className="text-sm font-semibold text-green-800">Committed to GREEN</span>
             <Badge className="bg-green-600 text-white text-xs ml-1">{committed.length}</Badge>
             {sessionCommitted.size > 0 && (
               <span className="text-xs text-green-600 font-medium ml-1">({sessionCommitted.size} this session)</span>

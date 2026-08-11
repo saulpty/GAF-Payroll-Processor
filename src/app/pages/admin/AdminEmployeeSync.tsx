@@ -25,12 +25,12 @@ type NameAlias = { alias_text: string; employee_id: number; display_name: string
 type MondayEmp = {
   id: string; name: string; email: string; companyEmail: string;
   teramindEmail?: string; allEmails?: string[]; role?: string; manager?: string;
-  startDate?: string;
+  startDate?: string; mondayActive: boolean;
 };
 type SyncStatus = 'matched' | 'new' | 'missing';
 type SyncRow = {
   status: SyncStatus; mondayName: string; mondayEmail: string;
-  mondayRole: string; mondayManager: string;
+  mondayRole: string; mondayManager: string; mondayActive: boolean;
   dbEmployee: DbEmployee | null; dbActive: boolean;
 };
 
@@ -53,27 +53,30 @@ function parseMondayDirectory(raw: unknown): MondayEmp[] {
   try {
     const data = (raw as { data?: { boards?: { columns?: { id: string; title: string }[]; items_page?: { items?: unknown[] } }[] } })?.data;
     const board = data?.boards?.[0];
+    // Board 8592460836: items directly under items_page (no group filter)
     const items = board?.items_page?.items ?? [];
     const colTitles = new Map<string, string>((board?.columns ?? []).map(c => [c.id, (c.title || '').toLowerCase()]));
-    return (items as { id: string; name: string; column_values: { id: string; text: string; value: string }[] }[]).map(item => {
+    const seen = new Set<string>();
+    return (items as { id: string; name: string; column_values: { id: string; text: string; value: string }[] }[]).flatMap(item => {
+      const normName = normalizeName(item.name);
+      if (!normName || seen.has(normName)) return [];
+      seen.add(normName);
       const cols = item.column_values ?? [];
       const byTitle = (re: RegExp) =>
         (cols.find(c => re.test(colTitles.get(c.id) || ''))?.text || '').trim();
-      // 'text' col = Position on board 8661565945
-      const roleByColId = (cols.find(c => c.id === 'text')?.text || '').trim();
-      const role    = roleByColId || byTitle(/\b(role|puesto|cargo|position|posici|title|job)\b/);
-      const manager = byTitle(/\b(manager|supervisor|jefe|gerente|reports?\s*to|lead|boss)\b/);
-      const emailCols = cols.filter(c => extractEmail(c) !== '');
-      const companyEmailCol =
-        emailCols.find(c => /company|corp|work|empresa/.test(c.id)) ||
-        emailCols.find(c => /company|corp|work|empresa/.test((c.text || '').toLowerCase())) ||
-        emailCols[1] || emailCols[0];
-      const teramindEmailCol =
-        emailCols.find(c => /teramind|personal|priv/.test(c.id)) ||
-        emailCols.find(c => c !== companyEmailCol) ||
-        emailCols[0];
-      const companyEmail = extractEmail(companyEmailCol);
-      const teramindEmail = extractEmail(teramindEmailCol !== companyEmailCol ? teramindEmailCol : undefined);
+      // Active status: color_mkyjv6et column — text === "Active" means active
+      const activeCol = cols.find(c => c.id === 'color_mkyjv6et');
+      const mondayActive = (activeCol?.text || '').trim() === 'Active';
+      // Role: text_mm63b2xk column only
+      const role = (cols.find(c => c.id === 'text_mm63b2xk')?.text || '').trim();
+      // Manager: text_mkzj84w1 column
+      const managerEmailCol = cols.find(c => c.id === 'text_mkzj84w1');
+      const manager = (managerEmailCol?.text || '').trim();
+      // Employee email: text_mkzjgsxv is always the employee email column
+      const empEmailCol = cols.find(c => c.id === 'text_mkzjgsxv');
+      const companyEmail = extractEmail(empEmailCol) || extractEmail(cols.find(c => /company|corp|work|empresa/.test(c.id)));
+      const teramindEmail = extractEmail(cols.find(c => /teramind|personal|priv/.test(c.id)));
+      const allEmails = [companyEmail, teramindEmail].filter(Boolean) as string[];
       // Start Date column — stored in value JSON: {"date":"2024-01-15"}
       const startDateCol = cols.find(c => /start.?date/i.test(colTitles.get(c.id) || ''));
       let startDate: string | undefined;
@@ -87,21 +90,22 @@ function parseMondayDirectory(raw: unknown): MondayEmp[] {
           if (m) startDate = m[1];
         }
       }
-      return {
+      return [{
         id: item.id, name: item.name,
-        email: companyEmail || teramindEmail,
-        companyEmail, teramindEmail,
-        allEmails: emailCols.map(c => extractEmail(c)).filter(Boolean),
-        role, manager, startDate,
-      };
-    }).filter(e => e.name?.trim());
+        email: companyEmail || teramindEmail || '',
+        companyEmail: companyEmail || '',
+        teramindEmail,
+        allEmails,
+        role, manager, startDate, mondayActive,
+      }];
+    });
   } catch { return []; }
 }
 
 const PARTICLES = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'y', 'van', 'von', 'da', 'di', 'do', 'das', 'dos']);
 
 function normalizeName(s: string) {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
 }
 
 /** Significant (non-particle) tokens from a normalized name */
@@ -207,45 +211,52 @@ export default function AdminEmployeeSync() {
       }
     }
 
-    for (const me of mondayEmps) {
+    // Two-pass matching: pass 1 = high-confidence (email / alias / exact name),
+    // pass 2 = fuzzy token match only for still-unclaimed DB employees.
+    // This prevents a fuzzy match earlier in the list from stealing a slot
+    // that belongs to an exact/alias match later in the list.
+
+    function tryHighConfidence(me: MondayEmp): DbEmployee | undefined {
       const normMondayName = normalizeName(me.name);
       const allMondayEmails = [...new Set(
         (me.allEmails ?? []).concat([me.email, me.companyEmail, me.teramindEmail ?? '']).filter(Boolean).map(e => e.toLowerCase().trim())
       )];
-
-      // 1. Email-first: any Monday email hits DB email index
-      let dbMatch: DbEmployee | undefined;
+      // 1. Email — direct lookup (manager email column is excluded from allMondayEmails)
       for (const em of allMondayEmails) {
         const hit = emailIndex.get(em);
-        if (hit) { dbMatch = hit; break; }
+        if (hit) return hit;
       }
+      // 2. Alias
+      const aliasEmpId = aliasMap.get(normMondayName);
+      if (aliasEmpId) return dbEmps.find(e => e.id === aliasEmpId);
+      // 3. Exact name
+      return dbEmps.find(e => normalizeName(e.display_name) === normMondayName);
+    }
 
-      // 2. Alias map (name-based fallback)
-      if (!dbMatch) {
-        const aliasEmpId = aliasMap.get(normMondayName);
-        if (aliasEmpId) dbMatch = dbEmps.find(e => e.id === aliasEmpId);
+    // Pass 1: claim all high-confidence matches
+    for (const me of mondayEmps) {
+      const dbMatch = tryHighConfidence(me);
+      if (dbMatch && !matchedDbIds.has(dbMatch.id)) {
+        matchedDbIds.add(dbMatch.id);
+        rows.push({ status: 'matched', mondayName: me.name, mondayEmail: me.email, mondayRole: me.role || '', mondayManager: me.manager || '', mondayActive: me.mondayActive, dbEmployee: dbMatch, dbActive: dbMatch.active });
       }
+    }
 
-      // 3. Exact normalized display_name
-      if (!dbMatch) {
-        dbMatch = dbEmps.find(e => normalizeName(e.display_name) === normMondayName);
-      }
-
-      // 4. Strip-particle token match (handles "Jose de Hermoso" ↔ "Jose Hermoso")
-      if (!dbMatch) {
-        dbMatch = dbEmps.find(e => tokenMatch(e.display_name, me.name));
-      }
-
+    // Pass 2: fuzzy token match only for Monday items not yet matched, against unclaimed DB employees
+    const claimedMondayNames = new Set(rows.map(r => normalizeName(r.mondayName)));
+    for (const me of mondayEmps) {
+      if (claimedMondayNames.has(normalizeName(me.name))) continue; // already matched in pass 1
+      const dbMatch = dbEmps.find(e => !matchedDbIds.has(e.id) && tokenMatch(e.display_name, me.name));
       if (dbMatch) {
         matchedDbIds.add(dbMatch.id);
-        rows.push({ status: 'matched', mondayName: me.name, mondayEmail: me.email, mondayRole: me.role || '', mondayManager: me.manager || '', dbEmployee: dbMatch, dbActive: dbMatch.active });
+        rows.push({ status: 'matched', mondayName: me.name, mondayEmail: me.email, mondayRole: me.role || '', mondayManager: me.manager || '', mondayActive: me.mondayActive, dbEmployee: dbMatch, dbActive: dbMatch.active });
       } else {
-        rows.push({ status: 'new', mondayName: me.name, mondayEmail: me.email, mondayRole: me.role || '', mondayManager: me.manager || '', dbEmployee: null, dbActive: false });
+        rows.push({ status: 'new', mondayName: me.name, mondayEmail: me.email, mondayRole: me.role || '', mondayManager: me.manager || '', mondayActive: me.mondayActive, dbEmployee: null, dbActive: false });
       }
     }
     for (const emp of dbEmps) {
       if (!matchedDbIds.has(emp.id)) {
-        rows.push({ status: 'missing', mondayName: '', mondayEmail: '', mondayRole: '', mondayManager: '', dbEmployee: emp, dbActive: emp.active });
+        rows.push({ status: 'missing', mondayName: '', mondayEmail: '', mondayRole: '', mondayManager: '', mondayActive: false, dbEmployee: emp, dbActive: emp.active });
       }
     }
     return rows;
@@ -254,8 +265,9 @@ export default function AdminEmployeeSync() {
   const matched  = syncRows.filter(r => r.status === 'matched');
   const newOnes  = syncRows.filter(r => r.status === 'new');
   const missing  = syncRows.filter(r => r.status === 'missing');
-  const needsActivation   = matched.filter(r => !r.dbActive);
-  const needsDeactivation = missing.filter(r => r.dbActive);
+  // Active status driven by color_mkyjv6et column value ("Active" = active)
+  const needsActivation   = matched.filter(r => !r.dbActive && r.mondayActive);
+  const needsDeactivation = matched.filter(r => r.dbActive && !r.mondayActive);
   const needsRoleSync     = matched.filter(r => roleManagerChanged(r));
 
   const handleToggleActive = async (emp: DbEmployee, newActive: boolean, key: string) => {
@@ -378,18 +390,15 @@ export default function AdminEmployeeSync() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Users className="w-5 h-5" /> Monday Directory Sync
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Sync active status, role, and manager from the Panama Employee Directory board.
+          <p className="text-sm text-muted-foreground">
+            Sync active status (color_mkyjv6et), role (text_mm63b2xk), and manager from board 8592460836. Terminated employees kept in DB for records only.
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setDebugMode(d => !d)}>
             {debugMode ? 'Hide Debug' : 'Debug Columns'}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => { reloadDir(); reloadEmps(); setSyncAllDone(false); setDone({}); }}>
+          <Button variant="outline" size="sm" onClick={() => { reloadDir(); reloadEmps(); setSyncAllDone(false); setSyncingAll(false); setDone({}); }}>
             <RefreshCw className="w-4 h-4 mr-1" /> Refresh
           </Button>
         </div>
@@ -419,8 +428,8 @@ export default function AdminEmployeeSync() {
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {mondayEmps.length} items parsed · {mondayEmps.filter(e => e.role).length} with role · sample:{' '}
-              <code className="text-xs">"{mondayEmps[0]?.name}" role="{mondayEmps[0]?.role}" emails={mondayEmps[0]?.allEmails?.join(', ')}</code>
+              {mondayEmps.length} items parsed · {mondayEmps.filter(e => e.mondayActive).length} active in Monday · {mondayEmps.filter(e => e.role).length} with role · sample:{' '}
+              <code className="text-xs">"{mondayEmps[0]?.name}" active={String(mondayEmps[0]?.mondayActive)} role="{mondayEmps[0]?.role}" emails={mondayEmps[0]?.allEmails?.join(', ')}</code>
             </p>
             {/* Unmatched detail for debugging */}
             {newOnes.length > 0 && (
@@ -450,7 +459,7 @@ export default function AdminEmployeeSync() {
             { label: 'In Monday',   value: mondayEmps.length,      color: 'text-blue-700' },
             { label: 'Matched',     value: matched.length,         color: 'text-green-700' },
             { label: 'Not in DB',   value: newOnes.length,         color: 'text-amber-700' },
-            { label: 'Not in Mon.', value: missing.length,         color: 'text-red-700' },
+            { label: 'Not in Mon.', value: missing.length,         color: 'text-slate-500' },
             { label: 'Role/Mgr Δ', value: needsRoleSync.length,   color: 'text-purple-700' },
           ].map(s => (
             <Card key={s.label} className="text-center py-3">
@@ -513,7 +522,7 @@ export default function AdminEmployeeSync() {
                   <span className="font-medium text-sm">{r.dbEmployee!.display_name}</span>
                   <span className="text-xs text-muted-foreground ml-2">{r.dbEmployee!.teramind_email}</span>
                   <Badge className="ml-2 text-xs bg-green-100 text-green-800 border-green-300">Active in DB</Badge>
-                  <Badge className="ml-1 text-xs bg-red-100 text-red-800 border-red-300">Not in Monday</Badge>
+                  <Badge className="ml-1 text-xs bg-red-100 text-red-800 border-red-300">Inactive in Monday</Badge>
                 </div>
                 <Button size="sm" variant="outline" disabled={saving[key] || done[key]}
                   onClick={() => handleToggleActive(r.dbEmployee!, false, key)}
@@ -646,7 +655,7 @@ export default function AdminEmployeeSync() {
           </div>
           {hireSyncStatus === 'done' && (
             <p className="text-xs text-teal-700 mt-1">
-              Updated start_date for {hireSyncCount} employees from the "Start Date" column on board 8661565945.
+              Updated start_date for {hireSyncCount} employees from the "Start Date" column on board 8592460836.
             </p>
           )}
           {hireSyncStatus === 'error' && (

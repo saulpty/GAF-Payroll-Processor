@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { Globe, Plus, Save, X } from 'lucide-react';
+import { Plus, Save, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import loadDstCalendarAdminAction from '@/actions/loadDstCalendarAdmin';
@@ -23,7 +23,7 @@ export default function AdminDstCalendar() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2"><Globe className="w-6 h-6" /><h2 className="text-xl font-bold">DST Calendar</h2></div>
+        <div></div>
         <Button size="sm" onClick={() => setEditing({ year: new Date().getFullYear(), us_dst_start: '', us_dst_end: '' })}><Plus className="w-4 h-4 mr-1" />Add Year</Button>
       </div>
       <p className="text-sm text-muted-foreground mb-4">US Daylight Saving Time windows used for Teramind timezone conversion (subtract 1 hr during DST).</p>

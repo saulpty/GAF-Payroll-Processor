@@ -51,23 +51,23 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
   });
 
   const Th = ({ label, col }: { label: string; col: SortKey }) => (
-    <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer select-none whitespace-nowrap bg-muted/40 border-b border-border hover:text-foreground"
+    <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer select-none whitespace-nowrap bg-slate-50 border-b border-border hover:text-foreground"
       onClick={() => handleSort(col)}>
       {label}<SortIcon col={col} sortKey={sortKey} dir={sortDir} />
     </th>
   );
 
   return (
-    <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+      <div className="overflow-auto flex-1">
         <table className="w-full text-sm border-collapse">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr>
               <Th label="Employee"       col="name" />
               <Th label="Role"           col="role" />
               <Th label="Manager"        col="manager" />
               <Th label="Schedule"       col="schedule" />
-              <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/40 border-b border-border whitespace-nowrap">Status</th>
+              <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-slate-50 border-b border-border whitespace-nowrap">Status</th>
               <Th label="Days"           col="days" />
               <Th label="On Time"        col="onTime" />
               <Th label="Total Late"     col="totalLate" />

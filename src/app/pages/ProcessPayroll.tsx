@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { useNavigate } from 'react-router-dom';
 
@@ -38,6 +39,7 @@ type Employee = {
   is_grace_list: boolean; is_macbook_swap: boolean;
   schedule_name: string; dst_start: string; dst_end: string;
   standard_start: string; standard_end: string; grace_minutes: number;
+  work_days?: string;
 };
 type Period = {
   period_name: string; start_date: string; end_date: string;
@@ -89,6 +91,7 @@ function PeriodCard({ p, unresolvedCount, onClick }: { p: Period; unresolvedCoun
 
 export default function ProcessPayroll() {
   const navigate = useNavigate();
+  const { bumpPeriodsVersion } = useGlobalFilters();
   const [employees] = useLoadAction(loadEmployeesAction, [] as Employee[]);
   const [dstCalendar] = useLoadAction(loadDstCalendarAction, [] as DstWindow[]);
   const [holidays] = useLoadAction(loadHolidaysAction, [] as { date: string; name: string }[]);
@@ -421,6 +424,7 @@ export default function ProcessPayroll() {
       mondayPermissions: permissions,
       outageDates,
       midDayPull,
+      midDayPullDate: midDayPull ? new Date().toLocaleDateString('en-CA') : undefined,
       excludedEmployeeIds: excludedIds,
       nameMap,
       config: buildClassificationConfig(cfgRows),
@@ -454,6 +458,7 @@ export default function ProcessPayroll() {
       const empCount = new Set(entries.map(e => e.employee_id)).size;
       const dayCount = new Set(entries.map(e => e.work_date)).size;
       await upsertPer({ period_name: periodName, start_date: startDate, end_date: endDate, employee_count: empCount, day_count: dayCount, green_count: green, yellow_count: yellow, red_count: red });
+      bumpPeriodsVersion();
     }
 
     log(`✓ Done — ${green} GREEN · ${yellow} YELLOW · ${red} RED`);
@@ -506,10 +511,7 @@ export default function ProcessPayroll() {
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
             <PlayCircle className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold leading-tight">Process Payroll</h1>
-            <p className="text-xs text-muted-foreground">Pull Monday data + classify Teramind time records</p>
-          </div>
+          <p className="text-xs text-muted-foreground">Pull Monday data + classify Teramind time records</p>
         </div>
 
         {/* ── Step 1: Period ──────────────────────────────── */}

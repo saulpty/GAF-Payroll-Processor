@@ -11,7 +11,7 @@ function loadEmployeeDirectory() {
         'API-Version': '2024-01',
       },
       bodyType: 'raw',
-      body: '{"query":"{ boards(ids: [8661565945]) { name columns { id title type } items_page(limit: 500) { items { id name column_values { id text value } } } } }"}',
+      body: '{"query":"{ boards(ids: [8592460836]) { name columns { id title type } items_page(limit: 500) { items { id name column_values { id text value } } } } }"}',
     },
   });
 }

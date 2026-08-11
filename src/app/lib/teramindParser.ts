@@ -124,14 +124,21 @@ export function resolveTeramindIdentifier(
  */
 function parseWallClock(s: string): Date | null {
   if (!s) return null;
-  // Match "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DD HH:MM"
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
-  if (m) {
-    const [, yr, mo, dy, hh, mm, ss] = m;
-    // new Date(y, m, d, h, min, s) uses LOCAL time — which is what we want,
-    // because getHours() is also local, so they always agree regardless of server TZ.
-    return new Date(+yr, +mo - 1, +dy, +hh, +mm, +(ss ?? 0));
+
+  // Match "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DD HH:MM" (24-hour)
+  const m24 = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\s*(AM|PM))?/i);
+  if (m24) {
+    const [, yr, mo, dy, hhRaw, mm, ss, ampm] = m24;
+    let hh = +hhRaw;
+    // Handle 12-hour suffix embedded after a 24-style parse (e.g. "02:06 PM")
+    if (ampm) {
+      const ap = ampm.toUpperCase();
+      if (ap === 'PM' && hh !== 12) hh += 12;
+      if (ap === 'AM' && hh === 12) hh = 0;
+    }
+    return new Date(+yr, +mo - 1, +dy, hh, +mm, +(ss ?? 0));
   }
+
   // Fallback: try native parse (may be wrong in some TZ, but better than nothing)
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;

@@ -1,0 +1,5 @@
+vibeAppConnectedDatasources:
+  - GAF Planilla DB
+  - Monday.com API
+  - Monday.com API v2
+vibeAppPrimaryHostedDatasourceId: GAF Planilla DB

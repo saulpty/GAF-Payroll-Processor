@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { CalendarDays, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import loadHolidaysAdminAction from '@/actions/loadHolidaysAdmin';
@@ -25,7 +25,7 @@ export default function AdminHolidays() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center gap-2 mb-4"><CalendarDays className="w-6 h-6" /><h2 className="text-xl font-bold">Holidays</h2></div>
+
       <Card className="mb-4">
         <CardHeader><CardTitle className="text-sm">Add Holiday</CardTitle></CardHeader>
         <CardContent>
