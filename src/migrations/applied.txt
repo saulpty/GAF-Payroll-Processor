@@ -13,3 +13,4 @@ Applied migrations:
 1781275100_import_excel_operator_resolved at 2026-06-12T14:52:23.209Z
 1781803200_fix_directory_sync_emails_and_duplicates at 2026-08-07T16:42:18.972Z
 1781803300_add_missing_name_aliases at 2026-08-10T21:01:02.655Z
+1781803400_fix_monday_directory_config at 2026-08-11T20:26:33.716Z
