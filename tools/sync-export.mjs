@@ -39,17 +39,26 @@ export function listFilesRecursive(root) {
 
 export function findExportRoot(extractDir) {
   if (existsSync(join(extractDir, 'version.yml'))) return extractDir;
-  for (const entry of readdirSync(extractDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const candidate = join(extractDir, entry.name);
-    if (existsSync(join(candidate, 'version.yml'))) return candidate;
+  const candidates = readdirSync(extractDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && existsSync(join(extractDir, e.name, 'version.yml')))
+    .map((e) => join(extractDir, e.name));
+  if (candidates.length > 1) {
+    throw new Error(
+      `Ambiguous export: ${candidates.length} directories contain version.yml in ${extractDir}`,
+    );
   }
+  if (candidates.length === 1) return candidates[0];
   throw new Error(`No version.yml found in export at ${extractDir}`);
 }
 
 export function extractZip(zipPath, destDir) {
   mkdirSync(destDir, { recursive: true });
-  execFileSync('tar', ['-xf', zipPath, '-C', destDir], { stdio: 'pipe' });
+  try {
+    execFileSync('tar', ['-xf', zipPath, '-C', destDir], { stdio: 'pipe' });
+  } catch (err) {
+    const detail = err.stderr ? err.stderr.toString().trim() : err.message;
+    throw new Error(`Failed to extract ${zipPath}: ${detail}`);
+  }
   return destDir;
 }
 
@@ -65,9 +74,16 @@ export function mirrorDirectory(srcDir, destDir) {
       mkdirSync(dirname(destPath), { recursive: true });
       writeFileSync(destPath, srcBody);
       added.push(rel);
-    } else if (!normalizeNewlines(readFileSync(destPath)).equals(srcBody)) {
-      writeFileSync(destPath, srcBody);
-      changed.push(rel);
+    } else {
+      const destRaw = readFileSync(destPath);
+      if (!normalizeNewlines(destRaw).equals(srcBody)) {
+        writeFileSync(destPath, srcBody);
+        changed.push(rel);
+      } else if (!destRaw.equals(srcBody)) {
+        // Same content, different line endings: normalize on disk but do
+        // not report it as a change — that noise is what this tool removes.
+        writeFileSync(destPath, srcBody);
+      }
     }
   }
 
@@ -96,18 +112,35 @@ export function syncExport(zipPath, repoRoot) {
 
     for (const f of MIRRORED_FILES) {
       const from = join(root, f);
-      if (!existsSync(from)) continue;
       const to = join(repoRoot, f);
+      if (!existsSync(from)) {
+        if (existsSync(to)) {
+          rmSync(to, { force: true });
+          total.removed.push(f);
+        }
+        continue;
+      }
       const body = normalizeNewlines(readFileSync(from));
       const isNew = !existsSync(to);
-      if (isNew || !normalizeNewlines(readFileSync(to)).equals(body)) {
+      if (isNew) {
         writeFileSync(to, body);
-        total[isNew ? 'added' : 'changed'].push(f);
+        total.added.push(f);
+      } else {
+        const destRaw = readFileSync(to);
+        if (!normalizeNewlines(destRaw).equals(body)) {
+          writeFileSync(to, body);
+          total.changed.push(f);
+        } else if (!destRaw.equals(body)) {
+          writeFileSync(to, body);
+        }
       }
     }
 
     // Archive the raw zip so the exact UIB output is recoverable.
-    const stamp = new Date().toISOString().slice(0, 10);
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+      + `T${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
     const archiveDir = join(repoRoot, 'exports');
     mkdirSync(archiveDir, { recursive: true });
     copyFileSync(zipPath, join(archiveDir, `${stamp}-GAF-HR-Hub.zip`));

@@ -82,3 +82,55 @@ test('mirrorDirectory normalizes CRLF so it reports no spurious change', () => {
   rmSync(src, { recursive: true, force: true });
   rmSync(dest, { recursive: true, force: true });
 });
+
+test('listFilesRecursive sorts entries that the filesystem returns out of order', () => {
+  const d = tmp();
+  write(d, 'z.txt', 'x');
+  write(d, join('a', 'b.txt'), 'y');
+  write(d, 'm.txt', 'z');
+  assert.deepEqual(listFilesRecursive(d), ['a/b.txt', 'm.txt', 'z.txt']);
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('findExportRoot accepts an export that is already at the top level', () => {
+  const d = tmp();
+  write(d, 'version.yml', 'projectName: X');
+  write(d, join('src', 'app.tsx'), 'x');
+  assert.equal(findExportRoot(d), d);
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('findExportRoot refuses an ambiguous export with two candidate roots', () => {
+  const d = tmp();
+  write(d, join('App One', 'version.yml'), 'projectName: One');
+  write(d, join('App Two', 'version.yml'), 'projectName: Two');
+  assert.throws(() => findExportRoot(d), /Ambiguous export/);
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('mirrorDirectory rewrites a CRLF destination to LF without reporting a change', () => {
+  const src = tmp(), dest = tmp();
+  write(src, 'f.ts', 'const a = 1;\nconst b = 2;\n');
+  write(dest, 'f.ts', 'const a = 1;\r\nconst b = 2;\r\n');
+
+  const result = mirrorDirectory(src, dest);
+
+  assert.deepEqual(result.changed, [], 'line endings alone are not a change');
+  assert.equal(readFileSync(join(dest, 'f.ts'), 'utf8'), 'const a = 1;\nconst b = 2;\n',
+    'destination must be normalized on disk even though nothing was reported');
+  rmSync(src, { recursive: true, force: true });
+  rmSync(dest, { recursive: true, force: true });
+});
+
+test('mirrorDirectory reports a real change even when line endings also differ', () => {
+  const src = tmp(), dest = tmp();
+  write(src, 'f.ts', 'const a = 99;\n');
+  write(dest, 'f.ts', 'const a = 1;\r\n');
+
+  const result = mirrorDirectory(src, dest);
+
+  assert.deepEqual(result.changed, ['f.ts']);
+  assert.equal(readFileSync(join(dest, 'f.ts'), 'utf8'), 'const a = 99;\n');
+  rmSync(src, { recursive: true, force: true });
+  rmSync(dest, { recursive: true, force: true });
+});
