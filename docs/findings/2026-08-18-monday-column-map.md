@@ -143,3 +143,32 @@ The UIB agent sandbox **cannot** do it: `callInspectActions` permits only
 GET/HEAD/OPTIONS and Monday's GraphQL needs POST. Only the UIB browser runtime
 can execute a Monday action. The playground above is the quickest route and
 needs no token — it uses the logged-in Monday session.
+
+---
+
+## Mirror columns return `text: null` — measured 2026-08-18
+
+Every `mirror`/`lookup` column on these boards returns `text: null` from the
+API. The readable value is in `display_value`, and Monday only returns it if
+the query asks with an inline fragment:
+
+```
+column_values(ids: [...]) { id type text value ... on MirrorValue { display_value } }
+```
+
+Probe result:
+
+```
+{ "id": "email_mkzjqdh7",  "type": "email",  "text": "Danny.E@avondalecaregrouppa.com" }
+{ "id": "lookup_mkzhhh4q", "type": "mirror", "text": null, "display_value": "Jessica.C@avondalecaregrouppa.com" }
+```
+
+This bit once already: the first mirror implementation read `.text` and stored
+empty strings into six fields — `manager_email_raw`, job title and employee
+email on Requests; manager email and role on Attendance Forms; state on
+Contracts. Nothing errored and every count looked right, because employee
+matching uses the *native* email column. Fixed in `57992ba`; `colText` in
+`mondaySync.ts` now prefers `display_value`.
+
+**Rule:** any new query touching a `lookup_*` column must include the
+`MirrorValue` fragment. Reading `.text` alone silently yields blanks.
