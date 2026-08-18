@@ -74,7 +74,7 @@ Every UIB task ends with these steps. They are written out here in full; each ta
 - Create: `tests/mondayResolve.test.ts`
 
 **Interfaces:**
-- Produces (implemented in Task 2): from `src/app/lib/ptoAccrual.ts` — `days360(start: string, end: string): number`, `accruedPto(start: string, asOf: string): number`, `takenPto(rows: { total_days: number | string; status: string }[]): number`, `defaultTotalDays(leaveOn: string, returnOn: string): number`, `fhEligibleDate(start: string): string`, `fhRemaining(allocated: number, used: number): number`. From `src/app/lib/mondayResolve.ts` — `buildResolver(employees: { id: number; display_name: string; teramind_email: string | null }[], aliases: { alias_text: string; employee_id: number }[]): (name: string | null | undefined, email: string | null | undefined) => number | null`.
+- Produces (implemented in Task 2): from `src/app/lib/ptoAccrual.ts` — `days360(start: string, end: string): number`, `accruedPto(start: string, asOf: string): number`, `takenPto(rows: { total_days: number | string; status: string }[]): number`, `defaultTotalDays(leaveOn: string, returnOn: string): number`, `fhEligibleDate(start: string): string`, `fhRemaining(allocated: number, used: number): number`. From `src/app/lib/mondayResolve.ts` — `buildResolver(employees: { id: number; display_name: string; teramind_email: string | null }[], aliases: { alias_text: string; employee_id: number }[], normalize: (s: string) => string): (name: string | null | undefined, email: string | null | undefined) => number | null` — the normalizer is INJECTED (callers pass `normalizeName` from classificationEngine) so the module has no imports and node can load it.
 
 - [ ] **Step 1: Write `tests/ptoAccrual.test.ts`**
 
@@ -153,7 +153,7 @@ const employees = [
   { id: 3, display_name: 'No Email Person', teramind_email: null },
 ];
 const aliases = [{ alias_text: 'Joseph De Hermoso', employee_id: 2 }];
-const resolve = buildResolver(employees, aliases);
+const resolve = buildResolver(employees, aliases, normalizeName);
 
 test('email wins, case-insensitively, even when the name would not match', () => {
   assert.equal(resolve('Somebody Else', 'EDDY.C@vitasyahc.com'), 1);
@@ -290,26 +290,30 @@ export function fhRemaining(allocated: number, used: number): number {
 // Resolves a Monday.com board row to an employees.id.
 // Order is the same as the classification engine's rowMatchesEmp:
 //   email → name_aliases → normalized display_name. No match → null.
-import { normalizeName } from './classificationEngine'; // relative, like teramindParser.ts — node tests import this file directly
+//
+// This module deliberately has NO imports: callers pass `normalizeName` from
+// classificationEngine. That keeps one normalizer in the codebase while
+// letting Node's TypeScript loader load this file directly for tests.
 
 export interface ResolvableEmployee { id: number; display_name: string; teramind_email: string | null }
 export interface ResolvableAlias { alias_text: string; employee_id: number }
+export type NormalizeFn = (s: string) => string;
 export type Resolver = (name: string | null | undefined, email: string | null | undefined) => number | null;
 
-export function buildResolver(employees: ResolvableEmployee[], aliases: ResolvableAlias[]): Resolver {
+export function buildResolver(employees: ResolvableEmployee[], aliases: ResolvableAlias[], normalize: (s: string) => string): Resolver {
   const byEmail = new Map<string, number>();
   const byName = new Map<string, number>();
   for (const e of employees) {
     if (e.teramind_email) byEmail.set(e.teramind_email.trim().toLowerCase(), e.id);
-    byName.set(normalizeName(e.display_name), e.id);
+    byName.set(normalize(e.display_name), e.id);
   }
   const byAlias = new Map<string, number>();
-  for (const a of aliases) byAlias.set(normalizeName(a.alias_text), a.employee_id);
+  for (const a of aliases) byAlias.set(normalize(a.alias_text), a.employee_id);
 
   return (name, email) => {
     const em = (email ?? '').trim().toLowerCase();
     if (em && byEmail.has(em)) return byEmail.get(em)!;
-    const nm = name ? normalizeName(name) : '';
+    const nm = name ? normalize(name) : '';
     if (nm && byAlias.has(nm)) return byAlias.get(nm)!;
     if (nm && byName.has(nm)) return byName.get(nm)!;
     return null;
@@ -320,7 +324,7 @@ export function buildResolver(employees: ResolvableEmployee[], aliases: Resolvab
 Acceptance: both files exist with exactly the content above; no other file in the project changed.
 ````
 
-- [ ] **Step 2: LOOP** — Expected files: `src/app/lib/ptoAccrual.ts`, `src/app/lib/mondayResolve.ts` (both `??`). Tests: `node --test "tests/*.test.ts"` → 69 + 11 new = **80 pass, 0 fail**. Browser check: none (no action or page changed).
+- [ ] **Step 2: LOOP** — Expected files: `src/app/lib/ptoAccrual.ts`, `src/app/lib/mondayResolve.ts` (both `??`). Tests: `node --test "tests/*.test.ts"` → 69 + 12 new = **81 pass, 0 fail**. Browser check: none (no action or page changed).
 
 - [ ] **Step 3: Commit**
 
@@ -432,7 +436,7 @@ Acceptance: the migration is applied; `SELECT count(*) FROM monday_sync_log` ret
 
 - [ ] **Step 2: Verify in UIB's Database tab** — run `SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'monday\_%' ORDER BY 1;` Expected 4 rows. Run `SELECT * FROM monday_sync_log;` Expected 4 rows with NULL `last_synced_at`.
 
-- [ ] **Step 3: LOOP** — Expected files: `src/migrations/<ts>_create_monday_mirror_tables.sql`, `src/migrations/applied.txt`. Tests: 80 pass. Browser check: none.
+- [ ] **Step 3: LOOP** — Expected files: `src/migrations/<ts>_create_monday_mirror_tables.sql`, `src/migrations/applied.txt`. Tests: 81 pass. Browser check: none.
 
 - [ ] **Step 4: Commit**
 
@@ -530,7 +534,7 @@ If `classification_config` has no unique constraint on `key` (check with `\d`-eq
 
 - [ ] **Step 3: Verify in UIB's Database tab** — `SELECT key, value FROM classification_config WHERE category IN ('monday_boards','monday_columns') ORDER BY key;` Every new key present, no empty `value`.
 
-- [ ] **Step 4: LOOP** — Expected files: the new migration + `applied.txt`. Tests: 80 pass. Browser: Admin → Rules & Config shows the new keys (read-only sanity, no action changed).
+- [ ] **Step 4: LOOP** — Expected files: the new migration + `applied.txt`. Tests: 81 pass. Browser: Admin → Rules & Config shows the new keys (read-only sanity, no action changed).
 
 - [ ] **Step 5: Commit**
 
@@ -585,7 +589,7 @@ Acceptance: `SELECT column_name FROM information_schema.columns WHERE table_name
 
 - [ ] **Step 2: Verify in UIB's Database tab** with the two queries in the acceptance line. Also `SELECT count(*) FROM pto_approvals;` — record the count (expected 0; if not 0, stop and tell the owner what is there before continuing).
 
-- [ ] **Step 3: LOOP** — Expected files: new migration + `applied.txt`. Tests: 80 pass. Browser: none.
+- [ ] **Step 3: LOOP** — Expected files: new migration + `applied.txt`. Tests: 81 pass. Browser: none.
 
 - [ ] **Step 4: Commit**
 
@@ -636,7 +640,7 @@ Acceptance:
 - Only the four files named above changed (plus `EmployeeEditDialog.tsx` if the split was needed).
 ````
 
-- [ ] **Step 2: LOOP** — Expected files: `src/app/pages/admin/AdminEmployeesHub.tsx`, `src/app/pages/admin/employees/RosterTab.tsx`, `src/app/app.tsx`, `src/app/TopNav.tsx` (optionally `.../employees/EmployeeEditDialog.tsx`). Tests: 80 pass. Browser: open `/admin/employees-hub` → Roster shows the same active count as `/admin/employees`; flip Grace on one test-safe employee on the new page, reload the old page, confirm, flip it back.
+- [ ] **Step 2: LOOP** — Expected files: `src/app/pages/admin/AdminEmployeesHub.tsx`, `src/app/pages/admin/employees/RosterTab.tsx`, `src/app/app.tsx`, `src/app/TopNav.tsx` (optionally `.../employees/EmployeeEditDialog.tsx`). Tests: 81 pass. Browser: open `/admin/employees-hub` → Roster shows the same active count as `/admin/employees`; flip Grace on one test-safe employee on the new page, reload the old page, confirm, flip it back.
 
 - [ ] **Step 3: Commit**
 
@@ -679,7 +683,7 @@ No other file may change. Do NOT modify `AdminEmployeeSync.tsx`, `loadEmployeeDi
 ## MondayTab.tsx
 - Loads config (`loadClassificationConfig`), employees (`loadAllEmployees`), aliases (`loadNameAliases`), and the sync log (`loadMondaySyncLog`).
 - Exposes internally a helper `pullAllItems(boardId, columnIds)` that pages through the board: first query `{ boards(ids: [<boardId>]) { items_page(limit: 500) { cursor items { id name group { title } column_values(ids: [<columnIds>]) { id text value } } } } }`, then while `cursor` is non-null query `{ next_items_page(limit: 500, cursor: "<cursor>") { cursor items { id name group { title } column_values(ids: [<columnIds>]) { id text value } } } }`. Build the query string in TypeScript and call `pullMondayBoard` with `{ query, variables: {} }`. Concatenate all items.
-- Builds a resolver with `buildResolver(employees, aliases)` from `src/app/lib/mondayResolve.ts`.
+- Builds a resolver with `buildResolver(employees, aliases, normalizeName)` from `src/app/lib/mondayResolve.ts`, importing `normalizeName` from `@/app/lib/classificationEngine`.
 - Renders a 2×2 grid of `MondaySyncCard`s for keys `directory`, `requests`, `attendance_forms`, `contracts`. In this step only the Directory card is wired; the other three cards render with their title and log row but the Sync now button disabled with tooltip "Next step".
 
 ## MondaySyncCard.tsx
@@ -702,7 +706,7 @@ Acceptance:
 - Only the files named above changed.
 ````
 
-- [ ] **Step 2: LOOP** — Expected files: the four new files, `AdminEmployeesHub.tsx`. Tests: 80 pass. Browser (mandatory — actions changed): run Directory sync twice; identical counts the second time; spot-check three employees' role/manager against the old page; test the missing-key banner and restore the key.
+- [ ] **Step 2: LOOP** — Expected files: the four new files, `AdminEmployeesHub.tsx`. Tests: 81 pass. Browser (mandatory — actions changed): run Directory sync twice; identical counts the second time; spot-check three employees' role/manager against the old page; test the missing-key banner and restore the key.
 
 - [ ] **Step 3: Commit**
 
@@ -773,7 +777,7 @@ Acceptance:
 - Only the files named above changed.
 ````
 
-- [ ] **Step 2: LOOP** — Expected files: six new actions, `MondayTab.tsx`. Tests: 80 pass. Browser (mandatory): sync all three boards; run the count queries in the Database tab; sync again → same counts.
+- [ ] **Step 2: LOOP** — Expected files: six new actions, `MondayTab.tsx`. Tests: 81 pass. Browser (mandatory): sync all three boards; run the count queries in the Database tab; sync again → same counts.
 
 - [ ] **Step 3: Commit**
 
@@ -842,7 +846,7 @@ Acceptance:
 - Only the files named above changed.
 ````
 
-- [ ] **Step 2: LOOP** — Expected files: two actions, two components, `MondayTab.tsx`. Tests: 80 pass. Browser (mandatory): counts match; add one alias for a real unmatched name (owner picks), re-sync, confirm.
+- [ ] **Step 2: LOOP** — Expected files: two actions, two components, `MondayTab.tsx`. Tests: 81 pass. Browser (mandatory): counts match; add one alias for a real unmatched name (owner picks), re-sync, confirm.
 
 - [ ] **Step 3: Commit**
 
@@ -877,7 +881,7 @@ No other file may change. Do NOT modify or delete `AdminAliases.tsx` yet.
 Acceptance: `/admin/employees-hub?tab=aliases` shows the same alias count as `/admin/aliases`; adding an alias on the new tab shows on the old page after reload (then delete it from either). Only the two files named changed.
 ````
 
-- [ ] **Step 2: LOOP** — Expected files: `AliasesTab.tsx`, `AdminEmployeesHub.tsx`. Tests: 80 pass. Browser: alias count equal on both pages; add + delete a throwaway alias.
+- [ ] **Step 2: LOOP** — Expected files: `AliasesTab.tsx`, `AdminEmployeesHub.tsx`. Tests: 81 pass. Browser: alias count equal on both pages; add + delete a throwaway alias.
 
 - [ ] **Step 3: Commit**
 
@@ -963,7 +967,7 @@ TopNav.tsx: in the Admin section, remove the "Employees (new)", "Directory Sync"
 Acceptance: `/admin/employees` opens the hub on Roster; `/admin/aliases` redirects to the Aliases tab; `/admin/directory-sync` redirects to the Monday tab; the app builds with no missing-import errors; nothing else changed.
 ````
 
-- [ ] **Step 3: LOOP** — Expected files: five deletions, `app.tsx`, `TopNav.tsx`. Tests: `node --test "tests/*.test.ts"` → **82 pass** (H4, H5 added). Browser: all three routes; run Directory sync once more from the hub (proves nothing depended on the deleted actions).
+- [ ] **Step 3: LOOP** — Expected files: five deletions, `app.tsx`, `TopNav.tsx`. Tests: `node --test "tests/*.test.ts"` → **83 pass** (H4, H5 added). Browser: all three routes; run Directory sync once more from the hub (proves nothing depended on the deleted actions).
 
 - [ ] **Step 4: Update `docs/BACKLOG.md`** — item 3: `✅ FIXED (phase 2) <commit>`; item 9 table: `AdminEmployeeSync.tsx` row → "removed; replaced by `admin/employees/*` components ≤ 15 KB". Update `docs/CHANGE-LOOP.md` high-blast-radius table the same way.
 
@@ -1047,7 +1051,7 @@ Acceptance:
 - Only the files named above changed.
 ````
 
-- [ ] **Step 2: LOOP** — Expected files: two actions, `PtoTracker.tsx`, `pto/BalancesTab.tsx`, `app.tsx`, `TopNav.tsx`, `FilterBar.tsx`. Tests: 82 pass. Browser (mandatory): the Timothy Moore check with As of 2026-08-11 → 42.73; set/unset Paid PTO on one row.
+- [ ] **Step 2: LOOP** — Expected files: two actions, `PtoTracker.tsx`, `pto/BalancesTab.tsx`, `app.tsx`, `TopNav.tsx`, `FilterBar.tsx`. Tests: 83 pass. Browser (mandatory): the Timothy Moore check with As of 2026-08-11 → 42.73; set/unset Paid PTO on one row.
 
 - [ ] **Step 3: Commit**
 
@@ -1124,7 +1128,7 @@ Acceptance:
 - Only the files named above changed.
 ````
 
-- [ ] **Step 2: LOOP** — Expected files: four actions, two components, `PtoTracker.tsx`. Tests: 82 pass. Browser (mandatory): record one real pending request that Tim confirms; verify Taken moves; add/withdraw a manual test row and delete it via SQL afterwards if the owner prefers (`DELETE FROM pto_approvals WHERE id = <id>`).
+- [ ] **Step 2: LOOP** — Expected files: four actions, two components, `PtoTracker.tsx`. Tests: 83 pass. Browser (mandatory): record one real pending request that Tim confirms; verify Taken moves; add/withdraw a manual test row and delete it via SQL afterwards if the owner prefers (`DELETE FROM pto_approvals WHERE id = <id>`).
 
 - [ ] **Step 3: Commit**
 
@@ -1178,7 +1182,7 @@ ON CONFLICT (employee_id, calendar_year) DO UPDATE SET fh_allocated = EXCLUDED.f
 Acceptance: `/pto?tab=floating` lists active employees; setting Used to 1 for one row persists (`SELECT * FROM pto_floating_holidays WHERE calendar_year = <year>`); Remaining shows 1. Only the files named changed.
 ````
 
-- [ ] **Step 2: LOOP** — Expected files: two actions, one component, `PtoTracker.tsx`. Tests: 82 pass. Browser (mandatory): set/unset Used on one row.
+- [ ] **Step 2: LOOP** — Expected files: two actions, one component, `PtoTracker.tsx`. Tests: 83 pass. Browser (mandatory): set/unset Used on one row.
 
 - [ ] **Step 3: Commit**
 
@@ -1300,7 +1304,7 @@ Note: employees whose sheet row has no Start Date get `pto_start_date_override =
 
 - [ ] **Step 4: Verify** — in the Database tab: `SELECT count(*), source FROM pto_approvals GROUP BY source;`, `SELECT count(*) FROM pto_employees WHERE paid_pto_days > 0;`, `SELECT count(*) FROM pto_floating_holidays;`. Then on `/pto` with **As of = 2026-08-11**: Timothy Moore Available = 27.73, Reggina Sandoval 14.27, Tanya Bedoya 5.45, Charles Bush 0.18 (the sheet's values). Record any difference and its cause in `docs/findings/2026-08-18-pto-seed-reconciliation.md` (rows only; no personal data beyond names already in the app).
 
-- [ ] **Step 5: LOOP** — Expected files: new migration + `applied.txt`. Tests: 82 pass. Browser: the four Available values above.
+- [ ] **Step 5: LOOP** — Expected files: new migration + `applied.txt`. Tests: 83 pass. Browser: the four Available values above.
 
 - [ ] **Step 6: Commit**
 
@@ -1332,7 +1336,7 @@ Update `src/AGENTS.md` only. No other file may change.
 5. Hard constraints → add: "New pages/components stay under 15 KB; one component per tab."
 ````
 
-- [ ] **Step 3: LOOP** — Expected files: `src/AGENTS.md`. Tests: `node --test "tests/*.test.ts"` → 82 pass (adjust `agentsDoc.test.ts` locally if it pinned the old heading; commit that with this).
+- [ ] **Step 3: LOOP** — Expected files: `src/AGENTS.md`. Tests: `node --test "tests/*.test.ts"` → 83 pass (adjust `agentsDoc.test.ts` locally if it pinned the old heading; commit that with this).
 
 - [ ] **Step 4: Local docs** — `docs/BACKLOG.md`: roadmap rows A, B, F → "✅ built <date>"; item 8 unchanged; item 9 table updated (Task 11). `docs/CHANGE-LOOP.md`: add a line under "Prompt rules": "Prompts are saved verbatim under `docs/superpowers/prompts/` before use." `docs/HOW-WE-WORK.md`: add the three-line PTO routine.
 
