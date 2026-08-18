@@ -18,6 +18,8 @@ import updateMondayRequestsDeletedAction from '@/actions/updateMondayRequestsDel
 import updateMondayAttendanceFormsDeletedAction from '@/actions/updateMondayAttendanceFormsDeleted';
 import updateMondayContractsDeletedAction from '@/actions/updateMondayContractsDeleted';
 import MondaySyncCard, { SyncLogRow, SyncResult } from './MondaySyncCard';
+import ReconciliationTable, { DirectoryItem } from './ReconciliationTable';
+import UnmatchedList from './UnmatchedList';
 import { buildResolver } from '@/app/lib/mondayResolve';
 import { normalizeName } from '@/app/lib/classificationEngine';
 import { requireKeys } from './mondaySync';
@@ -104,6 +106,8 @@ export default function MondayTab() {
   const [pendingResolve, setPendingResolve] = useState<((v: NewEmpCandidate[]) => void) | null>(null);
   const [addingCandidates, setAddingCandidates] = useState(false);
   const [dirSummary, setDirSummary] = useState<string | undefined>(undefined);
+  const [mondayDirectory, setMondayDirectory] = useState<DirectoryItem[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const config  = configRaw  as ConfigRow[];
   const emps    = empsRaw    as EmpRow[];
@@ -134,7 +138,7 @@ export default function MondayTab() {
     return m;
   }, [syncLog]);
 
-  const handleDone = useCallback(() => { reloadLog(); reloadEmps(); }, [reloadLog, reloadEmps]);
+  const handleDone = useCallback(() => { reloadLog(); reloadEmps(); setRefreshKey(k => k + 1); }, [reloadLog, reloadEmps]);
 
   const askCandidates = useCallback((candidates: NewEmpCandidate[]): Promise<NewEmpCandidate[]> =>
     new Promise(resolve => {
@@ -160,6 +164,7 @@ export default function MondayTab() {
       upsert: () => Promise.resolve(), markDeleted: () => Promise.resolve(),
       emps, updateRoleManager, updateFlag, upsertEmp, updateStartDate,
       defaultScheduleId, askCandidates, onSummary: setDirSummary,
+      onItems: setMondayDirectory,
     };
     return syncDirectory(dirDeps);
   }, [cfg, emps, resolver, callMondayBoard, updateRoleManager, updateFlag,
@@ -243,6 +248,14 @@ export default function MondayTab() {
         <Users className="w-3.5 h-3.5" />
         {emps.length} employees · {aliases.length} aliases loaded
       </div>
+
+      <ReconciliationTable
+        mondayDirectory={mondayDirectory}
+        resolver={resolver}
+        refreshKey={refreshKey}
+      />
+
+      <UnmatchedList refreshKey={refreshKey} />
     </div>
   );
 }

@@ -33,6 +33,7 @@ export type DirectoryDeps = SyncDeps & {
   defaultScheduleId: number;
   askCandidates: (c: { name: string; email: string; role: string; manager: string }[]) => Promise<{ name: string; email: string; role: string; manager: string }[]>;
   onSummary: (s: string) => void;
+  onItems?: (items: { item_id: string; name: string; email: string; role: string; manager: string; active: string }[]) => void;
 };
 
 export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
@@ -46,6 +47,17 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
      dk.monday_col_directory_manager, dk.monday_col_directory_active],
     deps.pull,
   );
+
+  if (deps.onItems) {
+    deps.onItems(items.map(item => ({
+      item_id: item.id,
+      name: item.name,
+      email: colText(item, dk.monday_col_directory_email),
+      role: colText(item, dk.monday_col_directory_role),
+      manager: colText(item, dk.monday_col_directory_manager),
+      active: colText(item, dk.monday_col_directory_active),
+    })));
+  }
 
   let updatedCount = 0;
   let createdCount = 0;
