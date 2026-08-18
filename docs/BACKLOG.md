@@ -104,9 +104,27 @@ item today — but any future data-repair migration must not rely on
 `resolved_by` as a safety predicate unless something starts writing it
 first.
 
-### 3. Monday.com IDs are still hardcoded in two places — 🟡 PHASE 1 DONE 2026-08-11 (`db47791`)
+### 3. Monday.com IDs are still hardcoded in two places — ✅ FIXED 2026-08-18 (`d508e66`)
 
-> **Phase 1 (config corrected) is complete. Phase 2 (code reads config) is still open.**
+> **Phase 2 done.** The Directory sync now lives in
+> `src/app/pages/admin/employees/MondayTab.tsx` and reads every board and
+> column ID from `classification_config` with no fallback; a missing key shows
+> a red banner naming it and disables the sync. Monday is called only through
+> `pullMondayBoard` with the whole query as `params.query`, which is the
+> known-good pattern the 2026-08-11 attempt got wrong.
+>
+> Verified against live data rather than assumed: a real sync updated 6 rows,
+> and `employees.manager` holds names, not emails — the exact signature of the
+> original incident. Spot-checked Yessenia Moran/Mendel Silverman, Ulla
+> Hees/David Sallusti, Tanya Bedoya and Sarah Mora/Cheyenne Pelis against the
+> board.
+>
+> The old `AdminEmployeeSync.tsx` and `loadEmployeeDirectory.ts` still exist
+> and still contain their hardcoded IDs. They are deleted in Task 11 of
+> `docs/superpowers/plans/2026-08-18-monday-mirror-and-pto-tracker.md`, after
+> which test H4 fails if any Monday ID is ever hardcoded again.
+
+> **Historical record of how this got here, kept because the failure modes recur.**
 >
 > Writing this up revealed the backlog entry was dangerous as originally
 > stated. "Read the IDs from config instead of hardcoding" would have broken
