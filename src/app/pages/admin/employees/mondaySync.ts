@@ -5,7 +5,7 @@ export type MondayItem = {
   id: string;
   name: string;
   group?: { title: string };
-  column_values: { id: string; text: string; value: string }[];
+  column_values: { id: string; type?: string; text: string | null; value: string | null; display_value?: string | null }[];
 };
 
 type PageResult = { cursor: string | null; items: MondayItem[] };
@@ -52,7 +52,7 @@ export async function pullAllItems(
         items {
           id name
           group { title }
-          column_values(ids: ${colList}) { id text value }
+          column_values(ids: ${colList}) { id type text value ... on MirrorValue { display_value } }
         }
       }
     }
@@ -73,7 +73,7 @@ export async function pullAllItems(
         items {
           id name
           group { title }
-          column_values(ids: ${colList}) { id text value }
+          column_values(ids: ${colList}) { id type text value ... on MirrorValue { display_value } }
         }
       }
     }`;
@@ -90,7 +90,10 @@ export async function pullAllItems(
 // ── column helpers ─────────────────────────────────────────────────────────────
 
 export function colText(item: MondayItem, colId: string): string {
-  return (item.column_values.find(c => c.id === colId)?.text ?? '').trim();
+  const c = item.column_values.find(v => v.id === colId);
+  if (!c) return '';
+  // Mirror/lookup columns return text: null; the readable value is in display_value.
+  return ((c.display_value ?? c.text) ?? '').trim();
 }
 
 export function colValue(item: MondayItem, colId: string): string {
