@@ -15,3 +15,4 @@ Applied migrations:
 1781803300_add_missing_name_aliases at 2026-08-10T21:01:02.655Z
 1781803400_fix_monday_directory_config at 2026-08-11T20:26:33.716Z
 1781803500_create_monday_mirror_tables at 2026-08-18T18:37:17.471Z
+1781803600_seed_monday_config_keys at 2026-08-18T18:58:57.553Z
