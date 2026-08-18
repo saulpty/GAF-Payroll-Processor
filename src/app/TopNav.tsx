@@ -67,6 +67,7 @@ const SECTIONS = [
     paths: ['/admin'],
     links: [
       { to: '/admin/employees',      label: 'Employees',          icon: Users },
+      { to: '/admin/employees-hub',  label: 'Employees (new)',    icon: Users },
       { to: '/admin/directory-sync', label: 'Directory Sync',     icon: RefreshCw },
       { to: '/admin/aliases',        label: 'Name Aliases',        icon: Tag },
       { to: '/admin/schedules',      label: 'Schedules',           icon: Clock },
