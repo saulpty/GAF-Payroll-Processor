@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import {
   PlayCircle, AlertTriangle, TableIcon, BarChart2,
   Settings, History, Activity,
-  Users, RefreshCw, Tag, Clock, CalendarDays, Globe2,
+  Users, Clock, CalendarDays, Globe2,
   SlidersHorizontal, FileSpreadsheet,
   TrendingUp,
 } from 'lucide-react';
@@ -66,10 +66,7 @@ const SECTIONS = [
     subHover: 'hover:bg-slate-100 text-slate-600',
     paths: ['/admin'],
     links: [
-      { to: '/admin/employees',      label: 'Employees',          icon: Users },
-      { to: '/admin/employees-hub',  label: 'Employees (new)',    icon: Users },
-      { to: '/admin/directory-sync', label: 'Directory Sync',     icon: RefreshCw },
-      { to: '/admin/aliases',        label: 'Name Aliases',        icon: Tag },
+      { to: '/admin/employees',      label: 'Employees',           icon: Users },
       { to: '/admin/schedules',      label: 'Schedules',           icon: Clock },
       { to: '/admin/holidays',       label: 'Holidays',            icon: CalendarDays },
       { to: '/admin/dst-calendar',   label: 'DST Calendar',        icon: Globe2 },

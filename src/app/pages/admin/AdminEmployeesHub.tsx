@@ -1,8 +1,9 @@
 import { useSearchParams } from 'react-router-dom';
 import { Users, RefreshCw, Tag } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+
 import RosterTab from '@/app/pages/admin/employees/RosterTab';
 import MondayTab from '@/app/pages/admin/employees/MondayTab';
+import AliasesTab from '@/app/pages/admin/employees/AliasesTab';
 
 type Tab = 'roster' | 'monday' | 'aliases';
 
@@ -57,20 +58,10 @@ export default function AdminEmployeesHub() {
       <div className="flex-1 overflow-auto">
         {tab === 'roster'  && <RosterTab />}
         {tab === 'monday'  && <MondayTab />}
-        {tab === 'aliases' && <PlaceholderCard label="Aliases" />}
+        {tab === 'aliases' && <AliasesTab />}
       </div>
     </div>
   );
 }
 
-function PlaceholderCard({ label }: { label: string }) {
-  return (
-    <div className="p-6">
-      <Card className="border-dashed">
-        <CardContent className="flex items-center justify-center py-20 text-sm text-muted-foreground">
-          {label} — Coming next
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+

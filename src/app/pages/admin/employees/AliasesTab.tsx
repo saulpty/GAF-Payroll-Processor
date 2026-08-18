@@ -11,7 +11,7 @@ import loadAllEmployeesAction from '@/actions/loadAllEmployees';
 type AliasRow = { id: number; alias_text: string; employee_id: number; employee_name: string };
 type EmpRow = { id: number; display_name: string };
 
-export default function AdminAliases() {
+export default function AliasesTab() {
   const [aliases, , , reload] = useLoadAction(loadNameAliasesAdminAction, [] as AliasRow[]);
   const [employees] = useLoadAction(loadAllEmployeesAction, [] as EmpRow[]);
   const [deleteAlias] = useMutateAction(deleteNameAliasAction);
@@ -35,7 +35,6 @@ export default function AdminAliases() {
 
   return (
     <div className="p-6">
-
       <p className="text-sm text-muted-foreground mb-4">
         Maps variant name spellings from Monday.com boards to canonical employees. Matching is case- and accent-insensitive.
       </p>
@@ -43,14 +42,25 @@ export default function AdminAliases() {
         <CardHeader><CardTitle className="text-sm">Add Alias</CardTitle></CardHeader>
         <CardContent>
           <div className="flex gap-2">
-            <input className="border rounded px-2 py-1.5 text-sm flex-1" placeholder="Alias text (e.g. Ozzy Medina)"
-              value={newAlias} onChange={e => setNewAlias(e.target.value)} />
-            <select className="border rounded px-2 py-1.5 text-sm flex-1"
-              value={newEmpId} onChange={e => setNewEmpId(e.target.value ? Number(e.target.value) : '')}>
+            <input
+              className="border rounded px-2 py-1.5 text-sm flex-1"
+              placeholder="Alias text (e.g. Ozzy Medina)"
+              value={newAlias}
+              onChange={e => setNewAlias(e.target.value)}
+            />
+            <select
+              className="border rounded px-2 py-1.5 text-sm flex-1"
+              value={newEmpId}
+              onChange={e => setNewEmpId(e.target.value ? Number(e.target.value) : '')}
+            >
               <option value="">→ Employee</option>
-              {(employees as EmpRow[]).map(e => <option key={e.id} value={e.id}>{e.display_name}</option>)}
+              {(employees as EmpRow[]).map(e => (
+                <option key={e.id} value={e.id}>{e.display_name}</option>
+              ))}
             </select>
-            <Button size="sm" onClick={handleAdd} disabled={!newAlias.trim() || !newEmpId}><Plus className="w-4 h-4 mr-1" />Add</Button>
+            <Button size="sm" onClick={handleAdd} disabled={!newAlias.trim() || !newEmpId}>
+              <Plus className="w-4 h-4 mr-1" />Add
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -77,7 +87,9 @@ export default function AdminAliases() {
             ))}
           </tbody>
         </table>
-        {(aliases as AliasRow[]).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No aliases defined.</p>}
+        {(aliases as AliasRow[]).length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4">No aliases defined.</p>
+        )}
       </div>
     </div>
   );

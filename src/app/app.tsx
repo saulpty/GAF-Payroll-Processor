@@ -10,13 +10,10 @@ import ActionRequired from '@/app/pages/ActionRequired';
 import PayrollMaster from '@/app/pages/PayrollMaster';
 import SummaryDashboard from '@/app/pages/SummaryDashboard';
 import AdminLayout from '@/app/pages/admin/AdminLayout';
-import AdminEmployees from '@/app/pages/admin/AdminEmployees';
-import AdminAliases from '@/app/pages/admin/AdminAliases';
 import AdminSchedules from '@/app/pages/admin/AdminSchedules';
 import AdminHolidays from '@/app/pages/admin/AdminHolidays';
 import AdminDstCalendar from '@/app/pages/admin/AdminDstCalendar';
 import AdminLookups from '@/app/pages/admin/AdminLookups';
-import AdminEmployeeSync from '@/app/pages/admin/AdminEmployeeSync';
 import AdminEmployeesHub from '@/app/pages/admin/AdminEmployeesHub';
 import PeriodLog from '@/app/pages/PeriodLog';
 import Attendance from '@/app/pages/Attendance';
@@ -38,14 +35,13 @@ function App() {
               <Route path="/summary" element={<SummaryDashboard />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="/admin/employees" replace />} />
-                <Route path="employees" element={<AdminEmployees />} />
-                <Route path="aliases" element={<AdminAliases />} />
+                <Route path="employees" element={<AdminEmployeesHub />} />
+                <Route path="aliases" element={<Navigate to="/admin/employees?tab=aliases" replace />} />
+                <Route path="directory-sync" element={<Navigate to="/admin/employees?tab=monday" replace />} />
                 <Route path="schedules" element={<AdminSchedules />} />
                 <Route path="holidays" element={<AdminHolidays />} />
                 <Route path="dst-calendar" element={<AdminDstCalendar />} />
                 <Route path="lookups" element={<AdminLookups />} />
-                <Route path="directory-sync" element={<AdminEmployeeSync />} />
-                <Route path="employees-hub"  element={<AdminEmployeesHub />} />
               </Route>
               <Route path="/period-log" element={<PeriodLog />} />
               {/* Single instance — tab driven by URL, no remount on tab switch */}
