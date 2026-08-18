@@ -5,7 +5,7 @@ import {
   Settings, History, Activity,
   Users, Clock, CalendarDays, Globe2,
   SlidersHorizontal, FileSpreadsheet,
-  TrendingUp,
+  TrendingUp, Palmtree,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLoadAction } from '@uibakery/data';
@@ -51,6 +51,22 @@ const SECTIONS = [
       { to: '/attendance',          label: 'Dashboard', icon: Activity },
       { to: '/attendance/employees',label: 'Employees', icon: Users },
       { to: '/attendance/trends',   label: 'Trends',    icon: TrendingUp },
+    ],
+  },
+  {
+    id: 'people',
+    label: 'People',
+    icon: Palmtree,
+    home: '/pto',
+    color: 'from-[#7C3AED] to-[#6D28D9]',
+    activeBg: 'bg-[#7C3AED]',
+    hoverBg: 'hover:bg-[#6D28D9]',
+    ring: 'ring-[#7C3AED]/30',
+    subActiveBg: 'bg-[#7C3AED]/10 text-[#6D28D9] font-semibold',
+    subHover: 'hover:bg-[#7C3AED]/5 text-slate-600',
+    paths: ['/pto'],
+    links: [
+      { to: '/pto', label: 'PTO Tracker', icon: Palmtree },
     ],
   },
   {
