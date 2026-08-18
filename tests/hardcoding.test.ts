@@ -104,3 +104,59 @@ test('H3: full-day absence discount honors config override', () => {
   assert.equal(result.length, 1);
   assert.equal(result[0].discount_total_minutes, 360);
 });
+
+// ── H4 / H5: Monday IDs must live in classification_config, not in code ───────
+// Added 2026-08-18 with the Employees hub. The manager-column incident happened
+// because a valid-but-wrong column id sat in code where nobody could see it.
+// These fail the suite if that ever comes back.
+
+import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+function walkTs(dir: string, out: string[] = []): string[] {
+  if (!existsSync(dir)) return out;
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) walkTs(p, out);
+    else if (/\.(ts|tsx)$/.test(name)) out.push(p);
+  }
+  return out;
+}
+
+// The five board ids this app has ever used.
+const BOARD_ID = /\b(?:8592460836|8661565945|9542698245|18394647909|18394590373)\b/;
+// Monday column ids: a type prefix plus a short random suffix.
+const COLUMN_ID =
+  /\b(?:text|color|date|date_range|single_select|email|lookup|numbers|short_text|long_text|boolean|formula|status|people|phone|location|dropdown|signature|file|link|subtasks|board_relation|connect_boards|direct_doc)_?[a-z0-9]{6,14}\b/;
+
+test('H4: no Monday board or column id is hardcoded in the mirror or PTO code', () => {
+  const files = [
+    ...walkTs('src/app/pages/admin/employees'),
+    ...walkTs('src/app/pages/pto'),
+    'src/app/pages/admin/AdminEmployeesHub.tsx',
+    'src/app/pages/PtoTracker.tsx',
+    ...walkTs('src/actions').filter(f =>
+      /Monday|Pto|FloatingHoliday|Reconciliation|Unmatched/i.test(f)
+    ),
+  ].filter(existsSync);
+
+  assert.ok(files.length > 0, 'expected the mirror/PTO files to exist');
+
+  for (const f of files) {
+    const src = readFileSync(f, 'utf8');
+    assert.ok(!BOARD_ID.test(src), `${f} contains a literal Monday board id`);
+    assert.ok(!COLUMN_ID.test(src), `${f} contains a literal Monday column id`);
+  }
+});
+
+test('H5: the legacy admin pages and their hardcoded-id actions are gone', () => {
+  for (const f of [
+    'src/app/pages/admin/AdminEmployees.tsx',
+    'src/app/pages/admin/AdminEmployeeSync.tsx',
+    'src/app/pages/admin/AdminAliases.tsx',
+    'src/actions/loadEmployeeDirectory.ts',
+    'src/actions/fetchMondayStartDates.ts',
+  ]) {
+    assert.ok(!existsSync(f), `${f} should have been deleted by Task 11`);
+  }
+});
