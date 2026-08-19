@@ -35,7 +35,7 @@ export default function BalancesRow({ row, asOf, onSaved }: Props) {
   const [paidEdit, setPaidEdit] = useState<string>(String(row.paid_pto_days ?? 0));
   const [saving, setSaving] = useState(false);
 
-  const start = row.pto_start_date_override || row.start_date || '';
+  const start = (row.pto_start_date_override || row.start_date || '').slice(0, 10);
   const taken = Number(row.taken_days) || 0;
   const pending = Number(row.pending_count) || 0;
 
