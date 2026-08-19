@@ -667,10 +667,9 @@ Aliases; components under `src/app/pages/admin/employees/`), `schedules`
 
 | Route | Component | Owns |
 |---|---|---|
-| `/pto` | `PtoTracker.tsx` | three tabs: Balances, Approvals, Floating Holidays |
+| `/pto` | `PtoTracker.tsx` | one table: balances + per-employee breakdown |
 
-`PtoTracker.tsx` renders `BalancesTab`, `ApprovalsTab`, or `FloatingHolidaysTab`
-based on `?tab=`. Tab components live under `src/app/pages/pto/`.
+`/pto` is one table (`PtoTracker.tsx` → `pto/PtoTable.tsx`, `PtoRow.tsx`, `PtoBreakdown.tsx`); a row expands into pending Monday requests, the recorded ledger (Edit / Withdraw) and floating holidays, loaded by `loadPtoEmployeeDetail`. `RecordApprovalDialog.tsx` has record / edit / manual modes; `recorded_by` is `'app'` for new rows.
 
 ### Navigation and shared state
 
@@ -695,9 +694,9 @@ types are in use:
   `loadEmployeeDirectory` and `fetchMondayStartDates` no longer exist; the
   Directory sync reads everything from `AdminEmployeesHub` / `MondayTab.tsx`.
 
-PTO actions: `loadPtoBalancesInputs`, `loadPendingPtoRequests`,
-`loadPtoApprovals`, `upsertPtoApproval`, `updatePtoApprovalStatus`,
-`upsertPtoEmployee`, `loadFloatingHolidays`, `upsertFloatingHoliday`.
+PTO actions: `loadPtoBalancesInputs`, `loadPtoEmployeeDetail`, `loadPendingPtoRequests`,
+`upsertPtoApproval`, `updatePtoApproval`, `updatePtoApprovalStatus`,
+`upsertPtoEmployee`, `upsertFloatingHoliday`.
 
 Monday mirror actions: `upsertMondayRequests`, `upsertMondayAttendanceForms`,
 `upsertMondayContracts`, `updateMondayRequestsDeleted`,
