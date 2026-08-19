@@ -119,10 +119,10 @@ first.
 > Hees/David Sallusti, Tanya Bedoya and Sarah Mora/Cheyenne Pelis against the
 > board.
 >
-> The old `AdminEmployeeSync.tsx` and `loadEmployeeDirectory.ts` still exist
-> and still contain their hardcoded IDs. They are deleted in Task 11 of
-> `docs/superpowers/plans/2026-08-18-monday-mirror-and-pto-tracker.md`, after
-> which test H4 fails if any Monday ID is ever hardcoded again.
+> `AdminEmployeeSync.tsx` and `loadEmployeeDirectory.ts` were deleted in
+> `ba5a1f8`, which removed the last hardcoded IDs from the codebase. Tests H4
+> and H5 in `tests/hardcoding.test.ts` now fail the suite if any Monday board
+> or column ID is written into code again, or if those pages come back.
 
 > **Historical record of how this got here, kept because the failure modes recur.**
 >
@@ -329,7 +329,7 @@ six oversized files (#9). Order:
 | # | Sub-project | Status |
 |---|---|---|
 | A | Monday mirror layer — durable local tables for the Requests, Attendance-form, Contract and Directory boards, "Sync now" per board, config-driven IDs | ✅ built 2026-08-18 |
-| B | PTO & leave tracker — balances (sheet's DAYS360/11 accrual), approvals ledger, floating holidays, request counts; Excel seeded once by migration | tables + maths ready; pages are Tasks 12-14 |
+| B | PTO & leave tracker — balances (sheet's DAYS360/11 accrual), approvals ledger, floating holidays, request counts; Excel seeded once by migration | ✅ built 2026-08-19; Excel seed prepared, awaiting owner review |
 | F | Employees admin consolidation — Employees + Directory Sync + Aliases into one tabbed page; folds in #3 phase 2; strangler pattern, old pages deleted last | ✅ built 2026-08-18 |
 | D | Contract & milestone tracking (1 m/3 m/6 m/1 y/2 y, contract end, raise flag) | after A |
 | C | Employee 360 — one-employee view composing directory, contracts, PTO, requests, attendance | after B, D |
