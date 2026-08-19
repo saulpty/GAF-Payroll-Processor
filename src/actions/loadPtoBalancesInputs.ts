@@ -12,8 +12,7 @@ function loadPtoBalancesInputs() {
                WHERE r.employee_id = e.id AND r.request_type = 'PTO / Vacation' AND r.deleted_on_monday = false AND a.id IS NULL) AS pending_count,
              COALESCE(fh.fh_allocated, 2) AS fh_allocated, COALESCE(fh.fh_used, 0) AS fh_used,
              (SELECT COALESCE(SUM(GREATEST(1, COALESCE(total_days_requested, 1))),0) FROM monday_requests r WHERE r.employee_id = e.id AND r.request_type = 'Work From Home' AND r.deleted_on_monday = false AND EXTRACT(YEAR FROM r.start_date) = {{params.year}}) AS wfh_days,
-             (SELECT count(*) FROM monday_requests r WHERE r.employee_id = e.id AND r.request_type = 'Birthday Day Off' AND r.deleted_on_monday = false AND EXTRACT(YEAR FROM r.start_date) = {{params.year}}) AS birthday_days,
-             (SELECT COALESCE(SUM(hours_approved),0) FROM monday_requests r WHERE r.employee_id = e.id AND r.permission_type = 'Time for Time' AND r.deleted_on_monday = false AND EXTRACT(YEAR FROM COALESCE(r.start_date, r.submitted_at::date)) = {{params.year}}) AS tft_hours
+             (SELECT count(*) FROM monday_requests r WHERE r.employee_id = e.id AND r.request_type = 'Birthday Day Off' AND r.deleted_on_monday = false AND EXTRACT(YEAR FROM r.start_date) = {{params.year}}) AS birthday_days
       FROM employees e
       LEFT JOIN pto_employees pe ON pe.employee_id = e.id
       LEFT JOIN pto_floating_holidays fh ON fh.employee_id = e.id AND fh.calendar_year = {{params.year}}
