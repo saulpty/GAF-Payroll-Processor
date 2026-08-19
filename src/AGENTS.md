@@ -15,8 +15,9 @@ derived from the code and migrations in this project, not from assumption.
    and it is already wrong.
 4. **Never hardcode a Monday.com board or column ID.** Read it from
    `classification_config`. See [Monday.com integration](#mondaycom-integration).
-5. **Never build on `pto_employees`, `pto_approvals`, or
-   `pto_floating_holidays`.** They are dead scaffolding.
+5. **Keep the PTO tables alive and consistent.** `pto_approvals`,
+   `pto_employees`, and `pto_floating_holidays` are the live PTO ledger since
+   2026-08-18. Do not drop, truncate, or repurpose them.
 6. **One coherent change per prompt.** Touch only the files named in the
    request. Six files in this project are large enough that unrelated code
    breaks when they are edited — see [Hard constraints](#hard-constraints).
@@ -173,19 +174,67 @@ every migration that ever ran. **It is authoritative.** No application code
 reads it. On this project it holds 46 rows while `src/migrations/` holds 35
 `.sql` files and `applied.txt` lists 14. Trust the ledger, never `applied.txt`.
 
-### Dead — do not build on these
+### PTO ledger — live since 2026-08-18
 
-**`pto_employees`**, **`pto_approvals`**, **`pto_floating_holidays`** — created
-by `1781402200_create_pto_tables` (2026-07-22), abandoned scaffolding from a
-PTO feature that was set aside. **No page, action, or query reads or writes
-them.** The owner will rebuild PTO from scratch on a new schema. Do not read
-them, do not write them, do not extend them, and do not "reconnect" them to
-anything. They will be dropped as part of that rebuild.
+These three tables were revived by migration `1781803700_revive_pto_tables` and
+are the live PTO subsystem. They are read and written by `PtoTracker.tsx` and
+its supporting actions.
+
+**`pto_approvals`** — the PTO approval ledger. One row per leave request.
+- `status`: `pending | recorded | withdrawn`. Monday submissions arrive as
+  `pending`; an operator records them from the Approvals tab, flipping to
+  `recorded`.
+- `source`: `monday | excel_import | manual`.
+- `monday_item_id`: nullable FK → `monday_requests.monday_item_id`. The unique
+  partial index `uq_pto_approvals_monday_item` prevents duplicate Monday rows.
+- Balances are computed in the browser by `src/app/lib/ptoAccrual.ts` using
+  Excel DAYS360/11 arithmetic. **SQL never computes accrual.**
+
+**`pto_employees`** — manual per-employee overrides. `paid_pto_days` (default 0)
+and `pto_start_date_override` (used in lieu of `employees.start_date` when the
+accrual clock should start from a different date).
+
+**`pto_floating_holidays`** — one row per `(employee_id, calendar_year)`.
+`fh_allocated` (default 2), `fh_used`, `notes`. The unique constraint
+`pto_fh_employee_year_unique` ensures at most one row per employee per year.
 
 Beware the false positive: `pto_days`, `pto_dates`, `pto_count` in
 `loadHrkSummary.ts` and `HrkSummary.tsx` are CTE aliases derived from the `PTO`
 *event type* on `payroll_entries`. That is a separate, live feature and has
 nothing to do with these three tables.
+
+### Monday mirror
+
+Four tables hold a local copy of Monday.com board data, synced from Admin →
+Employees → Monday tab. They are **append-only** — rows are soft-deleted by
+setting `deleted_on_monday = true` when the board row disappears. Never issue a
+hard `DELETE` on any of them.
+
+**`monday_requests`** — PTO/permissions requests board. Keyed by
+`monday_item_id` (bigint, unique). `employee_id` is nullable: a NULL means the
+row could not be matched to any `employees` row — it is "unmatched" and will
+appear in the Unmatched list. `employee_name_raw` and `employee_email_raw` hold
+the original board text for display and re-matching. `raw` (jsonb) holds the
+full API response. `request_type` distinguishes `PTO / Vacation`, `Work From
+Home`, `Floating Holiday`, `Birthday Day Off`, and `Time for Time`
+(permission_type for TFT rows).
+
+**`monday_attendance_forms`** — attendance/absence form board. Same shape:
+`monday_item_id`, `employee_id` nullable, `employee_name_raw`,
+`form_type`, `form_date`, `raw`.
+
+**`monday_contracts`** — employee contracts/onboarding board. `monday_item_id`,
+`employee_id` nullable, `position`, `state`, `start_date`, `contract_end_date`.
+
+**`monday_sync_log`** — one row per board key (`board_key`). `last_synced_at`,
+`item_count`, `matched_count`. The Admin sync UI reads this to show the
+last-sync timestamp and match rate per board.
+
+The payroll engine's own per-period Monday pull (in `ProcessPayroll.tsx`) is
+**separate** from this mirror. It reads the three payroll boards (Attendance,
+Adjustments, Permissions) live at run time and writes nothing to these tables.
+The mirror exists for the PTO tracker and directory reconciliation, which need a
+persistent local copy.
 
 ---
 
@@ -224,6 +273,21 @@ Concretely:
 - Dates are keyed with `toLocalYMD()`, which reads local calendar fields.
   **Never use `toISOString()` to derive a work date** — in any negative-offset
   zone it rolls to the next day after 19:00 local.
+
+### Getting "today" safely
+
+**Never use `new Date().toISOString().slice(0, 10)` to get today's date.**
+`toISOString()` returns UTC. Panama is UTC−5 all year, so from 19:00 local time
+onwards it returns tomorrow's date. A floating-holiday eligibility check that
+shipped this way would have shown employees as eligible a day early every
+evening — it was caught in review and fixed before it reached the operator.
+
+Use `toLocalYMD(new Date())` from `src/app/lib/classificationEngine.ts`. It
+reads `getFullYear()`, `getMonth()`, `getDate()` — the machine's local calendar
+fields — and formats them as `YYYY-MM-DD` with no timezone conversion.
+
+`CUR_YEAR = new Date().getFullYear()` is fine as-is; `getFullYear()` is already
+local.
 
 ### Things that must never be reintroduced
 
@@ -503,20 +567,67 @@ operator can see and correct them, rather than in code where they can only be
 guessed at. Never write a column ID from memory or by pattern-matching another
 ID; take it from config, or ask.
 
-### Two current violations — fix on sight, do not copy
+### Config keys in use — complete list
 
-- `src/actions/loadEmployeeDirectory.ts` hardcodes board `8592460836` in a raw
-  GraphQL string, duplicating `monday_board_directory`.
-- `src/app/pages/admin/AdminEmployeeSync.tsx` hardcodes column IDs
-  `text_mkzj84w1` (manager), `text_mkzjgsxv` (employee email), `text_mm63b2xk`
-  (role) and `color_mkyjv6et` (active status), instead of reading
-  `monday_col_directory_role` / `monday_col_directory_manager`.
+| Board | Config key | Seeded value |
+|---|---|---|
+| GAF Attendance Form | `monday_board_attendance` | `9542698245` |
+| Time Adjustments / TFT | `monday_board_adjustments` | `18394647909` |
+| Permissions & Requests | `monday_board_permissions` | `18394590373` |
+| Panama Employee Directory | `monday_board_directory` | `8592460836` |
+| Employee Onboarding | `monday_board_onboarding` | seeded in `1781803600` |
 
-These are the code paths the incident above happened in. Do not add new
-hardcoded IDs anywhere, and when editing either file, move the IDs into config
-rather than duplicating the pattern.
+Column keys (supply the board-specific suffix): `monday_col_attendance_email`,
+`monday_col_attendance_date`, `monday_col_attendance_type`,
+`monday_col_attendance_reason`, `monday_col_attendance_details`,
+`monday_col_attendance_eta`; `monday_col_adjustments_email`,
+`monday_col_adjustments_date`, `monday_col_adjustments_type`;
+`monday_col_permissions_email`, `monday_col_permissions_daterange`,
+`monday_col_permissions_type`, `monday_col_permissions_type_alt`;
+`monday_col_directory_role`, `monday_col_directory_manager`;
+`monday_col_requests_start_date`, `monday_col_requests_return_date`,
+`monday_col_requests_total_days`, `monday_col_requests_reason`,
+`monday_col_requests_email`, `monday_col_requests_manager_email`;
+`monday_col_onboarding_email`, `monday_col_onboarding_start_date`,
+`monday_col_onboarding_position`, `monday_col_onboarding_state`.
 
-### Matching board rows to employees
+### Mirror/lookup columns — a silent failure mode
+
+**Mirror and lookup column values are not in the `text` field — they are in
+`display_value`.** The Monday GraphQL API returns `text: null` for these column
+types with no error or warning; the value is only accessible via the inline
+fragment `... on MirrorValue { display_value }`. Reading `.text` alone yields
+blank strings that look valid and produce no error — the same silent-wrong-data
+shape as the manager-column incident above.
+
+The fix is already in place: `colText` in
+`src/app/pages/admin/employees/mondaySync.ts` requests `type` and
+`... on MirrorValue { display_value }` for every column, then prefers
+`display_value` when present. Use `colText` for any new board query rather than
+accessing `.text` directly.
+
+### Onboarding board — name-only resolution
+
+The Employee Onboarding board has **no employee-email column**, so its rows can
+only be matched by name. Eight active employees needed full-legal-name aliases
+(migration `1781803800_add_legal_name_aliases`) because that board stores the
+full legal name ("Eddy Miguel Cedeño Chavarría") while `employees` holds the
+short display name ("Eddy Cedeño"). When adding an onboarding-board query and a
+new hire's row is unmatched, check whether a name alias is missing before
+assuming the data is wrong.
+
+### Resolving board rows to employees
+
+**Use `buildResolver` from `src/app/lib/mondayResolve.ts`.** Do not write
+another name-matcher. `buildResolver` loads `employees` and `name_aliases`,
+normalises both sides with the same `normalizeName` used by the payroll engine,
+and returns a `Resolver` that resolves by email first, then alias, then
+normalised name. A new resolver written from scratch will diverge from this
+normalisation and produce different match results for accented characters,
+double spaces, and legal-name variants — exactly the cases that caused the
+alias-addition migrations.
+
+### Matching board rows to employees (payroll engine)
 
 `rowMatchesEmp()` resolves in this order: **email first**, then `nameMap`
 (normalized `display_name` plus every `name_aliases.alias_text`), then a direct
@@ -544,12 +655,22 @@ absence. When a real absence shows up as an unexplained RED, a missing
 | `/attendance/*` | `Attendance.tsx` | attendance dashboard; three tabs driven by URL, one component instance so tab switching does not remount |
 | `/admin/*` | `admin/AdminLayout.tsx` | admin shell with nested routes |
 
-Admin children: `employees` (`AdminEmployees.tsx`), `directory-sync`
-(`AdminEmployeeSync.tsx`), `aliases` (`AdminAliases.tsx`), `schedules`
+Admin children: `employees` (`AdminEmployeesHub.tsx` — tabs: Roster, Monday,
+Aliases; components under `src/app/pages/admin/employees/`), `schedules`
 (`AdminSchedules.tsx`), `holidays` (`AdminHolidays.tsx`), `dst-calendar`
 (`AdminDstCalendar.tsx`), `lookups` (`AdminLookups.tsx`, labelled
 "Rules & Config" — owns `event_types`, `pay_impacts`, `documentation_options`,
-`event_type_rules` and `classification_config`).
+`event_type_rules` and `classification_config`). Routes `/admin/aliases` and
+`/admin/directory-sync` exist as redirects only; do not add content to them.
+
+**People section** — added 2026-08-18:
+
+| Route | Component | Owns |
+|---|---|---|
+| `/pto` | `PtoTracker.tsx` | three tabs: Balances, Approvals, Floating Holidays |
+
+`PtoTracker.tsx` renders `BalancesTab`, `ApprovalsTab`, or `FloatingHolidaysTab`
+based on `?tab=`. Tab components live under `src/app/pages/pto/`.
 
 ### Navigation and shared state
 
@@ -562,7 +683,7 @@ Admin children: `employees` (`AdminEmployees.tsx`), `directory-sync`
 - `src/app/context/GlobalFilterContext.tsx` — holds the filter state plus
   `periodsVersion`, a counter pages bump to force a period reload.
 
-### `src/actions/` — 65 files, one action per file
+### `src/actions/` — 81 files, one action per file
 
 Every file is `import { action } from '@uibakery/data'`, a single named
 function returning `action(name, type, options)`, and a default export. Two
@@ -570,8 +691,19 @@ types are in use:
 
 - **`'SQL'`** with `datasourceName: 'GAF Planilla DB'` and a `query` string.
   Parameters are `{{params.name}}` placeholders.
-- **`'HTTP'`** with `datasourceName: 'Monday.com API'` (`pullMondayBoard`,
-  `loadEmployeeDirectory`, `fetchMondayStartDates`).
+- **`'HTTP'`** with `datasourceName: 'Monday.com API'` (`pullMondayBoard`).
+  `loadEmployeeDirectory` and `fetchMondayStartDates` no longer exist; the
+  Directory sync reads everything from `AdminEmployeesHub` / `MondayTab.tsx`.
+
+PTO actions: `loadPtoBalancesInputs`, `loadPendingPtoRequests`,
+`loadPtoApprovals`, `upsertPtoApproval`, `updatePtoApprovalStatus`,
+`upsertPtoEmployee`, `loadFloatingHolidays`, `upsertFloatingHoliday`.
+
+Monday mirror actions: `upsertMondayRequests`, `upsertMondayAttendanceForms`,
+`upsertMondayContracts`, `updateMondayRequestsDeleted`,
+`updateMondayAttendanceFormsDeleted`, `updateMondayContractsDeleted`,
+`upsertMondaySyncLog`, `loadMondaySyncLog`, `loadMondayUnmatched`,
+`loadDirectoryReconciliation`.
 
 Pages consume them with `useLoadAction` (read) and `useMutateAction` (write)
 from `@uibakery/data`. Naming is consistent and should stay so: `load*`,
@@ -590,6 +722,15 @@ than adding a second action to an existing one.**
   parsing, and grouping into `email → date → { entry, exit }`.
 - **`attendanceStats.ts`** — pure aggregation over `v_attendance_daily` rows
   for the Attendance dashboard (`computeEmployeeStats`, `computeCompanyKpis`).
+
+- **`ptoAccrual.ts`** — pure functions for the PTO tracker, no I/O: `days360`
+  (Excel DAYS360/NASD), `accruedPto`, `takenPto`, `defaultTotalDays`,
+  `fhEligibleDate`, `fhRemaining`. These are covered by tests pinned to the
+  owner's PTO workbook — do not reimplement them and do not inline the
+  arithmetic.
+- **`mondayResolve.ts`** — `buildResolver` / `Resolver` for resolving Monday
+  board rows to `employees` rows. See
+  [Resolving board rows to employees](#resolving-board-rows-to-employees) above.
 
 Other: `src/app/components/TimeInput.tsx`, `src/app/pages/attendance/*` (the
 dashboard's five presentational components), `src/components/ui/*` (shadcn-style
@@ -630,6 +771,11 @@ never let a change here ride along with an unrelated one:
 | `src/app/lib/classificationEngine.ts` | 35,657 |
 | `src/app/pages/ActionRequired.tsx` | 34,154 |
 | `src/app/pages/admin/AdminLookups.tsx` | 30,751 |
+
+**Component size.**
+- New pages and tab components must stay under 15 KB. One component per tab.
+  When a tab grows past ~12 KB, split its sub-sections into named child
+  components in their own files.
 
 **Scope.**
 - One coherent change per prompt. Bundled changes produce diffs nobody can
