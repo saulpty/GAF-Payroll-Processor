@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Palmtree, CalendarCheck, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import BalancesTab from './pto/BalancesTab';
+import ApprovalsTab from './pto/ApprovalsTab';
 
 type Tab = 'balances' | 'approvals' | 'floating-holidays';
 
@@ -63,7 +64,7 @@ export default function PtoTracker() {
 
       <div className="flex-1 overflow-auto">
         {tab === 'balances'          && <BalancesTab />}
-        {tab === 'approvals'         && <ComingSoon label="Approvals" />}
+        {tab === 'approvals'         && <ApprovalsTab />}
         {tab === 'floating-holidays' && <ComingSoon label="Floating Holidays" />}
       </div>
     </div>
