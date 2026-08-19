@@ -231,6 +231,7 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange 
               >
                 {expanded.has(row.employee_id) && (
                   <PtoBreakdown
+                    key={`${row.employee_id}-${detailKey}`}
                     row={row}
                     year={year}
                     showWithdrawn={showWithdrawn}

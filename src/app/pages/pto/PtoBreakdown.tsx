@@ -46,12 +46,8 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
   const [rawDetail, loading, error] = useLoadAction(
     loadPtoEmployeeDetailAction,
     null,
-    { params: { employee_id: row.employee_id, year, manager: null } },
+    { employee_id: row.employee_id, year, manager: null },
   );
-
-  // detailKey change forces re-mount via key in parent; we rely on re-render to reload
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _key = detailKey;
 
   const detailArr = (rawDetail as DetailRow[] | null);
   const detail: DetailRow | null = Array.isArray(detailArr) ? (detailArr[0] ?? null) : (rawDetail as DetailRow | null);
@@ -66,10 +62,10 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
   const [upsertFH] = useMutateAction(upsertFloatingHolidayAction);
   const [withdraw] = useMutateAction(updatePtoApprovalStatusAction);
 
-  // Sync local fhUsed when detail loads
+  // Sync local fhUsed when detail loads (remount resets this automatically)
   useEffect(() => {
     if (rawFh !== null) setFhUsed(Number(rawFh.fh_used) || 0);
-  }, [rawFh, detailKey]);
+  }, [rawFh]);
 
   if (loading) {
     return (
