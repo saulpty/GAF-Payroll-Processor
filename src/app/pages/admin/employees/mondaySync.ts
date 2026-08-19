@@ -4,7 +4,7 @@
 export type MondayItem = {
   id: string;
   name: string;
-  group?: { title: string };
+  group?: { id: string; title: string };
   column_values: { id: string; type?: string; text: string | null; value: string | null; display_value?: string | null }[];
 };
 
@@ -51,7 +51,7 @@ export async function pullAllItems(
         cursor
         items {
           id name
-          group { title }
+          group { id title }
           column_values(ids: ${colList}) { id type text value ... on MirrorValue { display_value } }
         }
       }
@@ -72,7 +72,7 @@ export async function pullAllItems(
         cursor
         items {
           id name
-          group { title }
+          group { id title }
           column_values(ids: ${colList}) { id type text value ... on MirrorValue { display_value } }
         }
       }

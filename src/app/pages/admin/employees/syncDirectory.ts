@@ -1,7 +1,7 @@
 // Directory board sync — moved from MondayTab to keep that file small.
 // Pure async function, no React, no hooks.
 import {
-  pullAllItems, colText, parseDate, batchUpsert, requireKeys, SyncDeps, SyncResult,
+  pullAllItems, colText, parseDate, batchUpsert, requireKeys, SyncDeps, SyncResult, MondayItem,
 } from './mondaySync';
 
 const DIR_KEYS = [
@@ -10,6 +10,7 @@ const DIR_KEYS = [
   'monday_col_directory_role',
   'monday_col_directory_manager',
   'monday_col_directory_active',
+  'monday_group_directory_current',
 ] as const;
 
 const ONBOARD_KEYS = [
@@ -35,6 +36,49 @@ export type DirectoryDeps = SyncDeps & {
   onSummary: (s: string) => void;
   onItems?: (items: { item_id: string; name: string; email: string; role: string; manager: string; active: string }[]) => void;
 };
+
+type ResolvedItem = {
+  item: MondayItem;
+  empId: number;
+  email: string;
+  role: string;
+  manager: string;
+};
+
+/** Pick the single best item for each employee when the board has duplicate rows.
+ *  Priority: (1) row is in the current-employees group, (2) highest numeric item id. */
+function deduplicateByEmployee(
+  resolved: ResolvedItem[],
+  currentGroupId: string,
+): { winners: ResolvedItem[]; duplicatesCollapsed: number } {
+  const byEmp = new Map<number, ResolvedItem[]>();
+  for (const r of resolved) {
+    const bucket = byEmp.get(r.empId) ?? [];
+    bucket.push(r);
+    byEmp.set(r.empId, bucket);
+  }
+
+  const winners: ResolvedItem[] = [];
+  let duplicatesCollapsed = 0;
+
+  for (const bucket of byEmp.values()) {
+    if (bucket.length === 1) {
+      winners.push(bucket[0]);
+      continue;
+    }
+    duplicatesCollapsed += bucket.length - 1;
+    // Prefer the current-group row; among ties prefer the highest item id.
+    const sorted = [...bucket].sort((a, b) => {
+      const aIsCurrent = a.item.group?.id === currentGroupId ? 1 : 0;
+      const bIsCurrent = b.item.group?.id === currentGroupId ? 1 : 0;
+      if (bIsCurrent !== aIsCurrent) return bIsCurrent - aIsCurrent;
+      return Number(BigInt(b.item.id) - BigInt(a.item.id) > 0n ? 1 : -1);
+    });
+    winners.push(sorted[0]);
+  }
+
+  return { winners, duplicatesCollapsed };
+}
 
 export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
   const dirCheck = requireKeys(deps.cfg, DIR_KEYS);
@@ -68,36 +112,50 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
   const emailSet = new Set(deps.emps.map(e => e.teramind_email.toLowerCase()));
   const newCandidates: { name: string; email: string; role: string; manager: string }[] = [];
 
+  // ── Step 1: resolve every item to an employee id ──────────────────────────
+  const resolved: ResolvedItem[] = [];
   for (const item of items) {
     const email   = colText(item, dk.monday_col_directory_email).toLowerCase();
     const role    = colText(item, dk.monday_col_directory_role);
     const manager = colText(item, dk.monday_col_directory_manager);
-    const mondayActive = colText(item, dk.monday_col_directory_active) === 'Active';
     const empId   = deps.resolve(item.name, email || null);
 
     if (empId !== null) {
-      const emp = empById.get(empId);
-      if (!emp) continue;
-      let changed = false;
-      if ((role || '') !== emp.role || (manager || '') !== emp.manager) {
-        await deps.updateRoleManager({ id: emp.id, role: role || null, manager: manager || null });
-        changed = true;
-      }
-      if (mondayActive !== emp.active) {
-        await deps.updateFlag({
-          id: emp.id, is_grace_list: emp.is_grace_list,
-          is_macbook_swap: emp.is_macbook_swap,
-          excluded_from_payroll: emp.excluded_from_payroll, active: mondayActive,
-        });
-        changed = true;
-      }
-      if (changed) updatedCount++;
+      resolved.push({ item, empId, email, role, manager });
     } else {
       if (email && !emailSet.has(email)) newCandidates.push({ name: item.name, email, role, manager });
       unmatchedCount++;
     }
   }
 
+  // ── Step 2: collapse duplicate rows per employee ───────────────────────────
+  const { winners, duplicatesCollapsed } = deduplicateByEmployee(resolved, dk.monday_group_directory_current);
+
+  // ── Step 3: write each winner ──────────────────────────────────────────────
+  for (const { item, empId, role, manager } of winners) {
+    const emp = empById.get(empId);
+    if (!emp) continue;
+
+    // Active = row is in the current-employees group (not the Status column).
+    const mondayActive = item.group?.id === dk.monday_group_directory_current;
+
+    let changed = false;
+    if ((role || '') !== emp.role || (manager || '') !== emp.manager) {
+      await deps.updateRoleManager({ id: emp.id, role: role || null, manager: manager || null });
+      changed = true;
+    }
+    if (mondayActive !== emp.active) {
+      await deps.updateFlag({
+        id: emp.id, is_grace_list: emp.is_grace_list,
+        is_macbook_swap: emp.is_macbook_swap,
+        excluded_from_payroll: emp.excluded_from_payroll, active: mondayActive,
+      });
+      changed = true;
+    }
+    if (changed) updatedCount++;
+  }
+
+  // ── Step 4: offer new employees for creation ───────────────────────────────
   if (newCandidates.length > 0) {
     const selected = await deps.askCandidates(newCandidates);
     for (const c of selected) {
@@ -112,7 +170,7 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
     }
   }
 
-  // Start dates from onboarding board
+  // ── Step 5: start dates from onboarding board ─────────────────────────────
   const onboardCheck = requireKeys(deps.cfg, ONBOARD_KEYS);
   if (onboardCheck.ok) {
     const ok = onboardCheck.map;
@@ -129,7 +187,13 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
     }
   }
 
+  // ── Step 6: summary ───────────────────────────────────────────────────────
+  const dupPart = duplicatesCollapsed > 0
+    ? ` · ${duplicatesCollapsed} duplicate row${duplicatesCollapsed === 1 ? '' : 's'} collapsed`
+    : '';
   const matched = items.length - unmatchedCount;
-  deps.onSummary(`${updatedCount} updated · ${createdCount} created · ${startDatesSet} start dates set · ${unmatchedCount} unmatched`);
+  deps.onSummary(
+    `${updatedCount} updated · ${createdCount} created · ${startDatesSet} start dates set${dupPart} · ${unmatchedCount} unmatched`,
+  );
   return { items: items.length, matched, unmatched: unmatchedCount };
 }
