@@ -3,26 +3,15 @@ import { Palmtree, CalendarCheck, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import BalancesTab from './pto/BalancesTab';
 import ApprovalsTab from './pto/ApprovalsTab';
+import FloatingHolidaysTab from './pto/FloatingHolidaysTab';
 
 type Tab = 'balances' | 'approvals' | 'floating-holidays';
 
 const TABS: { id: Tab; label: string; icon: typeof Palmtree }[] = [
-  { id: 'balances',          label: 'Balances',          icon: Palmtree     },
-  { id: 'approvals',         label: 'Approvals',          icon: CalendarCheck },
+  { id: 'balances',          label: 'Balances',          icon: Palmtree      },
+  { id: 'approvals',         label: 'Approvals',         icon: CalendarCheck },
   { id: 'floating-holidays', label: 'Floating Holidays', icon: Star          },
 ];
-
-function ComingSoon({ label }: { label: string }) {
-  return (
-    <div className="p-6">
-      <Card className="border-dashed">
-        <CardContent className="flex items-center justify-center py-20 text-sm text-muted-foreground">
-          {label} — Coming next
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 export default function PtoTracker() {
   const [params, setParams] = useSearchParams();
@@ -65,7 +54,7 @@ export default function PtoTracker() {
       <div className="flex-1 overflow-auto">
         {tab === 'balances'          && <BalancesTab />}
         {tab === 'approvals'         && <ApprovalsTab />}
-        {tab === 'floating-holidays' && <ComingSoon label="Floating Holidays" />}
+        {tab === 'floating-holidays' && <FloatingHolidaysTab />}
       </div>
     </div>
   );
