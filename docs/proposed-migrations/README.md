@@ -12,9 +12,24 @@ Generated 2026-08-18 by `tools/pto-seed-from-xlsx.mjs` from
 `PTO TRACKING GAF NEW.xlsx`. This is Task 15 of
 `docs/superpowers/plans/2026-08-18-monday-mirror-and-pto-tracker.md`.
 
-Contents: 46 `pto_employees` rows (paid PTO and start-date overrides),
+Contents: 45 `pto_employees` rows (paid PTO and start-date overrides),
 48 `pto_approvals` rows (`source = 'excel_import'`, `status = 'recorded'`),
-and 50 `pto_floating_holidays` rows for the current calendar year.
+and 49 `pto_floating_holidays` rows for the current calendar year, covering 51
+people.
+
+Regenerated 2026-08-19 after a walkthrough with the owner found three problems
+in the first version:
+
+- A footnote row from the bottom of the Floating Holidays sheet ("📌 Column G
+  (FH Used) is a manual entry…") was being read as an employee name. The
+  generator now filters rows that are too long, contain symbols, or read like
+  prose.
+- The sheet says "Michael Jones"; `employees` holds "Michael Antonio Jones
+  Roye". The generator now maps the sheet spelling to the stored name.
+- **Johann Morante is deliberately excluded.** He was rehired in August 2026 and
+  the owner decided on 2026-08-19 to treat him as a brand-new employee, so none
+  of his pre-rehire history is imported. The omission and its reason are
+  recorded in the SQL header itself, not just here.
 
 **Read before applying:**
 
@@ -23,9 +38,10 @@ and 50 `pto_floating_holidays` rows for the current calendar year.
   `employees`. Nothing is inserted in that case. This is deliberate — a silent
   NULL `employee_id` would produce a PTO row belonging to nobody.
 - The sheet contains past employees (Natalia Esquivel, Veronica Vasquez,
-  Diana Rodriguez, Samuel Duarte and others). If any is missing from
-  `employees`, the guard will name them. Decide per person: add them as
-  inactive employees, or delete their lines from the SQL and record why.
+  Diana Rodriguez, Samuel Duarte and others). All of those were confirmed
+  present in `employees` as of 2026-08-19. If a future regeneration finds one
+  missing, the guard will name them; decide per person whether to add them as
+  inactive employees or add them to the generator's SKIP list with a reason.
 - Employee ids are resolved by name at apply time, so no id is hardcoded and
   the file stays valid if ids change.
 - It is **not** idempotent for `pto_approvals`: re-running would insert the
