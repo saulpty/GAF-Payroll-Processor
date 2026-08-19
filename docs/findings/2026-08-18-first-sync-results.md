@@ -77,3 +77,55 @@ The mirror/`display_value` fix (`57992ba`) landed after the directory and
 attendance syncs ran. Their timestamps predate it, so `manager_email`, `role`
 and `state` are still empty on those two tables. Re-run both; requests and
 contracts already carry correct mirror values.
+
+---
+
+# Follow-up, 2026-08-19
+
+## The active-count gap was Timothy Moore
+
+Measured from the directory board itself (API playground, board 8592460836):
+**64 rows, exactly 44 with Status = Active** — matching the owner's count. Of
+the five people the sync offered to create, only one is Active:
+
+| Person | Status on the directory board |
+|---|---|
+| Timothy Moore | **Active** |
+| Juan Moreno | Resigned |
+| Johann Morante | Resigned |
+| Anagabriela Perez | Resigned |
+| Yulisse Palacio | Offboarded |
+
+So the 44-vs-43 gap was Timothy Moore: active on the board, absent from
+`employees`. Added 2026-08-19 ("1 created"), bringing the app to 54 employees
+and 44 active. The owner had said Tim's data was not tracked; he has since
+confirmed Tim and Johann both work there and should be added.
+
+## Johann Morante is a rehire, and his directory row still says Resigned
+
+The owner described Johann as a rehire with both an active and a resigned
+entry. On the *directory* board he has only one row and it reads **Resigned** —
+that is his pre-rehire record. His new engagement appears on the *Onboarding*
+board (the "Pre arrival" group, starting Aug 3), which is exactly the "onboarded
+but not yet on the directory" case.
+
+Left out deliberately, by owner decision. Creating him now would be
+self-defeating: the next Directory sync reads Resigned and flips him inactive,
+so he would flicker between states every sync. He should be added once his
+directory row exists or is set to Active, keeping Monday as the single source
+of truth.
+
+## Latent bug: duplicate board rows would fight over `active`
+
+`syncDirectory.ts` loops board items and writes `active`, `role` and `manager`
+per item. Two rows resolving to the same employee therefore race, and the last
+one processed wins. For a rehire with an Active row and a Resigned row, whether
+the employee ends up active depends on board ordering.
+
+**Not firing today:** the directory board currently has no duplicate email and
+no duplicate name (verified 2026-08-19 across all 64 rows). But the owner says
+rehires do produce two entries, so this will bite eventually.
+
+Fix when it matters: group board rows by resolved `employee_id` before writing,
+and when a person has more than one row prefer the Active one — or more simply,
+prefer the row with the latest start date. Do not simply take the last row seen.
