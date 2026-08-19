@@ -18,3 +18,4 @@ Applied migrations:
 1781803600_seed_monday_config_keys at 2026-08-18T18:58:57.553Z
 1781803700_revive_pto_tables at 2026-08-18T19:01:07.320Z
 1781803800_add_legal_name_aliases at 2026-08-18T20:50:51.558Z
+1781803900_seed_pto_from_excel at 2026-08-19T15:28:39.399Z
