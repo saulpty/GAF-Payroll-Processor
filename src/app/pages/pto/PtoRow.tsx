@@ -31,6 +31,11 @@ interface Props {
   children?: ReactNode;
 }
 
+/** Postgres sometimes hands back a full timestamp; dates in this app are YYYY-MM-DD strings. */
+function ymd(v: string | null | undefined): string {
+  return v ? String(v).slice(0, 10) : '';
+}
+
 const muted = <span className="text-slate-300">—</span>;
 
 function fmt2(v: number | null): ReactNode {
@@ -51,7 +56,7 @@ export default function PtoRow({ row, expanded, onToggle, children }: Props) {
 
   let fhCell: ReactNode;
   if (row.fh_left === null && row.fh_eligible_from) {
-    fhCell = <StatusChip tone="slate">from {row.fh_eligible_from}</StatusChip>;
+    fhCell = <StatusChip tone="slate">from {ymd(row.fh_eligible_from)}</StatusChip>;
   } else {
     fhCell = fmtInt(row.fh_left);
   }
@@ -82,7 +87,7 @@ export default function PtoRow({ row, expanded, onToggle, children }: Props) {
         {/* Title */}
         <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.role ?? muted}</td>
         {/* Start */}
-        <td className="px-3 py-2 tabular-nums whitespace-nowrap">{row.start ?? muted}</td>
+        <td className="px-3 py-2 tabular-nums whitespace-nowrap">{row.start ? ymd(row.start) : muted}</td>
         {/* Accrued */}
         <td className="px-3 py-2 text-right tabular-nums">{fmt2(row.accrued)}</td>
         {/* Taken */}

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import DataTable, { Col } from '@/app/components/DataTable';
 import EmptyState from '@/app/components/EmptyState';
 import PtoRow, { PtoRowData } from './PtoRow';
+import PtoBreakdown from './PtoBreakdown';
 import type { DialogMode } from './RecordApprovalDialog';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import loadPtoBalancesInputsAction from '@/actions/loadPtoBalancesInputs';
@@ -49,26 +50,28 @@ const COLUMNS: Col<PtoRowData>[] = [
   { key: 'pending',      label: 'Pending',  align: 'center', tip: 'Monday PTO requests not yet recorded.' },
 ];
 
-export default function PtoTable({ asOf, refreshKey, onOpenDialog: _onOpenDialog, onRowsChange }: Props) {
+export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
 
   const year = asOf.slice(0, 4);
-  const [rawRows, loading, error] = useLoadAction(
+  const [rawRows, loading, error, reload] = useLoadAction(
     loadPtoBalancesInputsAction,
     [] as RawRow[],
     { params: { year, manager: manager || null }, enabled: true },
-    // refreshKey change triggers re-render which re-evaluates params
   );
 
-  // Track refreshKey to reload when it changes
+  // detailKey: bumped on dialog save or breakdown write, forces breakdown refetch
+  const [detailKey, setDetailKey] = useState(0);
+
+  // When refreshKey changes (dialog saved from parent), reload balances + bump detailKey
   const refreshRef = useRef(refreshKey);
-  const [, setReloadTick] = useState(0);
   useEffect(() => {
     if (refreshRef.current !== refreshKey) {
       refreshRef.current = refreshKey;
-      setReloadTick(t => t + 1);
+      setDetailKey(k => k + 1);
+      reload();
     }
-  }, [refreshKey]);
+  }, [refreshKey, reload]);
 
   // Derive computed fields
   const derived = useMemo((): PtoRowData[] => {
@@ -126,6 +129,11 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog: _onOpenDialog
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  };
+
+  const handleChanged = () => {
+    setDetailKey(k => k + 1);
+    reload();
   };
 
   // Filter
@@ -220,7 +228,18 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog: _onOpenDialog
                 row={row}
                 expanded={expanded.has(row.employee_id)}
                 onToggle={() => handleToggle(row.employee_id)}
-              />
+              >
+                {expanded.has(row.employee_id) && (
+                  <PtoBreakdown
+                    row={row}
+                    year={year}
+                    showWithdrawn={showWithdrawn}
+                    onOpenDialog={onOpenDialog}
+                    onChanged={handleChanged}
+                    detailKey={detailKey}
+                  />
+                )}
+              </PtoRow>
             ))
           )}
         </DataTable>
