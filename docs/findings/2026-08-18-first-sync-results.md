@@ -115,7 +115,7 @@ so he would flicker between states every sync. He should be added once his
 directory row exists or is set to Active, keeping Monday as the single source
 of truth.
 
-## Latent bug: duplicate board rows would fight over `active`
+## Duplicate board rows -- FIXED 2026-08-19 (`a170767`)
 
 `syncDirectory.ts` loops board items and writes `active`, `role` and `manager`
 per item. Two rows resolving to the same employee therefore race, and the last
@@ -129,3 +129,37 @@ rehires do produce two entries, so this will bite eventually.
 Fix when it matters: group board rows by resolved `employee_id` before writing,
 and when a person has more than one row prefer the Active one — or more simply,
 prefer the row with the latest start date. Do not simply take the last row seen.
+
+### How it was fixed
+
+It stopped being latent the same day: Johann Morante gained a second row
+(`12843769792`, Current Employees, **blank** status) alongside his old one
+(`10605676067`, Past employees, Resigned). Same email, different case.
+
+The owner settled the rule: *"I don't consider an employee active until he is on
+that Panama Employee Directory board, in the Current Employees group."*
+
+So `active` is now group membership, read from `monday_group_directory_current`
+in config (migration `1781804000`, value `topics`). The Status column is no
+longer consulted for it — and could not be, since Johann's new row has no
+Status set. Measured across all 65 rows: the current group holds 44 Active plus
+that one blank; the past group holds 8 Resigned and 12 Offboarded. Group and
+Status agree everywhere except that row.
+
+Duplicate rows are collapsed before writing: group by resolved `employee_id`,
+prefer the current-group row, tie-break on the highest item id. The sync card
+reports how many were collapsed rather than doing it silently.
+
+Applying it changed nothing — "0 updated" — which was the expected result and
+the reason it was safe: moving `active` from Status to group reclassified
+nobody who was already in the app.
+
+**Still worth knowing:** the de-duplication path has not run against a real
+duplicate, because Johann is deliberately not in `employees` yet. When he is
+added, the first Directory sync should report "1 duplicate row collapsed" and
+leave him active.
+
+**Also unfixed:** the add-missing-employees dialog lists Johann *twice*, once
+per board row. Ticking both would create two employees sharing one email. Low
+risk while he is skipped, but that dialog should de-duplicate its candidates by
+email before offering them.
