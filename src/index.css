@@ -51,6 +51,7 @@
   --shadow-2xl: 0px 20px 40px rgb(15 23 42 / 0.18);
 
   --tracking-normal: -0.015em;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
 }
 
 /* Slide-in from right — employee panel */
@@ -86,3 +87,7 @@
 /* Hide scrollbar utility */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+@layer utilities {
+  .shadow-card { box-shadow: var(--shadow-card); }
+}

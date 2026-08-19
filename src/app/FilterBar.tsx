@@ -89,15 +89,15 @@ export default function FilterBar() {
 
   if (!cfg) return null;
 
-  const inputCls = 'h-8 px-2.5 text-sm border border-border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30';
-  const labelCls = 'text-[10px] font-bold uppercase tracking-widest text-slate-400';
+  const inputCls = 'h-8 px-2.5 text-[13px] border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30';
+  const labelCls = 'text-[11px] font-semibold uppercase tracking-wide text-slate-400';
   const divider  = <div className="w-px h-5 bg-slate-200" />;
 
   // Whether this route is an attendance route (shows presets)
   const isAttendance = location.pathname.startsWith('/attendance');
 
   return (
-    <div className="shrink-0 bg-white border-b border-slate-100 px-4 py-2 flex items-center gap-3 flex-wrap z-30 shadow-sm">
+    <div className="shrink-0 bg-white border-b border-slate-200 px-4 flex items-center gap-3 flex-wrap z-30 min-h-[48px]">
       <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 shrink-0" />
 
       {cfg.period && (
@@ -224,7 +224,7 @@ export default function FilterBar() {
 
       {hasAny && (
         <button onClick={clearAll}
-          className="ml-auto flex items-center gap-1 text-xs text-slate-500 hover:text-red-600 border border-slate-200 hover:border-red-300 rounded-lg px-2.5 h-7 transition-colors">
+          className="ml-auto flex items-center gap-1 text-[12px] text-slate-400 hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded px-1">
           <X className="w-3 h-3" />
           Clear filters
         </button>

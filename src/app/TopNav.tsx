@@ -54,8 +54,8 @@ const SECTIONS = [
     ],
   },
   {
-    id: 'people',
-    label: 'People',
+    id: 'pto',
+    label: 'PTO Tracker',
     icon: Palmtree,
     home: '/pto',
     color: 'from-[#7C3AED] to-[#6D28D9]',
@@ -65,9 +65,7 @@ const SECTIONS = [
     subActiveBg: 'bg-[#7C3AED]/10 text-[#6D28D9] font-semibold',
     subHover: 'hover:bg-[#7C3AED]/5 text-slate-600',
     paths: ['/pto'],
-    links: [
-      { to: '/pto', label: 'PTO Tracker', icon: Palmtree },
-    ],
+    links: [],
   },
   {
     id: 'admin',
@@ -92,7 +90,7 @@ const SECTIONS = [
   },
 ] as const;
 
-type SectionId = (typeof SECTIONS)[number]['id'];
+type SectionId = 'payroll' | 'attendance' | 'pto' | 'admin';
 
 function getActiveSection(pathname: string): SectionId | null {
   for (const s of SECTIONS) {
@@ -140,10 +138,10 @@ export default function TopNav() {
         </div>
         <div className="leading-tight hidden sm:block">
           <div className="flex items-baseline gap-1">
-            <span className="text-[#1B3A6B] font-extrabold text-sm tracking-tight">GAF</span>
-            <span className="text-[#2AA876] font-bold text-sm tracking-tight">Healthcare</span>
+            <span className="text-[#1B3A6B] font-bold text-[14px] tracking-tight">GAF</span>
+            <span className="text-[#2AA876] font-bold text-[14px] tracking-tight">Healthcare</span>
           </div>
-          <div className="text-slate-400 text-[10px] tracking-wide">Planilla · Payroll System</div>
+          <div className="text-slate-400 text-[10px] tracking-wide">HR Hub</div>
         </div>
       </div>
 
@@ -158,10 +156,10 @@ export default function TopNav() {
               key={s.id}
               onClick={() => navigate(s.home)}
               className={cn(
-                'flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all duration-150 select-none',
+                'flex items-center gap-2 px-3 h-8 rounded-full text-[13px] font-medium transition-colors duration-150 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                 isActive
                   ? `${s.activeBg} text-white shadow-sm`
-                  : `text-slate-600 hover:text-slate-900 hover:bg-slate-100`
+                  : `text-slate-600 hover:bg-slate-100`
               )}
             >
               <s.icon className="w-4 h-4" />
@@ -172,12 +170,12 @@ export default function TopNav() {
       </div>
 
       {/* Divider between sections and sub-links */}
-      {activeSectionDef && (
+      {activeSectionDef && activeSectionDef.links.length > 0 && (
         <div className="w-px h-6 bg-slate-200 mx-3 shrink-0" />
       )}
 
       {/* Sub-links – animated slide-in */}
-      {activeSectionDef && (
+      {activeSectionDef && activeSectionDef.links.length > 0 && (
         <nav
           key={animKey}
           className="flex items-center gap-0.5 flex-1 overflow-x-auto no-scrollbar"
