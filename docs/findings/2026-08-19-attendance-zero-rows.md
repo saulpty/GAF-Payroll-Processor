@@ -53,3 +53,18 @@ needs no new data.
 
 Worth folding into the Attendance pass of the UI/UX work rather than fixing on
 its own.
+
+---
+
+## Correction, later the same day
+
+The conclusion above is incomplete. While working in the app I saw the
+Attendance page for **Maria Alejandra De Urriola** over a 90-day window
+(2026-05-21 → 08-19) report **DAYS TRACKED 0**, ON-TIME 0 of 0, with EXCUSED 5
+and PERMISSION 15. Her 20 rows are all excused or permission — *not one is a
+worked day*. So the date-range explanation is only part of it: for at least some
+recent hires the Teramind side does not appear to be landing at all, and only
+their Monday permission requests are.
+
+That is a real gap and deserves its own investigation. See
+`docs/findings/2026-08-19-pto-v2/README.md`.
