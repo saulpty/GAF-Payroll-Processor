@@ -149,14 +149,22 @@ test('H4: no Monday board or column id is hardcoded in the mirror or PTO code', 
   }
 });
 
-test('H5: the legacy admin pages and their hardcoded-id actions are gone', () => {
+test('H5: the legacy admin pages, hardcoded-id actions and the old PTO tabs are gone', () => {
   for (const f of [
     'src/app/pages/admin/AdminEmployees.tsx',
     'src/app/pages/admin/AdminEmployeeSync.tsx',
     'src/app/pages/admin/AdminAliases.tsx',
     'src/actions/loadEmployeeDirectory.ts',
     'src/actions/fetchMondayStartDates.ts',
+    // PTO Tracker v2 (2026-08-19): one table replaced the three tabs.
+    'src/app/pages/pto/BalancesTab.tsx',
+    'src/app/pages/pto/BalancesRow.tsx',
+    'src/app/pages/pto/ApprovalsTab.tsx',
+    'src/app/pages/pto/ApprovalRow.tsx',
+    'src/app/pages/pto/FloatingHolidaysTab.tsx',
+    'src/actions/loadPtoApprovals.ts',
+    'src/actions/loadFloatingHolidays.ts',
   ]) {
-    assert.ok(!existsSync(f), `${f} should have been deleted by Task 11`);
+    assert.ok(!existsSync(f), `${f} should have been deleted`);
   }
 });
