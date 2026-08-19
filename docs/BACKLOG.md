@@ -329,7 +329,7 @@ six oversized files (#9). Order:
 | # | Sub-project | Status |
 |---|---|---|
 | A | Monday mirror layer — durable local tables for the Requests, Attendance-form, Contract and Directory boards, "Sync now" per board, config-driven IDs | ✅ built 2026-08-18 |
-| B | PTO & leave tracker — balances (sheet's DAYS360/11 accrual), approvals ledger, floating holidays, request counts; Excel seeded once by migration | ✅ built 2026-08-19; Excel seed prepared, awaiting owner review |
+| B | PTO & leave tracker — balances (sheet's DAYS360/11 accrual), approvals ledger, floating holidays, request counts; Excel seeded once by migration | ✅ built and seeded 2026-08-19; balances reconcile to the spreadsheet |
 | F | Employees admin consolidation — Employees + Directory Sync + Aliases into one tabbed page; folds in #3 phase 2; strangler pattern, old pages deleted last | ✅ built 2026-08-18 |
 | D | Contract & milestone tracking (1 m/3 m/6 m/1 y/2 y, contract end, raise flag) | after A |
 | C | Employee 360 — one-employee view composing directory, contracts, PTO, requests, attendance | after B, D |

@@ -6,7 +6,11 @@ nothing can be added there by hand. To apply one of these, paste it into a UIB
 prompt as a new migration, the same way every other migration in this project
 was applied.
 
-## `seed_pto_from_excel.PROPOSED.sql`
+## `seed_pto_from_excel.PROPOSED.sql` — APPLIED 2026-08-19
+
+> Applied as migration `1781803900_seed_pto_from_excel`. This file is kept as
+> the record of what was imported and why. **Do not apply it again** — the
+> approvals insert is not idempotent.
 
 Generated 2026-08-18 by `tools/pto-seed-from-xlsx.mjs` from
 `PTO TRACKING GAF NEW.xlsx`. This is Task 15 of
