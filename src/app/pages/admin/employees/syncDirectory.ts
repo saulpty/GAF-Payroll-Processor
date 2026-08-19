@@ -110,7 +110,8 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
 
   const empById = new Map(deps.emps.map(e => [e.id, e]));
   const emailSet = new Set(deps.emps.map(e => e.teramind_email.toLowerCase()));
-  const newCandidates: { name: string; email: string; role: string; manager: string }[] = [];
+  // newCandidates keyed by lower-cased email for dedup; value tracks the preferred item
+  const candidateMap = new Map<string, { name: string; email: string; role: string; manager: string; isCurrent: boolean }>();
 
   // ── Step 1: resolve every item to an employee id ──────────────────────────
   const resolved: ResolvedItem[] = [];
@@ -123,10 +124,18 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
     if (empId !== null) {
       resolved.push({ item, empId, email, role, manager });
     } else {
-      if (email && !emailSet.has(email)) newCandidates.push({ name: item.name, email, role, manager });
+      if (email && !emailSet.has(email)) {
+        const isCurrent = item.group?.id === dk.monday_group_directory_current;
+        const existing = candidateMap.get(email);
+        // Prefer current-group row; otherwise keep first seen
+        if (!existing || isCurrent) {
+          candidateMap.set(email, { name: item.name, email, role, manager, isCurrent });
+        }
+      }
       unmatchedCount++;
     }
   }
+  const newCandidates = Array.from(candidateMap.values()).map(({ name, email, role, manager }) => ({ name, email, role, manager }));
 
   // ── Step 2: collapse duplicate rows per employee ───────────────────────────
   const { winners, duplicatesCollapsed } = deduplicateByEmployee(resolved, dk.monday_group_directory_current);

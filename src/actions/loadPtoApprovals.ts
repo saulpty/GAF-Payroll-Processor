@@ -25,6 +25,7 @@ function loadPtoApprovals() {
       WHERE ({{params.year}}::int IS NULL OR EXTRACT(YEAR FROM a.leave_on) = {{params.year}}::int)
         AND ({{params.employeeId}}::bigint IS NULL OR a.employee_id = {{params.employeeId}}::bigint)
         AND ({{params.status}} IS NULL OR {{params.status}} = '' OR a.status = {{params.status}})
+        AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
       ORDER BY a.leave_on DESC
     `,
   });

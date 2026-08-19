@@ -22,6 +22,7 @@ function loadPendingPtoRequests() {
       WHERE r.request_type = 'PTO / Vacation'
         AND r.deleted_on_monday = false
         AND a.id IS NULL
+        AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
       ORDER BY r.start_date DESC
     `,
   });

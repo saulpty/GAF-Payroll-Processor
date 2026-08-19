@@ -3,78 +3,47 @@ import { useLoadAction } from '@uibakery/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Plus, CheckCircle2, Clock, XCircle } from 'lucide-react';
-import RecordApprovalDialog, { PendingRequest } from './RecordApprovalDialog';
+import { RefreshCw, Plus, CheckCircle2 } from 'lucide-react';
+import RecordApprovalDialog, { PendingRequest, LedgerRow, DialogMode } from './RecordApprovalDialog';
+import ApprovalRow from './ApprovalRow';
 import loadPendingPtoRequestsAction from '@/actions/loadPendingPtoRequests';
 import loadPtoApprovalsAction from '@/actions/loadPtoApprovals';
 
 type StatusFilter = 'all' | 'pending' | 'recorded' | 'withdrawn';
 
-interface Approval {
-  id: number;
-  employee_id: number | null;
-  display_name: string | null;
-  leave_on: string | null;
-  return_on: string | null;
-  total_days: string | null;
-  status: string;
-  source: string;
-  gaf_comments: string | null;
-  submitted_by: string | null;
-  recorded_by: string | null;
-  recorded_at: string | null;
-  monday_item_id: number | null;
-}
-
 const YEAR = new Date().getFullYear();
-
-const STATUS_CFG: Record<string, { label: string; cls: string; icon: typeof CheckCircle2 }> = {
-  pending:   { label: 'Pending',   cls: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock        },
-  recorded:  { label: 'Recorded',  cls: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2 },
-  withdrawn: { label: 'Withdrawn', cls: 'bg-slate-100 text-slate-500 border-slate-200', icon: XCircle      },
-};
-
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CFG[status] ?? STATUS_CFG['pending'];
-  const Icon = cfg.icon;
-  return (
-    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${cfg.cls}`}>
-      <Icon className="w-3 h-3" />
-      {cfg.label}
-    </span>
-  );
-}
 
 export default function ApprovalsTab() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [refreshKey,   setRefreshKey]   = useState(0);
-  const [dialogRow,    setDialogRow]    = useState<PendingRequest | null>(null);
+  const [dialogMode,   setDialogMode]   = useState<DialogMode | null>(null);
 
   const [pending, pLoading, pError] = useLoadAction(
     loadPendingPtoRequestsAction,
     [] as PendingRequest[],
-    {},
+    { manager: null },
     { enabled: true },
   );
 
   const [approvals, aLoading, aError] = useLoadAction(
     loadPtoApprovalsAction,
-    [] as Approval[],
-    { year: YEAR, employeeId: null, status: statusFilter === 'all' ? '' : statusFilter },
+    [] as LedgerRow[],
+    { year: YEAR, employeeId: null, status: statusFilter === 'all' ? '' : statusFilter, manager: null },
     { enabled: true },
   );
 
-  // refreshKey in deps array forces reload when incremented
-  const _ = refreshKey; // referenced to avoid lint warning
+  // refreshKey in deps forces reload when incremented
+  const _ = refreshKey;
 
   const handleSaved = useCallback(() => {
-    setDialogRow(null);
+    setDialogMode(null);
     setRefreshKey(k => k + 1);
   }, []);
 
-  const pendingRows  = (pending  as PendingRequest[]) ?? [];
-  const approvalRows = (approvals as Approval[])       ?? [];
+  const handleRefresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
+  const pendingRows  = (pending   as PendingRequest[]) ?? [];
+  const approvalRows = (approvals as LedgerRow[])      ?? [];
   const loading = pLoading || aLoading;
   const error   = pError ?? aError;
 
@@ -86,11 +55,18 @@ export default function ApprovalsTab() {
           <h2 className="text-sm font-semibold text-slate-800">PTO Approvals</h2>
           <p className="text-xs text-slate-500 mt-0.5">{YEAR} · {approvalRows.length} recorded</p>
         </div>
-        <Button variant="outline" size="sm" disabled={loading}
-          onClick={() => setRefreshKey(k => k + 1)}>
-          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm"
+            onClick={() => setDialogMode({ kind: 'manual' })}>
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            Add manually
+          </Button>
+          <Button variant="outline" size="sm" disabled={loading}
+            onClick={handleRefresh}>
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -131,7 +107,7 @@ export default function ApprovalsTab() {
                     </div>
                     <Button size="sm" className="ml-3 shrink-0"
                       disabled={unmatched}
-                      onClick={() => setDialogRow(r)}>
+                      onClick={() => setDialogMode({ kind: 'record', request: r })}>
                       <Plus className="w-3.5 h-3.5 mr-1" />
                       Record
                     </Button>
@@ -164,7 +140,7 @@ export default function ApprovalsTab() {
                   ? 'bg-slate-800 text-white border-slate-800'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
               }`}>
-              {s === 'all' ? 'All' : STATUS_CFG[s]?.label ?? s}
+              {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
           ))}
         </div>
@@ -191,20 +167,17 @@ export default function ApprovalsTab() {
                   <th className="text-left py-2 px-3 font-medium">Source</th>
                   <th className="text-left py-2 px-3 font-medium">Recorded by</th>
                   <th className="text-left py-2 px-3 font-medium">Comments</th>
+                  <th className="text-left py-2 px-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {approvalRows.map(a => (
-                  <tr key={a.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="py-2 px-3 font-medium text-slate-800">{a.display_name ?? '—'}</td>
-                    <td className="py-2 px-3 text-slate-600">{(a.leave_on ?? '').slice(0, 10)}</td>
-                    <td className="py-2 px-3 text-slate-600">{(a.return_on ?? '').slice(0, 10)}</td>
-                    <td className="py-2 px-3 text-right text-slate-700">{a.total_days ?? '—'}</td>
-                    <td className="py-2 px-3"><StatusBadge status={a.status} /></td>
-                    <td className="py-2 px-3 text-slate-500 capitalize">{a.source}</td>
-                    <td className="py-2 px-3 text-slate-500">{a.recorded_by ?? '—'}</td>
-                    <td className="py-2 px-3 text-slate-400 max-w-[160px] truncate">{a.gaf_comments ?? ''}</td>
-                  </tr>
+                  <ApprovalRow
+                    key={a.id}
+                    row={a}
+                    onEdit={setDialogMode}
+                    onRefresh={handleRefresh}
+                  />
                 ))}
               </tbody>
             </table>
@@ -213,8 +186,8 @@ export default function ApprovalsTab() {
       </div>
 
       <RecordApprovalDialog
-        request={dialogRow}
-        onClose={() => setDialogRow(null)}
+        mode={dialogMode}
+        onClose={() => setDialogMode(null)}
         onSaved={handleSaved}
       />
     </div>
