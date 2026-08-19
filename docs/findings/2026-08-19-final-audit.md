@@ -8,6 +8,19 @@ Nothing here is a payroll risk — payroll never reads any of these tables.
 
 > **All six addressed 2026-08-19 in `80143d8`** (1-5 fixed; 6 remains an
 > observation awaiting a real duplicate). Kept as the record of what was found.
+>
+> **Live click-through 2026-08-19, after the fix.** The two checks the commit
+> message left open both pass on `/pto?tab=approvals`:
+> - *Finding 4* — Record dialog for Reggina Sandoval, leave `2026-12-31`,
+>   return set back to `2026-12-01`, Total days left at a positive `335`
+>   (the hand-edited case the finding described). Save shows
+>   *"Return date must be on or after the leave date."* in red and writes
+>   nothing; the request stays in the pending list.
+> - *Findings 1+2* — the ledger renders Edit and Withdraw on every recorded
+>   row. Editing the first `excel_import` row (Reggina Sandoval,
+>   `2026-12-31 -> 2027-01-04`, no `monday_item_id`) and saving updates it in
+>   place: the row is unchanged and the header still reads
+>   *"2026 · 45 recorded"*, so no duplicate was inserted.
 
 
 ### 1. The Approvals ledger has no Edit, Withdraw or Add-manually — spec §6.2 gap
