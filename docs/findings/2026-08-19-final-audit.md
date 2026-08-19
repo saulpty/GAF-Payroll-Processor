@@ -6,6 +6,10 @@ Nothing here is a payroll risk — payroll never reads any of these tables.
 
 ## Findings
 
+> **All six addressed 2026-08-19 in `80143d8`** (1-5 fixed; 6 remains an
+> observation awaiting a real duplicate). Kept as the record of what was found.
+
+
 ### 1. The Approvals ledger has no Edit, Withdraw or Add-manually — spec §6.2 gap
 **Where:** `src/app/pages/pto/ApprovalsTab.tsx`.
 **What:** the ledger table only displays rows. The Record dialog works for
