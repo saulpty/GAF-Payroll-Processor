@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
+import { Loader2 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -51,24 +52,25 @@ interface Props {
 
 interface EmpOption { id: number; display_name: string; active: boolean }
 
-const LS_RECORDED_BY = 'pto_recorded_by';
+/** Postgres sometimes returns full timestamps; we only want the date part. */
+function ymd(v: string | null | undefined): string {
+  return v ? String(v).slice(0, 10) : '';
+}
 
 export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) {
   const open = mode !== null;
 
-  const [leaveOn,    setLeaveOn]    = useState('');
-  const [returnOn,   setReturnOn]   = useState('');
-  const [totalDays,  setTotalDays]  = useState('');
-  const [comments,   setComments]   = useState('');
-  const [recordedBy, setRecordedBy] = useState('');
-  const [empId,      setEmpId]      = useState<number | null>(null);
-  const [saving,     setSaving]     = useState(false);
-  const [error,      setError]      = useState<string | null>(null);
+  const [leaveOn,   setLeaveOn]   = useState('');
+  const [returnOn,  setReturnOn]  = useState('');
+  const [totalDays, setTotalDays] = useState('');
+  const [comments,  setComments]  = useState('');
+  const [empId,     setEmpId]     = useState<number | null>(null);
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
 
   const [upsert] = useMutateAction(upsertPtoApprovalAction);
   const [update] = useMutateAction(updatePtoApprovalAction);
 
-  // Load employees for the manual combobox (only needed in manual mode)
   const [allEmps] = useLoadAction(
     loadAllEmployeesAction,
     [] as EmpOption[],
@@ -76,7 +78,6 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
     { enabled: mode?.kind === 'manual' },
   );
   const empOptions = (allEmps as EmpOption[]) ?? [];
-  // active employees first, then inactive, both alphabetical
   const sortedEmps = [...empOptions].sort((a, b) => {
     if (a.active !== b.active) return a.active ? -1 : 1;
     return a.display_name.localeCompare(b.display_name);
@@ -85,14 +86,12 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
   // Pre-fill when dialog opens / mode changes
   useEffect(() => {
     if (!mode) return;
-    const saved = localStorage.getItem(LS_RECORDED_BY) ?? '';
-    setRecordedBy(saved);
     setError(null);
 
     if (mode.kind === 'record') {
       const r = mode.request;
-      const lo = (r.leave_on  ?? '').slice(0, 10);
-      const ro = (r.return_on ?? '').slice(0, 10);
+      const lo = ymd(r.leave_on);
+      const ro = ymd(r.return_on);
       setLeaveOn(lo);
       setReturnOn(ro);
       const days = r.total_days
@@ -103,14 +102,13 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
       setEmpId(r.employee_id);
     } else if (mode.kind === 'edit') {
       const row = mode.row;
-      const lo = (row.leave_on  ?? '').slice(0, 10);
-      const ro = (row.return_on ?? '').slice(0, 10);
+      const lo = ymd(row.leave_on);
+      const ro = ymd(row.return_on);
       setLeaveOn(lo);
       setReturnOn(ro);
       const days = row.total_days ? String(Number(row.total_days)) : lo && ro ? String(defaultTotalDays(lo, ro)) : '';
       setTotalDays(days);
       setComments(row.gaf_comments ?? '');
-      setRecordedBy(row.recorded_by ?? saved);
       setEmpId(row.employee_id);
     } else {
       setLeaveOn('');
@@ -133,7 +131,6 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
     if (!mode) return;
     if (!leaveOn || !returnOn) { setError('Leave date and return date are required.'); return; }
     if (returnOn < leaveOn)    { setError('Return date must be on or after the leave date.'); return; }
-    if (!recordedBy.trim())    { setError('Recorded by is required.'); return; }
     const days = parseFloat(totalDays);
     if (isNaN(days) || days <= 0) { setError('Total days must be a positive number.'); return; }
     if (mode.kind === 'manual' && !empId) { setError('Please select an employee.'); return; }
@@ -141,8 +138,6 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
     setSaving(true);
     setError(null);
     try {
-      localStorage.setItem(LS_RECORDED_BY, recordedBy.trim());
-
       if (mode.kind === 'edit') {
         await update({
           id:           mode.row.id,
@@ -151,7 +146,7 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
           return_on:    returnOn,
           total_days:   days,
           gaf_comments: comments.trim() || null,
-          recorded_by:  recordedBy.trim(),
+          recorded_by:  mode.row.recorded_by,
         });
       } else if (mode.kind === 'record') {
         const r = mode.request;
@@ -164,11 +159,10 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
           source:         'monday',
           gaf_comments:   comments.trim() || null,
           submitted_by:   r.employee_name_raw || null,
-          recorded_by:    recordedBy.trim(),
+          recorded_by:    'app',
           monday_item_id: r.monday_item_id ?? null,
         });
       } else {
-        // manual
         await upsert({
           employee_id:    empId,
           leave_on:       leaveOn,
@@ -178,7 +172,7 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
           source:         'manual',
           gaf_comments:   comments.trim() || null,
           submitted_by:   null,
-          recorded_by:    recordedBy.trim(),
+          recorded_by:    'app',
           monday_item_id: null,
         });
       }
@@ -190,30 +184,66 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
     }
   }
 
-  const title = mode?.kind === 'edit' ? 'Edit PTO Approval'
-              : mode?.kind === 'manual' ? 'Add PTO Manually'
-              : 'Record PTO Approval';
+  const title = mode?.kind === 'edit'   ? 'Edit PTO'
+              : mode?.kind === 'manual' ? 'Add PTO manually'
+              : 'Record PTO';
 
-  const employeeLabel = mode?.kind === 'record'
-    ? (mode.request.display_name ?? mode.request.employee_name_raw ?? '—')
-    : mode?.kind === 'edit'
-    ? (mode.row.display_name ?? '—')
+  const employeeName =
+    mode?.kind === 'record' ? (mode.request.display_name ?? mode.request.employee_name_raw ?? '—')
+    : mode?.kind === 'edit' ? (mode.row.display_name ?? '—')
+    : null;
+
+  const subtitle = employeeName
+    ? `${employeeName}${mode?.kind === 'record' ? ' · from Monday request' : ''}`
     : null;
 
   const unmatched = mode?.kind === 'record' && !mode.request.employee_id;
+
+  const primaryLabel = mode?.kind === 'edit' ? 'Save changes'
+    : mode?.kind === 'manual' ? 'Add approval'
+    : 'Record approval';
+
+  // Day-count mismatch note (record mode only)
+  const daysMismatch = mode?.kind === 'record' && totalDays !== ''
+    && Number(mode.request.total_days) !== Number(totalDays)
+    ? `Monday request said ${mode.request.total_days} day(s); the calendar span is ${totalDays}.`
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          {subtitle && (
+            <p className="text-[12px] text-slate-500 mt-0.5">{subtitle}</p>
+          )}
         </DialogHeader>
 
         <div className="space-y-4 py-1">
-          {/* Employee */}
-          <div>
-            <Label className="text-xs text-slate-500">Employee</Label>
-            {mode?.kind === 'manual' ? (
+          {/* Monday request card — record mode only */}
+          {mode?.kind === 'record' && (
+            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">
+                Requested on Monday
+              </div>
+              <div className="text-[13px] text-slate-800">
+                {ymd(mode.request.leave_on)} → {ymd(mode.request.return_on)}
+                <span className="text-slate-500 ml-1">
+                  · {mode.request.total_days} day(s)
+                </span>
+              </div>
+              {mode.request.reason && (
+                <div className="text-[12px] text-slate-500 mt-0.5">
+                  {mode.request.reason}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Employee — manual mode picker, others show name */}
+          {mode?.kind === 'manual' ? (
+            <div>
+              <Label className="text-xs text-slate-500">Employee</Label>
               <select
                 value={empId ?? ''}
                 onChange={e => setEmpId(e.target.value ? Number(e.target.value) : null)}
@@ -225,16 +255,18 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
                   </option>
                 ))}
               </select>
-            ) : (
-              <>
-                <p className="text-sm font-medium mt-0.5">{employeeLabel}</p>
-                {unmatched && (
-                  <p className="text-xs text-amber-600 mt-0.5">
-                    ⚠ No employee match — approval will be saved without an employee link.
-                  </p>
-                )}
-              </>
-            )}
+            </div>
+          ) : (
+            unmatched && (
+              <p className="text-xs text-amber-600">
+                ⚠ No employee match — approval will be saved without an employee link.
+              </p>
+            )
+          )}
+
+          {/* Section label */}
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 -mb-2">
+            Recording
           </div>
 
           {/* Dates */}
@@ -256,6 +288,9 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
             <Label htmlFor="totalDays" className="text-xs">Total days</Label>
             <Input id="totalDays" type="number" step="0.5" min="0.5" value={totalDays}
               onChange={e => setTotalDays(e.target.value)} className="mt-1 h-8 text-sm" />
+            {daysMismatch && (
+              <p className="text-[12px] text-slate-500 mt-0.5">{daysMismatch}</p>
+            )}
           </div>
 
           {/* Comments */}
@@ -265,21 +300,17 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
               rows={2} className="mt-1 text-sm resize-none" />
           </div>
 
-          {/* Recorded by */}
-          <div>
-            <Label htmlFor="recordedBy" className="text-xs">Recorded by</Label>
-            <Input id="recordedBy" value={recordedBy}
-              onChange={e => setRecordedBy(e.target.value)}
-              placeholder="Your name" className="mt-1 h-8 text-sm" />
-          </div>
-
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
           <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : mode?.kind === 'edit' ? 'Save changes' : mode?.kind === 'manual' ? 'Add approval' : 'Record approval'}
+            {saving
+              ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Saving…</>
+              : primaryLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
