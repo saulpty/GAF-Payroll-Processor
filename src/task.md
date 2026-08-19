@@ -1,12 +1,7 @@
-# PTO Approvals Tab
+# PTO Tracker Rebuild
 
-## Files to create
-- [x] actions/loadPendingPtoRequests.ts
-- [x] actions/loadPtoApprovals.ts
-- [x] actions/upsertPtoApproval.ts
-- [x] actions/updatePtoApprovalStatus.ts
-- [x] app/pages/pto/RecordApprovalDialog.tsx
-- [x] app/pages/pto/ApprovalsTab.tsx
+## Sub-tasks
 
-## Files to modify
-- [x] app/pages/PtoTracker.tsx — wire ApprovalsTab for ?tab=approvals
+[x] Create `app/pages/pto/PtoRow.tsx` — interface + row component
+[x] Create `app/pages/pto/PtoTable.tsx` — table shell with controls, DataTable, loading/error/empty states
+[x] Modify `app/pages/PtoTracker.tsx` — replace tab shell with PageHeader + PtoTable + RecordApprovalDialog

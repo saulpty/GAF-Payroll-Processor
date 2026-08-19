@@ -1,61 +1,94 @@
-import { useSearchParams } from 'react-router-dom';
-import { Palmtree, CalendarCheck, Star } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import BalancesTab from './pto/BalancesTab';
-import ApprovalsTab from './pto/ApprovalsTab';
-import FloatingHolidaysTab from './pto/FloatingHolidaysTab';
-
-type Tab = 'balances' | 'approvals' | 'floating-holidays';
-
-const TABS: { id: Tab; label: string; icon: typeof Palmtree }[] = [
-  { id: 'balances',          label: 'Balances',          icon: Palmtree      },
-  { id: 'approvals',         label: 'Approvals',         icon: CalendarCheck },
-  { id: 'floating-holidays', label: 'Floating Holidays', icon: Star          },
-];
+import { useState } from 'react';
+import { Plus, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { Button } from '@/components/ui/button';
+import PageHeader from '@/app/components/PageHeader';
+import PtoTable from './pto/PtoTable';
+import RecordApprovalDialog from './pto/RecordApprovalDialog';
+import type { DialogMode } from './pto/RecordApprovalDialog';
+import type { PtoRowData } from './pto/PtoRow';
+import { toLocalYMD } from '@/app/lib/classificationEngine';
 
 export default function PtoTracker() {
-  const [params, setParams] = useSearchParams();
-  const raw = params.get('tab') as Tab | null;
-  const tab: Tab = raw && TABS.some(t => t.id === raw) ? raw : 'balances';
+  const [asOf, setAsOf] = useState(() => toLocalYMD(new Date()));
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
+  const [rows, setRows] = useState<PtoRowData[]>([]);
 
-  const setTab = (id: Tab) => {
-    const next = new URLSearchParams(params);
-    next.set('tab', id);
-    setParams(next, { replace: true });
+  const handleExport = () => {
+    const wsData = [
+      ['Employee', 'Title', 'Start', 'Accrued', 'Taken', 'Available', 'Paid PTO', 'FH left', 'WFH', 'Birthday', 'Pending'],
+      ...rows.map(r => [
+        r.display_name,
+        r.role ?? '',
+        r.start ?? '',
+        r.accrued !== null ? +r.accrued.toFixed(2) : '',
+        +(Number(r.taken_days) || 0).toFixed(2),
+        r.available !== null ? +r.available.toFixed(2) : '',
+        Number(r.paid_pto_days) || 0,
+        r.fh_left !== null ? r.fh_left : '',
+        Number(r.wfh_days) || 0,
+        Number(r.birthday_days) || 0,
+        r.pending,
+      ]),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'PTO Tracker');
+    XLSX.writeFile(wb, `pto-tracker-${asOf}.xlsx`);
   };
+
+  const actions = (
+    <>
+      <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+        As of
+        <input
+          type="date"
+          value={asOf}
+          onChange={e => setAsOf(e.target.value)}
+          className="h-8 px-2.5 text-[13px] font-normal normal-case tracking-normal border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+      </label>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => setDialogMode({ kind: 'manual' })}
+      >
+        <Plus className="w-3.5 h-3.5 mr-1" />
+        Add manually
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleExport}
+        disabled={rows.length === 0}
+      >
+        <Download className="w-3.5 h-3.5 mr-1" />
+        Export
+      </Button>
+    </>
+  );
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-6 pt-5 pb-0 shrink-0">
-        <div className="mb-4">
-          <h1 className="text-lg font-bold text-slate-800 leading-tight">PTO Tracker</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Balances · Approvals · Floating Holidays</p>
-        </div>
-        <div className="flex gap-0.5 border-b border-slate-200">
-          {TABS.map(t => {
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
-                  ${active
-                    ? 'border-slate-800 text-slate-900'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-              >
-                <t.icon className="w-3.5 h-3.5 opacity-75" />
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
+      <PageHeader
+        title="PTO Tracker"
+        subtitle="Accrual, approvals and floating holidays — one row per employee"
+        actions={actions}
+      />
+      <div className="flex-1 min-h-0 flex flex-col">
+        <PtoTable
+          asOf={asOf}
+          refreshKey={refreshKey}
+          onOpenDialog={setDialogMode}
+          onRowsChange={setRows}
+        />
       </div>
-
-      <div className="flex-1 overflow-auto">
-        {tab === 'balances'          && <BalancesTab />}
-        {tab === 'approvals'         && <ApprovalsTab />}
-        {tab === 'floating-holidays' && <FloatingHolidaysTab />}
-      </div>
+      <RecordApprovalDialog
+        mode={dialogMode}
+        onClose={() => setDialogMode(null)}
+        onSaved={() => { setDialogMode(null); setRefreshKey(k => k + 1); }}
+      />
     </div>
   );
 }
