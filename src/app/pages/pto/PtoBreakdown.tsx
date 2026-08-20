@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
+import { Button } from '@/components/ui/button';
 import EmptyState from '@/app/components/EmptyState';
 import type { PtoRowData } from './PtoRow';
 import type { DialogMode, PendingRequest, LedgerRow } from './RecordApprovalDialog';
@@ -33,10 +34,10 @@ function parseJSON<T>(v: T | string | null | undefined, fallback: T): T {
   return v as T;
 }
 
-const HEADERS = ['Type', 'Dates', 'Days', 'Status', 'Source', 'Comments', ''];
+const HEADERS = ['Type', 'Dates', 'Days', 'Status', 'Source', 'In payroll', 'Comments', ''];
 
 export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, onChanged }: Props) {
-  const [rawDetail, loading, error] = useLoadAction(
+  const [rawDetail, loading, error, reload] = useLoadAction(
     loadPtoEmployeeDetailAction,
     null,
     { employee_id: row.employee_id, year, manager: null },
@@ -50,8 +51,6 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
   const pending: PendingRequest[] = parseJSON(detail?.pending, []);
   const ledger: LedgerRow[] = parseJSON(detail?.ledger, []);
 
-  const fhAllocated = Number(detail?.fh?.fh_allocated ?? 2);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-12">
@@ -61,8 +60,11 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
   }
   if (error) {
     return (
-      <div className="px-6 py-2 text-[12px] text-red-600">
-        Couldn&apos;t load details — loadPtoEmployeeDetail
+      <div className="px-6 py-2 flex items-center gap-2 text-[12px] text-red-600">
+        <span>Couldn&apos;t load details — loadPtoEmployeeDetail</span>
+        <Button size="sm" variant="outline" onClick={() => reload()}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -77,6 +79,7 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
       leave_on: String(req.leave_on ?? '').slice(0, 10),
       return_on: String(req.return_on ?? '').slice(0, 10),
       days: Number(req.total_days) || 0,
+      payroll: (req as { payroll?: string | null }).payroll ?? null,
       request: req,
     });
   }
@@ -92,6 +95,7 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
       status: entry.status,
       source: entry.source,
       comments: entry.gaf_comments,
+      payroll: (entry as { payroll?: string | null }).payroll ?? null,
       id: entry.id,
       request: entry, // passed to edit dialog
     });
@@ -99,15 +103,6 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
 
   // Sort by leave_on descending (plain string compare, YYYY-MM-DD)
   items.sort((a, b) => b.leave_on.localeCompare(a.leave_on));
-
-  // Summary counts
-  const ptoTaken = ledger
-    .filter(e => e.status === 'recorded' && (e.leave_type ?? 'pto') === 'pto')
-    .reduce((s, e) => s + (Number(e.total_days) || 0), 0);
-  const fhUsed = ledger
-    .filter(e => e.status === 'recorded' && e.leave_type === 'floating_holiday'
-      && String(e.leave_on ?? '').slice(0, 4) === year)
-    .length;
 
   const handleWithdraw = async (id: number, days: number) => {
     const ok = window.confirm(
@@ -120,11 +115,6 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
 
   return (
     <div className="px-6 py-3">
-      {/* Summary line */}
-      <div className="text-[12px] text-slate-400 text-right mb-1">
-        {ptoTaken.toFixed(2)} PTO days taken · {fhUsed} of {fhAllocated} floating holidays used
-      </div>
-
       {items.length === 0 ? (
         <EmptyState title="Nothing recorded or pending" compact />
       ) : (

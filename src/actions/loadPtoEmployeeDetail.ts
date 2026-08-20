@@ -10,7 +10,18 @@ function loadPtoEmployeeDetail() {
             'monday_item_id', r.monday_item_id, 'employee_id', r.employee_id, 'display_name', e.display_name,
             'employee_name_raw', r.employee_name_raw, 'leave_on', r.start_date::text, 'return_on', r.return_date::text,
             'total_days', r.total_days_requested, 'reason', r.reason, 'submitted_at', r.submitted_at::text,
-            'leave_type', CASE WHEN r.request_type = 'Floating Holiday' THEN 'floating_holiday' ELSE 'pto' END
+            'leave_type', CASE WHEN r.request_type = 'Floating Holiday' THEN 'floating_holiday' ELSE 'pto' END,
+            'payroll', (
+              SELECT string_agg(x.t || ' x' || x.c, ', ' ORDER BY x.c DESC, x.t)
+              FROM (
+                SELECT COALESCE(NULLIF(TRIM(pe.event_type_1),''), 'no event') AS t, count(*) AS c
+                FROM payroll_entries pe
+                WHERE pe.employee_id = r.employee_id
+                  AND LEFT(pe.work_date,10)::date >= r.start_date
+                  AND LEFT(pe.work_date,10)::date <  r.return_date
+                GROUP BY 1
+              ) x
+            )
           ) ORDER BY r.start_date DESC)
           FROM monday_requests r
           LEFT JOIN employees e ON e.id = r.employee_id
@@ -24,7 +35,18 @@ function loadPtoEmployeeDetail() {
             'leave_on', a.leave_on::text, 'return_on', a.return_on::text, 'total_days', a.total_days,
             'status', a.status, 'source', a.source, 'gaf_comments', a.gaf_comments, 'recorded_by', a.recorded_by,
             'monday_item_id', a.monday_item_id, 'recorded_at', a.recorded_at::text,
-            'leave_type', a.leave_type
+            'leave_type', a.leave_type,
+            'payroll', (
+              SELECT string_agg(x.t || ' x' || x.c, ', ' ORDER BY x.c DESC, x.t)
+              FROM (
+                SELECT COALESCE(NULLIF(TRIM(pe.event_type_1),''), 'no event') AS t, count(*) AS c
+                FROM payroll_entries pe
+                WHERE pe.employee_id = a.employee_id
+                  AND LEFT(pe.work_date,10)::date >= a.leave_on
+                  AND LEFT(pe.work_date,10)::date <  a.return_on
+                GROUP BY 1
+              ) x
+            )
           ) ORDER BY a.leave_on DESC, a.id DESC)
           FROM pto_approvals a LEFT JOIN employees e ON e.id = a.employee_id
           WHERE a.employee_id = {{params.employee_id}}::bigint

@@ -14,6 +14,7 @@ export default function PtoTracker() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [rows, setRows] = useState<PtoRowData[]>([]);
+  const [counts, setCounts] = useState<{ employees: number; pending: number } | null>(null);
 
   const handleExport = () => {
     const wsData = [
@@ -40,6 +41,11 @@ export default function PtoTracker() {
 
   const actions = (
     <>
+      {counts !== null && (
+        <span className="text-[12px] text-slate-400 mr-1">
+          {counts.employees} employees · {counts.pending} requests to record
+        </span>
+      )}
       <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
         As of
         <input
@@ -82,6 +88,7 @@ export default function PtoTracker() {
           refreshKey={refreshKey}
           onOpenDialog={setDialogMode}
           onRowsChange={setRows}
+          onCountsChange={setCounts}
         />
       </div>
       <RecordApprovalDialog

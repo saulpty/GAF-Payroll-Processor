@@ -13,6 +13,7 @@ export interface SubItem {
   status?: string;
   source?: string;
   comments?: string | null;
+  payroll?: string | null;
   id?: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   request?: any; // PendingRequest — avoided circular import
@@ -66,6 +67,13 @@ export default function PtoSubRow({ item, onOpenDialog, onWithdraw }: Props) {
       {/* Source */}
       <td className="px-3 py-2 text-[12px] text-slate-400 whitespace-nowrap">
         {item.kind === 'pending' ? 'Monday' : sourceLabel(item.source)}
+      </td>
+
+      {/* In payroll */}
+      <td className="px-3 py-2 text-[12px] max-w-[180px] truncate">
+        {item.payroll
+          ? <span className="text-slate-600" title={item.payroll}>{item.payroll}</span>
+          : <span className="text-slate-300">not in payroll yet</span>}
       </td>
 
       {/* Comments */}

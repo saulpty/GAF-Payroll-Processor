@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useLoadAction } from '@uibakery/data';
-import { Input } from '@/components/ui/input';
 import DataTable, { Col } from '@/app/components/DataTable';
 import EmptyState from '@/app/components/EmptyState';
 import PtoRow, { PtoRowData } from './PtoRow';
@@ -10,7 +9,7 @@ import type { DialogMode } from './RecordApprovalDialog';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import loadPtoBalancesInputsAction from '@/actions/loadPtoBalancesInputs';
 import { accruedPto, fhEligibleDate, fhRemaining } from '@/app/lib/ptoAccrual';
-import { sortRows, nextSortDir, matchesSearch } from '@/app/lib/ptoSort';
+import { sortRows, nextSortDir } from '@/app/lib/ptoSort';
 import type { SortDir } from '@/app/lib/ptoSort';
 
 interface Props {
@@ -18,6 +17,7 @@ interface Props {
   refreshKey: number;
   onOpenDialog: (m: DialogMode) => void;
   onRowsChange?: (rows: PtoRowData[]) => void;
+  onCountsChange?: (counts: { employees: number; pending: number }) => void;
 }
 
 type RawRow = {
@@ -50,7 +50,7 @@ const COLUMNS: Col<PtoRowData>[] = [
   { key: 'pending',      label: 'Pending',  align: 'center', tip: 'Monday PTO requests not yet recorded.' },
 ];
 
-export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange }: Props) {
+export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange, onCountsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
 
   const year = asOf.slice(0, 4);
@@ -96,21 +96,11 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange 
   }, [rawRows, asOf]);
 
   // Local controls
-  const [search, setSearch] = useState('');
   const [onlyPending, setOnlyPending] = useState(false);
   const [showWithdrawn, setShowWithdrawn] = useState(false);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-
-  // Search debounce
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    debounceRef.current && clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 200);
-    return () => { debounceRef.current && clearTimeout(debounceRef.current); };
-  }, [search]);
 
   const handleSort = (k: string) => {
     if (k === sortKey) {
@@ -139,36 +129,30 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange 
   // Filter
   const filtered = useMemo(() => {
     let rows = derived;
-    if (debouncedSearch) rows = rows.filter(r => matchesSearch(r, debouncedSearch));
     if (employee) rows = rows.filter(r =>
       String(r.employee_id) === employee || r.display_name.toLowerCase().includes(employee.toLowerCase())
     );
     if (role) rows = rows.filter(r => (r.role ?? '').toLowerCase().includes(role.toLowerCase()));
     if (onlyPending) rows = rows.filter(r => r.pending > 0);
     return rows;
-  }, [derived, debouncedSearch, employee, role, onlyPending]);
+  }, [derived, employee, role, onlyPending]);
 
   const sorted = useMemo(
     () => sortRows(filtered, sortKey as keyof PtoRowData | null, sortDir, 'display_name'),
     [filtered, sortKey, sortDir],
   );
 
+  const totalPending = sorted.reduce((s, r) => s + r.pending, 0);
+
   useEffect(() => {
     onRowsChange?.(sorted);
-  }, [sorted, onRowsChange]);
-
-  const totalPending = sorted.reduce((s, r) => s + r.pending, 0);
+    onCountsChange?.({ employees: sorted.length, pending: totalPending });
+  }, [sorted, onRowsChange, onCountsChange, totalPending]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Controls strip */}
       <div className="flex flex-wrap items-center gap-3 px-6 pb-3">
-        <Input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search name or title"
-          className="w-60 h-8 text-[13px]"
-        />
         <label className="flex items-center gap-1.5 text-[13px] text-slate-600 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -187,9 +171,6 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange 
           />
           Show withdrawn
         </label>
-        <span className="ml-auto text-[12px] text-slate-400">
-          {sorted.length} employees · {totalPending} pending
-        </span>
       </div>
 
       {/* Table */}

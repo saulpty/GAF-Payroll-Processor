@@ -124,11 +124,12 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
     if (empId !== null) {
       resolved.push({ item, empId, email, role, manager });
     } else {
-      if (email && !emailSet.has(email)) {
-        const isCurrent = item.group?.id === dk.monday_group_directory_current;
-        const existing = candidateMap.get(email);
-        // Prefer current-group row; otherwise keep first seen
-        if (!existing || isCurrent) {
+      const isCurrent = item.group?.id === dk.monday_group_directory_current;
+      // Only Current Employees may be offered for creation. Someone in Past
+      // employees is a former employee: creating them would add an ex-employee
+      // to the active roster.
+      if (email && !emailSet.has(email) && isCurrent) {
+        if (!candidateMap.has(email)) {
           candidateMap.set(email, { name: item.name, email, role, manager, isCurrent });
         }
       }
