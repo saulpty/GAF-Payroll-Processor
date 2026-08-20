@@ -18,7 +18,7 @@ function loadPendingPtoRequests() {
         r.board_group
       FROM monday_requests r
       LEFT JOIN employees e ON e.id = r.employee_id
-      LEFT JOIN pto_approvals a ON a.monday_item_id = r.monday_item_id
+      LEFT JOIN pto_approvals a ON a.monday_item_id = r.monday_item_id AND a.status <> 'withdrawn'
       WHERE r.request_type = 'PTO / Vacation'
         AND r.deleted_on_monday = false
         AND a.id IS NULL

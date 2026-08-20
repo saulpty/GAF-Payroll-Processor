@@ -57,7 +57,7 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange,
   const [rawRows, loading, error, reload] = useLoadAction(
     loadPtoBalancesInputsAction,
     [] as RawRow[],
-    { params: { year, manager: manager || null }, enabled: true },
+    { year, manager: manager || null },
   );
 
   // detailKey: bumped on dialog save or breakdown write, forces breakdown refetch

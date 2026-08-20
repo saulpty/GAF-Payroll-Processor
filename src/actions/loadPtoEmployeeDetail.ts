@@ -18,14 +18,14 @@ function loadPtoEmployeeDetail() {
                 FROM payroll_entries pe
                 WHERE pe.employee_id = r.employee_id
                   AND LEFT(pe.work_date,10)::date >= r.start_date
-                  AND LEFT(pe.work_date,10)::date <  r.return_date
+                  AND LEFT(pe.work_date,10)::date <  GREATEST(r.return_date, r.start_date + 1)
                 GROUP BY 1
               ) x
             )
           ) ORDER BY r.start_date DESC)
           FROM monday_requests r
           LEFT JOIN employees e ON e.id = r.employee_id
-          LEFT JOIN pto_approvals a ON a.monday_item_id = r.monday_item_id
+          LEFT JOIN pto_approvals a ON a.monday_item_id = r.monday_item_id AND a.status <> 'withdrawn'
           WHERE r.employee_id = {{params.employee_id}}::bigint
             AND r.request_type IN ('PTO / Vacation','Floating Holiday') AND r.deleted_on_monday = false AND a.id IS NULL
         ), '[]'::json) AS pending,
@@ -43,7 +43,7 @@ function loadPtoEmployeeDetail() {
                 FROM payroll_entries pe
                 WHERE pe.employee_id = a.employee_id
                   AND LEFT(pe.work_date,10)::date >= a.leave_on
-                  AND LEFT(pe.work_date,10)::date <  a.return_on
+                  AND LEFT(pe.work_date,10)::date <  GREATEST(a.return_on, a.leave_on + 1)
                 GROUP BY 1
               ) x
             )
@@ -58,7 +58,7 @@ function loadPtoEmployeeDetail() {
           )
           FROM employees e
           LEFT JOIN pto_employees pe ON pe.employee_id = e.id
-          LEFT JOIN pto_floating_holidays fh ON fh.employee_id = e.id AND fh.calendar_year = {{params.year}}::int
+          LEFT JOIN pto_floating_holidays fh ON fh.employee_id = e.id AND fh.calendar_year::text = {{params.year}}::text
           WHERE e.id = {{params.employee_id}}::bigint
             AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
         ) AS fh

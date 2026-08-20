@@ -58,6 +58,16 @@ of PTO.
 **Mitigation:** when a new `load*` returns empty, check the call shape against a
 working one *before* suspecting the SQL.
 
+**It happened a second time**, in `PtoTable.tsx`, and looked nothing like the
+first: `{ params: { year, manager }, enabled: true }`. Only the *year-filtered*
+columns broke — WFH, Birthday and FH-used silently read 0 for all 45 employees
+while Accrued, Taken and Available were perfect, because those do not use
+`params.year`. A partially-correct table is the tell.
+
+**Standing rule:** when one `useLoadAction` is found with the wrapper bug, grep
+*every* call site in the feature before moving on. Fixing only the one that was
+reported leaves the twin in place.
+
 ### Do not press UIB's "Fix" button
 
 On a runtime error UIB offers Ignore / Fix. Diagnose from the console and write
