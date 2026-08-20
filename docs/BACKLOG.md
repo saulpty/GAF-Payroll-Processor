@@ -329,11 +329,11 @@ six oversized files (#9). Order:
 | # | Sub-project | Status |
 |---|---|---|
 | A | Monday mirror layer — durable local tables for the Requests, Attendance-form, Contract and Directory boards, "Sync now" per board, config-driven IDs | ✅ built 2026-08-18 |
-| B | PTO & leave tracker — balances (sheet's DAYS360/11 accrual), approvals ledger, floating holidays, request counts; Excel seeded once by migration | ✅ built and seeded 2026-08-19; balances reconcile to the spreadsheet |
+| B | PTO & leave tracker — balances (sheet's DAYS360/11 accrual), approvals ledger, floating holidays, request counts; Excel seeded once by migration | ✅ built and seeded 2026-08-19; rebuilt 2026-08-20 as one table with per-employee subitems, payroll cross-check and floating holidays as leave records. See `HANDOFF-2026-08-20.md` |
 | F | Employees admin consolidation — Employees + Directory Sync + Aliases into one tabbed page; folds in #3 phase 2; strangler pattern, old pages deleted last | ✅ built 2026-08-18 |
-| D | Contract & milestone tracking (1 m/3 m/6 m/1 y/2 y, contract end, raise flag) | after A |
+| D | Contract & milestone tracking (1 m/3 m/6 m/1 y/2 y, contract end, raise flag) | **next** — nothing blocks it; the Contracts board is mirrored, 45 items, all matched |
 | C | Employee 360 — one-employee view composing directory, contracts, PTO, requests, attendance | after B, D |
-| E | Calendar view of leave / permissions / WFH / birthdays | after A |
+| E | Calendar view of leave / permissions / WFH / birthdays | startable — A is done |
 | G | Manager-scoped access — depends on UIB user roles (tech team); every new `load*` already takes an optional `manager` filter | last |
 
 Spec for A + B + F:

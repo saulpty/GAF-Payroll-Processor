@@ -43,7 +43,7 @@ export default function PtoTracker() {
     <>
       {counts !== null && (
         <span className="text-[12px] text-slate-400 mr-1">
-          {counts.employees} employees · {counts.pending} requests to record
+          {counts.employees} {counts.employees === 1 ? 'employee' : 'employees'} · {counts.pending} {counts.pending === 1 ? 'request' : 'requests'} to record
         </span>
       )}
       <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
