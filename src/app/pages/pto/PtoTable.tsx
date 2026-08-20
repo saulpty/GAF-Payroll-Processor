@@ -82,7 +82,7 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange 
       const available = accrued === null ? null : accrued - taken;
       const fhEligFrom = start ? fhEligibleDate(start) : null;
       const fhEligible = fhEligFrom ? fhEligFrom <= asOf : false;
-      const fh_left = fhEligible ? fhRemaining(Number(r.fh_allocated), Number(r.fh_used)) : null;
+      const fh_left = fhEligible ? fhRemaining(Number(r.fh_allocated), Number(r.fh_used)) : 0;
       return {
         ...r,
         start,

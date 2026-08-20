@@ -7,7 +7,7 @@ function upsertPtoApproval() {
     query: `
       INSERT INTO pto_approvals
         (employee_id, leave_on, return_on, total_days, status, source,
-         gaf_comments, submitted_by, recorded_by, recorded_at, monday_item_id)
+         gaf_comments, submitted_by, recorded_by, recorded_at, monday_item_id, leave_type)
       VALUES (
         {{params.employee_id}}::bigint,
         {{params.leave_on}}::date,
@@ -19,7 +19,8 @@ function upsertPtoApproval() {
         {{params.submitted_by}},
         {{params.recorded_by}},
         NOW(),
-        {{params.monday_item_id}}::bigint
+        {{params.monday_item_id}}::bigint,
+        {{params.leave_type}}
       )
       ON CONFLICT (monday_item_id) WHERE monday_item_id IS NOT NULL
       DO UPDATE SET
@@ -32,6 +33,7 @@ function upsertPtoApproval() {
         submitted_by = EXCLUDED.submitted_by,
         recorded_by  = EXCLUDED.recorded_by,
         recorded_at  = EXCLUDED.recorded_at,
+        leave_type   = EXCLUDED.leave_type,
         updated_at   = NOW()
       RETURNING id
     `,

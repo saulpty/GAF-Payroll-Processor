@@ -21,3 +21,4 @@ Applied migrations:
 1781803900_seed_pto_from_excel at 2026-08-19T15:28:39.399Z
 1781804000_add_directory_group_config at 2026-08-19T15:50:21.776Z
 1781804100_link_excel_approvals_to_monday at 2026-08-19T20:26:31.794Z
+1781900000_add_leave_type_to_pto_approvals at 2026-08-20T13:57:05.468Z

@@ -13,6 +13,7 @@ function updatePtoApproval() {
           total_days   = {{params.total_days}}::numeric,
           gaf_comments = {{params.gaf_comments}},
           recorded_by  = {{params.recorded_by}},
+          leave_type   = {{params.leave_type}},
           updated_at   = NOW()
       WHERE id = {{params.id}}::bigint
     `,

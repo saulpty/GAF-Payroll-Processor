@@ -9,20 +9,22 @@ function loadPtoEmployeeDetail() {
           SELECT json_agg(json_build_object(
             'monday_item_id', r.monday_item_id, 'employee_id', r.employee_id, 'display_name', e.display_name,
             'employee_name_raw', r.employee_name_raw, 'leave_on', r.start_date::text, 'return_on', r.return_date::text,
-            'total_days', r.total_days_requested, 'reason', r.reason, 'submitted_at', r.submitted_at::text
+            'total_days', r.total_days_requested, 'reason', r.reason, 'submitted_at', r.submitted_at::text,
+            'leave_type', CASE WHEN r.request_type = 'Floating Holiday' THEN 'floating_holiday' ELSE 'pto' END
           ) ORDER BY r.start_date DESC)
           FROM monday_requests r
           LEFT JOIN employees e ON e.id = r.employee_id
           LEFT JOIN pto_approvals a ON a.monday_item_id = r.monday_item_id
           WHERE r.employee_id = {{params.employee_id}}::bigint
-            AND r.request_type = 'PTO / Vacation' AND r.deleted_on_monday = false AND a.id IS NULL
+            AND r.request_type IN ('PTO / Vacation','Floating Holiday') AND r.deleted_on_monday = false AND a.id IS NULL
         ), '[]'::json) AS pending,
         COALESCE((
           SELECT json_agg(json_build_object(
             'id', a.id, 'employee_id', a.employee_id, 'display_name', e.display_name,
             'leave_on', a.leave_on::text, 'return_on', a.return_on::text, 'total_days', a.total_days,
             'status', a.status, 'source', a.source, 'gaf_comments', a.gaf_comments, 'recorded_by', a.recorded_by,
-            'monday_item_id', a.monday_item_id, 'recorded_at', a.recorded_at::text
+            'monday_item_id', a.monday_item_id, 'recorded_at', a.recorded_at::text,
+            'leave_type', a.leave_type
           ) ORDER BY a.leave_on DESC, a.id DESC)
           FROM pto_approvals a LEFT JOIN employees e ON e.id = a.employee_id
           WHERE a.employee_id = {{params.employee_id}}::bigint

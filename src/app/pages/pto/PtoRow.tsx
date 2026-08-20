@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { fmtDate } from '@/app/lib/fmtDate';
 import StatusChip from '@/app/components/StatusChip';
 
 export interface PtoRowData {
@@ -19,7 +20,7 @@ export interface PtoRowData {
   start: string | null;
   accrued: number | null;
   available: number | null;
-  fh_left: number | null;
+  fh_left: number;
   fh_eligible_from: string | null;
   pending: number;
 }
@@ -29,11 +30,6 @@ interface Props {
   expanded: boolean;
   onToggle: () => void;
   children?: ReactNode;
-}
-
-/** Postgres sometimes hands back a full timestamp; dates in this app are YYYY-MM-DD strings. */
-function ymd(v: string | null | undefined): string {
-  return v ? String(v).slice(0, 10) : '';
 }
 
 const muted = <span className="text-slate-300">—</span>;
@@ -55,8 +51,15 @@ export default function PtoRow({ row, expanded, onToggle, children }: Props) {
   const negativeAvail = available !== null && available < 0;
 
   let fhCell: ReactNode;
-  if (row.fh_left === null && row.fh_eligible_from) {
-    fhCell = <StatusChip tone="slate">from {ymd(row.fh_eligible_from)}</StatusChip>;
+  if (row.fh_left === 0 && row.fh_eligible_from) {
+    fhCell = (
+      <span
+        className="text-slate-400"
+        title={`Eligible ${fmtDate(row.fh_eligible_from)} — 90 days after hire`}
+      >
+        0
+      </span>
+    );
   } else {
     fhCell = fmtInt(row.fh_left);
   }
@@ -87,7 +90,7 @@ export default function PtoRow({ row, expanded, onToggle, children }: Props) {
         {/* Title */}
         <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.role ?? muted}</td>
         {/* Start */}
-        <td className="px-3 py-2 tabular-nums whitespace-nowrap">{row.start ? ymd(row.start) : muted}</td>
+        <td className="px-3 py-2 tabular-nums whitespace-nowrap">{row.start ? fmtDate(row.start) : muted}</td>
         {/* Accrued */}
         <td className="px-3 py-2 text-right tabular-nums">{fmt2(row.accrued)}</td>
         {/* Taken */}

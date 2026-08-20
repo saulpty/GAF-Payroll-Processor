@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { Loader2 } from 'lucide-react';
+import { fmtDate } from '@/app/lib/fmtDate';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -23,6 +24,7 @@ export interface PendingRequest {
   total_days: string | null;
   reason: string | null;
   submitted_at: string | null;
+  leave_type?: 'pto' | 'floating_holiday';
 }
 
 export interface LedgerRow {
@@ -37,6 +39,7 @@ export interface LedgerRow {
   gaf_comments: string | null;
   recorded_by: string | null;
   monday_item_id: number | null;
+  leave_type: 'pto' | 'floating_holiday';
 }
 
 export type DialogMode =
@@ -60,13 +63,14 @@ function ymd(v: string | null | undefined): string {
 export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) {
   const open = mode !== null;
 
-  const [leaveOn,   setLeaveOn]   = useState('');
-  const [returnOn,  setReturnOn]  = useState('');
-  const [totalDays, setTotalDays] = useState('');
-  const [comments,  setComments]  = useState('');
-  const [empId,     setEmpId]     = useState<number | null>(null);
-  const [saving,    setSaving]    = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
+  const [leaveOn,    setLeaveOn]    = useState('');
+  const [returnOn,   setReturnOn]   = useState('');
+  const [totalDays,  setTotalDays]  = useState('');
+  const [comments,   setComments]   = useState('');
+  const [empId,      setEmpId]      = useState<number | null>(null);
+  const [leaveType,  setLeaveType]  = useState<'pto' | 'floating_holiday'>('pto');
+  const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
 
   const [upsert] = useMutateAction(upsertPtoApprovalAction);
   const [update] = useMutateAction(updatePtoApprovalAction);
@@ -100,6 +104,7 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
       setTotalDays(days);
       setComments('');
       setEmpId(r.employee_id);
+      setLeaveType(r.leave_type ?? 'pto');
     } else if (mode.kind === 'edit') {
       const row = mode.row;
       const lo = ymd(row.leave_on);
@@ -110,12 +115,14 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
       setTotalDays(days);
       setComments(row.gaf_comments ?? '');
       setEmpId(row.employee_id);
+      setLeaveType(row.leave_type ?? 'pto');
     } else {
       setLeaveOn('');
       setReturnOn('');
       setTotalDays('');
       setComments('');
       setEmpId(null);
+      setLeaveType('pto');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
@@ -147,6 +154,7 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
           total_days:   days,
           gaf_comments: comments.trim() || null,
           recorded_by:  mode.row.recorded_by,
+          leave_type:   leaveType,
         });
       } else if (mode.kind === 'record') {
         const r = mode.request;
@@ -161,6 +169,7 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
           submitted_by:   r.employee_name_raw || null,
           recorded_by:    'app',
           monday_item_id: r.monday_item_id ?? null,
+          leave_type:     leaveType,
         });
       } else {
         await upsert({
@@ -174,6 +183,7 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
           submitted_by:   null,
           recorded_by:    'app',
           monday_item_id: null,
+          leave_type:     leaveType,
         });
       }
       onSaved();
@@ -184,9 +194,12 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
     }
   }
 
-  const title = mode?.kind === 'edit'   ? 'Edit PTO'
-              : mode?.kind === 'manual' ? 'Add PTO manually'
-              : 'Record PTO';
+  const isFloating = leaveType === 'floating_holiday';
+  const title = mode?.kind === 'edit'
+    ? (isFloating ? 'Edit floating holiday' : 'Edit PTO')
+    : mode?.kind === 'manual'
+      ? (isFloating ? 'Add floating holiday manually' : 'Add PTO manually')
+      : (isFloating ? 'Record floating holiday' : 'Record PTO');
 
   const employeeName =
     mode?.kind === 'record' ? (mode.request.display_name ?? mode.request.employee_name_raw ?? '—')
@@ -227,7 +240,7 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
                 Requested on Monday
               </div>
               <div className="text-[13px] text-slate-800">
-                {ymd(mode.request.leave_on)} → {ymd(mode.request.return_on)}
+                {fmtDate(mode.request.leave_on)} → {fmtDate(mode.request.return_on)}
                 <span className="text-slate-500 ml-1">
                   · {mode.request.total_days} day(s)
                 </span>
@@ -237,6 +250,21 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
                   {mode.request.reason}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Type — manual mode only */}
+          {mode?.kind === 'manual' && (
+            <div>
+              <Label className="text-xs text-slate-500">Type</Label>
+              <select
+                value={leaveType}
+                onChange={e => setLeaveType(e.target.value as 'pto' | 'floating_holiday')}
+                className="mt-1 block w-full h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="pto">PTO</option>
+                <option value="floating_holiday">Floating holiday</option>
+              </select>
             </div>
           )}
 

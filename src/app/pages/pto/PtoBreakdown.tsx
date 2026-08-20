@@ -1,16 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Loader2, Plus, Pencil, Trash2, Minus } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { Button } from '@/components/ui/button';
-import StatusChip from '@/app/components/StatusChip';
 import EmptyState from '@/app/components/EmptyState';
 import type { PtoRowData } from './PtoRow';
 import type { DialogMode, PendingRequest, LedgerRow } from './RecordApprovalDialog';
+import PtoSubRow, { type SubItem } from './PtoSubRow';
 import loadPtoEmployeeDetailAction from '@/actions/loadPtoEmployeeDetail';
-import upsertFloatingHolidayAction from '@/actions/upsertFloatingHoliday';
 import updatePtoApprovalStatusAction from '@/actions/updatePtoApprovalStatus';
-import { fhEligibleDate, fhRemaining } from '@/app/lib/ptoAccrual';
-import { toLocalYMD } from '@/app/lib/classificationEngine';
 
 interface Props {
   row: PtoRowData;
@@ -30,10 +25,6 @@ interface DetailRow {
   } | null;
 }
 
-function ymd(v: string | null | undefined): string {
-  return v ? String(v).slice(0, 10) : '';
-}
-
 function parseJSON<T>(v: T | string | null | undefined, fallback: T): T {
   if (!v) return fallback;
   if (typeof v === 'string') {
@@ -42,12 +33,16 @@ function parseJSON<T>(v: T | string | null | undefined, fallback: T): T {
   return v as T;
 }
 
-export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, onChanged, detailKey }: Props) {
+const HEADERS = ['Type', 'Dates', 'Days', 'Status', 'Source', 'Comments', ''];
+
+export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, onChanged }: Props) {
   const [rawDetail, loading, error] = useLoadAction(
     loadPtoEmployeeDetailAction,
     null,
     { employee_id: row.employee_id, year, manager: null },
   );
+
+  const [withdraw] = useMutateAction(updatePtoApprovalStatusAction);
 
   const detailArr = (rawDetail as DetailRow[] | null);
   const detail: DetailRow | null = Array.isArray(detailArr) ? (detailArr[0] ?? null) : (rawDetail as DetailRow | null);
@@ -55,17 +50,7 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
   const pending: PendingRequest[] = parseJSON(detail?.pending, []);
   const ledger: LedgerRow[] = parseJSON(detail?.ledger, []);
 
-  // FH block state
-  const rawFh = detail?.fh ?? null;
-  const [fhUsed, setFhUsed] = useState<number | null>(null);
-  const [fhSaveErr, setFhSaveErr] = useState(false);
-  const [upsertFH] = useMutateAction(upsertFloatingHolidayAction);
-  const [withdraw] = useMutateAction(updatePtoApprovalStatusAction);
-
-  // Sync local fhUsed when detail loads (remount resets this automatically)
-  useEffect(() => {
-    if (rawFh !== null) setFhUsed(Number(rawFh.fh_used) || 0);
-  }, [rawFh]);
+  const fhAllocated = Number(detail?.fh?.fh_allocated ?? 2);
 
   if (loading) {
     return (
@@ -82,200 +67,94 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
     );
   }
 
-  const fhAllocated = Number(rawFh?.fh_allocated ?? 2);
-  const usedDisplay = fhUsed ?? Number(rawFh?.fh_used ?? 0);
-  const fhStart = ymd(rawFh?.pto_start_date_override ?? rawFh?.start_date);
-  const today = toLocalYMD(new Date());
-  const fhEligFrom = fhStart ? fhEligibleDate(fhStart) : null;
-  const fhNotEligYet = fhEligFrom ? fhEligFrom > today : false;
+  // Build unified item list
+  const items: SubItem[] = [];
 
-  const takenSum = ledger
-    .filter(e => e.status === 'recorded')
+  for (const req of pending) {
+    items.push({
+      kind: 'pending',
+      leave_type: (req.leave_type ?? 'pto') as 'pto' | 'floating_holiday',
+      leave_on: String(req.leave_on ?? '').slice(0, 10),
+      return_on: String(req.return_on ?? '').slice(0, 10),
+      days: Number(req.total_days) || 0,
+      request: req,
+    });
+  }
+
+  for (const entry of ledger) {
+    if (!showWithdrawn && entry.status === 'withdrawn') continue;
+    items.push({
+      kind: 'recorded',
+      leave_type: (entry.leave_type ?? 'pto') as 'pto' | 'floating_holiday',
+      leave_on: String(entry.leave_on ?? '').slice(0, 10),
+      return_on: String(entry.return_on ?? '').slice(0, 10),
+      days: Number(entry.total_days) || 0,
+      status: entry.status,
+      source: entry.source,
+      comments: entry.gaf_comments,
+      id: entry.id,
+      request: entry, // passed to edit dialog
+    });
+  }
+
+  // Sort by leave_on descending (plain string compare, YYYY-MM-DD)
+  items.sort((a, b) => b.leave_on.localeCompare(a.leave_on));
+
+  // Summary counts
+  const ptoTaken = ledger
+    .filter(e => e.status === 'recorded' && (e.leave_type ?? 'pto') === 'pto')
     .reduce((s, e) => s + (Number(e.total_days) || 0), 0);
+  const fhUsed = ledger
+    .filter(e => e.status === 'recorded' && e.leave_type === 'floating_holiday'
+      && String(e.leave_on ?? '').slice(0, 4) === year)
+    .length;
 
-  const handleFhStep = async (delta: number) => {
-    const next = usedDisplay + delta;
-    if (next < 0 || next > fhAllocated) return;
-    setFhSaveErr(false);
-    setFhUsed(next);
-    try {
-      await upsertFH({
-        employee_id: row.employee_id,
-        calendar_year: Number(year),
-        fh_allocated: fhAllocated,
-        fh_used: next,
-        notes: rawFh?.notes ?? null,
-      });
-      onChanged();
-    } catch {
-      setFhSaveErr(true);
-      setFhUsed(usedDisplay - delta); // rollback
-    }
-  };
-
-  const handleWithdraw = async (entry: LedgerRow) => {
+  const handleWithdraw = async (id: number, days: number) => {
     const ok = window.confirm(
-      `Withdraw this PTO record? Taken will drop by ${entry.total_days} days.`
+      `Withdraw this record? Days will drop by ${days}.`
     );
     if (!ok) return;
-    await withdraw({ id: entry.id, status: 'withdrawn' });
+    await withdraw({ id, status: 'withdrawn' });
     onChanged();
   };
 
-  const sourceChip = (src: string) => {
-    if (src === 'monday')       return <StatusChip tone="violet">Monday</StatusChip>;
-    if (src === 'excel_import') return <StatusChip tone="slate">Excel</StatusChip>;
-    if (src === 'manual')       return <StatusChip tone="blue">Manual</StatusChip>;
-    return <StatusChip tone="slate">{src}</StatusChip>;
-  };
-
-  const visibleLedger = showWithdrawn
-    ? ledger
-    : ledger.filter(e => e.status !== 'withdrawn');
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_280px] gap-4 px-6 py-4">
+    <div className="px-6 py-3">
+      {/* Summary line */}
+      <div className="text-[12px] text-slate-400 text-right mb-1">
+        {ptoTaken.toFixed(2)} PTO days taken · {fhUsed} of {fhAllocated} floating holidays used
+      </div>
 
-      {/* Block 1 — Pending from Monday */}
-      <div className="rounded-lg border border-slate-200 shadow-card p-3 bg-white">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">
-          Pending from Monday
-        </div>
-        {pending.length === 0 ? (
-          <EmptyState title="Nothing waiting" compact />
-        ) : (
-          <ul className="space-y-2">
-            {pending.map((req, i) => (
-              <li key={req.monday_item_id ?? i} className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-[13px] text-slate-800">
-                    {ymd(req.leave_on)} → {ymd(req.return_on)}
-                    <span className="text-slate-400 ml-1">· requested {req.total_days} d</span>
-                  </div>
-                  {req.reason && (
-                    <div className="text-[12px] text-slate-500 truncate" title={req.reason}>
-                      {req.reason}
-                    </div>
-                  )}
-                </div>
-                <Button
-                  size="sm"
-                  className="shrink-0"
-                  onClick={() => onOpenDialog({ kind: 'record', request: req })}
+      {items.length === 0 ? (
+        <EmptyState title="Nothing recorded or pending" compact />
+      ) : (
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr>
+              {HEADERS.map(h => (
+                <th
+                  key={h}
+                  className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-200 bg-transparent"
                 >
-                  <Plus className="w-3.5 h-3.5 mr-1" />
-                  Record
-                </Button>
-              </li>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item, i) => (
+              <PtoSubRow
+                key={item.kind === 'pending'
+                  ? `p-${item.request?.monday_item_id ?? i}`
+                  : `r-${item.id}`}
+                item={item}
+                onOpenDialog={onOpenDialog}
+                onWithdraw={handleWithdraw}
+              />
             ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Block 2 — Recorded PTO */}
-      <div className="rounded-lg border border-slate-200 shadow-card p-3 bg-white">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            Recorded PTO
-          </div>
-          <div className="text-[12px] text-slate-500">
-            taken {takenSum.toFixed(2)} d
-          </div>
-        </div>
-        {visibleLedger.length === 0 ? (
-          <EmptyState title="No PTO recorded" compact />
-        ) : (
-          <ul className="space-y-2">
-            {visibleLedger.map(entry => {
-              const withdrawn = entry.status === 'withdrawn';
-              return (
-                <li key={entry.id} className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className={`text-[13px] flex flex-wrap items-center gap-1 ${withdrawn ? 'line-through text-slate-400' : 'text-slate-800'}`}>
-                      <span>{ymd(entry.leave_on)} → {ymd(entry.return_on)} · {entry.total_days} d</span>
-                      {sourceChip(entry.source)}
-                      {withdrawn && <StatusChip tone="red" strike>withdrawn</StatusChip>}
-                    </div>
-                    {entry.gaf_comments && (
-                      <div className="text-[12px] text-slate-500 truncate" title={entry.gaf_comments}>
-                        {entry.gaf_comments}
-                      </div>
-                    )}
-                  </div>
-                  {!withdrawn && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onOpenDialog({ kind: 'edit', row: entry })}
-                      >
-                        <Pencil className="w-3.5 h-3.5 mr-1" />
-                        Edit
-                      </Button>
-                      {entry.status === 'recorded' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-                          onClick={() => handleWithdraw(entry)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 mr-1" />
-                          Withdraw
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-
-      {/* Block 3 — Floating holidays */}
-      <div className="rounded-lg border border-slate-200 shadow-card p-3 bg-white">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">
-          Floating holidays {year}
-        </div>
-        {fhNotEligYet ? (
-          <div className="text-[12px] text-slate-500">
-            Eligible from {fhEligFrom}
-          </div>
-        ) : (
-          <div>
-            <div className="text-[18px] font-semibold text-slate-900">
-              {usedDisplay} of {fhAllocated} used
-            </div>
-            <div className="text-[12px] text-slate-500 mb-3">
-              {fhRemaining(fhAllocated, usedDisplay)} left
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={usedDisplay <= 0}
-                aria-label="Decrease floating holidays used"
-                onClick={() => handleFhStep(-1)}
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={usedDisplay >= fhAllocated}
-                aria-label="Increase floating holidays used"
-                onClick={() => handleFhStep(1)}
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-            {fhSaveErr && (
-              <div className="text-[12px] text-red-600 mt-1">Couldn&apos;t save — try again</div>
-            )}
-          </div>
-        )}
-      </div>
-
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

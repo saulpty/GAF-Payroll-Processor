@@ -1,7 +1,7 @@
-# PTO Tracker Rebuild
+# PTO Breakdown Rework
 
-## Sub-tasks
-
-[x] Create `app/pages/pto/PtoRow.tsx` — interface + row component
-[x] Create `app/pages/pto/PtoTable.tsx` — table shell with controls, DataTable, loading/error/empty states
-[x] Modify `app/pages/PtoTracker.tsx` — replace tab shell with PageHeader + PtoTable + RecordApprovalDialog
+[x] Create `app/lib/fmtDate.ts`
+[x] Rewrite `PtoBreakdown.tsx` — one subitem table (split to PtoSubRow.tsx if needed)
+[x] Update `PtoRow.tsx` — fmtDate for Start, FH cell no chip
+[x] Update `PtoTable.tsx` — fh_left=0 for ineligible
+[x] Update `RecordApprovalDialog.tsx` — leave_type field, fmtDate, title logic
