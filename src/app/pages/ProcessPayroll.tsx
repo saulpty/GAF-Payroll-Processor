@@ -27,6 +27,8 @@ import {
   runClassificationEngine,
   buildClassificationConfig,
   normalizeName,
+  isScheduledWorkDay,
+  toLocalYMD,
   type EmployeeRecord,
   type DstWindow,
   type MondayAttendanceRow,
@@ -340,9 +342,9 @@ export default function ProcessPayroll() {
       const activeEmps = employees as Employee[];
       const periodStart = new Date(startDate + 'T12:00:00');
       const periodEnd = new Date(endDate + 'T12:00:00');
-      const expectedWorkdays: string[] = [];
+      const periodDates: Date[] = [];
       for (const d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
-        if (d.getDay() !== 0 && d.getDay() !== 6) expectedWorkdays.push(d.toISOString().slice(0, 10));
+        periodDates.push(new Date(d));
       }
       const tmEmailsSet = new Set(tmMap.keys());
       const missingTm = activeEmps.filter(e => e.teramind_email && !tmEmailsSet.has(e.teramind_email.toLowerCase()));
@@ -351,6 +353,8 @@ export default function ProcessPayroll() {
         if (!emp.teramind_email) continue;
         const dayMap = tmMap.get(emp.teramind_email.toLowerCase());
         if (!dayMap) continue;
+        const expectedWorkdays = periodDates.filter(d => isScheduledWorkDay(d, emp.work_days)).map(d => toLocalYMD(d));
+        if (expectedWorkdays.length === 0) continue;
         const covered = expectedWorkdays.filter(d => dayMap.has(d)).length;
         const gap = expectedWorkdays.length - covered;
         if (gap > 0 && gap / expectedWorkdays.length > 0.3) warnings.push({ level: 'warn', message: `${emp.display_name}: Teramind covers only ${covered}/${expectedWorkdays.length} workdays.` });

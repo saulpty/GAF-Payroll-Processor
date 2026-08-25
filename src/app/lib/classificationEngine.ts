@@ -29,7 +29,7 @@ function parseWorkDays(workDays: string | undefined): Set<string> {
 }
 
 /** Returns true if the given date is a scheduled workday for this employee. */
-function isScheduledWorkDay(date: Date, workDays: string | undefined): boolean {
+export function isScheduledWorkDay(date: Date, workDays: string | undefined): boolean {
   const abbr = DOW_ABBR[date.getDay()];
   return parseWorkDays(workDays).has(abbr);
 }
