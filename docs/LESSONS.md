@@ -68,6 +68,17 @@ while Accrued, Taken and Available were perfect, because those do not use
 *every* call site in the feature before moving on. Fixing only the one that was
 reported leaves the twin in place.
 
+**It happened a third time**, in `FilterBar.tsx:71` — found 2026-08-25 while
+reading the file for an unrelated reason, not because anyone reported it. This
+one failed *silently and completely*: `loadActionRequiredCounts` saw NULL, its
+`WHERE` matched nothing, `SUM` over an empty set returned NULL, and the render
+guard `{tabCount > 0 && ...}` meant the RED and YELLOW tab counts on Action
+Required simply never appeared. A feature that renders nothing looks like a
+design choice, not a bug — nobody had reported it in months.
+
+`grep -rn "{ params:" src/app` now returns nothing. Run exactly that after any
+change that adds a `useLoadAction` call.
+
 ### Do not press UIB's "Fix" button
 
 On a runtime error UIB offers Ignore / Fix. Diagnose from the console and write
