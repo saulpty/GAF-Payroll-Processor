@@ -32,33 +32,45 @@ function loadHrkSummary() {
         FROM employee_effective_start ees
       ),
 
-      -- PTO expansion: include Sat/Sun after Friday PTO if within period
+      -- PTO expansion: include consecutive off-days after a PTO day if within period
       pto_raw AS (
         SELECT
           pe.employee_id,
-          TO_DATE(SUBSTRING(pe.work_date FROM 1 FOR 10), 'YYYY-MM-DD') AS pto_date
+          TO_DATE(SUBSTRING(pe.work_date FROM 1 FOR 10), 'YYYY-MM-DD') AS pto_date,
+          COALESCE(NULLIF(TRIM(s.work_days), ''), 'Mon,Tue,Wed,Thu,Fri') AS work_days
         FROM payroll_entries pe
+        JOIN employees e ON e.id = pe.employee_id
+        LEFT JOIN schedules s ON s.id = e.schedule_id
         WHERE pe.period_name = {{params.periodName}}
           AND pe.event_type_1 = 'PTO'
           AND pe.deleted_at IS NULL
       ),
-      pto_with_weekends AS (
+      pto_with_offdays AS (
         SELECT pr.employee_id, pr.pto_date AS work_date FROM pto_raw pr
-        UNION ALL
+        UNION
         SELECT pr.employee_id, pr.pto_date + 1
         FROM pto_raw pr CROSS JOIN period_bounds pb
-        WHERE EXTRACT(DOW FROM pr.pto_date) = 5 AND pr.pto_date + 1 <= pb.end_date::date
-        UNION ALL
+        WHERE pr.pto_date + 1 <= pb.end_date::date
+          AND (ARRAY['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])
+                [EXTRACT(ISODOW FROM pr.pto_date + 1)::int]
+              <> ALL (string_to_array(pr.work_days, ','))
+        UNION
         SELECT pr.employee_id, pr.pto_date + 2
         FROM pto_raw pr CROSS JOIN period_bounds pb
-        WHERE EXTRACT(DOW FROM pr.pto_date) = 5 AND pr.pto_date + 2 <= pb.end_date::date
+        WHERE pr.pto_date + 2 <= pb.end_date::date
+          AND (ARRAY['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])
+                [EXTRACT(ISODOW FROM pr.pto_date + 1)::int]
+              <> ALL (string_to_array(pr.work_days, ','))
+          AND (ARRAY['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])
+                [EXTRACT(ISODOW FROM pr.pto_date + 2)::int]
+              <> ALL (string_to_array(pr.work_days, ','))
       ),
       pto_agg AS (
         SELECT
           employee_id,
           COUNT(*) AS pto_days_total,
           STRING_AGG(TO_CHAR(work_date, 'YYYY-MM-DD'), ', ' ORDER BY work_date) AS pto_dates_all
-        FROM pto_with_weekends
+        FROM pto_with_offdays
         GROUP BY employee_id
       ),
 
