@@ -40,6 +40,7 @@ function loadHrkSummary() {
         FROM payroll_entries pe
         WHERE pe.period_name = {{params.periodName}}
           AND pe.event_type_1 = 'PTO'
+          AND pe.deleted_at IS NULL
       ),
       pto_with_weekends AS (
         SELECT pr.employee_id, pr.pto_date AS work_date FROM pto_raw pr
@@ -68,6 +69,7 @@ function loadHrkSummary() {
         JOIN employees e ON e.id = pe.employee_id
         CROSS JOIN period_bounds pb
         WHERE pe.period_name = {{params.periodName}}
+          AND pe.deleted_at IS NULL
           AND TO_DATE(SUBSTRING(pe.work_date FROM 1 FOR 10), 'YYYY-MM-DD')
               >= GREATEST(e.start_date, pb.start_date::date)
       ),
@@ -213,7 +215,7 @@ function loadHrkSummary() {
       CROSS JOIN period_bounds pb
       JOIN employee_base eb ON eb.employee_id = e.id
       JOIN (
-        SELECT DISTINCT employee_id FROM payroll_entries WHERE period_name = {{params.periodName}}
+        SELECT DISTINCT employee_id FROM payroll_entries WHERE period_name = {{params.periodName}} AND deleted_at IS NULL
       ) pe_exists ON pe_exists.employee_id = e.id
       LEFT JOIN discount_agg da ON da.employee_id = e.id
       LEFT JOIN incapacidad_agg ia ON ia.employee_id = e.id
