@@ -290,6 +290,46 @@ still seeded rows that Admin → Rules & Config can display and an operator
 can edit to no effect — the other two were already cleaned up. Correct
 count: **two** dead-but-visible config keys, not four.
 
+### 10. Admin → Schedules invites you to pick an employee, then ignores which one
+
+**Where:** `src/app/pages/admin/AdminSchedules.tsx:154-173` (the Schedule Name
+field, its `— pick an employee` hint at `:159`, and the `employee-name-list`
+datalist at `:169`).
+**Risk:** confirmed — it silently cost four employees their correct schedule for
+over a month.
+
+The Schedule Name input is labelled *"— pick an employee or type a custom
+name"* and is backed by a `<datalist>` of every employee, populated from
+`loadAllEmployees`. Picking a name from that list sets `schedule_name`, a
+**label**. It does not write `employees.schedule_id`. Nothing on this page
+does — the page never calls `upsertEmployee` and never renders a
+schedule-to-employee assignment control at all.
+
+Assignment lives on a different page entirely: Admin → Employees → Roster,
+edit an employee, the **Schedule** dropdown
+(`src/app/pages/admin/employees/RosterTab.tsx:131`).
+
+**What this cost.** On 2026-08-25 three weekend schedules were found already
+defined and correct — ids 10, 11, 12, named `Weekend Schedule Mon-Tue OFF`,
+`Tue-Wed OFF`, `Thu-Fri OFF`, with notes reading "Cemi's schedule", "Edwin
+Broce's schedule" and so on — and **no employee assigned to any of them**. All
+50 employees sat on schedules 1/2/3. Tim had done everything this page allows
+and reasonably believed the work was finished.
+
+Meanwhile the engine built Mon–Fri entries for four people who do not work
+Mon–Fri, found no punches, and marked them `Ausencia Injustificada` / RED,
+while discarding their real Saturday and Sunday work as an off-day punch with
+no form. Euclides Gonzalez read as a chronic absentee; once assigned he reads
+100% on time, 6 of 6. It also contributed a false lead to the "eight July hires
+have no Teramind data" investigation (`HANDOFF-2026-08-20.md` item 2).
+
+**Fix, roughly:** either add a real employee-assignment control to the Schedules
+page — a multi-select writing `schedule_id` for each chosen employee — or drop
+the datalist and relabel the field so it stops implying a link it does not
+create. The second is much smaller and removes the trap; the first is the nicer
+product. Either way the page should show, per schedule, how many employees are
+currently on it, so "0 assigned" is visible at a glance.
+
 ---
 
 ## Structural
