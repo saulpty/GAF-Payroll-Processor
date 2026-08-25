@@ -22,3 +22,4 @@ Applied migrations:
 1781804000_add_directory_group_config at 2026-08-19T15:50:21.776Z
 1781804100_link_excel_approvals_to_monday at 2026-08-19T20:26:31.794Z
 1781900000_add_leave_type_to_pto_approvals at 2026-08-20T13:57:05.468Z
+1781900100_v_attendance_daily_honours_work_days at 2026-08-25T16:35:06.583Z
