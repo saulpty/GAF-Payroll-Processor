@@ -68,7 +68,7 @@ export default function FilterBar() {
   const [countsRaw] = useLoadAction(
     loadActionRequiredCountsAction,
     [] as CountsRow[],
-    { params: { periodName: period } },
+    { periodName: period },
   );
   const counts = (countsRaw as CountsRow[])[0] ?? { red_count: 0, yellow_count: 0 };
 
