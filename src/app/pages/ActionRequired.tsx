@@ -468,7 +468,14 @@ export default function ActionRequired() {
                       </td>
                       {/* Frozen employee */}
                       <td className={`px-3 py-2 font-medium whitespace-nowrap border-r sticky left-8 z-10 ${rowBg}`}>
-                        <span onClick={e => toggleRow(row.id, rowIndex, e.shiftKey)} className="cursor-pointer hover:text-blue-700 transition-colors">{row.employee_name}</span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={selected.has(row.id)}
+                          onClick={e => toggleRow(row.id, rowIndex, e.shiftKey)}
+                          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { if (e.key === ' ') e.preventDefault(); toggleRow(row.id, rowIndex, e.shiftKey); } }}
+                          className="cursor-pointer hover:text-blue-700 transition-colors"
+                        >{row.employee_name}</span>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0, 10)}</td>
                       {/* Entry/Exit */}

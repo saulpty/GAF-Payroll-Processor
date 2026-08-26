@@ -179,6 +179,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
             </div>
           </div>
           <button onClick={onClose}
+            aria-label="Close employee panel"
             className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-border transition-colors shrink-0 ml-4">
             <X className="w-4 h-4" />
           </button>
