@@ -202,6 +202,92 @@ caller passes `period` from `useState('')`, always a string. But it is the exact
 shape of the bug that has now bitten three times, one refactor away from
 returning.
 
+## P2 — The three Attendance donuts are blank until you touch a filter
+
+Found by inspecting the running app; neither the source review nor the detector
+caught it, because it only exists at runtime.
+
+On first load of `/attendance`, all three donut charts render an **empty SVG** —
+verified in the DOM, not just by eye: each `svg.recharts-surface` measures
+505×170 and contains **zero `<path>` elements**. The centre percentage and the
+legend still draw, so the card looks intentional rather than broken. Click any
+filter (e.g. the 60d preset) and all three draw correctly and look good.
+
+`AttendanceDonuts.tsx:18-27` wraps `ResponsiveContainer` in a `div` with an
+inline `height: 170`. This is the classic Recharts case of the container
+measuring zero width at mount and never re-measuring. The data is fine — the
+legend proves it.
+
+**Fix:** give the chart a deterministic size or force a re-measure on data
+arrival. Worth confirming in the browser after the change, since it cannot be
+seen in a diff.
+
+---
+
+# Design review
+
+Nielsen total **27/40** (Assessment A, source-based). The mechanical detector
+(Assessment B) returned exit 2 with **6 findings — 5 of which are false
+positives**: the rule pairs the first `bg-*` and first `text-*` on a line, and
+every hit is a ternary where those two classes are on opposite branches and
+never co-occur. The one real finding is `TopNav.tsx:182`, an easing curve of
+`cubic-bezier(.22,.68,0,1.2)` whose 1.2 endpoint overshoots — inconsistent with
+the project's own `tailwind.config.js` easing, which never exceeds 1.
+
+## The design system is declared but not connected
+
+- **21 of 32 design tokens are dead (66%)** — never referenced by a utility
+  class or by `tailwind.config.js`. That includes all six `--chart-*` tokens,
+  both `--topnav*`, and `--secondary` (while `#2aa876` is hand-typed 9 times).
+- **All eight `--shadow-*` tokens have zero consumers.** The config never wires
+  them into `boxShadow`, so the 45 `shadow-*` classes in the app render
+  Tailwind's stock defaults. **Every shadow you currently see is an accident**,
+  not the brand value.
+- `tailwind.config.js` sets `fontFamily.sans` to `var(--layout-text-font-family)`,
+  **a variable declared nowhere in the project**, so the Inter in `index.css`
+  never wins. It also references eight `--sidebar-*` vars that do not exist.
+- **132 hardcoded hex literals, 33 distinct values.** 29 of them (22%) re-type a
+  color that already has a token.
+- **12 distinct font sizes** in play — six scale steps plus six arbitrary pixel
+  values (10/11/12/13/14px) that sit *between* `text-xs` and `text-sm`. 91
+  arbitrary-px uses against 400 scale uses.
+- Clean, and worth keeping: **zero** arbitrary radius values, **zero** arbitrary
+  spacing values, zero inline `boxShadow`.
+
+## Accessibility is largely absent
+
+- **One `aria-label` in the entire app**, and it is on a decorative icon
+  (`InfoTip.tsx:4`). Zero buttons and zero form controls have one.
+- **73 form controls** (44 inputs, 29 selects); only **4** are explicitly
+  associated with a label via `htmlFor`, all in `RecordApprovalDialog.tsx`.
+- Six icon-only buttons have neither `title` nor `aria-label`.
+- `ActionRequired.tsx:464` — the employee name toggles row selection via
+  `onClick` on a `<span>` with no `role`, `tabIndex` or key handler. **Keyboard
+  users cannot select rows** on the page built for resolving payroll.
+- Focus rings appear on **13 of 136 interactive elements (9.6%)**, against a
+  brief that requires `ring-2 ring-primary/30` on every one.
+- Status on the payroll grids is carried by background tint alone, with no text
+  or icon redundancy — invisible to a colour-blind operator.
+
+## On the Excel colours — keep them, but define them once
+
+The design review's judgment, which I agree with: Tim reads those green/yellow/red
+fills the way he reads them in Excel, and retiring them would cost recognition
+speed rather than gain polish. **The problem is not the colours, it is that
+`#C6EFCE`/`#FFEB9C`/`#FFC7CE` are re-typed as raw hex across four files** and
+have already drifted into eight variants. Promote them to named status tokens in
+`index.css` beside the brand colours, then consume them everywhere.
+
+## The five shared components never spread
+
+`PageHeader`, `DataTable`, `StatusChip`, `EmptyState` and `InfoTip` were built in
+the 2026-08-19 premium pass and are used by the PTO page alone. Live comparison
+confirms the gap: PTO has a real page header, per-column info tooltips, tabular
+figures and consistent chips; Payroll Master reads as a raw spreadsheet with
+truncated headers (`Disc m`, `Late m`) and an Exit column so narrow that
+`5:00 PM` is clipped to `5:00 PI`. Four unrelated badge systems and three
+duplicate sort-icon components exist for the same two jobs.
+
 ## P3 — Smaller items
 
 - `FilterBar.tsx:22` shows a From/To date filter on `/process`, but
