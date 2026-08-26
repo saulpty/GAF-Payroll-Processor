@@ -58,13 +58,24 @@ these eight files, and change nothing else in them.
 
 ## Acceptance criteria
 
-- Open the Dashboard with period `Q2-Aug-2026`. **`DISCOUNT HOURS` reads 182.2h**,
-  not 308.2h, and matches the `Total Discount Hours` on HRK Summary exactly.
+> **The discount-hours figures above are historical.** Between measuring them
+> and writing this prompt, an operator resolved roughly 18 entries in Action
+> Required — `Committed to GREEN` moved 58 → 74 and the nav badge 91 → 73 — which
+> zeroed those rows' discounts. The Dashboard now reads 182.2h for
+> `Q2-Aug-2026` **without this fix**. Do not use 308.2 → 182.2 as the test; the
+> number moved for an unrelated reason. The defect itself is unchanged and still
+> visible in the first criterion below.
+
 - On Action Required for `Q2-Aug-2026`, **Cemiriamiz Iglesias no longer appears
   on 2026-08-11, 08-12, 08-18 or 08-19.** Those four rows are listed under
   Period Log → Deleted Items, deleted by
-  `migration-1781900200-weekend-offday-cleanup`. Her rows on 08-14, 08-15 and
-  08-16 are genuine and must still appear.
+  `migration-1781900200-weekend-offday-cleanup`, yet they still render in the
+  queue today — verified 2026-08-26. Her rows on 08-14, 08-15, 08-16 and 08-24
+  are genuine and must still appear.
+- Dashboard `DISCOUNT HOURS` for `Q2-Aug-2026` still equals HRK Summary's
+  `Total Discount Hours` for the same period. Record both numbers immediately
+  before the change and confirm they are unchanged by it, rather than expecting
+  a specific value.
 - The RED and YELLOW tab counts on Action Required still render for both a
   selected period and "All periods". They must not disappear.
 - Period Log → Deleted Items still lists all 20 deleted rows and they can still
