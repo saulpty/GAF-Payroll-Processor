@@ -1,9 +1,9 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { CompanyKpis, EmpStats } from '@/app/lib/attendanceStats';
 
-const COLORS_OVERVIEW  = ['#34c759', '#ff9f0a', '#ff3b30', '#af52de', '#636366'];
-const COLORS_BUCKETS   = ['#34c759', '#ff9f0a', '#ff6b00', '#ff3b30'];
-const COLORS_REPORTING = ['#34c759', '#ff9f0a', '#ff3b30'];
+const COLORS_OVERVIEW  = ['#2AA876', '#FBBF24', '#EF4444', '#6366F1', '#94A3B8'];
+const COLORS_BUCKETS   = ['#2AA876', '#FBBF24', '#D97706', '#EF4444'];
+const COLORS_REPORTING = ['#2AA876', '#FBBF24', '#EF4444'];
 
 type LegendItem = { label: string; value: number; color: string };
 

@@ -134,19 +134,19 @@ function hmToMinutes(hm: string | null): number | null {
 }
 
 const BUCKET_COLORS: Record<string, string> = {
-  'On Time':             '#34c759',
-  'late_1to10':          '#ff9f0a',
-  'late_11to30':         '#ff6b00',
-  'late_830plus':        '#ff3b30',
-  'Excused (PTO/FH/Perm)': '#8e8e93',
-  'Permission':          '#af52de',
+  'On Time':             '#2AA876',
+  'late_1to10':          '#FBBF24',
+  'late_11to30':         '#D97706',
+  'late_830plus':        '#EF4444',
+  'Excused (PTO/FH/Perm)': '#94A3B8',
+  'Permission':          '#6366F1',
 };
 
 function arrivalColor(row: AttendanceRow): string {
   if (row.status === 'Excused (PTO/FH/Perm)') return BUCKET_COLORS['Excused (PTO/FH/Perm)'];
   if (row.status === 'Permission') return BUCKET_COLORS['Permission'];
   if (row.status === 'On Time') return BUCKET_COLORS['On Time'];
-  return BUCKET_COLORS[row.bucket ?? 'late_830plus'] ?? '#ff3b30';
+  return BUCKET_COLORS[row.bucket ?? 'late_830plus'] ?? '#EF4444';
 }
 
 /** Normalize a date value that may arrive as a Date object or ISO string → "YYYY-MM-DD" */

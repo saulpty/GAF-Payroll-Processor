@@ -67,7 +67,7 @@ export function AttendanceTrends({ rows, empStats, search }: Props) {
     const diff  = (last.value as number) - (first.value as number);
     const improved = isRate ? diff > 0 : diff < 0;
     const flat = Math.abs(diff) < 0.05;
-    const color = flat ? '#8e8e93' : improved ? '#34c759' : '#ff3b30';
+    const color = flat ? '#94A3B8' : improved ? '#2AA876' : '#EF4444';
     const arrow = flat ? '→' : diff > 0 ? '▲' : '▼';
     const word  = flat ? 'No change' : improved ? 'Improved' : 'Declined';
     const deltaTxt = isRate
@@ -163,7 +163,7 @@ export function AttendanceTrends({ rows, empStats, search }: Props) {
         <div style={{ height: 240 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 4, right: 16, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e5ea" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
               <YAxis domain={isRate ? [0, 100] : ['auto', 'auto']} tick={{ fontSize: 11 }}
                 tickFormatter={v => isRate ? `${v}%` : `${v}m`} />
@@ -178,7 +178,7 @@ export function AttendanceTrends({ rows, empStats, search }: Props) {
               {/* Partial period marker */}
               {partialIdx >= 0 && (
                 <ReferenceLine x={chartData[partialIdx]?.label}
-                  stroke="#ff9f0a" strokeDasharray="4 3" label={{ value: '…', position: 'top', fontSize: 11 }} />
+                  stroke="#FBBF24" strokeDasharray="4 3" label={{ value: '…', position: 'top', fontSize: 11 }} />
               )}
             </LineChart>
           </ResponsiveContainer>
@@ -214,7 +214,7 @@ export function AttendanceTrends({ rows, empStats, search }: Props) {
                   </td>
                   <td className="px-4 py-2.5 text-right tabular-nums text-xs">
                     {diff !== null
-                      ? <span style={{ color: improved ? '#34c759' : '#ff3b30' }}>
+                      ? <span style={{ color: improved ? '#2AA876' : '#EF4444' }}>
                           {diff > 0 ? '▲' : '▼'} {Math.abs(diff).toFixed(1)}{isRate ? ' pts' : 'm'}
                         </span>
                       : '—'}

@@ -12,11 +12,11 @@ type Props = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  'On Time':               '#34c759',
-  'Late - Reported':       '#ff9f0a',
-  'Late - Unreported':     '#ff3b30',
-  'Excused (PTO/FH/Perm)': '#636366',
-  'Permission':            '#af52de',
+  'On Time':               '#2AA876',
+  'Late - Reported':       '#FBBF24',
+  'Late - Unreported':     '#EF4444',
+  'Excused (PTO/FH/Perm)': '#94A3B8',
+  'Permission':            '#6366F1',
 };
 
 function MiniKpi({ label, value, color }: { label: string; value: string | number; color: string }) {
@@ -45,12 +45,12 @@ function toDateStr(val: unknown): string {
 }
 
 const SCATTER_LEGEND = [
-  { label: 'On Time',   color: '#34c759' },
-  { label: '1–10 min',  color: '#ff9f0a' },
-  { label: '11–30 min', color: '#ff6b00' },
-  { label: '31+ min',   color: '#ff3b30' },
-  { label: 'Excused',   color: '#8e8e93' },
-  { label: 'Permission',color: '#af52de' },
+  { label: 'On Time',   color: '#2AA876' },
+  { label: '1–10 min',  color: '#FBBF24' },
+  { label: '11–30 min', color: '#D97706' },
+  { label: '31+ min',   color: '#EF4444' },
+  { label: 'Excused',   color: '#94A3B8' },
+  { label: 'Permission',color: '#6366F1' },
 ];
 
 // Fixed Y position for excused/permission dots (above the normal working range)
@@ -104,20 +104,20 @@ export function AttendancePanel({ stats, onClose }: Props) {
   if (!stats) return null;
 
   const arrivalData = [
-    { name: 'On Time',    value: stats.onTime,     color: '#34c759' },
-    { name: '1–10m',      value: stats.b1to10,     color: '#ff9f0a' },
-    { name: '11–30m',     value: stats.b11to30,    color: '#ff6b00' },
-    { name: '31+m',       value: stats.b31plus,    color: '#ff3b30' },
-    { name: 'Excused',    value: stats.excused,    color: '#636366' },
-    { name: 'Permission', value: stats.permission, color: '#af52de' },
+    { name: 'On Time',    value: stats.onTime,     color: '#2AA876' },
+    { name: '1–10m',      value: stats.b1to10,     color: '#FBBF24' },
+    { name: '11–30m',     value: stats.b11to30,    color: '#D97706' },
+    { name: '31+m',       value: stats.b31plus,    color: '#EF4444' },
+    { name: 'Excused',    value: stats.excused,    color: '#94A3B8' },
+    { name: 'Permission', value: stats.permission, color: '#6366F1' },
   ].filter(d => d.value > 0);
 
   const reportingData = [
-    { name: 'On Time',    value: stats.onTime,     color: '#34c759' },
-    { name: 'Reported',   value: stats.reported,   color: '#ff9f0a' },
-    { name: 'Unreported', value: stats.unreported, color: '#ff3b30' },
-    { name: 'Excused',    value: stats.excused,    color: '#636366' },
-    { name: 'Permission', value: stats.permission, color: '#af52de' },
+    { name: 'On Time',    value: stats.onTime,     color: '#2AA876' },
+    { name: 'Reported',   value: stats.reported,   color: '#FBBF24' },
+    { name: 'Unreported', value: stats.unreported, color: '#EF4444' },
+    { name: 'Excused',    value: stats.excused,    color: '#94A3B8' },
+    { name: 'Permission', value: stats.permission, color: '#6366F1' },
   ].filter(d => d.value > 0);
 
   const recentRows = [...stats.rows]
@@ -187,12 +187,12 @@ export function AttendancePanel({ stats, onClose }: Props) {
         <div className="p-7 flex flex-col gap-6">
           {/* Mini KPIs */}
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            <MiniKpi label="Days"       value={stats.days}                        color="#0071e3" />
-            <MiniKpi label="On Time"    value={stats.onTime}                      color="#34c759" />
-            <MiniKpi label="Reported"   value={stats.reported}                    color="#ff9f0a" />
-            <MiniKpi label="Unreported" value={stats.unreported}                  color="#ff3b30" />
-            <MiniKpi label="Avg Min"    value={stats.avgMinLate.toFixed(1)}       color="#636366" />
-            <MiniKpi label="% On-Time"  value={`${stats.pctOnTime.toFixed(0)}%`} color="#34c759" />
+            <MiniKpi label="Days"       value={stats.days}                        color="#1B3A6B" />
+            <MiniKpi label="On Time"    value={stats.onTime}                      color="#2AA876" />
+            <MiniKpi label="Reported"   value={stats.reported}                    color="#FBBF24" />
+            <MiniKpi label="Unreported" value={stats.unreported}                  color="#EF4444" />
+            <MiniKpi label="Avg Min"    value={stats.avgMinLate.toFixed(1)}       color="#94A3B8" />
+            <MiniKpi label="% On-Time"  value={`${stats.pctOnTime.toFixed(0)}%`} color="#2AA876" />
           </div>
 
           {/* Day-by-day arrival scatter */}
@@ -215,7 +215,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
             <div className="bg-white border border-border rounded-xl p-4" style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={scatterPoints} margin={{ top: 8, right: 12, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e5ea" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                   <XAxis
                     dataKey="label"
                     tick={{ fontSize: 10 }}
@@ -232,14 +232,14 @@ export function AttendancePanel({ stats, onClose }: Props) {
                     width={66}
                   />
                   <Tooltip content={<ArrivalTooltip />} />
-                  <ReferenceLine y={EXCUSED_Y} stroke="#8e8e93" strokeDasharray="4 3" strokeWidth={1}
-                    label={{ value: 'Excused/Perm', position: 'insideTopRight', fontSize: 9, fill: '#8e8e93' }} />
-                  <ReferenceLine y={9 * 60} stroke="#34c759" strokeDasharray="4 3" strokeWidth={1.5}
-                    label={{ value: '9:00 AM', position: 'insideTopRight', fontSize: 9, fill: '#34c759' }} />
-                  <ReferenceLine y={9 * 60 + 10} stroke="#ff9f0a" strokeDasharray="4 3" strokeWidth={1}
-                    label={{ value: '9:10', position: 'insideTopRight', fontSize: 9, fill: '#ff9f0a' }} />
-                  <ReferenceLine y={9 * 60 + 30} stroke="#ff6b00" strokeDasharray="4 3" strokeWidth={1}
-                    label={{ value: '9:30', position: 'insideTopRight', fontSize: 9, fill: '#ff6b00' }} />
+                  <ReferenceLine y={EXCUSED_Y} stroke="#94A3B8" strokeDasharray="4 3" strokeWidth={1}
+                    label={{ value: 'Excused/Perm', position: 'insideTopRight', fontSize: 9, fill: '#94A3B8' }} />
+                  <ReferenceLine y={9 * 60} stroke="#2AA876" strokeDasharray="4 3" strokeWidth={1.5}
+                    label={{ value: '9:00 AM', position: 'insideTopRight', fontSize: 9, fill: '#2AA876' }} />
+                  <ReferenceLine y={9 * 60 + 10} stroke="#FBBF24" strokeDasharray="4 3" strokeWidth={1}
+                    label={{ value: '9:10', position: 'insideTopRight', fontSize: 9, fill: '#FBBF24' }} />
+                  <ReferenceLine y={9 * 60 + 30} stroke="#D97706" strokeDasharray="4 3" strokeWidth={1}
+                    label={{ value: '9:30', position: 'insideTopRight', fontSize: 9, fill: '#D97706' }} />
                   <Line
                     dataKey="minutesSinceMidnight"
                     stroke="#1B3A6B"
