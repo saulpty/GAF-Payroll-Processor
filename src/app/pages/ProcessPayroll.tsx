@@ -313,7 +313,7 @@ export default function ProcessPayroll() {
           : null;
         const msg = empName
           ? `Re-run for: ${empName} — their entries will be overwritten. Everyone else's work is preserved. Continue?`
-          : `"${periodName}" already has data. Re-running will replace ALL entries for this period. Continue?`;
+          : `"${periodName}" already has data. Re-running will regenerate and update entries for this period — resolved work will be overwritten. Rows the engine no longer generates are left in place, not removed. Continue?`;
         const ok = window.confirm(msg);
         if (!ok) { setStatus('idle'); setProgress(0); return; }
       }
@@ -548,7 +548,7 @@ export default function ProcessPayroll() {
               {isRerun && (
                 <div className="mt-1 space-y-1.5">
                   <p className="text-[11px] text-amber-600 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> This period already exists — re-run will overwrite all entries.
+                    <AlertTriangle className="w-3 h-3" /> This period already exists — re-run will regenerate and update entries; resolved work will be overwritten, but rows the engine no longer generates are left in place.
                   </p>
                   <label className="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-slate-700">
                     <input
