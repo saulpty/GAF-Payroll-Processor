@@ -67,6 +67,26 @@
   --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
 }
 
+/* Keyboard focus must be visible on every control. This is deliberately
+   unlayered and marked important: UI Bakery's own theme sets `outline: none`
+   from an unlayered rule, and an unlayered rule beats anything inside @layer
+   regardless of specificity. Components style focus with ring-* utilities,
+   which are box-shadow, so nothing here is overridden by this.
+   :focus-visible means a mouse click never draws it — keyboard only. */
+button:focus-visible,
+[role="button"]:focus-visible,
+a[href]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline-style: solid !important;
+  outline-width: 2px !important;
+  outline-color: var(--primary) !important;
+  outline-offset: 2px;
+}
+
 /* Slide-in from right — employee panel */
 @keyframes slideInRight {
   from {
