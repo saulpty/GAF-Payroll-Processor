@@ -47,6 +47,20 @@ filter:
 | `loadPtoEmployeeDetail.ts:18-19, 43-44` | Payroll tally beside a PTO row | P2 |
 | `updateEntryExit.ts`, `updatePayrollEntry.ts` | Edit by id | P3 — a deleted row remains editable |
 
+### Proved inside the app, no database access needed
+
+Two screens of the same app contradict each other on the same row:
+
+| Screen | What it says about Cemiriamiz Iglesias, 2026-08-11 |
+|---|---|
+| **Period Log → Deleted Items** | Deleted `2026-08-25 20:07` by `migration-1781900200-weekend-offday-cleanup`; 420 disc-min; RED |
+| **Action Required** (Q2-Aug-2026) | Live row awaiting resolution — `Ausencia Injustificada`, `NO DATA + NO FORM` |
+
+The same is true of her 08-12, 08-18 and 08-19 rows — her Tuesday/Wednesday
+off-days under schedule 11 (Mon,Thu,Fri,Sat,Sun). **Tim's work queue is showing
+him deleted rows to resolve.** Period Log reports 20 deleted items; Action
+Required has never heard of them.
+
 **Why it was missed:** migration `1781900200`'s own comment says *"Upstream:
 loadHrkSummary already filters deleted_at IS NULL"* — it named the one action
 that was checked, and nobody swept the rest. The 2026-08-25 cleanup was verified
