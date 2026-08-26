@@ -25,6 +25,7 @@ type Employee = {
   display_name: string;
   schedule_name: string;
   schedule_id: number;
+  active: boolean;
 };
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
@@ -100,6 +101,14 @@ export default function AdminSchedules() {
 
   const employees = allEmployees as Employee[];
 
+  // Count active employees per schedule_id
+  const empCountBySchedule = employees.reduce<Record<number, number>>((acc, e) => {
+    if (e.active && e.schedule_id != null) {
+      acc[e.schedule_id] = (acc[e.schedule_id] ?? 0) + 1;
+    }
+    return acc;
+  }, {});
+
   // Check if a schedule has genuinely different summer/winter times
   const hasDiffSeasons = (s: Partial<Schedule>) =>
     s.dst_start !== s.standard_start || s.dst_end !== s.standard_end;
@@ -151,27 +160,22 @@ export default function AdminSchedules() {
           </CardHeader>
           <CardContent className="space-y-4">
 
-            {/* Schedule Name — dropdown from existing employees */}
+            {/* Schedule Name — plain label field */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium block mb-1">
                   Schedule Name
-                  <span className="text-muted-foreground font-normal ml-1">— pick an employee or type a custom name</span>
+                  <span className="text-muted-foreground font-normal ml-1">— a label for this schedule, e.g. "Weekend Mon-Tue OFF"</span>
                 </label>
-                <div className="relative">
-                  <input
-                    list="employee-name-list"
-                    className={inputCls}
-                    value={editing.schedule_name || ''}
-                    placeholder="e.g. Standard, Weekend Shift, John Doe"
-                    onChange={e => set('schedule_name', e.target.value)}
-                  />
-                  <datalist id="employee-name-list">
-                    {employees.map(e => (
-                      <option key={e.id} value={e.display_name} />
-                    ))}
-                  </datalist>
-                </div>
+                <input
+                  className={inputCls}
+                  value={editing.schedule_name || ''}
+                  placeholder="e.g. Standard, Weekend Mon-Tue OFF"
+                  onChange={e => set('schedule_name', e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Naming a schedule does not assign anyone to it. Assign employees in Admin → Employees → Roster.
+                </p>
               </div>
 
               <div>
@@ -283,7 +287,7 @@ export default function AdminSchedules() {
         <table className="w-full text-sm border-collapse">
           <thead className="bg-slate-100">
             <tr>
-              {['Name', 'Start', 'End', 'Winter Start', 'Winter End', 'Grace', 'Working Days', 'Notes', ''].map(h => (
+              {['Name', 'Start', 'End', 'Winter Start', 'Winter End', 'Grace', 'Working Days', 'Employees', 'Notes', ''].map(h => (
                 <th key={h} className="px-3 py-2 text-left border-b border-r last:border-r-0 font-semibold whitespace-nowrap text-xs">
                   {h}
                 </th>
@@ -307,6 +311,14 @@ export default function AdminSchedules() {
                   <td className="px-3 py-2 border-r text-center">{s.grace_minutes}</td>
                   <td className="px-3 py-2 border-r">
                     <WorkDayBadge value={s.work_days ?? DEFAULT_WORK_DAYS} />
+                  </td>
+                  <td className="px-3 py-2 border-r text-right tabular-nums">
+                    {(() => {
+                      const count = empCountBySchedule[s.id] ?? 0;
+                      return count === 0
+                        ? <span className="text-xs font-semibold text-destructive">0 assigned</span>
+                        : <span>{count}</span>;
+                    })()}
                   </td>
                   <td className="px-3 py-2 border-r text-slate-500 text-xs max-w-[12rem] truncate">{s.notes}</td>
                   <td className="px-3 py-2 text-center">
