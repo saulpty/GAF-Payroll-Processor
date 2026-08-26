@@ -56,10 +56,12 @@ type PeriodRow = {
 };
 
 // ── Colors ────────────────────────────────────────────────────────────────────
+// Mirrors --chart-1..6 in src/index.css, which is the source of truth.
+// Recharts needs literal values, so these are kept in sync by hand.
 const C = {
   navy:   '#1B3A6B',
   teal:   '#2AA876',
-  amber:  '#F59E0B',
+  amber:  '#FBBF24',
   red:    '#EF4444',
   slate:  '#94A3B8',
   indigo: '#6366F1',
@@ -80,22 +82,32 @@ function SortIcon({ dir }: { dir: SortDir }) {
   return <Minus className="w-3 h-3 inline ml-0.5 opacity-30" />;
 }
 
-function KpiCard({ label, value, sub, icon, color }: {
+function KpiCard({ label, value, sub, icon, color, tone = 'plain' }: {
   label: string; value: string | number; sub?: string;
   icon: React.ReactNode; color: string;
+  tone?: 'lead' | 'alert' | 'plain';
 }) {
+  const isPlain = tone === 'plain';
+  const cardCls = tone === 'lead'
+    ? 'shadow-sm border-primary shadow-[inset_3px_0_0_var(--primary)]'
+    : 'shadow-sm';
+  const valueCls = isPlain
+    ? 'text-2xl font-bold tabular-nums tracking-tight text-foreground'
+    : 'text-2xl font-bold tabular-nums tracking-tight';
+  const iconBg = isPlain ? 'bg-muted' : undefined;
+  const iconColor = isPlain ? 'text-muted-foreground' : undefined;
   return (
-    <Card className="shadow-sm">
+    <Card className={cardCls}>
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
-            <p className="text-2xl font-bold" style={{ color }}>{value}</p>
+            <p className={valueCls} style={isPlain ? undefined : { color }}>{value}</p>
             {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
           </div>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: color + '18' }}>
-            <div style={{ color }}>{icon}</div>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg ?? ''}`}
+            style={isPlain ? undefined : { background: color + '18' }}>
+            <div className={iconColor ?? ''} style={isPlain ? undefined : { color }}>{icon}</div>
           </div>
         </div>
       </CardContent>
@@ -221,12 +233,12 @@ export default function SummaryDashboard() {
       {/* ── KPI Cards (shown when period loaded) ── */}
       {selectedPeriod && data.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <KpiCard label="Employees" value={data.length} icon={<Users className="w-5 h-5" />} color={C.navy} />
-          <KpiCard label="Discount Hours" value={toHrs(totals.discount) + 'h'} sub="total unpaid time" icon={<Clock className="w-5 h-5" />} color={C.red} />
-          <KpiCard label="Absences" value={totals.absences} icon={<Calendar className="w-5 h-5" />} color={C.amber} />
-          <KpiCard label="Late Days" value={totals.late} icon={<TrendingDown className="w-5 h-5" />} color={C.indigo} />
-          <KpiCard label="RED Entries" value={totals.red} sub="need resolution" icon={<AlertTriangle className="w-5 h-5" />} color={C.red} />
-          <KpiCard label="PTO / Permits" value={totals.pto} icon={<CheckCircle2 className="w-5 h-5" />} color={C.teal} />
+          <KpiCard label="Employees" value={data.length} sub="in this period" icon={<Users className="w-5 h-5" />} color={C.navy} tone="plain" />
+          <KpiCard label="Discount Hours" value={toHrs(totals.discount) + 'h'} sub="total unpaid time" icon={<Clock className="w-5 h-5" />} color={C.navy} tone="lead" />
+          <KpiCard label="Absences" value={totals.absences} sub="days marked absent" icon={<Calendar className="w-5 h-5" />} color={C.amber} tone="plain" />
+          <KpiCard label="Late Days" value={totals.late} sub="arrivals after grace" icon={<TrendingDown className="w-5 h-5" />} color={C.indigo} tone="plain" />
+          <KpiCard label="RED Entries" value={totals.red} sub="need resolution" icon={<AlertTriangle className="w-5 h-5" />} color={C.red} tone="alert" />
+          <KpiCard label="PTO / Permits" value={totals.pto} sub="approved days" icon={<CheckCircle2 className="w-5 h-5" />} color={C.teal} tone="plain" />
         </div>
       )}
 
