@@ -32,6 +32,19 @@
   --chart-5: rgb(148 163 184);   /* Slate */
   --chart-6: rgb(99 102 241);    /* Indigo */
 
+  /* Status fills — the Excel conditional-format colours operators read.
+     Deliberately kept: HR staff read these the way they read a spreadsheet.
+     Defined once here instead of being retyped in four page files. */
+  --status-green-fill:  #C6EFCE;
+  --status-green-ink:   #006100;
+  --status-green-tint:  #EDF7EE;
+  --status-yellow-fill: #FFEB9C;
+  --status-yellow-ink:  #9C6500;
+  --status-yellow-tint: #FFFBEB;
+  --status-red-fill:    #FFC7CE;
+  --status-red-ink:     #9C0006;
+  --status-red-tint:    #FFF0F0;
+
   /* Topnav */
   --topnav: rgb(27 58 107);
   --topnav-foreground: rgb(255 255 255);
