@@ -139,7 +139,15 @@ function parseWallClock(s: string): Date | null {
     return new Date(+yr, +mo - 1, +dy, hh, +mm, +(ss ?? 0));
   }
 
-  // Fallback: try native parse (may be wrong in some TZ, but better than nothing)
+  // Fallback: accept only timezone-free strings. A string carrying an explicit
+  // offset (trailing Z, or +HH:MM / -HH:MM / +HHMM / -HHMM after the time)
+  // would be parsed as an instant and then shifted by the browser's local zone,
+  // silently corrupting wall-clock entry/exit times. Reject it instead.
+  const hasTz = /Z$/i.test(s) || /[T ]\d{2}:\d{2}(?::\d{2})?(?:[+-]\d{2}:?\d{2})/.test(s);
+  if (hasTz) {
+    console.warn(`[Teramind] Refusing timezone-bearing timestamp (times must be Eastern wall-clock): ${s}`);
+    return null;
+  }
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
