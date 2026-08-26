@@ -66,12 +66,17 @@ these eight files, and change nothing else in them.
 > number moved for an unrelated reason. The defect itself is unchanged and still
 > visible in the first criterion below.
 
-- On Action Required for `Q2-Aug-2026`, **Cemiriamiz Iglesias no longer appears
-  on 2026-08-11, 08-12, 08-18 or 08-19.** Those four rows are listed under
-  Period Log → Deleted Items, deleted by
-  `migration-1781900200-weekend-offday-cleanup`, yet they still render in the
-  queue today — verified 2026-08-26. Her rows on 08-14, 08-15, 08-16 and 08-24
-  are genuine and must still appear.
+- On Action Required for `Q2-Aug-2026`, **`Committed to GREEN` falls from 74 to
+  56.** Measured immediately before this change: the committed list contains all
+  **18** soft-deleted phantom rows — Euclides Gonzalez 08-10/11/17/18/24,
+  Michael Antonio Jones Roye 08-10/11/17/18/24, Cemiriamiz Iglesias
+  08-11/12/18/19, Edwin Broce 08-13/14/20/21. That is exactly the breakdown
+  migration `1781900200` records (5/5/4/4). The operator resolved all eighteen on
+  2026-08-26 because the queue kept showing them; once deleted rows are excluded
+  they must drop out of this list.
+- Cemiriamiz Iglesias' genuine rows on 08-14, 08-15, 08-16 and 08-24 must still
+  appear in the RED queue. The RED and YELLOW tab counts (7 and 6 before the
+  change) must not increase.
 - Dashboard `DISCOUNT HOURS` for `Q2-Aug-2026` still equals HRK Summary's
   `Total Discount Hours` for the same period. Record both numbers immediately
   before the change and confirm they are unchanged by it, rather than expecting
