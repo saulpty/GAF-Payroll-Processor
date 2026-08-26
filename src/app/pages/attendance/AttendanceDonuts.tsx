@@ -16,10 +16,10 @@ function DonutChart({ data, colors, centerVal, centerLabel }: {
   const total = data.reduce((s, d) => s + d.value, 0);
   return (
     <div className="relative" style={{ height: 170 }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" debounce={50}>
         <PieChart>
           <Pie data={data} cx="50%" cy="50%" innerRadius={60} outerRadius={85}
-            dataKey="value" paddingAngle={2} strokeWidth={0}>
+            dataKey="value" paddingAngle={2} strokeWidth={0} isAnimationActive={false}>
             {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
           </Pie>
           <Tooltip formatter={(v: number) => [`${v} (${total > 0 ? ((v/total)*100).toFixed(0) : 0}%)`, '']} />
