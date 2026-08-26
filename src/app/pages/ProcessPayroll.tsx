@@ -207,7 +207,12 @@ export default function ProcessPayroll() {
   };
 
   const cfgRows = classificationConfigRows as { key: string; value: string }[];
-  const cfgGet = (k: string, fallback: string) => cfgRows.find(r => r.key === k)?.value ?? fallback;
+  const missingCfgKeys = new Set<string>();
+  const cfgGet = (k: string, fallback: string) => {
+    const found = cfgRows.find(r => r.key === k);
+    if (!found) missingCfgKeys.add(k);
+    return found?.value ?? fallback;
+  };
   const BOARD_ATTENDANCE  = parseInt(cfgGet('monday_board_attendance',  '9542698245'),  10);
   const BOARD_ADJUSTMENTS = parseInt(cfgGet('monday_board_adjustments', '18394647909'), 10);
   const BOARD_PERMISSIONS = parseInt(cfgGet('monday_board_permissions', '18394590373'), 10);
@@ -339,6 +344,9 @@ export default function ProcessPayroll() {
 
       // Data quality checks
       const warnings: DataWarning[] = [];
+      if (missingCfgKeys.size > 0) {
+        warnings.push({ level: 'warn', message: `Using built-in Monday IDs for ${missingCfgKeys.size} setting(s) missing from Rules & Config: ${[...missingCfgKeys].join(', ')}` });
+      }
       const activeEmps = employees as Employee[];
       const periodStart = new Date(startDate + 'T12:00:00');
       const periodEnd = new Date(endDate + 'T12:00:00');
@@ -732,6 +740,18 @@ export default function ProcessPayroll() {
         {/* ── Run button ──────────────────────────────────── */}
         {status !== 'mapping' && status !== 'warnings' && status !== 'done' && (
           <div className="mt-2">
+            {missingCfgKeys.size > 0 && (
+              <div
+                className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-3 text-sm text-red-700"
+                title={`Missing keys:\n${[...missingCfgKeys].join('\n')}`}
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+                <div>
+                  <div>Using built-in Monday IDs for {missingCfgKeys.size} setting(s) missing from Rules &amp; Config.</div>
+                  <div className="text-red-500 text-xs mt-0.5">The run may read the wrong board. Add the missing keys in Admin → Rules &amp; Config.</div>
+                </div>
+              </div>
+            )}
             {error && (
               <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-3 text-sm text-red-700">
                 <XCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
