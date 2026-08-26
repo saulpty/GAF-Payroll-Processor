@@ -597,7 +597,7 @@ export default function PayrollMaster() {
 
           {/* Table */}
           <div className="flex-1 min-h-0 rounded-lg border shadow-sm overflow-auto">
-            <table className="w-full text-xs border-collapse" style={{ minWidth: 1400 }}>
+            <table className="w-full text-xs border-collapse tabular-nums" style={{ minWidth: 1400 }}>
               <thead className="sticky top-0 z-20">
                 <tr className="bg-slate-100 border-b-2 border-slate-300">
                   <th className="w-8 px-2 py-2.5 border-r">
@@ -613,16 +613,16 @@ export default function PayrollMaster() {
                   <th className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-slate-100 sticky left-[224px] z-30" style={{ width: 40, minWidth: 40 }} title="Save" />
                   <th className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-slate-100 sticky left-[264px] z-30" style={{ width: 32, minWidth: 32 }} title="Delete" />
                   <Th col="work_date" label="Date" style={{ width: 100, minWidth: 100 }} />
-                  <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-24">
+                  <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-28">
                     <Edit2 className="w-3 h-3 inline mr-1" />Entry
                   </th>
-                  <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-24">
+                  <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-28">
                     <Edit2 className="w-3 h-3 inline mr-1" />Exit
                   </th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r text-slate-500">Schedule</th>
-                  <Th col="late_minutes" label="Late m" />
-                  <Th col="early_leave_minutes" label="Early m" />
-                  <Th col="discount_total_minutes" label="Disc m" />
+                  <Th col="late_minutes" label="Late min" />
+                  <Th col="early_leave_minutes" label="Early min" />
+                  <Th col="discount_total_minutes" label="Discount min" />
                   <Th col="event_type_1" label="Event 1" />
                   <Th col="pay_impact_1" label="Impact 1" />
                   <Th col="event_type_2" label="Event 2" />
@@ -685,7 +685,7 @@ export default function PayrollMaster() {
                       <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0,10)}</td>
 
                       {/* Editable: Entry Time */}
-                      <td className="px-1 py-1.5 border-r w-24 bg-blue-50/50">
+                      <td className="px-1 py-1.5 border-r w-28 bg-blue-50/50">
                         <TimeInput
                           className="w-full border rounded px-1 py-1 text-xs bg-white font-mono"
                           value={edit.entry_time}
@@ -694,7 +694,7 @@ export default function PayrollMaster() {
                         />
                       </td>
                       {/* Editable: Exit Time */}
-                      <td className="px-1 py-1.5 border-r w-24 bg-blue-50/50">
+                      <td className="px-1 py-1.5 border-r w-28 bg-blue-50/50">
                         <TimeInput
                           className="w-full border rounded px-1 py-1 text-xs bg-white font-mono"
                           value={edit.exit_time}
