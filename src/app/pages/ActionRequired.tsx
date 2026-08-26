@@ -95,7 +95,7 @@ function BroadcastSelect({ value, options, placeholder, broadcasting, onChange }
       {broadcasting && (
         <span
           title={`Will apply to all selected rows`}
-          className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-blue-500 rounded-full border border-white text-white flex items-center justify-center text-[8px] font-bold leading-none pointer-events-none"
+          className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-blue-500 rounded-full border border-white text-white flex items-center justify-center text-[8px] font-bold leading-none"
         >
           ↗
         </span>
@@ -130,6 +130,7 @@ export default function ActionRequired() {
   // Track IDs committed this session for highlighting
   const [sessionCommitted, setSessionCommitted] = useState<Set<number>>(new Set());
   const [revertingIds, setRevertingIds] = useState<Set<number>>(new Set());
+  const [showCommitConfirm, setShowCommitConfirm] = useState(false);
 
 
   const impactOptions = (payImpacts as { name: string }[]).map(p => p.name);
@@ -233,6 +234,7 @@ export default function ActionRequired() {
 
   // Bulk commit selected rows
   const handleBulkCommit = async () => {
+    setShowCommitConfirm(false);
     const toSave = filtered.filter(r => selected.has(r.id));
     if (!toSave.length) return;
     setBulkSaving(true);
@@ -386,7 +388,12 @@ export default function ActionRequired() {
             <div className="flex items-center gap-3 bg-blue-700 text-white px-4 py-2.5 rounded-lg shadow-md">
               <GitCommit className="w-4 h-4 shrink-0" />
               <span className="text-sm font-semibold">{selectedCount} row{selectedCount !== 1 ? 's' : ''} selected</span>
-              <span className="text-blue-300 text-xs">— changing a <span className="text-blue-200 font-medium">highlighted</span> dropdown applies to all selected · shift-click to range-select</span>
+              <span className="text-blue-300 text-xs">— shift-click to range-select</span>
+              {selected.size > 1 && (
+                <span className="text-blue-200 text-xs font-medium">
+                  Editing any Event, Impact or Doc field will apply to all {selected.size} selected rows.
+                </span>
+              )}
               <div className="ml-auto flex items-center gap-2">
                 <button onClick={() => setSelected(new Set())}
                   className="flex items-center gap-1.5 text-xs text-blue-200 hover:text-white transition-colors px-2 py-1 rounded hover:bg-blue-600">
@@ -395,7 +402,7 @@ export default function ActionRequired() {
                 <Button size="sm"
                   className="bg-white text-blue-700 hover:bg-blue-50 font-semibold h-8"
                   disabled={bulkSaving}
-                  onClick={handleBulkCommit}>
+                  onClick={() => setShowCommitConfirm(true)}>
                   {bulkSaving
                     ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Committing…</>
                     : <><Send className="w-3.5 h-3.5 mr-1.5" />Commit {selectedCount} to GREEN</>}
@@ -621,6 +628,59 @@ export default function ActionRequired() {
           )}
         </div>
       )}
+
+      {/* ── Commit confirmation modal ─────────────────────────── */}
+      {showCommitConfirm && (() => {
+        const toConfirm = filtered.filter(r => selected.has(r.id));
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-xl shadow-xl border border-border p-6 max-w-lg w-full mx-4">
+              <h2 className="text-base font-bold mb-2">Confirm Commit</h2>
+              <p className="text-sm text-muted-foreground mb-3">
+                You are about to commit <span className="font-semibold text-foreground">{toConfirm.length}</span> row(s) to GREEN.
+              </p>
+              <div className="max-h-40 overflow-y-auto border border-border rounded-lg mb-3">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-slate-50 border-b border-border">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600">Employee</th>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600">Date</th>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600">Event 1</th>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600">Pay Impact 1</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {toConfirm.map(row => {
+                      const edit = edits[row.id];
+                      const event1 = edit?.event_type_1 ?? row.event_type_1;
+                      const impact1 = edit?.pay_impact_1 ?? row.pay_impact_1;
+                      return (
+                        <tr key={row.id} className="border-b last:border-b-0">
+                          <td className="px-3 py-1.5 font-medium">{row.employee_name}</td>
+                          <td className="px-3 py-1.5 font-mono text-slate-600">{row.work_date.slice(0, 10)}</td>
+                          <td className="px-3 py-1.5 text-slate-700">{event1 || <span className="text-slate-300">—</span>}</td>
+                          <td className="px-3 py-1.5 text-blue-700 font-medium">{impact1 || <span className="text-slate-300">—</span>}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+                ⚠ This writes to the payroll record. Each row can be reverted individually from the Committed list below.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowCommitConfirm(false)}>Cancel</Button>
+                <Button disabled={bulkSaving} onClick={handleBulkCommit}>
+                  {bulkSaving
+                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Committing…</>
+                    : 'Confirm & Commit'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
