@@ -1,8 +1,9 @@
 'use client';
 
 import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import { toLocalYMD } from '@/app/lib/classificationEngine';
 
-function fmt(d: Date) { return d.toISOString().slice(0, 10); }
+function fmt(d: Date) { return toLocalYMD(d); }
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return fmt(d); }
 
 export type DayPreset = 30 | 60 | 90 | null;

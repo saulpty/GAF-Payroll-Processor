@@ -86,11 +86,15 @@ test('L2: no {{params.x}} sits inside a quoted string in an action body', () => 
 // allowlist records the count per file so a NEW one cannot slip in unnoticed.
 // As each is fixed, drop its count here.
 
+// Tightened 2026-08-26: GlobalFilterContext.tsx (1) and Attendance.tsx (2) now
+// use toLocalYMD and are gone from this list. Four remain, all deliberate:
 const TO_ISO_ALLOWLIST: Record<string, number> = {
-  'src/app/context/GlobalFilterContext.tsx': 1, // fmt() seeds TODAY - live defect
-  'src/app/lib/attendanceStats.ts': 3, // :245 today() live; :155/:202 harmless
+  // :155 and :202 coerce an already-anchored Date, not live "now". A third use
+  // at :245 IS the forbidden "today" pattern and is kept on purpose - see the
+  // NOTE above it. This module must stay import-free or `node --test` cannot
+  // resolve it, which broke the suite when the import was tried.
+  'src/app/lib/attendanceStats.ts': 3,
   'src/app/lib/ptoAccrual.ts': 1, // fromDayNumber - TZ-invariant by construction
-  'src/app/pages/Attendance.tsx': 2, // today()/daysAgo() - live defect
   'src/app/pages/attendance/AttendancePanel.tsx': 1, // Date coercion - harmless
 };
 

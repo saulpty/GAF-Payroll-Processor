@@ -8,6 +8,7 @@ import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import {
   AttendanceRow, EmpInfo, computeEmployeeStats, computeCompanyKpis,
 } from '@/app/lib/attendanceStats';
+import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { AttendanceKpis }   from '@/app/pages/attendance/AttendanceKpis';
 import { AttendanceDonuts } from '@/app/pages/attendance/AttendanceDonuts';
 import { AttendanceTable }  from '@/app/pages/attendance/AttendanceTable';
@@ -36,8 +37,8 @@ export default function Attendance() {
   const [panelEmail, setPanelEmail] = useState<string | null>(null);
 
   // Guard against blank dates (e.g. user clears the input) — fall back to safe defaults
-  function today() { return new Date().toISOString().slice(0, 10); }
-  function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+  function today() { return toLocalYMD(new Date()); }
+  function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return toLocalYMD(d); }
   const safeFrom = dateFrom || daysAgo(30);
   const safeTo   = dateTo   || today();
 

@@ -242,6 +242,12 @@ export function computeTrends(
   // Mark partial: last period
   if (sorted.length > 0) {
     const last = sorted[sorted.length - 1];
+    // NOTE: toISOString is normally forbidden here (see AGENTS.md) - it returns
+    // the UTC date, which is tomorrow after 19:00 Panama time. It is kept only
+    // because this module must stay import-free: importing toLocalYMD from
+    // classificationEngine breaks `node --test`, which cannot resolve extensionless
+    // imports. Impact is limited to the partial-period marker at a week boundary.
+    // Proper fix is to pass today's date in as a parameter from the caller.
     const today = new Date().toISOString().slice(0, 10);
     if (gran === 'month') {
       const maxDay = rows.map(r => toDateStr(r.date)).filter(d => d.slice(0, 7) === last.key).reduce((m, d) => d > m ? d : m, '');
