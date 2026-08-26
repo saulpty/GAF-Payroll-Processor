@@ -108,7 +108,10 @@ Changes here affect payroll correctness. Review with extra care:
 |---|---|
 | `src/app/pages/ProcessPayroll.tsx` | 53,407 |
 | `src/app/pages/PayrollMaster.tsx` | 42,934 |
-| `src/app/pages/admin/AdminEmployeeSync.tsx` | 36,445 |
 | `src/app/lib/classificationEngine.ts` | 35,657 |
 | `src/app/pages/ActionRequired.tsx` | 34,154 |
 | `src/app/pages/admin/AdminLookups.tsx` | 30,751 |
+
+`AdminEmployeeSync.tsx` (36,445) used to head this list. It was deleted on
+2026-08-18 (`ba5a1f8`), replaced by `admin/employees/*`, and test H5 now asserts
+it stays gone.

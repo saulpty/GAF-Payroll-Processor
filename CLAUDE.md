@@ -42,10 +42,12 @@ Full version in `docs/CHANGE-LOOP.md`. The short form:
    node tools/sync-export.mjs "C:/Users/SaulFallembaum/Downloads/GAF HR Hub (N).zip"
    ```
    Always take the newest zip; the name increments. If it reports
-   `added: 0, changed: 0`, the export didn't happen — go back to step 4.
+   `added: 0, changed: 0`, **check Downloads for a new zip before concluding
+   anything** — the export click often just closes the menu, and 0/0 then means
+   the export never happened, not that the prompt changed nothing.
 6. **`git status --short`** must show only the files the prompt allowed.
    Anything else is collateral: revert in UIB, re-export, re-prompt.
-7. **`node --test "tests/*.test.ts"`** — all pass. Baseline is 87.
+7. **`node --test "tests/*.test.ts"`** — all pass. Baseline is 100.
 8. **Load the page in the browser and look at it.** Mandatory for any change
    touching `src/actions/` or a page. TypeScript-clean is not the same as runs.
 9. **Commit**, with a message that says what changed and what was verified.
@@ -81,7 +83,12 @@ banner.
   `classificationEngine.ts`, `AdminLookups.tsx`, `teramindParser.ts`, or
   anything under `src/components/ui/`.
 - **Never hardcode a Monday board, column or group id.** They live in
-  `classification_config`. Tests H4/H5 fail the build if one appears in code.
+  `classification_config`. H4 fails the build if one appears in the admin,
+  Employees or PTO code — but **its file list has never included
+  `ProcessPayroll.tsx`**, which still holds 14 as `cfgGet(key, '<literal>')`
+  fallbacks. L4 in `tests/lessonGuards.test.ts` ratchets that count so it cannot
+  grow, and since 2026-08-26 the page shows a red banner naming any config key it
+  had to fall back on.
 - **Timezone invariant.** Dates are `YYYY-MM-DD` strings. Compare them as
   strings. Never `new Date(str)` for date math. "Today" is
   `toLocalYMD(new Date())` from `classificationEngine`, never
