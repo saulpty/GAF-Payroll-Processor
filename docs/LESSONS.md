@@ -101,6 +101,31 @@ Prompts are pasted, not typed. The clipboard has been clobbered mid-session more
 than once — one paste came through as `\O2W-lqEa0-uBnN3`. **Screenshot the
 textarea before pressing submit.** Submitting garbage wastes a full cycle.
 
+### Don't paste by clipboard and coordinates — inject the prompt through the DOM
+
+Both halves of the paste-by-hand approach failed on 2026-08-26, silently.
+
+**The clipboard mangles non-ASCII.** `Get-Content -Raw | Set-Clipboard` reads as
+ANSI in Windows PowerShell 5.1, so every `—`, `→` and `'` arrives as mojibake.
+Prompts 01–04 reached UI Bakery with `LATE â€" UNREPORTED` in them — visible in
+the panel afterwards. It never broke a change, because the corruption only hit
+decorative punctuation, but it is luck, not design. If you must use the
+clipboard, read the file explicitly:
+`[System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8)`. The length
+tells you: 4249 characters via the default encoding, 4215 as real UTF-8.
+
+**Coordinates drift mid-round.** The AI panel resizes as it fills, and the
+builder's zoom does not always match the screenshot's coordinate frame. One
+click meant for the textarea landed 2 px below it and typed nothing; another
+meant for *Export* landed on a different app in the sidebar and navigated away.
+
+**What works, every time:** base64 the prompt file, decode it in the page, set
+the textarea through React's native value setter, dispatch an `input` event,
+then click `button.submit-message` found in the DOM. Same for exporting — find
+the `.menu-item` whose text is `Export` and click that, rather than aiming at a
+pixel. Verify the textarea's `.value.length` against the file's character count
+before submitting; that check is the whole point and it is free.
+
 ### Confirm the prompt actually submitted
 
 The panel resizes as it fills, so a submit click at yesterday's coordinates
