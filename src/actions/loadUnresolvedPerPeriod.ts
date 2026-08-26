@@ -7,6 +7,7 @@ function loadUnresolvedPerPeriod() {
       SELECT period_name, COUNT(*)::int AS unresolved_count
       FROM payroll_entries
       WHERE initial_status IN ('RED','YELLOW') AND payroll_ready = 'NO'
+        AND deleted_at IS NULL
       GROUP BY period_name;
     `,
   });

@@ -26,6 +26,7 @@ function loadSummaryDashboard() {
       FROM payroll_entries pe
       JOIN employees e ON e.id = pe.employee_id
       WHERE pe.period_name = {{params.periodName}}
+        AND pe.deleted_at IS NULL
       GROUP BY e.display_name
       ORDER BY e.display_name;
     `,

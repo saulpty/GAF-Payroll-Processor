@@ -14,6 +14,7 @@ function loadCommittedEntries() {
       WHERE pe.period_name = {{params.periodName}}
         AND pe.initial_status IN ('RED','YELLOW')
         AND pe.payroll_ready = 'YES'
+        AND pe.deleted_at IS NULL
       ORDER BY pe.updated_at DESC, e.display_name, pe.work_date;
     `,
   });

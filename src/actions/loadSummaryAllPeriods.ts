@@ -23,6 +23,7 @@ function loadSummaryAllPeriods() {
         COUNT(CASE WHEN pe.payroll_ready = 'YES' THEN 1 END) AS ready_count
       FROM payroll_entries pe
       LEFT JOIN periods p ON p.period_name = pe.period_name
+      WHERE pe.deleted_at IS NULL
       GROUP BY pe.period_name, p.start_date
       ORDER BY p.start_date ASC;
     `,

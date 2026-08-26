@@ -19,6 +19,7 @@ function loadPtoEmployeeDetail() {
                 WHERE pe.employee_id = r.employee_id
                   AND LEFT(pe.work_date,10)::date >= r.start_date
                   AND LEFT(pe.work_date,10)::date <  GREATEST(r.return_date, r.start_date + 1)
+                  AND pe.deleted_at IS NULL
                 GROUP BY 1
               ) x
             )
@@ -44,6 +45,7 @@ function loadPtoEmployeeDetail() {
                 WHERE pe.employee_id = a.employee_id
                   AND LEFT(pe.work_date,10)::date >= a.leave_on
                   AND LEFT(pe.work_date,10)::date <  GREATEST(a.return_on, a.leave_on + 1)
+                  AND pe.deleted_at IS NULL
                 GROUP BY 1
               ) x
             )

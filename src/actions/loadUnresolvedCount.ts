@@ -6,7 +6,8 @@ function loadUnresolvedCount() {
     query: `
       SELECT COUNT(*)::int AS count
       FROM payroll_entries
-      WHERE initial_status IN ('RED','YELLOW') AND payroll_ready = 'NO';
+      WHERE initial_status IN ('RED','YELLOW') AND payroll_ready = 'NO'
+        AND deleted_at IS NULL;
     `,
   });
 }

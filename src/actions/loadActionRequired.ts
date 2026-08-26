@@ -14,6 +14,7 @@ function loadActionRequired() {
       WHERE pe.period_name = {{params.periodName}}
         AND pe.initial_status IN ('RED','YELLOW')
         AND pe.payroll_ready = 'NO'
+        AND pe.deleted_at IS NULL
       ORDER BY
         CASE pe.initial_status WHEN 'RED' THEN 1 WHEN 'YELLOW' THEN 2 ELSE 3 END,
         e.display_name, pe.work_date;

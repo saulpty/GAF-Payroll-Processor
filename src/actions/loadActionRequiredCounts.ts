@@ -10,7 +10,8 @@ function loadActionRequiredCounts() {
       FROM payroll_entries
       WHERE initial_status IN ('RED','YELLOW')
         AND payroll_ready = 'NO'
-        AND ({{params.periodName}} = '' OR period_name = {{params.periodName}});
+        AND deleted_at IS NULL
+        AND (COALESCE({{params.periodName}}, '') = '' OR period_name = {{params.periodName}});
     `,
   });
 }
