@@ -73,6 +73,58 @@ verifiable — the Dashboard should fall to 182.2h and match HRK Summary exactly
 
 ---
 
+## P1 — Action Required can rewrite every selected row from one dropdown
+
+`ActionRequired.tsx:169-192`. `setEditField` checks
+`BROADCAST_FIELDS.includes(field) && selected.has(id) && selected.size > 1`, and
+if so sets `targetIds = Array.from(selected)` — changing **one** dropdown writes
+that value into **every selected row**, including auto-filling their
+`pay_impact` and `documentation` from the rules map.
+
+Correcting the design review, which called this a live database write: it stages
+into `edits`, not the database, so a save step still follows. That lowers it from
+P0 to P1. It does not make it safe — the operator then commits in bulk with no
+preview of what changed.
+
+The entire warning is a blue tint plus a **12-pixel dot** (`w-3 h-3`,
+`text-[8px]`) at `ActionRequired.tsx:95-102`. That badge carries
+`pointer-events-none`, so its `title="Will apply to all selected rows"` tooltip
+**can never appear on hover**. The only explanation of the behaviour is
+unreachable.
+
+`PayrollMaster.tsx` — the near-identical grid — has the full safety net:
+`showBulkConfirm` (`:107`), an `UndoSnapshot` type (`:53`), `handleUndo`
+(`:304`) and an "Undo Bulk" button (`:495`). `ActionRequired.tsx` has none of
+the three. Two pages, the same interaction, opposite safety.
+
+**Fix:** port PayrollMaster's confirm-with-preview and undo. Give the broadcast
+state a real label instead of an unhoverable dot.
+
+## P1 — The Process re-run confirmation promises something the code does not do
+
+`ProcessPayroll.tsx:309-312` warns, through a bare `window.confirm`:
+
+> `"<period>" already has data. Re-running will replace ALL entries for this period. Continue?`
+
+**It does not replace all entries.** `upsertPayrollEntries` is
+`INSERT … ON CONFLICT DO UPDATE` and never deletes, so rows the engine no longer
+generates — an off-day row after a schedule change — survive untouched with
+their 420-minute discount intact. `HANDOFF-2026-08-25.md` §5 documents exactly
+this: Tim re-processed after the weekend-schedule fix, believed it had cleaned
+up, and the stale red rows were still there. **The wording contributed to a real
+incident**, and it took a migration to remove the rows the operator had been
+told were already replaced.
+
+Compounding it, the highest-consequence action in the app gets an unstyled
+browser popup with no employee count and no count of resolved RED/YELLOW work
+about to be overwritten, while a routine single-row delete elsewhere gets a full
+styled modal.
+
+**Fix:** correct the sentence to say what actually happens (entries are
+regenerated and updated; rows the engine no longer produces are left in place),
+and replace `window.confirm` with the app's own modal, naming the period, the
+employee count, and how much resolved work is at stake.
+
 ## P1 — Attendance date window rolls forward after 7pm Panama
 
 `toISOString().slice(0,10)` returns tomorrow's date once local time passes
