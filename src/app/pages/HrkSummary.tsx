@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import { Download, FileSpreadsheet, Calendar, RefreshCw, Save, Undo2 } from 'lucide-react';
+import { Download, Calendar, RefreshCw, Save, Undo2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import loadHrkSummaryAction from '@/actions/loadHrkSummary';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import saveHrkExportAction from '@/actions/saveHrkExport';
+import PageHeader from '@/app/components/PageHeader';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -154,7 +155,8 @@ export default function HrkSummary() {
       setSavedOverrides({});
       setDirtyEmployees(new Set());
     } catch (e) {
-      setExportError('Export failed to save. Please try again. ' + String(e));
+      console.error(e);
+      setExportError("Couldn't save the export — saveHrkExport. Nothing was downloaded and your edits are still here. Try again, and if it keeps failing, check the Period Log.");
     }
   }, [effectiveRows, activePeriod, saveExport]);
 
@@ -167,52 +169,52 @@ export default function HrkSummary() {
   const totalIncapDays = effectiveRows.reduce((s, r) => s + Number(r.incapacidad_days), 0);
   const totalPtoDays = effectiveRows.reduce((s, r) => s + Number(r.pto_days), 0);
 
-  return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-5">
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <p className="text-xs text-slate-500">Payroll export for HR consultant</p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-slate-500" />
-            <span className="text-sm font-medium text-slate-500 bg-slate-100 px-3 h-8 flex items-center rounded-md">
-              {activePeriod || 'No period selected'}
-            </span>
-          </div>
-
-          <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
-            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-
-          {isDirty && (
-            <>
-              <Button variant="outline" size="sm" onClick={handleUndo}>
-                <Undo2 className="w-3.5 h-3.5 mr-1.5" />
-                Undo
-              </Button>
-              <Button size="sm" onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">
-                <Save className="w-3.5 h-3.5 mr-1.5" />
-                Save Edits
-              </Button>
-            </>
-          )}
-
-          <Button
-            size="sm"
-            disabled={effectiveRows.length === 0 || savingExport}
-            onClick={handleExport}
-            className="bg-indigo-600 hover:bg-indigo-700"
-          >
-            <Download className={`w-3.5 h-3.5 mr-1.5 ${savingExport ? 'animate-spin' : ''}`} />
-            {savingExport ? 'Saving…' : 'Export CSV'}
-          </Button>
-        </div>
+  const actionGroup = (
+    <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2">
+        <Calendar className="w-4 h-4 text-slate-500" />
+        <span className="text-sm font-medium text-slate-500 bg-slate-100 px-3 h-8 flex items-center rounded-md">
+          {activePeriod || 'No period selected'}
+        </span>
       </div>
+
+      <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
+        <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+        Refresh
+      </Button>
+
+      {isDirty && (
+        <>
+          <Button variant="outline" size="sm" onClick={handleUndo}>
+            <Undo2 className="w-3.5 h-3.5 mr-1.5" />
+            Undo
+          </Button>
+          <Button size="sm" onClick={handleSave} className="bg-secondary hover:bg-secondary/90">
+            <Save className="w-3.5 h-3.5 mr-1.5" />
+            Save Edits
+          </Button>
+        </>
+      )}
+
+      <Button
+        size="sm"
+        disabled={effectiveRows.length === 0 || savingExport}
+        onClick={handleExport}
+      >
+        <Download className={`w-3.5 h-3.5 mr-1.5 ${savingExport ? 'animate-spin' : ''}`} />
+        {savingExport ? 'Saving…' : 'Export CSV'}
+      </Button>
+    </div>
+  );
+
+  return (
+    <div className="max-w-[1600px] mx-auto pb-6">
+      <PageHeader
+        title="HRK Summary"
+        subtitle="Payroll export for the HR consultant"
+        actions={actionGroup}
+      />
+      <div className="px-6 space-y-5">
 
       {/* Alerts */}
       {exportError && (
@@ -234,7 +236,7 @@ export default function HrkSummary() {
       {effectiveRows.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard label="Employees" value={effectiveRows.length} />
-          <StatCard label="Total Discount Hours" value={totalDiscountHours.toFixed(1) + 'h'} />
+          <StatCard label="Total Discount Hours" value={totalDiscountHours.toFixed(1) + 'h'} lead />
           <StatCard label="Incapacidad Days" value={totalIncapDays} highlight={hasMedical} />
           <StatCard label="PTO Days" value={totalPtoDays} highlight={hasPto} />
         </div>
@@ -262,14 +264,14 @@ export default function HrkSummary() {
             </div>
           )}
           {!loading && error && (
-            <div className="py-10 text-center text-red-500 text-sm">Failed to load. {String(error)}</div>
+            <div className="py-10 text-center text-red-500 text-sm">Couldn't load the summary — loadHrkSummary. Try Refresh.</div>
           )}
           {!loading && !error && effectiveRows.length === 0 && activePeriod && (
             <div className="py-10 text-center text-slate-400 text-sm">No entries found for this period.</div>
           )}
           {!loading && effectiveRows.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="w-full text-xs tabular-nums">
                 <thead>
                   <tr className="bg-slate-50 border-b">
                     <Th left>Employee</Th>
@@ -303,6 +305,7 @@ export default function HrkSummary() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
@@ -436,11 +439,17 @@ function TdEdit({ value, left, type, warn, info, onChange }: {
   );
 }
 
-function StatCard({ label, value, highlight }: { label: string; value: string | number; highlight?: boolean }) {
+function StatCard({ label, value, highlight, lead }: { label: string; value: string | number; highlight?: boolean; lead?: boolean }) {
+  const cardCls = lead
+    ? 'rounded-lg border border-primary px-4 py-3 bg-white shadow-[inset_3px_0_0_var(--primary)]'
+    : highlight
+    ? 'rounded-lg border border-amber-300 px-4 py-3 bg-amber-50'
+    : 'rounded-lg border border-slate-200 px-4 py-3 bg-white';
+  const valueCls = highlight ? 'text-amber-700' : lead ? 'text-foreground' : 'text-slate-800';
   return (
-    <div className={`rounded-lg border px-4 py-3 ${highlight ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}>
+    <div className={cardCls}>
       <div className="text-xs text-slate-500">{label}</div>
-      <div className={`text-xl font-bold mt-0.5 ${highlight ? 'text-amber-700' : 'text-slate-800'}`}>{value}</div>
+      <div className={`text-xl font-bold tabular-nums tracking-tight mt-0.5 ${valueCls}`}>{value}</div>
     </div>
   );
 }
