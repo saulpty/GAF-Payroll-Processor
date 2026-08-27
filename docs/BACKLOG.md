@@ -330,6 +330,78 @@ create. The second is much smaller and removes the trap; the first is the nicer
 product. Either way the page should show, per schedule, how many employees are
 currently on it, so "0 assigned" is visible at a glance.
 
+### 11. A submitted permission is treated as approved — no status is ever read
+**Risk:** medium, and it is a *decision*, not an oversight, as of 2026-08-27.
+
+`ProcessPayroll.tsx:275` hardcodes `status: 'Approved'` on every row pulled from
+the Permissions & Requests board. No Status column is read, and there is no
+`monday_col_permissions_status` config key anywhere. The engine's one status
+check — `p.status.toLowerCase() !== 'rejected'` at
+`classificationEngine.ts:557` — can therefore never be false.
+
+Consequence: a request that was submitted but never actually approved is
+classified and paid exactly like an approved one. Ordinary PTO and paid
+permissions also auto-resolve to GREEN, so nobody reviews them.
+
+**Saul's ruling, 2026-08-27: submitted means approved.** Recorded here so a
+future session does not "discover" it and quietly change payment behaviour.
+Since the same day, Floating Holiday, Birthday Day Off and unpaid permissions do
+go YELLOW for review — those were the three where the money is at stake and
+where the columns had been describing the event wrongly.
+
+**Revisit if:** the Permissions board grows a real approval step (a Status
+column, or Approved/Pending groups). The mirror sync already captures
+`board_group` as free text in `monday_requests`, so the data would be reachable
+without new Monday configuration.
+
+### 12. The Time Adjustments board has no mirror and no admin sync
+**Risk:** low today, but it is the only one of the three boards with no
+durable record.
+
+Permissions & Requests and GAF Attendance both have mirror tables and sync
+paths (`syncRequests.ts`, `syncAttendanceForms.ts`) feeding the Employees admin
+hub. **Time Adjustments has neither** — no `syncAdjustments.ts`, no mirror
+table, no upsert action. It exists only in the ephemeral pull that
+`ProcessPayroll` does at run time, where it is reduced to a single `hasTft`
+boolean.
+
+Its config is correspondingly thin: only `monday_col_adjustments_email`, `_date`
+and `_type` exist. There is no key for reason, details, hours or requester, so
+even the run-time pull cannot see why an adjustment was filed.
+
+Consequence: a TFT row can send an entry to YELLOW and there is no way, later, to
+look up what it said.
+
+### 13. Sixty phantom off-day rows remain in five already-paid periods
+**Risk:** unquantified — and that is the point.
+
+Measured live 2026-08-27: **70** rows on days the employee does not work, with no
+punches at all. `Q2-Aug-2026`'s 10 were cleaned by migration `1781986600`; these
+60 were deliberately left:
+
+| Period | Rows |
+|---|---|
+| Q2-Jul-2026 | 19 |
+| Q1-Aug-20260 | 19 |
+| Q1-Aug-2026 | 9 |
+| Q2-Jun-2026 | 7 |
+| Q1-Jul-2026 | 6 |
+
+Those periods have already been paid. Unlike the Q2-Aug batch — every one of
+which carried a zero discount — some of these will be RED `Ausencia
+Injustificada` rows carrying the 420-minute full-day discount, so **deleting them
+would change historical totals so they no longer match the payslips that went
+out.** `HANDOFF-2026-08-25.md:228-231` raised the same question and nobody has
+checked it since.
+
+**Do not clean these up without deciding the back-pay question first.** The safe
+next step is a read-only report: per period, which employees, how many discount
+minutes each. Then it is a business decision, not a migration.
+
+**Also noted:** `Q1-Aug-20260` has a trailing zero in its name — a typo'd period
+holding 19 of those rows. Renaming it would orphan every `payroll_entries` row
+keyed on `period_name`, so it is not a rename anyone should attempt casually.
+
 ---
 
 ## Structural

@@ -28,6 +28,44 @@ filter by `monday_group_directory_current`?** If it doesn't, it's probably wrong
 Old row stays in Past employees, new row in Current. Group wins, and the
 highest `monday_item_id` breaks ties. Don't try to merge their history.
 
+### On a day off, ask "are there punches?" — never "is there a form?"
+
+**Three incidents, 2026-08-25, 08-26 and 08-27.** The rule now:
+
+- **No punches on a day someone doesn't work → no row.** Not even if a form
+  covers the date.
+- **Punches on a day they don't work → one YELLOW row showing the real times**,
+  with no event type, no pay impact and no discount. An operator decides.
+
+The 08-27 shape is the one to recognise. `permissionCoversDate` is a plain
+inclusive string range with **no work-day filter**, so a permission running
+Friday→Monday matches the Saturday and Sunday in between. The engine treated
+each match as a payroll event and manufactured a YELLOW row with empty Entry and
+Exit. Ten reached the queue across four employees; eight were resolved by the
+operator before anyone noticed they were fictional.
+
+Three things made it hard to see, all worth remembering:
+
+- **The work-day gate was already there and already correct.** The bug was one
+  level in, in what the gate *did*, so every "does it check `work_days`?" search
+  came back clean.
+- **The tests asserted the wrong rule**, so the suite was green the whole time.
+  W2 and W3 had to be rewritten, not added to.
+- **A second source existed.** The Teramind-outage branch ran *before* the
+  work-day gate, so an outage on someone's day off stamped a GREEN full-day row
+  using the schedule's own times. Nothing covered it.
+
+Guarded by `weekendSchedule.test.ts` W2/W3/W9/W11 (behaviour) and
+`lessonGuards.test.ts` L5 (structure — the `!tmData` guard cannot be removed or
+jumped ahead of).
+
+**And fixing the engine does not clean up.** `upsertPayrollEntries` is
+`INSERT … ON CONFLICT DO UPDATE` and never deletes. Rows already written survive
+with their discount minutes intact — which is why re-processing after a schedule
+change looked like it had worked and hadn't. Since 2026-08-27 a re-run calls
+`softDeleteStaleEntries`, but anything outside the re-run's period, date range or
+employee set still needs a migration.
+
 ---
 
 ## UIB agent failure modes
@@ -94,6 +132,35 @@ Open the ⋮ menu on GAF HR Hub → screenshot → *then* click Export. Clicking
 straight through frequently just closes the menu, and `sync-export` then reports
 "added: 0, changed: 0" for a prompt that really did run. Always confirm a new
 zip appeared before concluding nothing changed.
+
+### Only ever have ONE builder tab open — a second one silently eats a round
+
+**2026-08-27.** The workflow calls for two tabs: one to work in, one to export
+from. That is fine only while the export tab stays on a `/dev/…` URL. Loading an
+`/edit/…` builder URL in it opens a **second editor session on the same app**,
+and the two diverge.
+
+What that looks like, and why the existing checks miss it: the round appears to
+succeed, UI Bakery reports the files edited and the imports confirmed, Export
+produces **a genuinely new zip** — and `sync-export` says `added: 0, changed: 0`.
+The new-zip check above does not save you, because the export really did run; it
+just exported unchanged files. The save had been blocked behind a dialog nobody
+was looking at:
+
+> ⚠ You have a newer version of your app already saved on the server: …
+> **[Overwrite their changes] [Reload from their version]**
+
+**Choose "Reload from their version."** It discards only the edits you can
+regenerate from the committed prompt file. "Overwrite" can destroy whatever is on
+the server, including someone else's work.
+
+Then close the second tab, re-send the **same prompt in full** rather than asking
+the AI to redo it from its own transcript, and export by navigating the *one*
+tab back to `/dev/…`. Working this way — one tab, moved between `/edit/` and
+`/dev/` — landed every subsequent round first time.
+
+**Add to the per-round checklist: after the run finishes, check for that dialog
+before exporting.**
 
 ### Verify the clipboard before submitting a prompt
 

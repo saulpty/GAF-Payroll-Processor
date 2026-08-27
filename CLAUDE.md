@@ -47,7 +47,7 @@ Full version in `docs/CHANGE-LOOP.md`. The short form:
    the export never happened, not that the prompt changed nothing.
 6. **`git status --short`** must show only the files the prompt allowed.
    Anything else is collateral: revert in UIB, re-export, re-prompt.
-7. **`node --test "tests/*.test.ts"`** — all pass. Baseline is 100.
+7. **`node --test "tests/*.test.ts"`** — all pass. Baseline is 104.
 8. **Load the page in the browser and look at it.** Mandatory for any change
    touching `src/actions/` or a page. TypeScript-clean is not the same as runs.
 9. **Commit**, with a message that says what changed and what was verified.
@@ -102,7 +102,7 @@ banner.
 
 ---
 
-## Two bugs that have each bitten twice — check for them by name
+## Three bugs that keep coming back — check for them by name
 
 **1. The params-wrapper.** `useLoadAction(action, default, { params: {...} })`
 is wrong; parameters go **flat**: `useLoadAction(action, default, {...})`. With
@@ -116,6 +116,17 @@ row is in the *Current Employees* group on the Panama Employee Directory board.
 Not the Status column — a new row can have a blank status. Before touching
 anything that reads that board, ask whether the path filters by
 `monday_group_directory_current`.
+
+**3. Days off — ask "are there punches?", never "is there a form?"** Three
+incidents: 2026-08-25, 08-26, 08-27. On a day someone doesn't work: **no punches
+means no row**, even if a form covers the date; **punches mean one YELLOW row**
+showing the real times, nothing auto-paid. The trap is that the `work_days` gate
+can be present and correct while the logic *inside* it is wrong — so "does it
+check `work_days`?" comes back clean. `permissionCoversDate` is a plain string
+range with no work-day filter, so a Fri→Mon permission matches the weekend
+between. And **fixing the engine never cleans up**: `upsertPayrollEntries` never
+deletes, so existing rows survive with their discount minutes. Guarded by
+`weekendSchedule.test.ts` W2/W3/W9/W11 and `lessonGuards.test.ts` L5.
 
 ---
 

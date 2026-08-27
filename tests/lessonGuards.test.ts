@@ -163,3 +163,44 @@ test('L4: ProcessPayroll gains no new hardcoded Monday id fallback', () => {
       `Good - lower CFG_FALLBACK_COUNT to ${n} so the ratchet holds.`,
   );
 });
+
+// ── L5: a day off with no punches must never produce a row ───────────────────
+// The third weekend/off-day incident, 2026-08-27. The engine gated correctly on
+// work_days but then asked the wrong question inside the gate: "is there a
+// form?" instead of "are there punches?". permissionCoversDate is a plain
+// inclusive string range, so a permission running Friday to Monday matched the
+// Saturday and Sunday between it and manufactured a YELLOW row on each, with
+// empty Entry and Exit. Ten such rows reached an operator's queue, eight of
+// which he resolved before anyone noticed.
+//
+// weekendSchedule.test.ts W2/W3/W9 pin the BEHAVIOUR by running the engine.
+// This is the structural companion: it fails if the punch guard is ever removed
+// or if a results.push is added ahead of it, which is the specific edit that
+// would silently reintroduce the bug.
+
+const ENGINE = 'src/app/lib/classificationEngine.ts';
+
+test('L5: the off-day branch bails on missing punches before it can push a row', () => {
+  assert.ok(existsSync(ENGINE), `${ENGINE} should exist`);
+  const src = readFileSync(ENGINE, 'utf8');
+
+  const gate = src.indexOf('if (!isScheduledWorkDay(');
+  assert.ok(gate >= 0, `${ENGINE} no longer gates on isScheduledWorkDay — the work-day check is gone.`);
+
+  // The branch runs from the gate to the `continue` that closes it.
+  const branch = src.slice(gate, src.indexOf('continue;', gate) + 'continue;'.length);
+
+  const guard = branch.search(/if\s*\(\s*!\s*tmData\s*\)\s*continue\s*;/);
+  assert.ok(
+    guard >= 0,
+    `The off-day branch must start with "if (!tmData) continue;". Without it a form ` +
+      `whose date range merely spans a day off manufactures a row with no punches on it.`,
+  );
+
+  const push = branch.indexOf('results.push');
+  assert.ok(
+    push === -1 || push > guard,
+    `A results.push appears in the off-day branch BEFORE the !tmData guard. ` +
+      `No punches on a day off means no row, form or not.`,
+  );
+});
