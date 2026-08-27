@@ -19,6 +19,7 @@ import loadUnresolvedPerPeriodAction from '@/actions/loadUnresolvedPerPeriod';
 import loadClassificationConfigAction from '@/actions/loadClassificationConfig';
 import saveRunSnapshotAction from '@/actions/saveRunSnapshot';
 import upsertPayrollEntriesAction from '@/actions/upsertPayrollEntries';
+import softDeleteStaleEntriesAction from '@/actions/softDeleteStaleEntries';
 import upsertPeriodAction from '@/actions/upsertPeriod';
 import saveNameAliasAction from '@/actions/saveNameAlias';
 import pullMondayBoardAction from '@/actions/pullMondayBoard';
@@ -104,6 +105,7 @@ export default function ProcessPayroll() {
 
   const [saveSnapshot] = useMutateAction(saveRunSnapshotAction);
   const [upsertEntry] = useMutateAction(upsertPayrollEntriesAction);
+  const [softDeleteStale] = useMutateAction(softDeleteStaleEntriesAction);
   const [upsertPer] = useMutateAction(upsertPeriodAction);
   const [saveName] = useMutateAction(saveNameAliasAction);
   const [pullBoard] = useMutateAction(pullMondayBoardAction);
@@ -312,8 +314,8 @@ export default function ProcessPayroll() {
           ? singleEmpIds.map(id => (employees as Employee[]).find(e => e.id === id)?.display_name ?? `#${id}`).join(', ')
           : null;
         const msg = empName
-          ? `Re-run for: ${empName} — their entries will be overwritten. Everyone else's work is preserved. Continue?`
-          : `"${periodName}" already has data. Re-running will regenerate and update entries for this period — resolved work will be overwritten. Rows the engine no longer generates are left in place, not removed. Continue?`;
+          ? `Re-run for: ${empName} — their entries will be overwritten and stale rows they no longer have will be removed. Everyone else's work is preserved. Continue?`
+          : `"${periodName}" already has data. Re-running will regenerate and update entries for this period — resolved work will be overwritten. Rows the engine no longer produces will be removed (recoverable from Period Log). Continue?`;
         const ok = window.confirm(msg);
         if (!ok) { setStatus('idle'); setProgress(0); return; }
       }
@@ -466,6 +468,30 @@ export default function ProcessPayroll() {
         else red++;
       }
       if (Math.floor(saved / 50) > Math.floor((saved - BATCH) / 50)) log(`Saved ${saved}/${entries.length} entries…`);
+    }
+
+    // Rows the engine no longer produces must go, or they survive with their
+    // discount minutes intact. Scoped to the employees this run actually
+    // considered and to this period's own date range, so single-employee mode
+    // cannot touch anyone else. Soft delete — Period Log can restore.
+    const processedIds = singleEmpMode && singleEmpIds.length > 0
+      ? singleEmpIds
+      : (employees as Employee[]).map(e => e.id).filter(id => !excludedIds.includes(id));
+
+    if (entries.length > 0 && processedIds.length > 0) {
+      const keptKeys = entries.map(e => `${e.employee_id}:${e.work_date.slice(0, 10)}`).join(',');
+      const stale = await softDeleteStale({
+        period_name: periodName,
+        start_date: startDate,
+        end_date: endDate,
+        employee_ids: processedIds.join(','),
+        kept_keys: keptKeys,
+        deleted_by: `reprocess-${periodName}`,
+      });
+      const removed = Array.isArray(stale) ? stale.length : 0;
+      log(removed > 0
+        ? `Removed ${removed} row(s) the engine no longer produces. Restore them from Period Log if needed.`
+        : 'No stale rows to remove.');
     }
 
     if (!singleEmpMode) {
