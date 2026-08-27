@@ -149,12 +149,18 @@ test('W3: Mon-Fri worker with a Saturday form but no punches produces no entry',
 
 // W4 / W5: backwards compatibility. Every schedule predating migration 1781402000
 // must keep behaving as Mon-Fri, whether work_days is absent or blank.
+// Since 2026-08-27 an off-day punch produces a row rather than nothing, so
+// "is Saturday a day off?" is asked by checking the row is the off-day YELLOW
+// one, not by counting zero rows.
 test('W4: work_days absent falls back to Mon-Fri', () => {
   const sat = runClassificationEngine(baseInput({
     employees: [emp({})],
     teramindData: punch(SAT, 9, 0),
   }));
-  assert.equal(sat.length, 0, 'Saturday must be an off-day when work_days is absent');
+  assert.equal(sat.length, 1);
+  assert.equal(sat[0].initial_status, 'YELLOW');
+  assert.match(sat[0].auto_notes, /not a scheduled workday/i,
+    'Saturday must be an off-day when work_days is absent');
 
   const mon = runClassificationEngine(baseInput({
     employees: [emp({})],
@@ -162,6 +168,8 @@ test('W4: work_days absent falls back to Mon-Fri', () => {
     teramindData: punch(MON, 9, 0),
   }));
   assert.equal(mon.length, 1, 'Monday must still be a workday');
+  assert.doesNotMatch(mon[0].auto_notes, /not a scheduled workday/i,
+    'Monday is scheduled, so it must not be treated as an off-day');
 });
 
 test('W5: work_days empty or whitespace falls back to Mon-Fri', () => {
@@ -170,7 +178,9 @@ test('W5: work_days empty or whitespace falls back to Mon-Fri', () => {
       employees: [emp({ work_days: blank })],
       teramindData: punch(SAT, 9, 0),
     }));
-    assert.equal(result.length, 0, `work_days ${JSON.stringify(blank)} must mean Mon-Fri`);
+    assert.equal(result.length, 1, `work_days ${JSON.stringify(blank)} must mean Mon-Fri`);
+    assert.match(result[0].auto_notes, /not a scheduled workday/i,
+      `work_days ${JSON.stringify(blank)} must make Saturday an off-day`);
   }
 });
 
@@ -227,7 +237,7 @@ test('W9: a permission spanning Fri-Mon does not manufacture Sat/Sun rows', () =
       employeeEmail: 'emp@gaf.com',
       startDate: FRI,
       endDate: NEXT_MON,
-      requestType: 'Time Off / Permission',
+      requestType: 'Compensatory Day',
       status: 'Approved',
     }],
   }));
@@ -245,7 +255,7 @@ test('W9: a permission spanning Fri-Mon does not manufacture Sat/Sun rows', () =
       employeeEmail: 'emp@gaf.com',
       startDate: FRI,
       endDate: NEXT_MON,
-      requestType: 'Time Off / Permission',
+      requestType: 'Compensatory Day',
       status: 'Approved',
     }],
   }));

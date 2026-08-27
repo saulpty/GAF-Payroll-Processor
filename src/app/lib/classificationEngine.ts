@@ -445,6 +445,35 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
         early_leave_minutes: 0,
       };
 
+      // ── Non-scheduled day (weekend for Mon–Fri workers, or weekday for weekend-shift workers) ──
+      // The question here is "are there punches?", never "is there a form?".
+      // A form covering a day the employee does not work explains nothing about
+      // payroll — they were not due to be there. A permission's date range
+      // routinely spans a weekend, and treating that as a payroll event
+      // manufactured rows with no punches on them.
+      if (!isScheduledWorkDay(date, emp.work_days)) {
+        const tmData = teramindData.get(emp.teramind_email)?.get(dateStr);
+
+        // No punches on a day off is not a payroll event, form or no form.
+        if (!tmData) continue;
+
+        // They worked a day they were not scheduled for. Show the real punches
+        // and let an operator decide what it is worth: no event type, no pay
+        // impact, no discount are assigned automatically.
+        const dowName = DOW_ABBR[date.getDay()];
+        const entry = buildEntry(
+          { ...baseEntry, entry_time: formatTime12(tmData.entry), exit_time: formatTime12(tmData.exit) },
+          {
+            event_type_1: '', pay_impact_1: '', event_type_2: '', pay_impact_2: '',
+            documentation: '', notes: '',
+            auto_notes: `${dowName} is not a scheduled workday — worked anyway. Operator review required.`,
+            initial_status: 'YELLOW',
+          }
+        );
+        results.push(entry);
+        continue;
+      }
+
       // ── Step 0: Outage date ──
       if (outageSet.has(dateStr)) {
         const entry = buildEntry(baseEntry, {
@@ -455,40 +484,6 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
           initial_status: 'GREEN',
         });
         results.push(entry);
-        continue;
-      }
-
-      // ── Non-scheduled day (weekend for Mon–Fri workers, or weekday for weekend-shift workers) ──
-      if (!isScheduledWorkDay(date, emp.work_days)) {
-        // Always skip if no data at all for this day.
-        const tmData = teramindData.get(emp.teramind_email)?.get(dateStr);
-        const hasAbsenceOrPermForm = mondayAttendance.some(
-          r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && r.date === dateStr
-        ) || mondayPermissions.some(
-          r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && permissionCoversDate(r, dateStr)
-        );
-
-        // Rule: silently skip if Teramind shows a punch but NO form was submitted.
-        // (Employee punched on an off-day but no one reported anything — not a payroll event.)
-        if (tmData && !hasAbsenceOrPermForm) {
-          console.log(`[ClassEngine] Skipping off-day punch for ${emp.display_name} on ${dateStr} — no form submitted.`);
-          continue;
-        }
-
-        // Only create an entry if there is a form (or both data + form)
-        if (hasAbsenceOrPermForm) {
-          const entryT = tmData ? formatTime12(tmData.entry) : null;
-          const exitT = tmData ? formatTime12(tmData.exit) : null;
-          const dowName = DOW_ABBR[date.getDay()];
-          const entry = buildEntry({ ...baseEntry, entry_time: entryT, exit_time: exitT }, {
-            event_type_1: '', pay_impact_1: '', event_type_2: '', pay_impact_2: '',
-            documentation: 'Form Submitted', notes: '',
-            auto_notes: `${dowName} is not a scheduled workday — form submitted. Operator review required.`,
-            initial_status: 'YELLOW',
-          });
-          results.push(entry);
-        }
-        // else: no data + no form on an off-day → silently skip (not a payroll event)
         continue;
       }
 
