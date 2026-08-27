@@ -10,8 +10,17 @@
 // `work_days` had no test coverage of any kind before this file. W7 is the
 // regression test for the bug above.
 //
+// REWRITTEN 2026-08-27. W2 and W3 previously pinned the opposite rule: an
+// off-day punch was dropped, and an off-day FORM created a row. That is
+// backwards. It surfaced when Ulla Hees came out of a payroll run with rows on
+// Sat 2026-08-22 and Sun 2026-08-23 carrying no punches at all, manufactured
+// because a permission's date range spanned the weekend. The rule now keys on
+// punches, not forms: no punches on a day off means no row; punches on a day
+// off mean a YELLOW row showing them. W9 is the regression test for that.
+//
 // Dates below are verified real weekdays in 2026:
-//   2026-06-13 Sat · 06-14 Sun · 06-15 Mon · 06-16 Tue · 06-17 Wed · 06-20 Sat
+//   2026-06-13 Sat · 06-14 Sun · 06-15 Mon · 06-16 Tue · 06-17 Wed
+//   2026-06-19 Fri · 06-20 Sat · 06-21 Sun · 06-22 Mon
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,6 +31,9 @@ import {
 } from '../src/app/lib/classificationEngine.ts';
 
 const SAT = '2026-06-20';
+const SUN = '2026-06-21';
+const FRI = '2026-06-19';
+const NEXT_MON = '2026-06-22';
 const MON = '2026-06-15';
 const DST = [{ year: 2026, us_dst_start: '2026-03-08', us_dst_end: '2026-11-01' }];
 
@@ -97,19 +109,31 @@ test('W1b: Sat worker arriving late on a Saturday accrues late_minutes', () => {
   assert.equal(result[0].late_after_grace, 15, '25 late minus 10 grace');
 });
 
-// W2: the off-day punch rule — someone punching on a day they don't work, with
-// no form explaining it, is not a payroll event and must be dropped silently.
-test('W2: Mon-Fri worker punching on a Saturday with no form produces no entry', () => {
+// W2: work on a day off is real and must be visible. Someone who punched on a
+// day they are not scheduled for gets a row carrying their actual times, YELLOW
+// so an operator decides what it is worth. Nothing is auto-paid and nothing is
+// auto-discounted — unscheduled work is a human call.
+test('W2: Mon-Fri worker punching on a Saturday gets a YELLOW row with their punches', () => {
   const result = runClassificationEngine(baseInput({
     employees: [emp({ work_days: 'Mon,Tue,Wed,Thu,Fri' })],
     teramindData: punch(SAT, 9, 0),
   }));
 
-  assert.equal(result.length, 0, 'an unexplained off-day punch is not a payroll event');
+  assert.equal(result.length, 1, 'work on a day off must be visible, not discarded');
+  assert.equal(result[0].initial_status, 'YELLOW');
+  assert.equal(result[0].entry_time, '9:00 AM', 'the real punch, not the schedule');
+  assert.equal(result[0].exit_time, '5:00 PM');
+  assert.equal(result[0].event_type_1, '', 'nothing is classified for the operator');
+  assert.equal(result[0].pay_impact_1, '', 'nothing is auto-paid');
+  assert.equal(result[0].discount_total_minutes, 0, 'nothing is auto-discounted');
+  assert.match(result[0].auto_notes, /Sat/, 'auto_notes should name the day of week');
+  assert.match(result[0].auto_notes, /not a scheduled workday/i);
 });
 
-// W3: an off-day WITH a form is the operator's business — YELLOW, never auto-resolved.
-test('W3: Mon-Fri worker with a Saturday form gets a YELLOW row naming the day', () => {
+// W3: the inverse, and the heart of the 2026-08-27 bug. A form covering a day
+// the employee does not work explains nothing about payroll — they were not due
+// to be there. No punches means no row, form or not.
+test('W3: Mon-Fri worker with a Saturday form but no punches produces no entry', () => {
   const result = runClassificationEngine(baseInput({
     employees: [emp({ work_days: 'Mon,Tue,Wed,Thu,Fri' })],
     mondayAttendance: [{
@@ -120,10 +144,7 @@ test('W3: Mon-Fri worker with a Saturday form gets a YELLOW row naming the day',
     }],
   }));
 
-  assert.equal(result.length, 1, 'a form on an off-day must surface for review');
-  assert.equal(result[0].initial_status, 'YELLOW');
-  assert.match(result[0].auto_notes, /Sat/, 'auto_notes should name the day of week');
-  assert.match(result[0].auto_notes, /not a scheduled workday/i);
+  assert.equal(result.length, 0, 'a form cannot manufacture a row on a day off');
 });
 
 // W4 / W5: backwards compatibility. Every schedule predating migration 1781402000
@@ -189,6 +210,92 @@ test('W7: Wed-Sun worker with no data on a Monday is NOT an unjustified absence'
   assert.equal(standard.length, 1);
   assert.equal(standard[0].event_type_1, 'Ausencia Injustificada');
   assert.equal(standard[0].initial_status, 'RED');
+});
+
+// W9: THE 2026-08-27 REGRESSION TEST. Ulla Hees's exact shape. A permission on
+// the Permissions & Requests board runs Friday to Monday. `permissionCoversDate`
+// is a plain inclusive string range with no work-day filter, so it also matches
+// the Saturday and Sunday in between — and the old rule turned each match into a
+// YELLOW row with empty Entry and Exit. She does not work weekends; there is
+// nothing to review and nothing to pay.
+test('W9: a permission spanning Fri-Mon does not manufacture Sat/Sun rows', () => {
+  const result = runClassificationEngine(baseInput({
+    employees: [emp({ work_days: 'Mon,Tue,Wed,Thu,Fri' })],
+    startDate: SAT, endDate: SUN,
+    mondayPermissions: [{
+      employeeName: 'Test Employee',
+      employeeEmail: 'emp@gaf.com',
+      startDate: FRI,
+      endDate: NEXT_MON,
+      requestType: 'Time Off / Permission',
+      status: 'Approved',
+    }],
+  }));
+
+  assert.equal(result.length, 0, 'the weekend inside a permission range is still a weekend');
+
+  // Control: the same permission on a Monday, which this employee DOES work,
+  // must still produce its row — proving W9 passes on work_days, not because
+  // the permission was ignored outright.
+  const worked = runClassificationEngine(baseInput({
+    employees: [emp({ work_days: 'Mon,Tue,Wed,Thu,Fri' })],
+    startDate: NEXT_MON, endDate: NEXT_MON,
+    mondayPermissions: [{
+      employeeName: 'Test Employee',
+      employeeEmail: 'emp@gaf.com',
+      startDate: FRI,
+      endDate: NEXT_MON,
+      requestType: 'Time Off / Permission',
+      status: 'Approved',
+    }],
+  }));
+
+  assert.equal(worked.length, 1, 'the permission still applies on a scheduled day');
+  assert.equal(worked[0].event_type_1, 'Permiso Remunerado');
+});
+
+// W10: the two signals must not double up. A punch on a day off AND a form
+// covering it is still one row, and the punch is what it carries.
+test('W10: an off-day punch with a form produces exactly one row, with the punches', () => {
+  const result = runClassificationEngine(baseInput({
+    employees: [emp({ work_days: 'Mon,Tue,Wed,Thu,Fri' })],
+    teramindData: punch(SAT, 9, 0),
+    mondayAttendance: [{
+      employeeName: 'Test Employee',
+      employeeEmail: 'emp@gaf.com',
+      date: SAT,
+      type: 'Absence',
+    }],
+  }));
+
+  assert.equal(result.length, 1, 'one day, one row');
+  assert.equal(result[0].initial_status, 'YELLOW');
+  assert.equal(result[0].entry_time, '9:00 AM');
+  assert.equal(result[0].exit_time, '5:00 PM');
+});
+
+// W11: decision-order guard, the mirror of W6. The Teramind-outage branch runs
+// BEFORE the work-day check, so an outage landing on someone's day off used to
+// stamp a GREEN full-day row with the schedule's own times as if they had
+// worked it — a second source of phantom off-day rows, and one nothing covered.
+test('W11: a Teramind outage on an employee\'s day off produces no entry', () => {
+  const result = runClassificationEngine(baseInput({
+    employees: [emp({ work_days: 'Mon,Tue,Wed,Thu,Fri' })],
+    outageDates: [SAT],
+  }));
+
+  assert.equal(result.length, 0, 'an outage cannot invent a workday');
+
+  // Control: the same outage on a Monday still produces its GREEN row.
+  const worked = runClassificationEngine(baseInput({
+    employees: [emp({ work_days: 'Mon,Tue,Wed,Thu,Fri' })],
+    startDate: MON, endDate: MON,
+    outageDates: [MON],
+  }));
+
+  assert.equal(worked.length, 1, 'an outage on a scheduled day is still covered');
+  assert.equal(worked[0].initial_status, 'GREEN');
+  assert.equal(worked[0].entry_time, '9:00 AM', 'default schedule applied');
 });
 
 // W8: day order inside work_days is irrelevant — it is parsed into a Set. The
