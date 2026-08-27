@@ -25,3 +25,4 @@ Applied migrations:
 1781900100_v_attendance_daily_honours_work_days at 2026-08-25T16:35:06.583Z
 1781900200_soft_delete_phantom_offday_rows_q2_aug at 2026-08-25T20:07:55.112Z
 1781900300_v_attendance_daily_excludes_deleted at 2026-08-26T14:50:45.829Z
+1781986500_seed_form_documentation_options at 2026-08-27T19:46:47.066Z

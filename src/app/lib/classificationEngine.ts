@@ -560,17 +560,21 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
           if (rtLower.includes('pto') || rtLower.includes('vacation')) {
             et1 = 'PTO';
             pi1 = 'Paid';
+          } else if (rtLower.includes('floating') || rtLower.includes('birthday') || rtLower.includes('b-day')) {
+            pi1 = 'Floating Holiday / B-Day Off';
           } else if (rtLower.includes('time for time')) {
             pi1 = '';
           }
         }
         const isTftPerm = rtLower.includes('time for time');
+        const isFloatingOrBday = !isUnpaidPerm && (rtLower.includes('floating') || rtLower.includes('birthday') || rtLower.includes('b-day'));
+        const permStatus = (isTftPerm || isFloatingOrBday || isUnpaidPerm) ? 'YELLOW' : 'GREEN';
         const entry = buildEntry({ ...baseEntry }, {
           event_type_1: et1, pay_impact_1: pi1,
           event_type_2: '', pay_impact_2: '',
-          documentation: 'Form Submitted', notes: '',
+          documentation: 'Permission Form', notes: '',
           auto_notes: `Permission: ${fullDayPerm.requestType}${isTftPerm ? ' — TFT on file, operator must review.' : ''}`,
-          initial_status: isTftPerm ? 'YELLOW' : 'GREEN',
+          initial_status: permStatus,
         });
         results.push(entry);
         continue;
@@ -584,7 +588,7 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
           || reasonLower.includes('enferm') || reasonLower.includes('incapacidad')
           || reasonLower.includes('doctor') || reasonLower.includes('médic') || reasonLower.includes('medic');
         const suggestedPi1 = isSick ? 'Incapacidad' : 'Paid – Exception';
-        const doc = isSick ? 'Doctor Note – Pending' : 'Form Submitted';
+        const doc = isSick ? 'Doctor Note – Pending' : 'Attendance Form';
 
         // #3: If absence form filed BUT Teramind shows they worked → RED conflict
         if (tmEntry) {
@@ -669,13 +673,15 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
       // TFT = Time-for-Time detection:
       // Adjustments board (compensation type): "Time for Time", "Late Time Payback (Tardiness Compensation)", "tft", "time adjustment"
       // Permissions board (permission type): "Time for Time", "Time for Time (days)", "tft"
-      const hasTft = adjustments.some(a => {
+      const tftAdjustment = adjustments.some(a => {
           const t = a.adjustmentType.toLowerCase();
           return t.includes('time for time') || t.includes('tft') || t.includes('time adjustment') || t.includes('late time payback');
-        }) || permissions.some(p => {
+        });
+      const tftPermission = permissions.some(p => {
           const t = p.requestType.toLowerCase();
           return t.includes('time for time') || t.includes('tft');
         });
+      const hasTft = tftAdjustment || tftPermission;
 
       let et1 = '', pi1 = '', et2 = '', pi2 = '';
       let doc = '', notes = '', autoNotes = '';
@@ -731,7 +737,9 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
             : `Late ${late_minutes} min. NO FORM. (Suggested: ${cfg.non_grace_auto_impact})`;
         }
 
-        if (hasTardForm) doc = 'Form Submitted';
+        if (tftAdjustment) doc = 'Time Adjustment Form';
+        else if (tftPermission) doc = 'Permission Form';
+        else if (hasTardForm) doc = 'Attendance Form';
       }
 
       // Early leave logic
