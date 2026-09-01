@@ -75,14 +75,28 @@ needs, populated by `src/app/pages/admin/employees/syncContracts.ts`:
 | `employee_id` | resolved at sync time by **name only** — the board has no email column |
 | `deleted_on_monday` | item gone from the board |
 
-**The one honest unknown:** how many of the 45 board rows actually have a
-contract end date filled in. It cannot be seen from the repo.
+**The one honest unknown — now answered.** Probe run 2026-09-01, recorded in
+`docs/superpowers/prompts/2026-09-01-contracts/01-probe.md`:
 
-> **Task 1 of the build is a read-only query** — no UI, no prompt to UIB — that
-> answers: how many active employees have a `monday_contracts` row; how many of
-> those have a non-null `contract_end_date`; how many of those are in the
-> future. If the answer is "almost none in the future", the contract-end half of
-> this page is decoration and we say so before building it.
+| | |
+|---|---|
+| active employees | 44 |
+| on the Onboarding board | 44 (**all**) |
+| with a contract end date | 44 (**all**) |
+| still in the future | **13** |
+| inside 30 days | **1** — Carlos Aloma, 2026-09-02 |
+| already passed | 31 |
+| null roster start / start mismatch / duplicate board rows | 0 / 0 / 0 |
+
+**Gate passed.** Every contract is exactly start + 6 months, with no exceptions
+in 44 rows.
+
+**Five edge cases have zero live instances today** — no board row, blank
+contract end, null roster start, board-vs-roster start mismatch, and two live
+board rows for one person. The defensive handling stays in (data changes), but
+it is proved by **unit tests, not by live acceptance**, and the
+"N employees not on the Onboarding board" header line will render nothing at
+all while that count is 0.
 
 ### Who counts as an employee
 
@@ -141,9 +155,15 @@ dates — one row per employee*), then one table, one row per active employee:
 
 | Employee | Position | State | Start | Tenure | 1 m | 3 m | 6 m | 1 y | 2 y | Contract end |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Ulla Hees | Nurse | Active | 03-12-2025 | 1y 5m | ✔ | ✔ | ✔ | ✔ | 03-12-2027 · in 192 d | 09-12-2026 · in 11 d |
+| Carlos Aloma | Intake 1 | GA | 03-02-2026 | 5m | ✔ | ✔ | **in 1 d** | 03-02-2027 | 03-02-2028 | **09-02-2026 · in 1 d** |
+| Ulla Hees | DevOps Engineer & Engineering Manager | Vitasya | 11-19-2025 | 9m | ✔ | ✔ | ✔ | 11-19-2026 · in 79 d | 11-19-2027 | ended 05-19-2026 |
+
+Both rows are real, from the 2026-09-01 probe.
 
 - **Position / State** — straight from the Onboarding board.
+- **`State` is a region or operating entity** — `Vitasya`, `GA`, `GA West`,
+  `GA East`, `IN`, `PA`, `AZ`, `OH`, and one blank. **It is not employment
+  status.** Display it; never branch on it.
 - **Start** — the roster date, `fmtDate`'d. A ⚠ next to it when the board's
   start date differs, tooltip naming both.
 - **Milestones** — a passed one shows a muted ✔ with the date on hover; the
@@ -275,25 +295,27 @@ Three page files rather than one, so none approaches the 15 KB ceiling.
    **before** any UI work starts.
 2. `node --test "tests/*.test.ts"` — the 104 existing tests plus the new tenure
    tests, all passing. No existing test modified.
-3. `/contracts` loads in the browser with real data, screenshotted.
-4. **Ulla Hees is the worked example.** Her row shows her real position and
-   state, a tenure consistent with her roster start date, all five milestones,
-   and her contract end. Her several 6-month contracts mean she is the one person
-   whose contract end may legitimately be in the future.
-5. **The control:** at least one employee whose contract end is in the past
-   renders muted as `ended …` with **no** chip, and at least one with a blank
-   contract end renders `—` with no chip and no console error.
-6. An employee with no Onboarding row shows `—` for position, state and contract
-   end plus a *Not on Onboarding board* chip, and is counted in the header line.
-7. An employee with a null `start_date` shows `—` and a warning chip, and the
-   page does not throw.
-8. Setting the global Manager filter narrows the table; the numbers for anyone
+3. `/contracts` loads in the browser with real data, screenshotted. **44 rows.**
+4. **Carlos Aloma is the live example** — `09-02-2026 · in 1 d`, red chip, and
+   his 6-month milestone highlighted the same day (his contract end *is* his
+   6-month mark, as it is for everyone).
+5. **Ulla Hees is the control** — `ended 05-19-2026`, muted, **no chip**, and
+   all of 1m/3m/6m ticked with 1y showing `in 79 d`. If her row looks like a
+   warning, the rule is wrong.
+6. **31 of 44 rows are `ended`.** If most of the page is coloured, stop.
+7. Setting the global Manager filter narrows the table; the numbers for anyone
    still visible do not change.
-9. `30 / 60 / 90` narrows the table and clears cleanly.
-10. The nav badge equals the number of contract ends inside 30 days — checked
-    against the query, not assumed. If that number is 0, the badge is absent.
-11. Export opens in Excel with the same rows as the screen.
-12. `git status --short` shows only the files listed in §4.
+8. `30 / 60 / 90` narrows and clears cleanly. At `30` exactly **one** row
+   remains — Carlos Aloma.
+9. **The nav badge reads `1`** — checked against the probe, not assumed, and on
+   a fresh load rather than a cached count.
+10. Export opens in Excel with the same 44 rows as the screen.
+11. `git status --short` shows only the files listed in §4.
+
+**Proved by unit test rather than on screen**, since live instances are zero:
+no board row, blank contract end, null `start_date`, board-vs-roster start
+mismatch, and two live board rows for one person. Each must render its `—` or
+chip without throwing.
 
 ---
 
