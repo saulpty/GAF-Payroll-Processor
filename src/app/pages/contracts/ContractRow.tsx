@@ -48,7 +48,6 @@ export default function ContractRow({ row }: Props) {
           </StatusChip>
         )}
       </div>
-      {row.role && <div className="text-[11px] text-slate-400 mt-0.5">{row.role}</div>}
     </div>
   );
 
@@ -152,12 +151,12 @@ export default function ContractRow({ row }: Props) {
       <td className="px-3 py-2 tabular-nums whitespace-nowrap">{startCell}</td>
       {/* Tenure */}
       <td className="px-3 py-2 whitespace-nowrap">{tenure ?? muted}</td>
-      {/* Milestones */}
-      {msCells}
       {/* Contract end */}
       <td className="px-3 py-2 whitespace-nowrap">
         {row.has_board_row ? endCell : muted}
       </td>
+      {/* Milestones */}
+      {msCells}
     </tr>
   );
 }

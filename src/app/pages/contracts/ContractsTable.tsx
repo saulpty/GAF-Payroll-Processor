@@ -30,12 +30,12 @@ const COLUMNS: Col<ContractRowData>[] = [
   { key: 'state',        label: 'State',         align: 'left',   tip: 'Region or operating entity from the Onboarding board — not employment status.' },
   { key: 'start',        label: 'Start',         align: 'left',   tip: 'The roster start date, the same one the PTO Tracker accrues from.' },
   { key: 'tenure',       label: 'Tenure',        align: 'left',   tip: 'Whole years and months since the start date.' },
+  { key: 'contract_end', label: 'Contract end',  align: 'left',   tip: 'From the board\'s "6 Contract End Date". Most have passed — people move to an indefinite contract and the board is not updated.' },
   { key: 'm1',           label: MS_LABELS['1m'], align: 'center', tip: 'Start + 1 month.',  sortable: false },
   { key: 'm3',           label: MS_LABELS['3m'], align: 'center', tip: 'Start + 3 months.', sortable: false },
   { key: 'm6',           label: MS_LABELS['6m'], align: 'center', tip: 'Start + 6 months.', sortable: false },
   { key: 'y1',           label: MS_LABELS['1y'], align: 'center', tip: 'Start + 1 year.',   sortable: false },
   { key: 'y2',           label: MS_LABELS['2y'], align: 'center', tip: 'Start + 2 years.',  sortable: false },
-  { key: 'contract_end', label: 'Contract end',  align: 'left',   tip: 'From the board\'s "6 Contract End Date". Most have passed — people move to an indefinite contract and the board is not updated.' },
 ];
 
 interface Props {
