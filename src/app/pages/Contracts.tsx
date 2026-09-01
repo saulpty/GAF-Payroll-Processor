@@ -17,21 +17,28 @@ export default function Contracts() {
   const [counts, setCounts] = useState<{ employees: number; expiring: number; offBoard: number } | null>(null);
 
   const handleExport = () => {
-    const header = ['Employee', 'Position', 'State', 'Start', 'Tenure', '1m', '3m', '6m', '1y', '2y', 'Contract end', 'Days until'];
-    const data = rows.map(r => [
-      r.display_name,
-      r.position ?? '',
-      r.state ?? '',
-      r.start ?? '',
-      r.tenure ?? '',
-      r.ms?.[0]?.date ?? '',
-      r.ms?.[1]?.date ?? '',
-      r.ms?.[2]?.date ?? '',
-      r.ms?.[3]?.date ?? '',
-      r.ms?.[4]?.date ?? '',
-      r.end ?? '',
-      r.endState.kind !== 'none' ? (r.endState.days ?? '') : '',
-    ]);
+    const header = ['Employee', 'Position', 'State', 'Start', 'Tenure', '1m', '3m', '6m', '1y', '2y', 'Contract end', 'Status', 'Days until'];
+    const data = rows.map(r => {
+      const status =
+        r.endState.kind === 'ended'  ? 'Renewed' :
+        r.endState.kind === 'future' ? `Ending in ${r.endState.days ?? 0} days` :
+        '';
+      return [
+        r.display_name,
+        r.position ?? '',
+        r.state ?? '',
+        r.start ?? '',
+        r.tenure ?? '',
+        r.ms?.[0]?.date ?? '',
+        r.ms?.[1]?.date ?? '',
+        r.ms?.[2]?.date ?? '',
+        r.ms?.[3]?.date ?? '',
+        r.ms?.[4]?.date ?? '',
+        r.end ?? '',
+        status,
+        r.endState.kind !== 'none' ? (r.endState.days ?? '') : '',
+      ];
+    });
     const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Contracts');

@@ -118,8 +118,12 @@ export default function ContractRow({ row }: Props) {
     endCell = muted;
   } else if (endState.kind === 'ended') {
     endCell = (
-      <span className="text-slate-400 whitespace-nowrap text-[12px]">
-        ended {fmtDate(end)}
+      <span
+        className="inline-flex flex-col items-start text-slate-400 whitespace-nowrap"
+        title={`Their fixed term ended on ${fmtDate(end)} and they are still on the active roster.`}
+      >
+        <span className="text-[12px] font-medium">Renewed</span>
+        <span className="text-[10px]">was {fmtDate(end)}</span>
       </span>
     );
   } else {
