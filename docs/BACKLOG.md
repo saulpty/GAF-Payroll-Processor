@@ -443,8 +443,8 @@ six oversized files (#9). Order:
 | A | Monday mirror layer — durable local tables for the Requests, Attendance-form, Contract and Directory boards, "Sync now" per board, config-driven IDs | ✅ built 2026-08-18 |
 | B | PTO & leave tracker — balances (sheet's DAYS360/11 accrual), approvals ledger, floating holidays, request counts; Excel seeded once by migration | ✅ built and seeded 2026-08-19; rebuilt 2026-08-20 as one table with per-employee subitems, payroll cross-check and floating holidays as leave records. See `HANDOFF-2026-08-20.md` |
 | F | Employees admin consolidation — Employees + Directory Sync + Aliases into one tabbed page; folds in #3 phase 2; strangler pattern, old pages deleted last | ✅ built 2026-08-18 |
-| D | Contract & milestone tracking (1 m/3 m/6 m/1 y/2 y, contract end, raise flag) | **next** — nothing blocks it; the Contracts board is mirrored, 45 items, all matched |
-| C | Employee 360 — one-employee view composing directory, contracts, PTO, requests, attendance | after B, D |
+| D | Contract & milestone tracking (1 m/3 m/6 m/1 y/2 y, contract end) | ✅ built 2026-09-01, **on `/dev/` only — not yet released to prod**. See `HANDOFF-2026-09-01.md`. No raise flag: the January review is company-wide, so milestones are tenure tracking |
+| C | Employee 360 — one-employee view composing directory, contracts, PTO, requests, attendance | **next** — B and D are both built. `tenure.ts` is pure and `loadContractMilestones` already takes optional `manager` and `employeeId`, so D composes into it unchanged |
 | E | Calendar view of leave / permissions / WFH / birthdays | startable — A is done |
 | G | Manager-scoped access — depends on UIB user roles (tech team); every new `load*` already takes an optional `manager` filter | last |
 
