@@ -5,11 +5,12 @@ import {
   Settings, History, Activity,
   Users, Clock, CalendarDays, Globe2,
   SlidersHorizontal, FileSpreadsheet,
-  TrendingUp, Palmtree,
+  TrendingUp, Palmtree, FileSignature,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLoadAction } from '@uibakery/data';
 import loadUnresolvedCountAction from '@/actions/loadUnresolvedCount';
+import loadContractsExpiringCountAction from '@/actions/loadContractsExpiringCount';
 
 // ── Section definitions ────────────────────────────────────────────────────────
 
@@ -54,6 +55,21 @@ const SECTIONS = [
     ],
   },
   {
+    id: 'contracts',
+    label: 'Contracts',
+    icon: FileSignature,
+    home: '/contracts',
+    color: 'from-[#B45309] to-[#92400E]',
+    activeBg: 'bg-[#B45309]',
+    hoverBg: 'hover:bg-[#92400E]',
+    ring: 'ring-[#B45309]/30',
+    subActiveBg: 'bg-[#B45309]/10 text-[#92400E] font-semibold',
+    subHover: 'hover:bg-[#B45309]/5 text-slate-600',
+    paths: ['/contracts'],
+    links: [],
+    badge: true,
+  },
+  {
     id: 'pto',
     label: 'PTO Tracker',
     icon: Palmtree,
@@ -90,7 +106,7 @@ const SECTIONS = [
   },
 ] as const;
 
-type SectionId = 'payroll' | 'attendance' | 'pto' | 'admin';
+type SectionId = 'payroll' | 'attendance' | 'contracts' | 'pto' | 'admin';
 
 function getActiveSection(pathname: string): SectionId | null {
   for (const s of SECTIONS) {
@@ -105,8 +121,10 @@ export default function TopNav() {
   const location  = useLocation();
   const navigate  = useNavigate();
 
-  const [unresolvedData] = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
-  const unresolvedCount  = (unresolvedData as { count: number }[])[0]?.count ?? 0;
+  const [unresolvedData]  = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
+  const unresolvedCount   = (unresolvedData as { count: number }[])[0]?.count ?? 0;
+  const [expiringData]    = useLoadAction(loadContractsExpiringCountAction, [] as { count: number }[]);
+  const expiringCount     = (expiringData as { count: number }[])[0]?.count ?? 0;
 
   const activeSection = getActiveSection(location.pathname);
   const activeSectionDef = SECTIONS.find(s => s.id === activeSection) ?? null;
@@ -164,6 +182,14 @@ export default function TopNav() {
             >
               <s.icon className="w-4 h-4" />
               <span>{s.label}</span>
+              {'badge' in s && s.badge && expiringCount > 0 && (
+                <span
+                  className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none"
+                  aria-label={`${expiringCount} contract${expiringCount === 1 ? '' : 's'} ending within 30 days`}
+                >
+                  {expiringCount > 99 ? '99+' : expiringCount}
+                </span>
+              )}
             </button>
           );
         })}

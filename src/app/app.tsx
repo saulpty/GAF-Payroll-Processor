@@ -19,6 +19,7 @@ import PeriodLog from '@/app/pages/PeriodLog';
 import Attendance from '@/app/pages/Attendance';
 import HrkSummary from '@/app/pages/HrkSummary';
 import PtoTracker from '@/app/pages/PtoTracker';
+import Contracts from '@/app/pages/Contracts';
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
                 <Route path="dst-calendar" element={<AdminDstCalendar />} />
                 <Route path="lookups" element={<AdminLookups />} />
               </Route>
+              <Route path="/contracts" element={<Contracts />} />
               <Route path="/pto" element={<PtoTracker />} />
               <Route path="/period-log" element={<PeriodLog />} />
               {/* Single instance — tab driven by URL, no remount on tab switch */}

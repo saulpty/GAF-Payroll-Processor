@@ -24,6 +24,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   '/attendance/employees':  { dateRange: true, employee: true, role: true, manager: true },
   '/attendance/trends':     { dateRange: true, employee: true, role: true, manager: true },
   '/pto':                   { employee: true, role: true, manager: true },
+  '/contracts':             { employee: true, role: true, manager: true },
 };
 
 function getConfig(pathname: string): RouteConfig | null {
