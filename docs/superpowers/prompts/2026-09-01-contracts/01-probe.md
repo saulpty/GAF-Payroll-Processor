@@ -105,3 +105,85 @@ ORDER BY employees DESC;
 
 Report all four result sets in full. Do not summarise away rows. Do not write
 any file.
+
+---
+
+# Result — run 2026-09-01
+
+Verified read-only: exported straight after and `sync-export` reported
+`added: 0, changed: 0, removed: 0` against a genuinely new zip, `git status`
+clean. The agent read files and executed SQL; it wrote nothing.
+
+## Query 1 — coverage
+
+| Metric | Count |
+|---|---|
+| active_employees | 44 |
+| null_roster_start | 0 |
+| with_board_row | 44 |
+| no_board_row | 0 |
+| with_end_date | **44** |
+| end_date_future | **13** |
+| ending_within_30 | **1** |
+| end_date_past | 31 |
+| start_date_mismatch | 0 |
+
+**The gate is passed.** Contract end coverage is 100%, and 13 are still ahead of
+us. The countdown is worth building.
+
+## Query 2 — the one that matters today
+
+**Carlos Aloma, Intake 1, GA — contract ends 2026-09-02. That is tomorrow.**
+It is the only one inside 30 days, so the nav badge will read exactly `1`.
+
+The next four: Winston Carrillo 2026-12-08 (+98), Eder Quintero 2026-12-15
+(+105), Isaac Chung 2027-01-06 (+127), then a cluster of six on 2027-01-20/21.
+
+Recently ended, all correctly muted rather than flagged: Charles Bush, Aleka
+Papatsoris and Karhid Arevalo on 2026-08-24 (-8), Alanis Chena 2026-08-02 (-30).
+
+**Every contract is exactly start + 6 months.** No exceptions in 44 rows.
+
+## Query 3 — Ulla Hees, and rehires
+
+| name | board_group | position | state | start | contract_end |
+|---|---|---|---|---|---|
+| Ulla Hees | 6 Months - 1 Year | DevOps Engineer & Engineering Manager | Vitasya | 2025-11-19 | 2026-05-19 |
+
+**One row, not several.** Her contract end has already passed, so she is the
+worked example for the *muted `ended`* case, not for a live countdown.
+
+**Nobody has two live board rows.** The latest-start-wins rule stays in as a
+defence, but it changes nothing today.
+
+Also noted, not used: `board_group` carries a tenure bucket — `6 Months - 1 Year`.
+Already mirrored. Out of scope here; a candidate for Employee 360.
+
+## Query 4 — `state` is not employment status
+
+| state | employees |
+|---|---|
+| Vitasya | 16 |
+| GA | 8 |
+| IN | 5 |
+| GA West | 4 |
+| GA East | 4 |
+| PA | 3 |
+| AZ | 2 |
+| OH | 1 |
+| (blank) | 1 |
+
+**It is a region / operating entity, not Active-vs-Inactive.** The spec's
+example row showed `Active` under State and that was wrong. The column stays —
+it is useful — but nothing may read it as a status.
+
+## What this changes in the spec
+
+1. **`State` is a region.** Fix the example; never treat it as employment status.
+2. **Five edge cases have zero live instances** — no board row, blank contract
+   end, null roster start, start-date mismatch, duplicate board rows. Keep the
+   defensive handling; drop them from live acceptance and cover them in unit
+   tests instead. The header line "N employees not on the Onboarding board" will
+   read 0 and should therefore render nothing at all.
+3. **Worked examples become:** Carlos Aloma = red chip, `in 1 d`.
+   Ulla Hees = muted `ended 05-19-2026`. Badge = `1`.
