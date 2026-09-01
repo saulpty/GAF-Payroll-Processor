@@ -27,3 +27,5 @@ Applied migrations:
 1781900300_v_attendance_daily_excludes_deleted at 2026-08-26T14:50:45.829Z
 1781986500_seed_form_documentation_options at 2026-08-27T19:46:47.066Z
 1781986600_soft_delete_offday_rows_q2_aug_2026 at 2026-08-27T20:23:20.103Z
+1781990000_update_onboarding_state_col_to_color at 2026-09-01T21:09:14.276Z
+1781991000_revert_onboarding_state_col_to_mirror at 2026-09-01T21:13:54.033Z
