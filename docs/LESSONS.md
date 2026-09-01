@@ -245,3 +245,36 @@ clock-in time. First hypothesis (email domains) was wrong; the owner said so and
 was right. The pattern was the hire date, and the cause is outside the app.
 **Check the distinguishing attribute across the whole cohort before naming a
 cause.**
+
+### A silent UIB logout looks exactly like a very slow prompt
+
+**2026-09-01.** Prompt 07 was pasted, verified at the right character count, and
+submitted. The textarea emptied and the placeholder read
+`Working on your request...` — every signal the loop checks said the round was
+running. It sat there for **eighteen minutes** producing nothing.
+
+The tell, when I finally looked for it: **the prompt itself never appeared in
+the panel.** The conversation still ended with the *previous* round's summary,
+and searching the panel text for a distinctive phrase from prompt 07 found
+nothing. Then both tabs turned out to be sitting on `/auth/login`.
+
+The UI Bakery session had expired. The submit went nowhere, and the panel was
+left permanently in its "working" state with no error, no toast, and no timeout.
+
+**Check, as soon as a round runs long:** search the panel for a distinctive
+phrase from the prompt you just sent.
+
+```js
+const p = [...document.querySelectorAll('div')]
+  .filter(d => d.scrollHeight > d.clientHeight + 50 && d.clientWidth < 500 && d.clientWidth > 200)
+  .sort((a, b) => b.scrollHeight - a.scrollHeight)[0];
+/some distinctive phrase from the prompt/i.test(p.innerText);
+```
+
+`false` means it never arrived — the placeholder is lying. Re-authenticate and
+re-send the whole prompt from its committed file. Do not ask the AI to "continue"
+a round it never received.
+
+Related and worth separating: a renderer freeze (`Page.captureScreenshot timed
+out`, `Runtime.evaluate timed out`) is normal and harmless during generation. A
+freeze *plus* a prompt missing from the panel is a lost round.

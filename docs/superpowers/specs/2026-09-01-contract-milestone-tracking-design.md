@@ -305,8 +305,10 @@ Three page files rather than one, so none approaches the 15 KB ceiling.
 6. **31 of 44 rows are `ended`.** If most of the page is coloured, stop.
 7. Setting the global Manager filter narrows the table; the numbers for anyone
    still visible do not change.
-8. `30 / 60 / 90` narrows and clears cleanly. At `30` exactly **one** row
-   remains — Carlos Aloma.
+8. `30 / 60 / 90` narrows and clears cleanly. At `30`, **7 of 44** rows remain —
+   the toggle keeps anyone with a milestone **or** a contract end inside the
+   window, not contract ends alone. (An earlier draft of this line said "exactly
+   one row"; that was wrong, and the behaviour is right.)
 9. **The nav badge reads `1`** — checked against the probe, not assumed, and on
    a fresh load rather than a cached count.
 10. Export opens in Excel with the same 44 rows as the screen.

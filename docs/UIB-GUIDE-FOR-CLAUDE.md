@@ -228,3 +228,51 @@ Things not established, worth resolving when they next matter:
   without clicking Export?
 - Can a release be rolled back from the UI while git is disconnected, and how
   far back does release history reach?
+
+---
+
+## The two URLs the loop needs (verified 2026-09-01)
+
+These were never written down and had to be rediscovered. They are stable.
+
+| Tab | URL |
+|---|---|
+| **Work** — AI panel, the one builder session | `https://uib.vitasya.cloud/edit/vitasya/jAaT7LYarG/builder/summary` |
+| **Export / verify** — draft app, safe for the ⋮ menu | `https://uib.vitasya.cloud/dev/vitasya/jAaT7LYarG/<route>` |
+
+`/dev/`, `/staging/` and plain `/vitasya/…` (prod) are the three environments.
+**Builder edits are drafts: they appear on `/dev/` immediately and reach prod
+only when someone clicks Release.** So verify on `/dev/`, never on prod.
+
+The ⋮ → Export menu lives in the left app sidebar and is present on the app
+view, so the export tab never needs to load `/edit/…` — which is exactly the
+rule that keeps the second-editor-session trap shut.
+
+### The app renders inside an iframe
+
+On `/dev/…` the app is inside `<iframe src=".../workbench">`. `document.querySelector`
+in the top frame finds **nothing** — it returned 0 rows on a page showing 44.
+Reach in explicitly, same origin so it is allowed:
+
+```js
+const d = document.querySelector('iframe').contentDocument;
+d.querySelectorAll('tbody tr').length;
+```
+
+### Driving the AI panel
+
+Verified working, repeatedly, on 2026-09-01:
+
+- The panel is **Angular** (`ng-tns-*` classes), not React. The textarea is the
+  one with placeholder `Ask UI Bakery...`; the send button is
+  `button.submit-message`.
+- Focus the textarea via JS, paste with `ctrl+v`, then **check
+  `.value.length` against the file's character count before submitting.** Set
+  the clipboard with
+  `[System.IO.File]::ReadAllText($p, [System.Text.Encoding]::UTF8) | Set-Clipboard`
+  — six prompts went in this way with no mojibake and no coordinate drift.
+- Do not trust the placeholder alone as a done-signal: it flips back to
+  `Ask UI Bakery...` briefly *mid-run* while tool calls execute.
+- Results tables render as real `<table>` elements, so read them structurally
+  rather than screenshot-scrolling. Reading the panel's whole `innerText` can
+  trip a content filter; per-table extraction does not.
