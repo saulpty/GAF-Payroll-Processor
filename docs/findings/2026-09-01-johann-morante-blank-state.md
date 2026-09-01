@@ -62,3 +62,26 @@ presses *Sync now*. Thirteen days of drift appeared without anyone noticing,
 which is a reason the Contracts page could silently show stale positions,
 states and contract end dates. Not fixed here; worth a decision about whether
 these boards should sync automatically.
+
+---
+
+# Resolved — Saul re-synced, 2026-09-01 20:51 UTC
+
+**It was staleness.** After the re-sync `blank_state` is 0 and Johann Morante
+shows `GA` on the Contracts page. The mirror had simply not been refreshed since
+2026-08-19; his State was set on the board at some point in those 13 days.
+
+Nothing to change in the code. The parser was reading the right field all along.
+
+**The real lesson is the 13 days, not the blank cell.** Nothing re-syncs these
+mirrors on a schedule — they move only when a human presses *Sync now* — so the
+Contracts page silently showed a stale State for almost two weeks and would have
+done the same for a stale contract end date. Worth deciding whether these boards
+should sync automatically.
+
+Two things the re-sync also surfaced, both real:
+
+- **Euclides Gonzalez exists twice in `employees`**, and his board row is
+  attached to the deactivated record. See
+  `2026-09-01-euclides-gonzalez-duplicate-employee.md`.
+- A new State value, `GAF`, appeared, and the active roster moved 44 → 45.
