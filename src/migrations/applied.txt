@@ -29,3 +29,4 @@ Applied migrations:
 1781986600_soft_delete_offday_rows_q2_aug_2026 at 2026-08-27T20:23:20.103Z
 1781990000_update_onboarding_state_col_to_color at 2026-09-01T21:09:14.276Z
 1781991000_revert_onboarding_state_col_to_mirror at 2026-09-01T21:13:54.033Z
+1781992000_merge_employee_47_into_49 at 2026-09-02T15:19:43.356Z
