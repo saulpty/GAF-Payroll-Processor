@@ -74,3 +74,38 @@ Saul reports Johann Morante's State is visible on the board in column
 confirming what each column is titled on the board before anyone changes
 `monday_col_onboarding_state`, which currently points at the mirror and is now
 producing correct values for all 45.
+
+---
+
+# RESOLVED — merged 2026-09-02, migration `1781992000`
+
+Saul authorised the merge. **49 survives; 47 is gone.**
+
+The collision check ran first and found **zero** date-level duplicates between
+the two records, so all 10 `Q2-Jul-2026` payroll rows moved cleanly. Both
+`pto_employees` rows were `NULL` / `0`, so collapsing them lost nothing.
+
+**The already-paid period's totals did not move.** Those 10 rows were
+re-attributed to 49, not deleted. The whole merge ran as one transaction with
+the `RESTRICT` foreign key on `payroll_entries` left in place — the final
+`DELETE FROM employees WHERE id = 47` could only succeed once every reference
+had moved, which is what made it safe to run at all.
+
+Verified on the page rather than only in SQL:
+
+- Euclides Gonzalez reads `Intake 1`, `GA`, start `07-21-2026`, tenure `1m`,
+  contract end `01-21-2027` — attached to the live record.
+- The *"1 employee is not on the Onboarding board"* notice is gone.
+- All 45 employees have a State; zero blanks.
+
+**Not reversible.** Once 47 was deleted the original attribution could not be
+reconstructed from the data alone. Recorded in the migration header.
+
+## The durable lesson
+
+The board row matched 47 because `syncContracts` resolves `employee_id` **by
+name**, and both records carried the same `display_name`. With one record left
+the ambiguity is gone, but the *mechanism* is untouched: **any future duplicate
+with a shared name will re-create this.** Making name resolution prefer the
+active record is still worth doing, and is the only fix that addresses the class
+rather than the instance.
