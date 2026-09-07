@@ -278,17 +278,43 @@ test('D8b: dueSoon respects the window and ignores rows with no re-evaluation', 
 // ── D9: the timezone invariant, asserted against the source ───────────────────
 // Same guard as tenure.ts T7. The only Date construction allowed is the
 // day-number idiom from ptoAccrual.ts, which takes a number.
+//
+// Comments are stripped before scanning. A module that documents its own
+// invariant — "no new Date(string) here" — would otherwise fail a guard testing
+// for the very thing it promises not to do, and the fix would be to delete the
+// explanatory comment, which is exactly backwards. The guard is about code.
+
+function stripComments(text: string): string {
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/.*/gm, '$1');
+}
+
+function codeOf(rel: string): string {
+  return stripComments(readFileSync(new URL(rel, import.meta.url), 'utf8'));
+}
+
 
 test('D9: disciplinary.ts never constructs a Date from a date string', () => {
-  const src = readFileSync(new URL('../src/app/lib/disciplinary.ts', import.meta.url), 'utf8');
-  const constructions = src.match(/new Date\([^)]*\)/g) ?? [];
+  const code = codeOf('../src/app/lib/disciplinary.ts');
+  // Sanity: stripping must not have emptied the file, or this guard proves nothing.
+  assert.ok(/Date\.UTC\(/.test(code), 'expected Date.UTC in the stripped source');
+  const constructions = code.match(/new Date\([^)]*\)/g) ?? [];
   const allowed = /^new Date\(\s*[A-Za-z0-9_$]+\s*\*\s*86400000\s*\)$/;
   const offenders = constructions.filter(c => !allowed.test(c));
   assert.deepEqual(offenders, [], `disallowed Date construction: ${offenders.join(', ')}`);
 });
 
 test('D9b: disciplinary.ts does not reach for the clock itself', () => {
-  const src = readFileSync(new URL('../src/app/lib/disciplinary.ts', import.meta.url), 'utf8');
-  assert.ok(!/Date\.now\(\)/.test(src), 'asOf is a parameter, never the clock');
-  assert.ok(!/new Date\(\)/.test(src), 'today comes from toLocalYMD at the call site');
+  const code = codeOf('../src/app/lib/disciplinary.ts');
+  assert.ok(!/Date\.now\(\)/.test(code), 'asOf is a parameter, never the clock');
+  assert.ok(!/new Date\(\)/.test(code), 'today comes from toLocalYMD at the call site');
+});
+
+test('D9c: the comment stripper still catches a real violation', () => {
+  // Guards the guard: if stripComments ever over-strips, D9 would pass vacuously.
+  const sample = `const a = 1; // new Date("2026-01-01") in a comment
+const b = new Date("2026-01-01");`;
+  const found = stripComments(sample).match(/new Date\([^)]*\)/g) ?? [];
+  assert.equal(found.length, 1, 'the real call survives stripping, the commented one does not');
 });

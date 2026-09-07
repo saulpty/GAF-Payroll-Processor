@@ -222,3 +222,47 @@ page is for.
 4. Every table of examples above produces exactly the stated result.
 5. The file is well under 15 KB.
 6. TypeScript compiles clean.
+
+---
+
+# Results — 2026-09-07
+
+**Suite 121 → 139, all passing.** One file added, `src/app/lib/disciplinary.ts`,
+9 986 bytes, **zero imports**, nine exports, `Date` appearing only as
+`Date.UTC(...)`.
+
+All fifteen behaviour tests (D1–D8b) passed on the first run against the module.
+Every example table in this prompt produced exactly its stated result, including
+the two that had been computed by hand and corrected earlier: the 30-day window
+from 2026-06-01 catching 2 rows, and Juan Molina's `id DESC` ordering.
+
+## The two failures were in the test, not the module
+
+D9 and D9b failed. Both are source-text guards, and both fired on the module's
+own **comments** — lines reading `no new Date(string)`, `without new Date()`,
+`no Date.now()`. The module contains no such call; it says in prose that it
+avoids them, and the guard was reading the prose.
+
+Left alone, the "fix" would have been to delete the comments that document the
+invariant, which is exactly backwards. So the guard was corrected instead:
+
+- `stripComments()` removes block and line comments before scanning, sparing
+  `http://`.
+- D9 now asserts `Date.UTC(` **survives** stripping, so an over-eager stripper
+  cannot make the guard pass vacuously.
+- **D9c is new** — it guards the guard, feeding the stripper a two-line sample
+  where one `new Date("…")` is commented and one is real, and asserting exactly
+  one survives.
+
+A guard that cannot distinguish code from a comment about code is not testing
+what it claims to. `tenure.ts` T7/T7b have the same weakness but pass today, so
+they were left untouched.
+
+## Note on strictness
+
+This prompt said *"the only occurrence of `Date` is `Date.UTC(...)`"*, which is
+stricter than the test, which also permits `new Date(n * 86400000)`. The agent
+noticed the difference mid-run, rejected its own first attempt for using
+`new Date(windowMs)`, and wrote a `dayNumberToYMD` helper using `Date.UTC`'s
+overflow normalisation instead. Stricter than required, correct either way, and
+a good sign the constraint was read rather than skimmed.

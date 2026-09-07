@@ -193,6 +193,52 @@ the `.menu-item` whose text is `Export` and click that, rather than aiming at a
 pixel. Verify the textarea's `.value.length` against the file's character count
 before submitting; that check is the whole point and it is free.
 
+### Clicking submit during a run interrupts it — it does not queue
+
+**2026-09-07.** A prompt was pasted and submitted while UI Bakery was still
+working on the previous round. Three things happened at once, and none of them
+were visible from the placeholder:
+
+- The in-flight run **stopped** (the panel ended `Stopped`).
+- The new prompt was **never delivered** — the panel's last user message was
+  still the previous one.
+- The textarea **kept its text**, so the next paste appended to it and produced a
+  doubled prompt.
+
+The length check is what caught it: the third paste measured 18 436 characters
+against a 9 218-character file and was not submitted. **Check `.value.length`
+against the file before every submit, not just the first**, and re-check after a
+failed round rather than assuming the field is empty.
+
+Two related traps from the same session:
+
+- **`ctrl+a` in that textarea can insert a literal `a`** instead of selecting
+  all, when the field is already empty. It produced `a# Create ...`, one
+  character over. Clear the field by reading `.value.length` back, and if a stray
+  character appears, fix it with the native value setter plus an `input` event so
+  Angular sees the change:
+  `Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(ta, fixed)`.
+- **The clipboard really does get clobbered by the human using the machine.** One
+  paste arrived as 219 characters because Saul copied something else at that
+  moment. Nothing is wrong with the method; re-set the clipboard and paste again.
+
+### An offer to "build the whole thing" must be declined by silence
+
+Same session. After a round that created four actions, UI Bakery ended with
+*"Both actions work correctly. Now ready to build the Disciplinary Actions page
+— want me to proceed? I'll build the full page with a table, filters,
+close/reopen actions…"*
+
+**It then started doing it without an answer**, editing `TopNav.tsx` and
+`FilterBar.tsx` before being interrupted. Nothing reached the export — the next
+sync read `0, 0, 0` and `git status` was clean — but only because the run was
+stopped in time.
+
+That is the bundled change `CHANGE-LOOP.md` warns about, and it would have
+ignored the file-size split the design specifies. **Do not reply "no" and do not
+reply at all — send the next numbered prompt instead**, and sync straight after
+to confirm the offer left nothing behind.
+
 ### Confirm the prompt actually submitted
 
 The panel resizes as it fills, so a submit click at yesterday's coordinates
