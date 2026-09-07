@@ -261,6 +261,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
                 prev === row.employeeName ? null : row.employeeName,
               )
             }
+            onChanged={reload}
           />
         ))
       )}
