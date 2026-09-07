@@ -67,21 +67,21 @@ const ALEKA = row({
 // Juan Molina — three actions, and the only escalation in the data:
 // two verbals on 06-16, then a First Written on 06-23 citing the 06-16 verbal.
 const JUAN_WRITTEN = row({
-  id: 15, ref: 'GAF-DA-2026-9827', employee_name: 'Juan Molina',
+  id: 8, ref: 'GAF-DA-2026-9827', employee_name: 'Juan Molina',
   employee_role: 'Intake 1', employee_branch: 'Vitasya', manager_name: 'Marcela Gordon',
   document_date: '2026-06-23', revaluation_date: '2026-07-07',
   warning_level: 'First Written Warning', scenario: 'Calls / Lead Follow-up',
 });
 
 const JUAN_CALLS = row({
-  id: 16, ref: 'GAF-DA-2026-2645', employee_name: 'Juan Molina',
+  id: 9, ref: 'GAF-DA-2026-2645', employee_name: 'Juan Molina',
   employee_role: 'Intake 1', employee_branch: 'Vitasya', manager_name: 'Marcela Gordon',
   document_date: '2026-06-16', revaluation_date: '2026-06-19',
   warning_level: 'Verbal Warning', scenario: 'Calls / Lead Follow-up',
 });
 
 const JUAN_LATE = row({
-  id: 17, ref: 'GAF-DA-2026-3947', employee_name: 'Juan Molina',
+  id: 10, ref: 'GAF-DA-2026-3947', employee_name: 'Juan Molina',
   employee_role: 'Intake 1', employee_branch: 'Vitasya', manager_name: 'Marcela Gordon',
   document_date: '2026-06-16', revaluation_date: '2026-06-23',
   warning_level: 'Verbal Warning', scenario: 'Attendance / Tardiness',
@@ -197,12 +197,13 @@ test('D6: groupByEmployee collects Juan Molina into one group, newest first', ()
   const juan = groups.find(g => g.employeeName === 'Juan Molina');
   assert.ok(juan, 'Juan Molina must be one group, not three rows');
   assert.equal(juan.actions.length, 3);
-  // Two of his three share a document_date, so the tiebreak must be explicit:
-  // id DESC, i.e. the later insert is the newer action.
+  // Two of his three share a document_date. The 2026-09-07 probe confirmed
+  // their submitted_at is identical to the second as well, so id DESC is the
+  // only thing that orders them deterministically. Ids 8/9/10 are the real ones.
   assert.deepEqual(juan.actions.map(a => a.ref), [
-    'GAF-DA-2026-9827', // 06-23 First Written  (id 15)
-    'GAF-DA-2026-3947', // 06-16 Verbal, attendance (id 17)
-    'GAF-DA-2026-2645', // 06-16 Verbal, calls      (id 16)
+    'GAF-DA-2026-9827', // 06-23 First Written  (id 8)
+    'GAF-DA-2026-3947', // 06-16 Verbal, attendance (id 10)
+    'GAF-DA-2026-2645', // 06-16 Verbal, calls      (id 9)
   ]);
   assert.equal(juan.highestRank, 1, 'his ladder reaches First Written, not Final');
   assert.equal(juan.openCount, 3);

@@ -75,11 +75,20 @@ const employeeId = resolver(row.employee_name, null);
 
 For each employee group, resolve once and derive:
 
-- **matched** — `employeeId !== null`. Display the roster's `display_name`,
-  `role` and `active`.
-- **unmatched** — display the form's own `employee_name`, `employee_role` and
-  `employee_branch`, and set a flag the row renders as a slate
-  **not on roster** chip.
+- **matched** — `employeeId !== null`. Display the roster's `display_name` and
+  `active`.
+- **unmatched** — display the form's own `employee_name`, and set a flag the row
+  renders as a slate **not on roster** chip.
+- **role and branch fall back independently of the name.** Use the roster's
+  `role` when it is a non-empty string, otherwise the action's own
+  `employee_role`; branch always comes from the action's `employee_branch`,
+  since the roster has no branch column.
+
+  This is not hypothetical tidiness. The 2026-09-07 probe found that **Juan
+  Molina and Osvaldo Medina both resolve to real employees whose roster `role`
+  is NULL**, while their disciplinary records plainly say *Intake 1* and *EVV
+  Specialist*. Keying the fallback on whether the name resolved — as an earlier
+  draft did — would blank the role on two of the ten rows.
 
 **An unmatched row is displayed, never dropped.** Dropping it would hide a real
 disciplinary action because of a spelling difference, which is the worst thing
@@ -97,6 +106,8 @@ export interface DisciplinaryRowData extends EmployeeCase {
   branch: string;
   manager: string;
   active: boolean;          // true when unmatched — do not mute a row we cannot resolve
+                            // NOTE: two employees are genuinely inactive today
+                            // (Juan Molina, Osvaldo Medina), so muted rows are live.
   onRoster: boolean;
 }
 ```
