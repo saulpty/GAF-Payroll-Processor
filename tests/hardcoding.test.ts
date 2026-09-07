@@ -133,10 +133,16 @@ test('H4: no Monday board or column id is hardcoded in the mirror or PTO code', 
   const files = [
     ...walkTs('src/app/pages/admin/employees'),
     ...walkTs('src/app/pages/pto'),
+    // Contracts was built 2026-09-01 and never enrolled here — an oversight, not
+    // a decision. It reads the monday_contracts mirror, so it belongs.
+    ...walkTs('src/app/pages/contracts'),
+    ...walkTs('src/app/pages/disciplinary'),
     'src/app/pages/admin/AdminEmployeesHub.tsx',
     'src/app/pages/PtoTracker.tsx',
+    'src/app/pages/Contracts.tsx',
+    'src/app/pages/Disciplinary.tsx',
     ...walkTs('src/actions').filter(f =>
-      /Monday|Pto|FloatingHoliday|Reconciliation|Unmatched/i.test(f)
+      /Monday|Pto|FloatingHoliday|Reconciliation|Unmatched|Contract|Disciplinary/i.test(f)
     ),
   ].filter(existsSync);
 
