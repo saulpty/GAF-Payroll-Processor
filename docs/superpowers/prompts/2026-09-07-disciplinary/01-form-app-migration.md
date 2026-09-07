@@ -75,3 +75,62 @@ In particular:
 
 Report the row count from step 4 and the list of columns on the table when you
 are done.
+
+---
+
+# Results — 2026-09-07
+
+**Applied.** `1757340000_add_closure_columns_disciplinary_actions` at
+`2026-09-07T15:48:22.873Z`, per the form app's own `applied.txt`.
+
+UI Bakery wrote the migration, then **paused for confirmation** with
+*"Found 1 migration(s) that need to be executed"* and Reject / Execute buttons.
+The generated SQL was read before Execute was pressed, and it is byte-identical
+to the prompt:
+
+```sql
+ALTER TABLE disciplinary_actions
+  ADD COLUMN IF NOT EXISTS closed_at    TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS closed_by    TEXT,
+  ADD COLUMN IF NOT EXISTS closure_note TEXT;
+```
+
+No `DROP`, no `DELETE`, no `TRUNCATE`, no `UPDATE`. Nothing beyond the three
+additive columns. **Never press Execute on a migration without reading the SQL
+it is about to run** — the confirmation gate is the only place that check can
+happen, because a migration is not reversible by UIB's checkpoint.
+
+## The diff, against the export Saul took this morning
+
+The form app has no git mirror in this repo, so it was verified by exporting it
+again and comparing the two extracted zips file by file:
+
+| | |
+|---|---|
+| added | `src/migrations/1757340000_add_closure_columns_disciplinary_actions.sql` |
+| changed | `src/migrations/applied.txt` |
+| removed | *(nothing)* |
+| every other file | byte-identical |
+
+`src/actions/getPriorActions.ts` was hashed specifically and is **identical** —
+it selects an explicit column list, so the new columns do not appear in it and a
+closed action keeps showing as prior history, which is correct.
+
+## The form still works
+
+Loaded on `/dev/` after the migration and screenshotted: the wizard renders
+normally — *Disciplinary Action Form*, Step 1 Employee & Warning, manager
+fields, document date, the employee selector with its "enter the manager's name
+first" hint, and the four warning levels. Nothing regressed.
+
+## One thing noted and deliberately not touched
+
+The form app's builder shows a **Runtime errors** banner with Ignore / Fix
+buttons. **It was already there before this prompt was pasted** — confirmed on
+first load, before the textarea was touched — so it is pre-existing and
+unrelated to the migration. `Logs (0)` after the run.
+
+Per `CLAUDE.md`, **Fix was not pressed and must not be**: it hunts for a code
+fault that may not exist and edits working files. Ignore only dismisses the
+banner. Left exactly as found, and worth mentioning to Saul as a separate
+question about that app.
