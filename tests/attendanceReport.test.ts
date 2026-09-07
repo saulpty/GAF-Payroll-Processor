@@ -5,6 +5,15 @@ import {
   type ReportEmployee, type ReportPayrollRow, type ReportForm,
   type ReportRequest, type ReportPeriod, type ReportInput,
 } from '../src/app/lib/attendanceReport.ts';
+import {
+  isScheduledWorkDay, getSchedule, parseTimeToMinutes,
+} from '../src/app/lib/classificationEngine.ts';
+
+// attendanceReport.ts has no imports of its own — the same rule mondayResolve.ts
+// follows, so Node's TypeScript loader can load it directly. Callers hand it the
+// engine's own helpers rather than the module growing a second copy of the
+// work-day gate or the DST rule.
+const helpers = { isScheduledWorkDay, getSchedule, parseTimeToMinutes };
 
 // ── fixtures ──────────────────────────────────────────────────────────────
 // Ana works Mon–Fri, 9:00 AM start. The processed period covers all of June.
@@ -43,7 +52,7 @@ const DST = [{ year: 2026, us_dst_start: '2026-03-08', us_dst_end: '2026-11-01' 
 const build = (over: Partial<ReportInput> = {}) => buildAttendanceReport({
   dateFrom: '2026-06-01', dateTo: '2026-06-01',
   employees: [emp()], payrollRows: [], forms: [], requests: [],
-  holidays: [], periods: [period], dstWindows: DST, ...over,
+  holidays: [], periods: [period], dstWindows: DST, helpers, ...over,
 });
 
 const only = (input: Partial<ReportInput> = {}) => {
@@ -438,7 +447,7 @@ test('R41: a schedule whose summer and winter starts differ uses the right one',
   const r = buildAttendanceReport({
     dateFrom: '2026-12-01', dateTo: '2026-12-01',
     employees: [shifting], payrollRows: [], forms: [], requests: [],
-    holidays: [], periods: [winterPeriod], dstWindows: DST,
+    holidays: [], periods: [winterPeriod], dstWindows: DST, helpers,
   });
   assert.equal(r.rows[0].scheduledStart, '9:00 AM');
 });

@@ -12,7 +12,12 @@ export function loadAttendanceEmployees() {
         COALESCE(e.manager, '') AS manager,
         s.schedule_name,
         s.standard_start,
-        s.standard_end
+        s.standard_end,
+        COALESCE(e.start_date::text, '')                              AS start_date,
+        COALESCE(NULLIF(TRIM(s.work_days), ''), 'Mon,Tue,Wed,Thu,Fri') AS work_days,
+        s.dst_start,
+        s.dst_end,
+        COALESCE(s.grace_minutes, 10)                                 AS grace_minutes
       FROM public.employees e
       LEFT JOIN public.schedules s ON s.id = e.schedule_id
       WHERE e.active = true
