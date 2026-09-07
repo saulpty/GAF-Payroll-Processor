@@ -160,3 +160,77 @@ exactly as it does now.
    `/action-required`, `/summary`.
 
 Report the two badge numbers you see, and confirm they differ.
+
+---
+
+# Results — 2026-09-07
+
+**changed: 3, added: 0.** `app.tsx` gained one import and one route,
+`FilterBar.tsx` one `ROUTE_CONFIG` line, `TopNav.tsx` one section plus the badge
+fix. `classificationEngine.ts` untouched. Suite 139/139.
+
+## The page, loaded on `/dev/` and read rather than assumed
+
+- Header: **`10 employees · 16 actions · 16 open`**, matching the probe exactly.
+- **Nav badge reads 16.**
+- Every row carries a red `review overdue` chip — the page opens entirely red,
+  which is the true state of the data.
+- **Juan Molina and Osvaldo Medina render muted with an `inactive` chip and still
+  show a role**, taken from the disciplinary record because their roster role is
+  NULL. That is the probe-driven correction working on screen.
+- Sorted by severity: Timothy Moore's Second Written first, then the three First
+  Writtens, then the Verbals.
+
+## Timothy Moore — the acceptance case, passed exactly
+
+Header strip: 4 actions · Second Written Warning · escalation 3 of 4 · last
+action 07-09-2026. His **Latest** column reads a *Verbal*, one rung below his
+highest — the disagreement that justifies the design.
+
+His file rendered in this order:
+
+```
+GAF-DA-2026-5763   07-01  Verbal
+GAF-DA-2026-7033   07-01  First Written
+GAF-DA-2026-9269   07-01  Second Written
+GAF-DA-2026-5106   07-09  Verbal
+```
+
+Three of those share a `document_date` **and** an identical `submitted_at`. That
+order is only reachable through the `id DESC` tiebreak, reversed for display.
+
+## The badge fix, proved by an accident of timing
+
+Acceptance asked for "two badges showing different numbers". What happened is
+better: **Contracts shows no badge at all**, because Carlos Aloma's contract
+ended 2026-09-02 and nothing expires within 30 days.
+
+Under the old hardcoded condition — `s.badge && expiringCount > 0` — Disciplinary
+would have read that same zero and rendered nothing. **It shows 16.** So
+`sectionBadge` is genuinely resolving per section, which two arbitrary non-zero
+numbers would have demonstrated less conclusively.
+
+The Action Required sub-link badge still uses `unresolvedCount` and was not
+touched.
+
+## The write path, both directions
+
+Closed Timothy Moore's oldest action from the expanded file:
+
+- the dialog opened titled **Close case**, subtitled `Timothy Moore ·
+  GAF-DA-2026-5763`, with **Closed by** prefilled `Saul Fallenbaum` — the
+  manager who filed it — and an optional note;
+- on submit the header went **`16 open` → `15 open`**, which is `06b`'s
+  `onChanged={reload}` doing its job;
+- the card footer became *Closed 09-07-2026 by Saul Fallenbaum — …* with a
+  **Reopen** link.
+
+**Reopen restored it exactly**: back to `16 open`, all four Close case buttons
+returned, zero `Closed` rows. Both counts are database reads, since the reload
+re-queries — the screen was not trusted on its own.
+
+## Known and accepted
+
+The **nav badge does not live-update**. It loads once when `TopNav` mounts, so
+closing a case updates the table immediately but the badge only on the next page
+load. The Contracts badge behaves the same way. Not worth a round.
