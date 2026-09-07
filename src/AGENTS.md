@@ -653,6 +653,8 @@ absence. When a real absence shows up as an unexplained RED, a missing
 | `/hrk-summary` | `HrkSummary.tsx` | the HRK payroll summary and its export into `hrk_exports` |
 | `/period-log` | `PeriodLog.tsx` | period list, rename, delete, restore soft-deleted entries, past exports |
 | `/attendance/*` | `Attendance.tsx` | attendance dashboard; three tabs driven by URL, one component instance so tab switching does not remount |
+| `/contracts` | `Contracts.tsx` | tenure milestones and contract end dates, one row per active employee; read-only |
+| `/disciplinary` | `Disciplinary.tsx` | disciplinary actions filed in the separate GAF Disciplinary Actions Form app, one row per employee; read-only except closing a case |
 | `/admin/*` | `admin/AdminLayout.tsx` | admin shell with nested routes |
 
 Admin children: `employees` (`AdminEmployeesHub.tsx` — tabs: Roster, Monday,
@@ -670,6 +672,10 @@ Aliases; components under `src/app/pages/admin/employees/`), `schedules`
 | `/pto` | `PtoTracker.tsx` | one table: balances + per-employee breakdown |
 
 `/pto` is one table (`PtoTracker.tsx` → `pto/PtoTable.tsx`, `PtoRow.tsx`, `PtoBreakdown.tsx`); a row expands into pending Monday requests, the recorded ledger (Edit / Withdraw) and floating holidays, loaded by `loadPtoEmployeeDetail`. `RecordApprovalDialog.tsx` has record / edit / manual modes; `recorded_by` is `'app'` for new rows.
+
+`/contracts` — `contracts/ContractsTable.tsx`, `ContractRow.tsx`
+
+`/disciplinary` — `disciplinary/DisciplinaryTable.tsx` (loads, resolves names, groups, filters, sorts), `DisciplinaryRow.tsx` (one row plus the escalation ladder), `CaseFile.tsx` (**prop-driven, no `useLoadAction` — Employee 360 will reuse it unchanged**), `CloseCaseDialog.tsx`
 
 ### Navigation and shared state
 
@@ -730,10 +736,46 @@ than adding a second action to an existing one.**
 - **`mondayResolve.ts`** — `buildResolver` / `Resolver` for resolving Monday
   board rows to `employees` rows. See
   [Resolving board rows to employees](#resolving-board-rows-to-employees) above.
+- **`tenure.ts`** — pure date maths for the Contracts page, no I/O and no clock:
+  `addMonths` (clamps to the last day of the month), `milestones`,
+  `tenureLabel`, `daysUntil`, `nextMilestone`, `contractEndState`. `asOf` is
+  always a parameter.
+- **`disciplinary.ts`** — pure rules for the Disciplinary page, no imports, no
+  clock: `levelRank`, `caseState`, `daysBetween`, `groupByEmployee`,
+  `sortEmployeeCases`, `dueSoon`. `asOf` is always a parameter. The only use of
+  `Date` is `Date.UTC(...)`.
 
 Other: `src/app/components/TimeInput.tsx`, `src/app/pages/attendance/*` (the
 dashboard's five presentational components), `src/components/ui/*` (shadcn-style
 primitives — do not modify), `src/lib/utils.ts` (`cn`).
+
+### The disciplinary database is a second Postgres instance
+
+`disciplinary_actions` lives in **`SAUL Disciplinary Action Forms DB`**, not in
+`GAF Planilla DB`. It is written by a **separate UI Bakery app**, "GAF
+Disciplinary Actions Form" (app id `PC3PsXDDa9`), which is where managers file
+warnings. This app only reads it, plus three columns it writes for closure.
+
+Two consequences, both load-bearing:
+
+- **A SQL action names exactly one datasource, so `disciplinary_actions` can
+  never be joined to `employees` in SQL.** The join happens in React, in
+  `DisciplinaryTable.tsx`, using `buildResolver` from `mondayResolve.ts`.
+- **The rows carry no employee id and no email** — only a free-text
+  `employee_name`. This is the same name-only situation as the Onboarding
+  board. An unmatched name is displayed with a *"not on roster"* chip, never
+  dropped.
+
+`closed_at` / `closed_by` / `closure_note` were added to that table by a
+migration in the **form app**, which owns it. `closed_at IS NULL` means the
+case is open. Never select `pdf_en_base64` or `pdf_es_base64` — one row is
+roughly 250 KB of base64.
+
+The datasource string that works is the **connections-screen display name**,
+`'SAUL Disciplinary Action Forms DB'`. Note that the exported
+`datasources.yml` calls the same connection `GA Offer Letter DB v2`; that
+string does **not** work in an action, and the file is not authoritative for
+code.
 
 ---
 
