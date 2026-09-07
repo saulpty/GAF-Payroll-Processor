@@ -4,6 +4,7 @@ import StatusChip from '@/app/components/StatusChip';
 import type { ChipTone } from '@/app/components/StatusChip';
 import type { EmployeeCase, CaseState } from '@/app/lib/disciplinary';
 import { daysBetween } from '@/app/lib/disciplinary';
+import CaseFile from './CaseFile';
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -116,9 +117,10 @@ interface Props {
   asOf: string;
   expanded: boolean;
   onToggle: () => void;
+  onChanged?: () => void;
 }
 
-export default function DisciplinaryRow({ row, asOf, expanded, onToggle }: Props) {
+export default function DisciplinaryRow({ row, asOf, expanded, onToggle, onChanged = () => {} }: Props) {
   const { highestRank, latest } = row;
   const lInfo = levelInfo(highestRank, latest.warning_level);
   const sChip = stateChip(row, asOf);
@@ -203,13 +205,11 @@ export default function DisciplinaryRow({ row, asOf, expanded, onToggle }: Props
         </td>
       </tr>
 
-      {/* Detail row — placeholder until next prompt */}
+      {/* Detail row */}
       {expanded && (
         <tr className="bg-slate-50">
-          <td colSpan={DISCIPLINARY_COL_COUNT} className="border-b border-slate-100">
-            <div className="px-6 py-4 text-sm text-slate-400">
-              Case file — {row.actions.length} action{row.actions.length === 1 ? '' : 's'}.
-            </div>
+          <td colSpan={DISCIPLINARY_COL_COUNT} className="p-0 border-b border-slate-100">
+            <CaseFile actions={row.actions} asOf={asOf} onChanged={onChanged} />
           </td>
         </tr>
       )}
