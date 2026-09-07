@@ -6,15 +6,15 @@ export function loadAttendanceReportDays() {
     query: `
       SELECT DISTINCT ON (pe.employee_id, LEFT(pe.work_date, 10))
              pe.employee_id,
-             LEFT(pe.work_date, 10)                          AS work_date,
-             NULLIF(TRIM(pe.entry_time), '')                 AS entry_time,
-             NULLIF(TRIM(pe.exit_time), '')                  AS exit_time,
-             NULLIF(TRIM(pe.scheduled_start), '')            AS scheduled_start,
-             GREATEST(0, COALESCE(pe.late_minutes, 0))       AS late_minutes,
-             GREATEST(0, COALESCE(pe.early_leave_minutes, 0)) AS early_leave_minutes,
-             COALESCE(pe.event_type_1, '')                   AS event_type_1,
-             COALESCE(pe.documentation, '')                  AS documentation,
-             COALESCE(pe.auto_notes, '')                     AS auto_notes,
+             TO_CHAR(LEFT(pe.work_date, 10)::date, 'YYYY-MM-DD') AS work_date,
+             NULLIF(TRIM(pe.entry_time), '')                      AS entry_time,
+             NULLIF(TRIM(pe.exit_time), '')                       AS exit_time,
+             NULLIF(TRIM(pe.scheduled_start), '')                 AS scheduled_start,
+             GREATEST(0, COALESCE(pe.late_minutes, 0))           AS late_minutes,
+             GREATEST(0, COALESCE(pe.early_leave_minutes, 0))    AS early_leave_minutes,
+             COALESCE(pe.event_type_1, '')                        AS event_type_1,
+             COALESCE(pe.documentation, '')                       AS documentation,
+             COALESCE(pe.auto_notes, '')                          AS auto_notes,
              pe.period_name
       FROM public.payroll_entries pe
       JOIN public.employees e ON e.id = pe.employee_id

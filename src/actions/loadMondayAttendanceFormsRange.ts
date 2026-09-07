@@ -5,7 +5,7 @@ export function loadMondayAttendanceFormsRange() {
     datasourceName: 'GAF Planilla DB',
     query: `
       SELECT f.employee_id,
-             f.form_date::text                    AS form_date,
+             TO_CHAR(f.form_date, 'YYYY-MM-DD')  AS form_date,
              COALESCE(f.form_type, '')             AS form_type,
              COALESCE(f.reason, '')                AS reason,
              COALESCE(f.details, '')               AS details,

@@ -14,20 +14,29 @@ import { AttendanceDonuts } from '@/app/pages/attendance/AttendanceDonuts';
 import { AttendanceTable }  from '@/app/pages/attendance/AttendanceTable';
 import { AttendancePanel }  from '@/app/pages/attendance/AttendancePanel';
 import { AttendanceTrends } from '@/app/pages/attendance/AttendanceTrends';
+import AttendanceReport     from '@/app/pages/attendance/AttendanceReport';
 import { useState } from 'react';
 
-type Tab = 'dashboard' | 'employees' | 'trends';
+type Tab = 'dashboard' | 'employees' | 'trends' | 'reports';
 
 function tabFromPath(pathname: string): Tab {
   if (pathname.includes('/employees')) return 'employees';
   if (pathname.includes('/trends'))    return 'trends';
+  if (pathname.includes('/reports'))   return 'reports';
   return 'dashboard';
 }
 
+// Reports tab has its own data layer — render it without loading the heavy daily view
 export default function Attendance() {
   const { pathname } = useLocation();
   const tab: Tab = tabFromPath(pathname);
 
+  if (tab === 'reports') return <AttendanceReport />;
+
+  return <AttendanceInner tab={tab} />;
+}
+
+function AttendanceInner({ tab }: { tab: Exclude<Tab, 'reports'> }) {
   const {
     dateFrom, dateTo,
     employee: globalEmployee,
@@ -36,13 +45,11 @@ export default function Attendance() {
 
   const [panelEmail, setPanelEmail] = useState<string | null>(null);
 
-  // Guard against blank dates (e.g. user clears the input) — fall back to safe defaults
   function today() { return toLocalYMD(new Date()); }
   function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return toLocalYMD(d); }
   const safeFrom = dateFrom || daysAgo(30);
   const safeTo   = dateTo   || today();
 
-  // Load data — single instance, no remount on tab change
   const [rawRows, loadingRows, rowsError] = useLoadAction(
     loadAttendanceDailyAction,
     [] as AttendanceRow[],
@@ -93,7 +100,6 @@ export default function Attendance() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Scrollable body */}
       <div className="flex-1 overflow-auto px-4 py-4 w-full">
         <div className="w-full">
           {loading && rows.length === 0 && (
@@ -111,15 +117,12 @@ export default function Attendance() {
 
           {(!loading || rows.length > 0) && (
             <>
-              {/* KPIs — always visible */}
               <AttendanceKpis kpis={kpis} />
 
-              {/* Dashboard tab */}
               {tab === 'dashboard' && (
                 <AttendanceDonuts kpis={kpis} empStats={empStats} />
               )}
 
-              {/* Employees tab */}
               {tab === 'employees' && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
@@ -134,7 +137,6 @@ export default function Attendance() {
                 </div>
               )}
 
-              {/* Trends tab */}
               {tab === 'trends' && (
                 <AttendanceTrends rows={filteredRows} empStats={empStats} search={globalEmployee} />
               )}
@@ -143,7 +145,6 @@ export default function Attendance() {
         </div>
       </div>
 
-      {/* Slide panel */}
       {panelEmail && (
         <AttendancePanel stats={panelStats} onClose={() => setPanelEmail(null)} />
       )}

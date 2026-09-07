@@ -64,9 +64,15 @@ const PTO_REQUEST_TYPES = new Set([
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/** Postgres hands back a DATE as "2026-06-01T00:00:00.000Z" through ::text.
+ *  Every date in this module is a plain YYYY-MM-DD string. */
+function ymd(value: string | null | undefined): string {
+  return value ? String(value).slice(0, 10) : '';
+}
+
 /** Step a YYYY-MM-DD string forward by one day without new Date() for date math. */
-function nextDate(ymd: string): string {
-  const d = new Date(ymd + 'T12:00:00');
+function nextDate(s: string): string {
+  const d = new Date(s + 'T12:00:00');
   d.setDate(d.getDate() + 1);
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
@@ -74,11 +80,12 @@ function nextDate(ymd: string): string {
 }
 
 /** Convert YYYY-MM-DD to a Date at noon (DST-safe for isScheduledWorkDay). */
-function ymdToDate(ymd: string): Date {
-  return new Date(ymd + 'T12:00:00');
+function ymdToDate(s: string): Date {
+  return new Date(s + 'T12:00:00');
 }
 
-/** Parse "YYYY-MM-DD HH:MM" → { datePart: "YYYY-MM-DD", minutes: number } or null. */
+/** Parse "YYYY-MM-DD HH:MM" → { datePart: "YYYY-MM-DD", minutes: number } or null.
+ *  submitted_at keeps its full value; only its date part is compared as a day. */
 function parseSubmittedAt(
   submittedAt: string | null,
 ): { datePart: string; minutes: number } | null {
@@ -131,12 +138,12 @@ function buildFormView(
  *  Coverage: start_date <= date < return_date, or start_date <= date <= end_date when return_date is null.
  */
 function requestCoversDate(r: ReportRequest, date: string): boolean {
-  const s = r.start_date ?? '';
+  const s = ymd(r.start_date ?? '');
   if (!s || date < s) return false;
   if (r.return_date) {
-    return date < r.return_date;
+    return date < ymd(r.return_date);
   }
-  const e = r.end_date ?? r.start_date ?? '';
+  const e = ymd(r.end_date ?? r.start_date ?? '');
   return date <= e;
 }
 
@@ -145,7 +152,7 @@ function dateInProcessedPeriod(date: string, periods: ReportPeriod[]): boolean {
   for (const p of periods) {
     if (!p.processed_at) continue;
     if (!p.start_date || !p.end_date) continue;
-    if (date >= p.start_date && date <= p.end_date) return true;
+    if (date >= ymd(p.start_date) && date <= ymd(p.end_date)) return true;
   }
   return false;
 }
@@ -158,25 +165,33 @@ export function buildAttendanceReport(input: ReportInput): ReportOutput {
   const { dateFrom, dateTo, employees, payrollRows, forms, requests, holidays, periods, dstWindows, helpers } = input;
   const { isScheduledWorkDay, getSchedule, parseTimeToMinutes } = helpers;
 
-  // Index payroll rows: empId → date → row
-  const payrollIndex = new Map<number, Map<string, ReportPayrollRow>>();
+  // ── Index payroll rows: String(empId) → date → row ──────────────────────
+  // Normalise at the boundary: ymd() strips T00:00:00.000Z; String() makes
+  // bigint-as-string and bigint-as-number land on the same key.
+  const payrollIndex = new Map<string, Map<string, ReportPayrollRow>>();
   for (const row of payrollRows) {
-    let empMap = payrollIndex.get(row.employee_id);
-    if (!empMap) { empMap = new Map(); payrollIndex.set(row.employee_id, empMap); }
+    const empId = String(row.employee_id);
+    const workDate = ymd(row.work_date);
+    if (!workDate) continue;
+    let empMap = payrollIndex.get(empId);
+    if (!empMap) { empMap = new Map(); payrollIndex.set(empId, empMap); }
     // DISTINCT ON already applied in SQL; first encountered wins
-    if (!empMap.has(row.work_date)) empMap.set(row.work_date, row);
+    if (!empMap.has(workDate)) empMap.set(workDate, row);
   }
 
-  // Index forms: empId → date → form[]
-  const formIndex = new Map<number, Map<string, ReportForm[]>>();
+  // ── Index forms: String(empId) → date → form[] ──────────────────────────
+  const formIndex = new Map<string, Map<string, ReportForm[]>>();
   let unmatchedForms = 0;
   for (const f of forms) {
     if (f.employee_id == null) { unmatchedForms++; continue; }
-    let empMap = formIndex.get(f.employee_id);
-    if (!empMap) { empMap = new Map(); formIndex.set(f.employee_id, empMap); }
-    const arr = empMap.get(f.form_date) ?? [];
+    const empId = String(f.employee_id);
+    const formDate = ymd(f.form_date);
+    if (!formDate) continue;
+    let empMap = formIndex.get(empId);
+    if (!empMap) { empMap = new Map(); formIndex.set(empId, empMap); }
+    const arr = empMap.get(formDate) ?? [];
     arr.push(f);
-    empMap.set(f.form_date, arr);
+    empMap.set(formDate, arr);
   }
 
   // Sort each employee's forms per date by submitted_at asc, nulls last
@@ -192,21 +207,21 @@ export function buildAttendanceReport(input: ReportInput): ReportOutput {
     }
   }
 
-  // Index requests per employee
-  const requestIndex = new Map<number, ReportRequest[]>();
+  // ── Index requests: String(empId) → ReportRequest[] ─────────────────────
+  const requestIndex = new Map<string, ReportRequest[]>();
   for (const r of requests) {
-    const arr = requestIndex.get(r.employee_id) ?? [];
+    const empId = String(r.employee_id);
+    const arr = requestIndex.get(empId) ?? [];
     arr.push(r);
-    requestIndex.set(r.employee_id, arr);
+    requestIndex.set(empId, arr);
   }
 
-  // Holiday set: date → name
+  // ── Holiday set: date → name ─────────────────────────────────────────────
   const holidayMap = new Map<string, string>();
-  for (const h of holidays) holidayMap.set(h.date, h.name);
-
-  // Employee map for fast lookup
-  const empMap = new Map<number, ReportEmployee>();
-  for (const e of employees) empMap.set(e.id, e);
+  for (const h of holidays) {
+    const d = ymd(h.date);
+    if (d) holidayMap.set(d, h.name);
+  }
 
   const rows: ReportRow[] = [];
   const summaries: ReportSummary[] = [];
@@ -222,9 +237,13 @@ export function buildAttendanceReport(input: ReportInput): ReportOutput {
       work_days: emp.work_days,
     };
 
-    const empPayroll = payrollIndex.get(emp.id) ?? new Map();
-    const empForms = formIndex.get(emp.id) ?? new Map();
-    const empRequests = requestIndex.get(emp.id) ?? [];
+    const empIdStr = String(emp.id);
+    const empPayroll = payrollIndex.get(empIdStr) ?? new Map();
+    const empForms   = formIndex.get(empIdStr)   ?? new Map();
+    const empRequests = requestIndex.get(empIdStr) ?? [];
+
+    // Normalise employee start_date once
+    const empStartDate = ymd(emp.start_date);
 
     let expectedDays = 0, onTimeCt = 0, lateDays = 0, lateDaysWithoutForm = 0;
     let unexplainedAbsences = 0, awayDays = 0, formsFiled = 0, formsOnTime = 0;
@@ -241,7 +260,7 @@ export function buildAttendanceReport(input: ReportInput): ReportOutput {
       if (!isScheduledWorkDay(dateObj, emp.work_days)) continue;
 
       // Rule 2: skip before employee's start date
-      if (emp.start_date && date < emp.start_date) continue;
+      if (empStartDate && date < empStartDate) continue;
 
       // Determine scheduled start
       const sched = getSchedule(engEmp, dateObj, dstWindows);

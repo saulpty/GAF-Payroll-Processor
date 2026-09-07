@@ -461,3 +461,61 @@ test('R42: dates are compared as strings — no row drifts a day', () => {
   assert.equal(dated?.entryTime, '9:00 AM');
   assert.equal(r.rows.filter(x => x.entryTime !== null).length, 1);
 });
+
+// ── what Postgres actually hands back ─────────────────────────────────────
+// docs/LESSONS.md: "Postgres hands back full timestamps — slice to 10."
+// A DATE column read through ::text arrives as "2026-06-01T00:00:00.000Z", and
+// a BIGINT can arrive as a string. The module must survive both, because the
+// alternative is a silent miss that renders every day as an absence.
+
+test('R43: ISO timestamps from a DATE column still match the day', () => {
+  const row = only({
+    payrollRows: [pay({ work_date: '2026-06-01T00:00:00.000Z' })],
+    periods: [{ ...period, start_date: '2026-06-01T00:00:00.000Z', end_date: '2026-06-30T00:00:00.000Z' }],
+  });
+  assert.equal(row.verdict, 'on_time');
+  assert.equal(row.date, '2026-06-01');
+});
+
+test('R44: an ISO form_date and an ISO request window still line up', () => {
+  const row = only({
+    payrollRows: [pay({ entry_time: '9:20 AM', late_minutes: 20 })],
+    forms: [form({ form_date: '2026-06-01T00:00:00.000Z', submitted_at: '2026-06-01 08:30' })],
+  });
+  assert.equal(row.verdict, 'late_reported_on_time');
+
+  const away = only({
+    dateFrom: '2026-06-08', dateTo: '2026-06-08',
+    requests: [req({
+      start_date: '2026-06-08T00:00:00.000Z',
+      end_date: '2026-06-10T00:00:00.000Z',
+      return_date: '2026-06-11T00:00:00.000Z',
+    })],
+  });
+  assert.equal(away.verdict, 'pto');
+});
+
+test('R45: an ISO start_date does not hide a day the employee worked', () => {
+  const row = only({
+    employees: [emp({ start_date: '2026-01-01T00:00:00.000Z' })],
+    payrollRows: [pay()],
+  });
+  assert.equal(row.verdict, 'on_time');
+});
+
+test('R46: ids match whether they arrive as numbers or as strings', () => {
+  // BIGINT commonly arrives as a string. If the employee and the punch row
+  // disagree, every lookup misses and every day becomes an absence.
+  const row = only({
+    employees: [emp({ id: 1 })],
+    payrollRows: [{ ...pay(), employee_id: '1' as unknown as number }],
+    forms: [{ ...form(), employee_id: '1' as unknown as number, submitted_at: '2026-06-01 08:30' }],
+  });
+  assert.equal(row.verdict, 'on_time');
+  assert.equal(row.form?.mondayItemId, '1');
+});
+
+test('R47: an ISO holiday date still cancels the day', () => {
+  const row = only({ holidays: [{ date: '2026-06-01T00:00:00.000Z', name: 'Test Holiday' }] });
+  assert.equal(row.verdict, 'holiday');
+});

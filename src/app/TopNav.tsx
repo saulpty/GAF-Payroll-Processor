@@ -5,7 +5,7 @@ import {
   Settings, History, Activity,
   Users, Clock, CalendarDays, Globe2,
   SlidersHorizontal, FileSpreadsheet,
-  TrendingUp, Palmtree, FileSignature, ShieldAlert,
+  TrendingUp, Palmtree, FileSignature, ShieldAlert, FileText,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLoadAction } from '@uibakery/data';
@@ -54,6 +54,7 @@ const SECTIONS = [
       { to: '/attendance',          label: 'Dashboard', icon: Activity },
       { to: '/attendance/employees',label: 'Employees', icon: Users },
       { to: '/attendance/trends',   label: 'Trends',    icon: TrendingUp },
+      { to: '/attendance/reports',  label: 'Reports',   icon: FileText },
     ],
   },
   {
