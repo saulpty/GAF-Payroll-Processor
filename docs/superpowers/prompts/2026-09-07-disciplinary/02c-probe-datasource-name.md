@@ -66,3 +66,68 @@ and a page that silently shows nothing.
 2. The reply names **one** exact string for `datasourceName`, quoted.
 3. The count query ran against that string and returned a number.
 4. Question 4 is answered plainly — same connection, or two.
+
+---
+
+# Results — 2026-09-07
+
+## The answer given
+
+**`'SAUL Disciplinary Action Forms DB'`** — the display name from the
+connections screen, not the `GA Offer Letter DB v2` in `datasources.yml`.
+
+The authoritative list it reported:
+
+| Connected datasource | string for `datasourceName` |
+|---|---|
+| GAF Planilla DB (primary Postgres) | `'GAF Planilla DB'` |
+| Monday.com API (GraphQL) | `'Monday.com API'` |
+| **SAUL Disciplinary Action Forms DB** (hostedPostgres) | **`'SAUL Disciplinary Action Forms DB'`** |
+| Monday.com API v2 | `'Monday.com API v2'` — connected, unused, do not use |
+
+## The proof query did not run
+
+`callInspectActions` returned `Cannot read properties of undefined (reading
+'id')` for **all three** candidate names at once, including two that do not
+exist in this app. The agent read that as a platform error firing before the
+query reaches the database, and concluded it says nothing about name resolution.
+
+**That reasoning is right, and it also means the question was not settled.** An
+error that is identical for a real name and an invented one is uninformative in
+both directions. Question 3 is unanswered, and question 4 — whether
+`SAUL Disciplinary Action Forms DB` and `GA Offer Letter DB v2` are one
+connection or two — was never answered at all.
+
+It is probably a transient blip rather than a defect: the same datasource
+answered ten queries correctly twenty minutes earlier, in `02-probe` and
+`02b-probe-followup`, returning 16 real rows with real names. Per
+`CHANGE-LOOP.md`, many things failing at once with an internal message is the
+infrastructure signature, not the change signature.
+
+## What settles it, and why no further probe is worth a round
+
+One piece of evidence is decisive and was already in hand: **the form app's
+actions say `datasourceName: 'SAUL GA Offer Letter DB'` while its own
+`datasources.yml` says `GA Offer Letter DB v2`** — and that application runs in
+production every day. So `datasources.yml` demonstrably does **not** have to
+match the string in an action, and it is not authoritative for code.
+
+That removes the contradiction. The Hub's own pattern then holds without
+exception: the connections-screen display name is the string that goes in code,
+as it does for `GAF Planilla DB` and `Monday.com API`.
+
+**Decision: prompt `04-actions.md` stands unchanged, with
+`SAUL Disciplinary Action Forms DB`.** Its acceptance criterion 5 already
+requires running `loadDisciplinaryActions` and getting every row back, so the
+action itself is the proof — a real query against a real table, which is
+stronger evidence than another probe asking the same question a third way.
+
+**If that run comes back empty or errors on the datasource**, the fix is a
+one-line corrective prompt swapping the string for `GA Offer Letter DB v2`. That
+is the cheaper branch to be wrong on.
+
+**Order matters here.** `loadDisciplinaryActions` selects `closed_at`,
+`closed_by` and `closure_note`, which do not exist until
+`01-form-app-migration.md` has run. Running prompt 04 first would fail on the
+missing columns and confound the datasource test with a schema error. So the
+migration goes first, exactly as the spec's build order says.
