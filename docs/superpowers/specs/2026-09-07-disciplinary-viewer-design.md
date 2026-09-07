@@ -454,17 +454,24 @@ that reading also appears when the export click merely closed the menu.
 1. The probe is answered and committed before any UI prompt.
 2. `node --test "tests/*.test.ts"` — 121 existing plus the new `D1…D9`, all
    passing, no existing test modified.
-3. `/disciplinary` loads on `/dev/` with real data, screenshotted. One row per
-   employee with a record — **5 rows** unless the probe counts more.
-4. **Juan Molina is the live example**: 3 actions, ladder filled to First
-   Written, status `review overdue`, and expanding him shows three cards oldest
-   first — 06-16 Verbal (attendance), 06-16 Verbal (calls), 06-23 First Written
-   (calls). The escalation is legible in that order.
-5. **Osvaldo Medina is the second check**: his card's meta line shows the prior
-   warning *"Verbal warning was issued 3/24/2026"* — text that exists only in
-   `prior_warnings` and proves the full column set arrived.
-6. **Every open case is overdue today**, so the nav badge equals the open count.
-   If the badge and the count of red status chips disagree, stop.
+3. `/disciplinary` loads on `/dev/` with real data, screenshotted.
+   **10 rows, 16 actions** — the counts the 2026-09-07 probe measured, not the
+   7-across-5 this spec originally assumed from the exported seed files.
+4. **Timothy Moore is the live example.** 4 actions, ladder filled 3 of 4 to
+   **Second Written Warning**, and — the part that matters — his **Latest**
+   column reads `07-09-2026 · Operational Instructions`, a *Verbal* Warning.
+   Highest and latest deliberately disagree; a page keyed on the most recent
+   warning would hide that he is two rungs up. Expanding him shows four cards
+   oldest first: 07-01 Verbal, 07-01 First Written, 07-01 Second Written, then
+   07-09 Verbal. **Three of those share a document_date**, so if they appear in
+   any other order the `id DESC` tiebreak is not wired.
+5. **The two inactive employees render muted** with an `inactive` chip —
+   Juan Molina and Osvaldo Medina — and both still show a role, taken from the
+   disciplinary record because their roster `role` is NULL.
+6. **Every one of the 16 actions is overdue**, so the page opens entirely red
+   and **the nav badge reads `16`**. That is a true statement about the data:
+   nobody has recorded a closure because until now there was nowhere to record
+   one. Do not soften the overdue rule to make the page look calmer.
 7. Closing one case: the chip turns green, the badge drops by one, the row
    re-sorts downward, and the footer names who closed it and when. **Confirmed
    in the form's database, not only on screen.**
@@ -474,10 +481,14 @@ that reading also appears when the export click merely closed the menu.
 11. `git status --short` shows only the files listed in §5.
 12. Grep the new files: no `{ params:`, no `pdf_`, no file over 15 KB.
 
-**Proved by unit test rather than on screen**, having zero live instances today:
-a closed case, a Suspension or Termination outcome, a null `revaluation_date`, a
-Second or Final Written warning, and an unresolvable employee name. Each must
-render without throwing.
+**Proved by unit test rather than on screen**, having zero live instances after
+the 2026-09-07 probe: a closed case, a Suspension or Termination outcome, a
+**Final** Written warning, a null `revaluation_date`, an unrecognised
+`warning_level`, and an unresolvable employee name. Each must render without
+throwing.
+
+A Second Written Warning **does** have a live instance — Timothy Moore — so it
+is checked on screen rather than only in a test.
 
 ---
 

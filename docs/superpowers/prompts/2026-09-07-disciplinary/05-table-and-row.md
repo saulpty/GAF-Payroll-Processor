@@ -133,7 +133,7 @@ A later prompt replaces that with the real case file. Do not build it now.
 | Column | Content |
 |---|---|
 | Employee | `displayName` in `font-medium`; muted when `!active`. A second line, `text-xs text-slate-500`: `role` · `branch`. A slate `StatusChip` reading **not on roster** when `!onRoster`, and one reading **inactive** when `!active`. |
-| Manager | `manager` |
+| Manager | `manager` — **the manager who filed the action**, from the disciplinary record, not the employee's current roster manager. Give the column a `tip` on its `Col` saying exactly that. They genuinely differ: Osvaldo Medina's roster manager is Jessica Crivelli, but his warning was filed by Arelis Acosta. Without the tip the column reads as "current manager" and quietly disagrees with every other page. |
 | Actions | `actions.length`, right-aligned |
 | Highest level | a `StatusChip` for `highestRank` — see the tone table. Plus a separate `red` chip for the `final_outcome` of the newest action carrying one, if any. |
 | Escalation | four dots, filled to `highestRank` |
