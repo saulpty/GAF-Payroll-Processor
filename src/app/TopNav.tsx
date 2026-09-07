@@ -5,12 +5,14 @@ import {
   Settings, History, Activity,
   Users, Clock, CalendarDays, Globe2,
   SlidersHorizontal, FileSpreadsheet,
-  TrendingUp, Palmtree, FileSignature,
+  TrendingUp, Palmtree, FileSignature, ShieldAlert,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLoadAction } from '@uibakery/data';
 import loadUnresolvedCountAction from '@/actions/loadUnresolvedCount';
 import loadContractsExpiringCountAction from '@/actions/loadContractsExpiringCount';
+import loadDisciplinaryDueCountAction from '@/actions/loadDisciplinaryDueCount';
+import { toLocalYMD } from '@/app/lib/classificationEngine';
 
 // ── Section definitions ────────────────────────────────────────────────────────
 
@@ -53,6 +55,21 @@ const SECTIONS = [
       { to: '/attendance/employees',label: 'Employees', icon: Users },
       { to: '/attendance/trends',   label: 'Trends',    icon: TrendingUp },
     ],
+  },
+  {
+    id: 'disciplinary',
+    label: 'Disciplinary',
+    icon: ShieldAlert,
+    home: '/disciplinary',
+    color: 'from-[#BE123C] to-[#9F1239]',
+    activeBg: 'bg-[#BE123C]',
+    hoverBg: 'hover:bg-[#9F1239]',
+    ring: 'ring-[#BE123C]/30',
+    subActiveBg: 'bg-[#BE123C]/10 text-[#9F1239] font-semibold',
+    subHover: 'hover:bg-[#BE123C]/5 text-slate-600',
+    paths: ['/disciplinary'],
+    links: [],
+    badge: true,
   },
   {
     id: 'contracts',
@@ -106,7 +123,7 @@ const SECTIONS = [
   },
 ] as const;
 
-type SectionId = 'payroll' | 'attendance' | 'contracts' | 'pto' | 'admin';
+type SectionId = 'payroll' | 'attendance' | 'disciplinary' | 'contracts' | 'pto' | 'admin';
 
 function getActiveSection(pathname: string): SectionId | null {
   for (const s of SECTIONS) {
@@ -125,6 +142,25 @@ export default function TopNav() {
   const unresolvedCount   = (unresolvedData as { count: number }[])[0]?.count ?? 0;
   const [expiringData]    = useLoadAction(loadContractsExpiringCountAction, [] as { count: number }[]);
   const expiringCount     = (expiringData as { count: number }[])[0]?.count ?? 0;
+  const asOf              = toLocalYMD(new Date());
+  const [dueData]         = useLoadAction(loadDisciplinaryDueCountAction, [] as { count: number }[], { asOf });
+  const dueCount          = (dueData as { count: number }[])[0]?.count ?? 0;
+
+  function sectionBadge(id: string): { count: number; label: string } | null {
+    if (id === 'contracts' && expiringCount > 0) {
+      return {
+        count: expiringCount,
+        label: `${expiringCount} contract${expiringCount === 1 ? '' : 's'} ending within 30 days`,
+      };
+    }
+    if (id === 'disciplinary' && dueCount > 0) {
+      return {
+        count: dueCount,
+        label: `${dueCount} disciplinary re-evaluation${dueCount === 1 ? '' : 's'} due`,
+      };
+    }
+    return null;
+  }
 
   const activeSection = getActiveSection(location.pathname);
   const activeSectionDef = SECTIONS.find(s => s.id === activeSection) ?? null;
@@ -182,14 +218,17 @@ export default function TopNav() {
             >
               <s.icon className="w-4 h-4" />
               <span>{s.label}</span>
-              {'badge' in s && s.badge && expiringCount > 0 && (
-                <span
-                  className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none"
-                  aria-label={`${expiringCount} contract${expiringCount === 1 ? '' : 's'} ending within 30 days`}
-                >
-                  {expiringCount > 99 ? '99+' : expiringCount}
-                </span>
-              )}
+              {(() => {
+                const b = 'badge' in s && s.badge ? sectionBadge(s.id) : null;
+                return b && (
+                  <span
+                    className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none"
+                    aria-label={b.label}
+                  >
+                    {b.count > 99 ? '99+' : b.count}
+                  </span>
+                );
+              })()}
             </button>
           );
         })}

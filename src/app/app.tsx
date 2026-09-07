@@ -20,6 +20,7 @@ import Attendance from '@/app/pages/Attendance';
 import HrkSummary from '@/app/pages/HrkSummary';
 import PtoTracker from '@/app/pages/PtoTracker';
 import Contracts from '@/app/pages/Contracts';
+import Disciplinary from '@/app/pages/Disciplinary';
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
                 <Route path="lookups" element={<AdminLookups />} />
               </Route>
               <Route path="/contracts" element={<Contracts />} />
+              <Route path="/disciplinary" element={<Disciplinary />} />
               <Route path="/pto" element={<PtoTracker />} />
               <Route path="/period-log" element={<PeriodLog />} />
               {/* Single instance — tab driven by URL, no remount on tab switch */}
