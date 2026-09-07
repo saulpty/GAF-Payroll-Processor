@@ -652,7 +652,8 @@ absence. When a real absence shows up as an unexplained RED, a missing
 | `/payroll-master` | `PayrollMaster.tsx` | full editable grid of all entries, soft delete, export |
 | `/hrk-summary` | `HrkSummary.tsx` | the HRK payroll summary and its export into `hrk_exports` |
 | `/period-log` | `PeriodLog.tsx` | period list, rename, delete, restore soft-deleted entries, past exports |
-| `/attendance/*` | `Attendance.tsx` | attendance dashboard; three tabs driven by URL, one component instance so tab switching does not remount |
+| `/attendance/*` | `Attendance.tsx` | attendance dashboard; four tabs driven by URL (Dashboard, Employees, Trends, Reports), one component instance so tab switching does not remount |
+| `/attendance/reports` | `attendance/AttendanceReport.tsx` | per-employee-day report: punches, the Absence/Tardiness form behind the day, and whether it was filed before the shift started. Owns the loaders; `AttendanceReportStrips.tsx` (default view) and `AttendanceReportTable.tsx` take plain props. Verdicts come from `lib/attendanceReport.ts` |
 | `/contracts` | `Contracts.tsx` | tenure milestones and contract end dates, one row per active employee; read-only |
 | `/disciplinary` | `Disciplinary.tsx` | disciplinary actions filed in the separate GAF Disciplinary Actions Form app, one row per employee; read-only except closing a case |
 | `/admin/*` | `admin/AdminLayout.tsx` | admin shell with nested routes |
@@ -727,6 +728,41 @@ than adding a second action to an existing one.**
   parsing, and grouping into `email → date → { entry, exit }`.
 - **`attendanceStats.ts`** — pure aggregation over `v_attendance_daily` rows
   for the Attendance dashboard (`computeEmployeeStats`, `computeCompanyKpis`).
+- **`attendanceReport.ts`** — the Reports tab's verdict engine.
+  - Pure TypeScript, **no imports at all**. Callers pass the engine's helpers
+    (`isScheduledWorkDay`, `getSchedule`, `parseTimeToMinutes`) in through
+    `ReportInput.helpers`, the same rule `mondayResolve.ts` follows, so Node's
+    TypeScript loader can load it directly for tests and there is still only one
+    copy of the work-day gate and the DST rule. Types live in
+    `attendanceReportTypes.ts` and are pulled back with a **type-only** import,
+    which is erased before the code runs. A plain import breaks every test.
+  - `buildAttendanceReport(input)` returns `{ rows, perEmployee, unmatchedForms }`,
+    one row per employee per scheduled work day in range.
+  - **It reads `payroll_entries` directly, never `v_attendance_daily`.** The view
+    drops days with no punches, so it cannot see an absence — which is most of
+    what this report exists to show.
+  - **It normalises its own inputs.** Every incoming date is sliced to 10
+    characters and every index is keyed by `String(id)`, because a Postgres `DATE`
+    arrives as `2026-06-01T00:00:00.000Z` and a `BIGINT` can arrive as a string.
+    Both failures are silent and both render as false absences. Do not remove the
+    normalisation on the grounds that the SQL already formats correctly — one
+    caller not doing so is enough to break the page, and that is exactly what
+    happened on 2026-09-07.
+  - **Scoring follows presence.** `countsToScore` is true for on-time, every late
+    verdict, and every absence including reported ones; false for `pto`,
+    `permission`, `holiday` and `not_processed`. PTO and a birthday day off are
+    visible but must never move someone's score; an unexplained absence must.
+    `onTimeRate` is `null`, never `0`, when there are no scored days.
+  - Guarded by `tests/attendanceReport.test.ts` — 47 cases, including R43–R47
+    which feed it ISO timestamps and string ids.
+  - The report deliberately surfaces two data problems via `ReportRow.flags`:
+    - `recordedUnexplainedButFormOnFile` — payroll recorded an unjustified absence
+      while a form exists for that day. 13 such days as of 2026-09-07.
+    - `formEmailUnrecognised` — the form was filed from an address that is not the
+      employee's `teramind_email`. 113 such forms across 24 employees as of
+      2026-09-07, and **the payroll engine cannot see any of them**, because
+      `rowMatchesEmp` matches on email only when an email is present and never
+      falls back to the name or `name_aliases`.
 
 - **`ptoAccrual.ts`** — pure functions for the PTO tracker, no I/O: `days360`
   (Excel DAYS360/NASD), `accruedPto`, `takenPto`, `defaultTotalDays`,
@@ -745,9 +781,11 @@ than adding a second action to an existing one.**
   `sortEmployeeCases`, `dueSoon`. `asOf` is always a parameter. The only use of
   `Date` is `Date.UTC(...)`.
 
-Other: `src/app/components/TimeInput.tsx`, `src/app/pages/attendance/*` (the
-dashboard's five presentational components), `src/components/ui/*` (shadcn-style
-primitives — do not modify), `src/lib/utils.ts` (`cn`).
+Other: `src/app/components/TimeInput.tsx`, `src/app/pages/attendance/*` (eight
+components: five for the dashboard tabs plus `AttendanceReport.tsx`,
+`AttendanceReportStrips.tsx`, `AttendanceReportTable.tsx` for the Reports tab),
+`src/components/ui/*` (shadcn-style primitives — do not modify),
+`src/lib/utils.ts` (`cn`).
 
 ### The disciplinary database is a second Postgres instance
 
