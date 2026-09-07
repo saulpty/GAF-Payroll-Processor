@@ -229,6 +229,17 @@ than chasing a blip.
 Slice to 10 characters. Never construct a `Date` from a date string — use
 `fmtDate` for display and plain string comparison for logic.
 
+**Re-confirmed 2026-09-07, with the mechanism.** The `::text` cast is not
+ignored — the driver re-serializes the result back to a timestamp on the way
+out. So `document_date::text AS document_date` still arrives as
+`2026-06-24T00:00:00.000Z`. **Casting is not a substitute for slicing at the
+point of use**, and any spec that says `::text` keeps timestamps away from the
+client is wrong. Keep the cast anyway (it costs nothing and documents intent),
+but every consumer still slices. The trap is a string comparison that looks
+safe: `'2026-10-07T00:00:00.000Z' <= '2026-10-07'` is **false**, because the
+longer string sorts after — so an unsliced `<=` silently drops the boundary
+day.
+
 ### The Excel import and the Monday mirror describe the same events
 
 45 Excel-imported PTO rows had no `monday_item_id`, so their Monday requests

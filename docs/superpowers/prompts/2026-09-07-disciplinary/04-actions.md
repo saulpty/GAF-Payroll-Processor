@@ -228,3 +228,61 @@ All three columns are cleared together — a row with a `closed_by` but no
 Report the row count and the first row returned by `loadDisciplinaryActions`,
 and the number returned by `loadDisciplinaryDueCount`. **Do not run either write
 action** — they will be exercised from the page once it exists.
+
+---
+
+# Results — 2026-09-07
+
+**Four files added, nothing else.** `sync-export.mjs` reported
+`added: 4, changed: 0, removed: 0`, and `git status` showed exactly the four
+action files.
+
+| check | result |
+|---|---|
+| `pdf_en_base64` / `pdf_es_base64` anywhere in the four files | **0 hits** |
+| `DELETE` / `DROP` / `TRUNCATE` | **0 hits** |
+| test L2 — no `{{params.x}}` inside a quoted string | **passes** |
+| `datasourceName` in all four | `SAUL Disciplinary Action Forms DB` |
+| largest file | 1 380 bytes |
+
+A first grep for params-in-quotes reported two hits; both were the legitimate
+three-way null guard, where the `''` is an empty-string literal next to a bare
+`{{params.manager}}`. **The L2 test is the authority, not a hand-rolled grep** —
+it passed.
+
+## The datasource question is now settled by evidence
+
+`loadDisciplinaryActions` was executed against the live database and returned
+**`data: Array[16]`**; `loadDisciplinaryDueCount` returned `Array[1]`.
+
+So **`'SAUL Disciplinary Action Forms DB'` is correct** — proved by a real query
+returning the same 16 rows the probes counted, not by reasoning about
+`datasources.yml`. The `GA Offer Letter DB v2` line in the export remains
+unexplained but is demonstrably not the string an action needs.
+
+## A correction to this prompt's own wording
+
+This prompt said *"`::text` on all four date columns. Postgres hands back full
+timestamps **otherwise**"*. The word "otherwise" is wrong, and the round proved
+it: `document_date::text AS document_date` still arrives as
+`2026-06-24T00:00:00.000Z`, because **the driver re-serializes the cast result
+on the way out.**
+
+The cast is worth keeping — it costs nothing and documents intent — but it is
+**not** a substitute for slicing at the point of use. `LESSONS.md` already
+carried this under "Postgres returns dates as full timestamps"; it now also
+carries the mechanism and the trap:
+
+> `'2026-10-07T00:00:00.000Z' <= '2026-10-07'` is **false**, because the longer
+> string sorts after. An unsliced `<=` silently drops the boundary day.
+
+`disciplinary.ts` is unaffected — prompt `03` already requires `.slice(0, 10)`
+on every date it reads, in every comparison.
+
+## Deliberately not answered
+
+The run ended with UI Bakery offering to *"build the full page with a table,
+filters, close/reopen actions"* in one go. **Declined by simply not replying** —
+that is precisely the bundled change `CHANGE-LOOP.md` warns produces an
+unreviewable diff, and it would ignore the file-size split the design specifies.
+The next prompt sent is `03-disciplinary-lib.md`, which answers it implicitly.
