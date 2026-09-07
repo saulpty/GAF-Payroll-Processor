@@ -43,9 +43,12 @@ WHERE table_name = 'disciplinary_actions'
 ORDER BY ordinal_position;
 ```
 
-**Gate:** `closed_at`, `closed_by` and `closure_note` must be present. If they
-are not, migration `01-form-app-migration.md` has not been applied to this
-database — stop and report that, and do not continue.
+**Report whether `closed_at`, `closed_by` and `closure_note` are present.**
+This probe is deliberately run *before* the migration that adds them, so their
+absence is the expected answer the first time and is not a failure — say so
+plainly and **continue with every remaining query**. Once
+`01-form-app-migration.md` has been applied, Query 1 is re-run and all three
+must appear.
 
 ## Query 2 — how much data there is
 
@@ -202,6 +205,6 @@ say that explicitly.
 
 1. No file was created, modified or deleted anywhere in the project.
 2. Every query above ran, or the reply says exactly why one could not.
-3. The three closure columns are confirmed present (Query 1 gate).
+3. Query 1 states clearly whether the three closure columns exist yet.
 4. Every distinct `employee_name` is listed with its match status.
 5. Any value outside the four expected value sets is called out by name.

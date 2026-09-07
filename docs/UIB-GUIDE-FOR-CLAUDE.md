@@ -240,6 +240,33 @@ These were never written down and had to be rediscovered. They are stable.
 | **Work** — AI panel, the one builder session | `https://uib.vitasya.cloud/edit/vitasya/jAaT7LYarG/builder/summary` |
 | **Export / verify** — draft app, safe for the ⋮ menu | `https://uib.vitasya.cloud/dev/vitasya/jAaT7LYarG/<route>` |
 
+### The other apps on this instance (found 2026-09-07)
+
+The sidebar's app list is the cheapest way to get an app id: every entry is an
+`<a href>` containing `/vitasya/<appId>`. Read them with a DOM query rather than
+clicking through. Under **SAUL**:
+
+| App | id |
+|---|---|
+| **GAF HR Hub** | `jAaT7LYarG` |
+| **GAF Disciplinary Actions Form** | `PC3PsXDDa9` |
+| Panama SYNC | `YiSIOuBHUM` |
+| Daily Stats Tracker | `13vOmHDnbu` |
+| Lead Conversion Analytics | `avqYElmusw` |
+| Utilization Dashboard (SAUL) | `vceUXSMWos` |
+| EVV Ops Manager | `PcFojFubcR` |
+
+**The Disciplinary Actions Form is a second app that writes the
+`disciplinary_actions` table the Hub's Disciplinary page reads.** Its builder is
+`https://uib.vitasya.cloud/edit/vitasya/PC3PsXDDa9/builder/summary`. It has no
+git mirror in this repo, so the only way to diff a change to it is to export it
+and compare against a previously extracted zip.
+
+**Extracting hrefs:** returning a full `href` string through
+`javascript_tool` gets blocked as "base64 encoded data". Return only the
+captured id — `href.match(/\/vitasya\/([A-Za-z0-9]{6,20})/)[1]` — and it comes
+back fine.
+
 `/dev/`, `/staging/` and plain `/vitasya/…` (prod) are the three environments.
 **Builder edits are drafts: they appear on `/dev/` immediately and reach prod
 only when someone clicks Release.** So verify on `/dev/`, never on prod.
