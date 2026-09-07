@@ -1,5 +1,6 @@
 vibeAppConnectedDatasources:
   - GAF Planilla DB
+  - GA Offer Letter DB v2
   - Monday.com API
   - Monday.com API v2
 vibeAppPrimaryHostedDatasourceId: GAF Planilla DB
