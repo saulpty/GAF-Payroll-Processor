@@ -286,6 +286,38 @@ safe: `'2026-10-07T00:00:00.000Z' <= '2026-10-07'` is **false**, because the
 longer string sorts after — so an unsliced `<=` silently drops the boundary
 day.
 
+**Third time, 2026-09-07, and the worst symptom yet.** The Attendance Reports
+tab rendered *every day for every employee* as an unexplained absence — 440
+absent, 0 on-time, 45 people. Nothing threw. Nothing logged. The page looked
+finished. `loadPeriods`, `loadHolidays` and `employees.start_date` all hand back
+ISO timestamps, and a date built from them never equals the plain `YYYY-MM-DD`
+the loop compares against.
+
+**The fix that finally holds: normalise at the boundary, not at each call
+site.** Patching one query moves the failure to the next one — the first attempt
+rewrote three actions to use `TO_CHAR(..., 'YYYY-MM-DD')` and the page was still
+wrong, because `loadPeriods` was not one of the three. `attendanceReport.ts` now
+slices every incoming date once, where the input is indexed, so it cannot matter
+how any caller wrote its SQL. Guarded by `attendanceReport.test.ts` R43–R45 and
+R47, which feed the module ISO timestamps directly.
+
+### A BIGINT can arrive as a string, and a missed lookup looks like real data
+
+`employees.id` and `payroll_entries.employee_id` are both `BIGINT`. Depending on
+the query, one can arrive as the number `1` and the other as the string `"1"`.
+A `Map` keyed by one and read by the other misses **silently** — and in a report
+that joins punches to employees, a missed punch does not render as an error, it
+renders as *an employee who did not come to work*.
+
+Key every index by `String(id)` and read it the same way. Guarded by
+`attendanceReport.test.ts` R46.
+
+The general shape of both traps: **an absent lookup and an absent fact are
+indistinguishable on screen.** Whenever a missing join result would render as a
+meaningful business value rather than as a blank, normalise the key type at the
+boundary and write a test that feeds the function what the database actually
+returns rather than what the type says it returns.
+
 ### The Excel import and the Monday mirror describe the same events
 
 45 Excel-imported PTO rows had no `monday_item_id`, so their Monday requests

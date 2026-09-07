@@ -100,12 +100,18 @@ export default function AttendanceReport() {
 
   // ── Summary strip KPIs ─────────────────────────────────────────────────────
   const kpis = useMemo(() => {
-    const scored = rows.filter(r => r.countsToScore);
-    const onTime    = scored.filter(r => r.verdict === 'on_time').length;
-    const late      = scored.filter(r => r.verdict.startsWith('late')).length;
-    const absent    = scored.filter(r => r.verdict === 'unexplained_absence').length;
-    const pct       = scored.length > 0 ? Math.round((onTime / scored.length) * 100) : null;
-    return { total: scored.length, onTime, late, absent, pct };
+    const scored       = rows.filter(r => r.countsToScore);
+    const onTime       = scored.filter(r => r.verdict === 'on_time').length;
+    const late         = scored.filter(r => r.verdict.startsWith('late')).length;
+    // absent = all three absence verdicts; unexplained = the subset needing attention
+    const absent       = scored.filter(r =>
+      r.verdict === 'unexplained_absence' ||
+      r.verdict === 'absent_reported_on_time' ||
+      r.verdict === 'absent_reported_late',
+    ).length;
+    const unexplained  = scored.filter(r => r.verdict === 'unexplained_absence').length;
+    const pct          = scored.length > 0 ? Math.round((onTime / scored.length) * 100) : null;
+    return { total: scored.length, onTime, late, absent, unexplained, pct };
   }, [rows]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -133,17 +139,20 @@ export default function AttendanceReport() {
           <>
             {/* KPI bar */}
             <div className="flex flex-wrap items-center gap-4 mb-4 bg-white border border-border rounded-xl px-5 py-3 shadow-sm">
-              <KpiChip label="Scheduled days" value={String(kpis.total)} color="slate" />
-              <KpiChip label="On-time" value={String(kpis.onTime)} color="green" />
-              <KpiChip label="Late"    value={String(kpis.late)}   color="amber" />
-              <KpiChip label="Absent"  value={String(kpis.absent)} color="red" />
-              {kpis.pct !== null && (
+              <KpiChip label="Scheduled days" value={String(kpis.total)}       color="slate" />
+              <KpiChip label="On-time"        value={String(kpis.onTime)}      color="green" />
+              <KpiChip label="Late"           value={String(kpis.late)}        color="amber" />
+              <KpiChip label="Absent"         value={String(kpis.absent)}      color="slate" />
+              <KpiChip label="Unexplained"    value={String(kpis.unexplained)} color="red"   />
+              {kpis.pct !== null ? (
                 <span className={[
                   'ml-auto text-lg font-bold tabular-nums',
                   kpis.pct >= 90 ? 'text-green-600' : kpis.pct >= 75 ? 'text-amber-600' : 'text-red-600',
                 ].join(' ')}>
                   {kpis.pct}% on-time
                 </span>
+              ) : (
+                <span className="ml-auto text-sm text-muted-foreground">No scored days</span>
               )}
 
               {/* View toggle */}
