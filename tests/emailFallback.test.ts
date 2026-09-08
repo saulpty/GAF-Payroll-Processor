@@ -211,8 +211,8 @@ test('E11: a permission under an unknown address is still honoured', () => {
   const rows = runClassificationEngine(baseInput({
     mondayPermissions: [{
       employeeName: 'Gabriel Chu', employeeEmail: UNKNOWN_EMAIL,
-      startDate: MON, endDate: MON, requestType: 'PTO / Vacation', permissionType: '',
-    } as unknown as EngineInput['mondayPermissions'][number]],
+      startDate: MON, endDate: MON, requestType: 'PTO / Vacation', status: 'Approved',
+    }],
   }));
   assert.notEqual(rows[0].event_type_1, 'Ausencia Injustificada',
     'approved leave filed under an unknown address must not read as a no-show');

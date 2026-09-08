@@ -71,25 +71,28 @@ function ReportingBadge({ s }: { s: EmpStats }) {
   if (needed === 0) {
     return <span className="text-muted-foreground text-xs tabular-nums">—</span>;
   }
-  const label = `${filed} / ${needed}`;
+  const label = `${filed}/${needed}`;
   if (filed === needed) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700 tabular-nums">
-        Complete <span className="font-normal opacity-70">{label}</span>
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+        <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">Complete</span>
+        <span className="text-[11px] text-muted-foreground tabular-nums">{label}</span>
       </span>
     );
   }
   const missing = needed - filed;
   if (missing < needed / 2) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 tabular-nums">
-        Gaps <span className="font-normal opacity-70">{label}</span>
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+        <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700">Gaps</span>
+        <span className="text-[11px] text-muted-foreground tabular-nums">{label}</span>
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 tabular-nums">
-      Rarely <span className="font-normal opacity-70">{label}</span>
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700">Rarely</span>
+      <span className="text-[11px] text-muted-foreground tabular-nums">{label}</span>
     </span>
   );
 }

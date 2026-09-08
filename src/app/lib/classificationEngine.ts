@@ -387,7 +387,16 @@ function toYMD(d: Date): string {
 /** Returns true if this Monday row belongs to the given employee.
  *  Order: email-first, then alias resolution via nameMap, then direct name match.
  *  nameMap (normalized name -> employee id, built from display_name + aliases) is
- *  what lets board rows that use a name variant still attach to the right person. */
+ *  what lets board rows that use a name variant still attach to the right person.
+ *
+ *  The email is the FIRST test, not the ONLY test (changed 2026-09-08). An email
+ *  that matches this employee wins outright, and an email belonging to a
+ *  DIFFERENT roster employee loses outright -- that row is the other person's and
+ *  must never fall through to a name comparison. But an email that belongs to
+ *  nobody on the roster carries no information (a typo, a dropped domain suffix,
+ *  a personal gmail), so the name and alias paths still get their turn. 113 forms
+ *  were invisible to payroll because they did not.
+ *  See docs/findings/2026-09-08-form-email-mismatch.md. */
 function rowMatchesEmp(
   rowEmail: string | undefined,
   rowName: string,
@@ -395,11 +404,20 @@ function rowMatchesEmp(
   empName: string,
   empId?: number,
   nameMap?: Map<string, number>,
+  rosterEmails?: Set<string>,
 ): boolean {
-  if (rowEmail && rowEmail.trim()) {
-    return rowEmail.trim().toLowerCase() === empEmail.toLowerCase();
+  const em = (rowEmail ?? '').trim().toLowerCase();
+  if (em) {
+    // Authoritative match: this row is this employee's.
+    if (em === (empEmail ?? '').trim().toLowerCase()) return true;
+    // Authoritative non-match: the email is someone else's on the roster.
+    if (rosterEmails && rosterEmails.has(em)) return false;
+    // Without a roster set, preserve the historic strict behaviour.
+    if (!rosterEmails) return false;
+    // Otherwise the email resolves to nobody -- fall through to name/alias.
   }
-  const norm = normalizeName(rowName);
+  const norm = normalizeName(rowName ?? '');
+  if (!norm) return false;
   if (nameMap && empId !== undefined && nameMap.get(norm) === empId) return true;
   return norm === normalizeName(empName);
 }
@@ -416,6 +434,15 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
   } = input;
 
   const cfg: ClassificationConfig = { ...DEFAULT_CLASSIFICATION_CONFIG, ...(input.config ?? {}) };
+
+  // Every teramind_email on the roster, lowercased. Used by rowMatchesEmp to tell
+  // "this email belongs to someone else" (authoritative: no match, no fallback)
+  // from "this email belongs to nobody" (a typo: fall back to the name).
+  const rosterEmails = new Set(
+    employees
+      .map(e => (e.teramind_email ?? '').trim().toLowerCase())
+      .filter(Boolean)
+  );
 
   const holidaySet = new Set(holidays.map(h => h.date.slice(0, 10)));
   const outageSet = new Set(outageDates);
@@ -510,16 +537,16 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
 
       // Attendance/absence forms for this employee+date
       const absenceForms = mondayAttendance.filter(
-        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && r.date === dateStr && r.type === 'Absence'
+        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap, rosterEmails) && r.date === dateStr && r.type === 'Absence'
       );
       const tardinessForms = mondayAttendance.filter(
-        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && r.date === dateStr && r.type === 'Tardiness'
+        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap, rosterEmails) && r.date === dateStr && r.type === 'Tardiness'
       );
       const adjustments = mondayAdjustments.filter(
-        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && r.date === dateStr
+        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap, rosterEmails) && r.date === dateStr
       );
       const permissions = mondayPermissions.filter(
-        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap) && permissionCoversDate(r, dateStr)
+        r => rowMatchesEmp(r.employeeEmail, r.employeeName, emp.teramind_email, emp.display_name, emp.id, nameMap, rosterEmails) && permissionCoversDate(r, dateStr)
       );
 
       // ── Step 1: Holiday ──
