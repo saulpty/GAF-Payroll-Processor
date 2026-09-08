@@ -418,6 +418,7 @@ broke."
 | `src/app/lib/classificationEngine.ts` | 35 KB |
 | `src/app/pages/ActionRequired.tsx` | 34 KB |
 | `src/app/pages/admin/AdminLookups.tsx` | 30 KB |
+| `src/app/pages/attendance/AttendancePanel.tsx` | 17.3 KB — **already over the 15 KB rule before 2026-09-08**; that day's Excused→Time off rename took it 16.6 → 17.3 KB. Small and self-contained (one employee's slide-over), so split it the next time it needs real work rather than on its own |
 
 **One of the six is gone.** `AdminEmployeeSync.tsx` was replaced rather than
 edited: the Employees hub was built alongside it as new files, verified against
