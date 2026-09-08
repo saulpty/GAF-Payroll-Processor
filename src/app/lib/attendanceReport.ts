@@ -30,11 +30,11 @@ export type {
 // ---------------------------------------------------------------------------
 
 export const AWAY_REQUEST_TYPES: string[] = [
-  'PTO / Vacation',
-  'Floating Holiday',
-  'Birthday Day Off',
-  'Compensatory Day',
-  'Time Off / Permission',
+  'pto / vacation',
+  'floating holiday',
+  'birthday day off',
+  'compensatory day',
+  'time off / permission',
 ];
 
 export const SCORED_VERDICTS: string[] = [
@@ -49,15 +49,15 @@ export const SCORED_VERDICTS: string[] = [
 
 // Not-away pass-through request types (fall through verdict logic)
 const PASSTHROUGH_REQUEST_TYPES = new Set([
-  'Work From Home',
-  'Work on a Holiday',
+  'work from home',
+  'work on a holiday',
 ]);
 
 const PTO_REQUEST_TYPES = new Set([
-  'PTO / Vacation',
-  'Floating Holiday',
-  'Birthday Day Off',
-  'Compensatory Day',
+  'pto / vacation',
+  'floating holiday',
+  'birthday day off',
+  'compensatory day',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -84,20 +84,25 @@ function ymdToDate(s: string): Date {
   return new Date(s + 'T12:00:00');
 }
 
-/** Parse "YYYY-MM-DD HH:MM" → { datePart: "YYYY-MM-DD", minutes: number } or null.
- *  submitted_at keeps its full value; only its date part is compared as a day. */
+/** Parse submitted_at → { datePart: "YYYY-MM-DD", minutes: number | null } or null.
+ *  submitted_at is TEXT from Monday and may be:
+ *    "YYYY-MM-DD"          — date-only (minutes: null)
+ *    "YYYY-MM-DD HH:MM"    — space separator
+ *    "YYYY-MM-DDTHH:MM"    — T separator (ISO-like)
+ *  Returns null only when the value is absent or shorter than 10 chars. */
 function parseSubmittedAt(
   submittedAt: string | null,
-): { datePart: string; minutes: number } | null {
+): { datePart: string; minutes: number | null } | null {
   if (!submittedAt) return null;
-  const spaceIdx = submittedAt.indexOf(' ');
-  if (spaceIdx < 0) return null;
-  const datePart = submittedAt.slice(0, 10);
-  const timePart = submittedAt.slice(spaceIdx + 1); // "HH:MM"
-  const [hStr, mStr] = timePart.split(':');
+  const s = submittedAt.trim();
+  if (s.length < 10) return null;
+  const datePart = s.slice(0, 10);
+  const rest = s.slice(10).replace(/^[T ]/, '').trim(); // strip leading T or space
+  if (!rest) return { datePart, minutes: null };
+  const [hStr, mStr] = rest.split(':');
   const h = parseInt(hStr, 10);
   const m = parseInt(mStr, 10);
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  if (Number.isNaN(h) || Number.isNaN(m)) return { datePart, minutes: null };
   return { datePart, minutes: h * 60 + m };
 }
 
@@ -113,11 +118,18 @@ function buildFormView(
 
   if (parsed) {
     if (parsed.datePart < rowDate) {
-      // Submitted before the day — always on time
+      // Submitted before the day — always on time regardless of whether a time came with it
       onTime = true;
+      submittedMinutes = null;
     } else if (parsed.datePart === rowDate) {
-      submittedMinutes = parsed.minutes;
-      onTime = parsed.minutes < scheduledStartMinutes;
+      if (parsed.minutes === null) {
+        // Date-only: no time evidence — cannot confirm it beat the shift
+        onTime = false;
+        submittedMinutes = null;
+      } else {
+        submittedMinutes = parsed.minutes;
+        onTime = parsed.minutes < scheduledStartMinutes;
+      }
     }
     // submitted_at date after the row date → not on time, submittedMinutes null
   }
@@ -135,12 +147,14 @@ function buildFormView(
 }
 
 /** Does an away request cover a given date?
- *  Coverage: start_date <= date < return_date, or start_date <= date <= end_date when return_date is null.
- */
+ *  Coverage: start_date <= date < return_date (when return_date > start_date),
+ *  or start_date <= date <= end_date otherwise.
+ *  When return_date equals start_date the exclusive-bound formula covers zero
+ *  days; fall through to the end_date-inclusive branch instead. */
 function requestCoversDate(r: ReportRequest, date: string): boolean {
   const s = ymd(r.start_date ?? '');
   if (!s || date < s) return false;
-  if (r.return_date) {
+  if (r.return_date && ymd(r.return_date) > s) {
     return date < ymd(r.return_date);
   }
   const e = ymd(r.end_date ?? r.start_date ?? '');
@@ -242,6 +256,11 @@ export function buildAttendanceReport(input: ReportInput): ReportOutput {
     const empForms   = formIndex.get(empIdStr)   ?? new Map();
     const empRequests = requestIndex.get(empIdStr) ?? [];
 
+    // Guard: if this employee has no payroll rows at all, every date falls into
+    // not_processed rather than unexplained_absence, because the period was
+    // simply not run for them (new hire, excluded from run, etc.).
+    const hasAnyPayroll = (payrollIndex.get(empIdStr)?.size ?? 0) > 0;
+
     // Normalise employee start_date once
     const empStartDate = ymd(emp.start_date);
 
@@ -285,17 +304,20 @@ export function buildAttendanceReport(input: ReportInput): ReportOutput {
         verdict = 'holiday';
         coveredBy = { kind: 'holiday', label: holidayName };
       } else {
-        // Check away requests
+        // Check away requests — normalise to lowercase+trim so the matcher
+        // agrees with classificationEngine.ts which also lowercases.
         const awayRequest = empRequests.find(r => {
-          if (PASSTHROUGH_REQUEST_TYPES.has(r.request_type)) return false;
-          if (!AWAY_REQUEST_TYPES.includes(r.request_type)) return false;
+          const rt = (r.request_type ?? '').trim().toLowerCase();
+          if (PASSTHROUGH_REQUEST_TYPES.has(rt)) return false;
+          if (!AWAY_REQUEST_TYPES.includes(rt)) return false;
           return requestCoversDate(r, date);
         });
 
         if (awayRequest) {
-          verdict = PTO_REQUEST_TYPES.has(awayRequest.request_type) ? 'pto' : 'permission';
+          const rt = (awayRequest.request_type ?? '').trim().toLowerCase();
+          verdict = PTO_REQUEST_TYPES.has(rt) ? 'pto' : 'permission';
           coveredBy = { kind: verdict as 'pto' | 'permission', label: awayRequest.request_type };
-        } else if (!dateInProcessedPeriod(date, periods)) {
+        } else if (!hasAnyPayroll || !dateInProcessedPeriod(date, periods)) {
           verdict = 'not_processed';
         } else if (payrollRow && payrollRow.entry_time != null) {
           // Has punches

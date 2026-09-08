@@ -155,10 +155,24 @@ test('R11: a Tardiness form on a day with no punches still explains the day', ()
   assert.equal(row.form?.type, 'Tardiness');
 });
 
-test('R12: an absence with no payroll row at all is still an unexplained absence', () => {
-  // The engine does not always write a row. A silent gap must not vanish.
-  const row = only({ payrollRows: [] });
-  assert.equal(row.verdict, 'unexplained_absence');
+test('R12: a missing row is an absence only when the employee is otherwise in the data', () => {
+  // REVISED 2026-09-08. As first written this asserted that ANY day with no
+  // payroll row is an unexplained absence, using an employee with no rows at
+  // all — which is indistinguishable from an employee who was never in the
+  // payroll run. R51 showed what that costs: a new hire, or anyone an operator
+  // excluded from a run, read 0% on-time with a month of absences they did not
+  // take. Claiming absences for someone missing from the data is the worse
+  // error, so the rule is now narrower.
+  //
+  // The original intent — "the engine does not always write a row, and a
+  // silent gap must not vanish" — still holds and is what this asserts: Ana
+  // worked the 1st, so the 2nd is genuinely hers to answer for. R52 covers the
+  // same ground from the other side; R51 covers the employee with no data.
+  const r = build({
+    dateFrom: '2026-06-01', dateTo: '2026-06-02',
+    payrollRows: [pay({ work_date: '2026-06-01' })],
+  });
+  assert.equal(r.rows.find(x => x.date === '2026-06-02')?.verdict, 'unexplained_absence');
 });
 
 // ── days that do not count against the score ──────────────────────────────

@@ -25,7 +25,10 @@ function PctBar({ pct }: { pct: number }) {
 
 const STATUS_TOOLTIP = 'Based on on-time rate alone: Good is 90% or above, Fair is 75–89%, At Risk is below 75%.';
 
-function StatusBadge({ pct }: { pct: number }) {
+function StatusBadge({ pct, days }: { pct: number; days: number }) {
+  if (days === 0) {
+    return <span className="text-muted-foreground text-xs">—</span>;
+  }
   if (pct >= 90) return (
     <span
       title={STATUS_TOOLTIP}
@@ -178,7 +181,7 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.role || <span className="text-slate-300">—</span>}</td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.manager || <span className="text-slate-300">—</span>}</td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.schedule}</td>
-                <td className="px-3 py-2.5"><StatusBadge pct={s.pctOnTime} /></td>
+                <td className="px-3 py-2.5"><StatusBadge pct={s.pctOnTime} days={s.days} /></td>
                 <td className="px-3 py-2.5"><ReportingBadge s={s} /></td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{s.days}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-green-700 font-medium">{s.onTime}</td>
