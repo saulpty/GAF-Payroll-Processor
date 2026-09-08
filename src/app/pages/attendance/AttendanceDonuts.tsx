@@ -1,7 +1,7 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { CompanyKpis, EmpStats } from '@/app/lib/attendanceStats';
 
-type LegendItem = { label: string; value: number; color: string };
+type LegendItem = { label: string; value: number; color: string; indent?: boolean };
 
 type DonutDatum = { name: string; value: number; color: string };
 
@@ -39,12 +39,15 @@ function Legend({ items }: { items: LegendItem[] }) {
   return (
     <div className="flex flex-col gap-2 mt-3">
       {items.map((it, i) => (
-        <div key={i} className="flex items-center justify-between text-xs">
+        <div key={i} className={`flex items-center justify-between text-xs ${it.indent ? 'pl-4' : ''}`}>
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: it.color }} />
-            <span className="text-foreground">{it.label}</span>
+            <div
+              className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+              style={{ background: it.color, opacity: it.indent ? 0.7 : 1 }}
+            />
+            <span className={it.indent ? 'text-muted-foreground' : 'text-foreground'}>{it.label}</span>
           </div>
-          <span className="font-semibold">{it.value}</span>
+          <span className={`font-semibold ${it.indent ? 'text-muted-foreground' : ''}`}>{it.value}</span>
         </div>
       ))}
     </div>
@@ -55,12 +58,12 @@ export function AttendanceDonuts({ kpis, empStats }: { kpis: CompanyKpis; empSta
   const totalLate = kpis.lateReported + kpis.lateUnreported;
 
   const overviewData: DonutDatum[] = [
-    { name: 'On Time',            value: kpis.onTime,        color: '#2AA876' },
-    { name: 'Late Reported',      value: kpis.lateReported,  color: '#FBBF24' },
-    { name: 'Late Unreported',    value: kpis.lateUnreported, color: '#EF4444' },
-    { name: 'Absent',             value: kpis.absent,        color: '#B91C1C' },
-    { name: 'Permission',         value: kpis.permission,    color: '#6366F1' },
-    { name: 'Excused',            value: kpis.excused,       color: '#94A3B8' },
+    { name: 'On Time',      value: kpis.onTime,        color: '#2AA876' },
+    { name: 'Late Reported', value: kpis.lateReported,  color: '#FBBF24' },
+    { name: 'Late Unreported', value: kpis.lateUnreported, color: '#EF4444' },
+    { name: 'Absent',        value: kpis.absent,        color: '#B91C1C' },
+    { name: 'Permission',    value: kpis.permission,    color: '#6366F1' },
+    { name: 'Time off',      value: kpis.excused,       color: '#94A3B8' },
   ].filter(d => d.value > 0);
 
   const b1to10  = empStats.reduce((s, e) => s + e.b1to10,  0);
@@ -82,6 +85,16 @@ export function AttendanceDonuts({ kpis, empStats }: { kpis: CompanyKpis; empSta
 
   const reportPct = totalLate > 0 ? Math.round(kpis.lateReported / totalLate * 100) : 0;
 
+  // Overview legend — Time off as single entry (no event_type_1 in view data)
+  const overviewLegend: LegendItem[] = [
+    { label: 'On Time',          value: kpis.onTime,          color: '#2AA876' },
+    { label: 'Late Reported',    value: kpis.lateReported,    color: '#FBBF24' },
+    { label: 'Late Unreported',  value: kpis.lateUnreported,  color: '#EF4444' },
+    { label: 'Absent',           value: kpis.absent,          color: '#B91C1C' },
+    { label: 'Permission',       value: kpis.permission,      color: '#6366F1' },
+    { label: 'Time off',         value: kpis.excused,         color: '#94A3B8' },
+  ];
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
       <div className="bg-white rounded-xl border border-border shadow-sm p-4">
@@ -91,14 +104,7 @@ export function AttendanceDonuts({ kpis, empStats }: { kpis: CompanyKpis; empSta
           centerVal={`${kpis.onTimeRate.toFixed(0)}%`}
           centerLabel="On Time"
         />
-        <Legend items={[
-          { label: 'On Time',          value: kpis.onTime,          color: '#2AA876' },
-          { label: 'Late Reported',    value: kpis.lateReported,    color: '#FBBF24' },
-          { label: 'Late Unreported',  value: kpis.lateUnreported,  color: '#EF4444' },
-          { label: 'Absent',           value: kpis.absent,          color: '#B91C1C' },
-          { label: 'Permission',       value: kpis.permission,      color: '#6366F1' },
-          { label: 'Excused',          value: kpis.excused,         color: '#94A3B8' },
-        ]} />
+        <Legend items={overviewLegend} />
       </div>
 
       <div className="bg-white rounded-xl border border-border shadow-sm p-4">
@@ -121,7 +127,7 @@ export function AttendanceDonuts({ kpis, empStats }: { kpis: CompanyKpis; empSta
           data={reportingData.length > 0 ? reportingData : [{ name: 'No data', value: 1, color: '#E2E8F0' }]}
           centerVal={`${reportPct}%`}
           centerLabel="Reported"
-          caption="Of late arrivals, % that filed a GAF form. Absent & excused excluded."
+          caption="Of late arrivals, % that filed a GAF form. Absent & time off excluded."
         />
         <Legend items={[
           { label: 'On Time',    value: kpis.onTime,         color: '#2AA876' },

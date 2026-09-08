@@ -23,10 +23,39 @@ function PctBar({ pct }: { pct: number }) {
   );
 }
 
+const STATUS_TOOLTIP = 'Based on on-time rate alone: Good is 90% or above, Fair is 75–89%, At Risk is below 75%.';
+
 function StatusBadge({ pct }: { pct: number }) {
-  if (pct >= 90) return <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">Good</span>;
-  if (pct >= 75) return <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700">Fair</span>;
-  return <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700">At Risk</span>;
+  if (pct >= 90) return (
+    <span
+      title={STATUS_TOOLTIP}
+      tabIndex={0}
+      aria-label={`Good — ${STATUS_TOOLTIP}`}
+      className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700 cursor-default"
+    >
+      Good
+    </span>
+  );
+  if (pct >= 75) return (
+    <span
+      title={STATUS_TOOLTIP}
+      tabIndex={0}
+      aria-label={`Fair — ${STATUS_TOOLTIP}`}
+      className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 cursor-default"
+    >
+      Fair
+    </span>
+  );
+  return (
+    <span
+      title={STATUS_TOOLTIP}
+      tabIndex={0}
+      aria-label={`At Risk — ${STATUS_TOOLTIP}`}
+      className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 cursor-default"
+    >
+      At Risk
+    </span>
+  );
 }
 
 type Props = { stats: EmpStats[]; onRowClick: (email: string) => void; search: string };
@@ -50,9 +79,12 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
     return 0;
   });
 
-  const Th = ({ label, col }: { label: string; col: SortKey }) => (
-    <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer select-none whitespace-nowrap bg-slate-50 border-b border-border hover:text-foreground"
-      onClick={() => handleSort(col)}>
+  const Th = ({ label, col, tooltip }: { label: string; col: SortKey; tooltip?: string }) => (
+    <th
+      className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer select-none whitespace-nowrap bg-slate-50 border-b border-border hover:text-foreground"
+      onClick={() => handleSort(col)}
+      title={tooltip}
+    >
       {label}<SortIcon col={col} sortKey={sortKey} dir={sortDir} />
     </th>
   );
@@ -63,22 +95,27 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead className="sticky top-0 z-10">
             <tr>
-              <Th label="Employee"       col="name" />
-              <Th label="Role"           col="role" />
-              <Th label="Manager"        col="manager" />
-              <Th label="Schedule"       col="schedule" />
-              <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-slate-50 border-b border-border whitespace-nowrap">Status</th>
-              <Th label="Expected"       col="days" />
-              <Th label="On Time"        col="onTime" />
-              <Th label="Total Late"     col="totalLate" />
-              <Th label="Reported"       col="reported" />
-              <Th label="Unreported"     col="unreported" />
-              <Th label="Absent"         col="absent" />
-              <Th label="Avg Min (worked)" col="avgMinLate" />
-              <Th label="% On-Time"      col="pctOnTime" />
-              <Th label="1–10m"          col="b1to10" />
-              <Th label="11–30m"         col="b11to30" />
-              <Th label="31+m"           col="b31plus" />
+              <Th label="Employee"         col="name" />
+              <Th label="Role"             col="role" />
+              <Th label="Manager"          col="manager" />
+              <Th label="Schedule"         col="schedule" />
+              <th
+                className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-slate-50 border-b border-border whitespace-nowrap cursor-default"
+                title={STATUS_TOOLTIP}
+              >
+                Status
+              </th>
+              <Th label="Expected"         col="days"        tooltip="Scheduled work days in range, excluding time off and permissions." />
+              <Th label="On Time"          col="onTime" />
+              <Th label="Total Late"       col="totalLate" />
+              <Th label="Reported"         col="reported" />
+              <Th label="Unreported"       col="unreported" />
+              <Th label="Absent"           col="absent" />
+              <Th label="Avg Min (worked)" col="avgMinLate"   tooltip="Average minutes late across the days someone actually worked." />
+              <Th label="% On-Time"        col="pctOnTime" />
+              <Th label="1–10m"            col="b1to10" />
+              <Th label="11–30m"           col="b11to30" />
+              <Th label="31+m"             col="b31plus" />
             </tr>
           </thead>
           <tbody>

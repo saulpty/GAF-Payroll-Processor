@@ -1,22 +1,9 @@
 import { useMemo, useState } from 'react';
 import { ChevronUp, ChevronDown, ChevronsUpDown, Info } from 'lucide-react';
 import type { ReportRow, Verdict } from '@/app/lib/attendanceReportTypes';
+import { VERDICT_LABEL } from './AttendanceReportStrips';
 
 type Props = { rows: ReportRow[] };
-
-const VERDICT_LABEL: Record<Verdict, string> = {
-  on_time:                 'On Time',
-  late_reported_on_time:   'Late / Reported ✓',
-  late_reported_late:      'Late / Late Form',
-  late_no_form:            'Late / No Form',
-  absent_reported_on_time: 'Absent / Reported ✓',
-  absent_reported_late:    'Absent / Late Form',
-  unexplained_absence:     'Unexplained Absence',
-  pto:                     'PTO',
-  permission:              'Permission',
-  holiday:                 'Holiday',
-  not_processed:           'Not Processed',
-};
 
 const VERDICT_BADGE: Record<Verdict, string> = {
   on_time:                 'bg-green-100 text-green-700',
@@ -113,7 +100,7 @@ export function AttendanceReportTable({ rows }: Props) {
 
   return (
     <div>
-      {/* Verdict filter chips */}
+      {/* Verdict filter chips — use shared VERDICT_LABEL for consistency */}
       <div className="flex flex-wrap gap-1.5 mb-3">
         {presentVerdicts.map(v => {
           const active = activeVerdicts.has(v);
@@ -199,7 +186,7 @@ export function AttendanceReportTable({ rows }: Props) {
                     {/* Subtle flags */}
                     {r.flags.recordedUnexplainedButFormOnFile && (
                       <Info className="w-3 h-3 inline ml-1 text-slate-400"
-                        title="Payroll recorded as unexplained, but a form is on file" />
+                        title="Recorded as an unjustified absence even though a form was filed." />
                     )}
                     {r.flags.formEmailUnrecognised && (
                       <Info className="w-3 h-3 inline ml-1 text-slate-400"

@@ -139,11 +139,16 @@ export default function AttendanceReport() {
           <>
             {/* KPI bar */}
             <div className="flex flex-wrap items-center gap-4 mb-4 bg-white border border-border rounded-xl px-5 py-3 shadow-sm">
-              <KpiChip label="Scheduled days" value={String(kpis.total)}       color="slate" />
-              <KpiChip label="On-time"        value={String(kpis.onTime)}      color="green" />
-              <KpiChip label="Late"           value={String(kpis.late)}        color="amber" />
-              <KpiChip label="Absent"         value={String(kpis.absent)}      color="slate" />
-              <KpiChip label="Unexplained"    value={String(kpis.unexplained)} color="red"   />
+              <KpiChip
+                label="Scheduled days"
+                value={String(kpis.total)}
+                color="slate"
+                tooltip="Days someone was expected to work in this range. Time off, permissions and holidays are excluded."
+              />
+              <KpiChip label="On-time"     value={String(kpis.onTime)}      color="green" />
+              <KpiChip label="Late"        value={String(kpis.late)}        color="amber" />
+              <KpiChip label="Absent"      value={String(kpis.absent)}      color="slate" />
+              <KpiChip label="Unexplained" value={String(kpis.unexplained)} color="red"   />
               {kpis.pct !== null ? (
                 <span className={[
                   'ml-auto text-lg font-bold tabular-nums',
@@ -207,7 +212,7 @@ export default function AttendanceReport() {
   );
 }
 
-function KpiChip({ label, value, color }: { label: string; value: string; color: string }) {
+function KpiChip({ label, value, color, tooltip }: { label: string; value: string; color: string; tooltip?: string }) {
   const colors: Record<string, string> = {
     slate: 'text-slate-700 bg-slate-100',
     green: 'text-green-700 bg-green-50',
@@ -219,7 +224,13 @@ function KpiChip({ label, value, color }: { label: string; value: string; color:
       <span className={`text-base font-bold tabular-nums px-2 py-0.5 rounded-md ${colors[color] ?? colors.slate}`}>
         {value}
       </span>
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span
+        className="text-xs text-muted-foreground cursor-default"
+        title={tooltip}
+        tabIndex={tooltip ? 0 : undefined}
+      >
+        {label}{tooltip && <span className="ml-0.5 opacity-50">ⓘ</span>}
+      </span>
     </div>
   );
 }

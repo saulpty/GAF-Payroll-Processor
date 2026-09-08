@@ -28,18 +28,34 @@ const TILE_BG: Record<TileColor, string> = {
   muted:   'bg-slate-100 border-slate-300 text-slate-500',
 };
 
-const VERDICT_LABEL: Record<Verdict, string> = {
-  on_time:                 'On Time',
-  late_reported_on_time:   'Late / Reported ✓',
-  late_reported_late:      'Late / Late Form',
-  late_no_form:            'Late / No Form',
-  absent_reported_on_time: 'Absent / Reported ✓',
-  absent_reported_late:    'Absent / Late Form',
-  unexplained_absence:     'Unexplained',
+// Full wording shared across all three surfaces (tile, chip, badge)
+export const VERDICT_LABEL: Record<Verdict, string> = {
+  on_time:                 'On time',
+  late_reported_on_time:   'Late — reported ahead',
+  late_reported_late:      'Late — form sent after shift',
+  late_no_form:            'Late — no form',
+  absent_reported_on_time: 'Absent — reported ahead',
+  absent_reported_late:    'Absent — reported after shift',
+  unexplained_absence:     'Absent — unexplained',
   pto:                     'PTO',
   permission:              'Permission',
   holiday:                 'Holiday',
-  not_processed:           'Not Processed',
+  not_processed:           'Payroll not run yet',
+};
+
+// Short label for the narrow tile (≤80px); full label in tooltip
+const VERDICT_TILE_SHORT: Record<Verdict, string> = {
+  on_time:                 'On time',
+  late_reported_on_time:   'Late',
+  late_reported_late:      'Late',
+  late_no_form:            'Late — no form',
+  absent_reported_on_time: 'Absent',
+  absent_reported_late:    'Absent',
+  unexplained_absence:     'Absent — unexplained',
+  pto:                     'PTO',
+  permission:              'Permission',
+  holiday:                 'Holiday',
+  not_processed:           'Not run yet',
 };
 
 function fmtDate(d: string) {
@@ -61,12 +77,16 @@ function fmtTime(t: string | null) {
 function DayTile({ row }: { row: ReportRow }) {
   const color  = VERDICT_COLOR[row.verdict];
   const bgCls  = TILE_BG[color];
-  const label  = VERDICT_LABEL[row.verdict];
+  const short  = VERDICT_TILE_SHORT[row.verdict];
+  const full   = VERDICT_LABEL[row.verdict];
 
   return (
-    <div className={`relative border rounded-lg px-2 py-1.5 flex flex-col gap-0.5 text-[11px] leading-snug min-w-[80px] ${bgCls}`}>
+    <div
+      className={`relative border rounded-lg px-2 py-1.5 flex flex-col gap-0.5 text-[11px] leading-snug min-w-[80px] ${bgCls}`}
+      title={full}
+    >
       <span className="font-semibold">{fmtDate(row.date)}</span>
-      <span className="opacity-80">{label}</span>
+      <span className="opacity-80">{short}</span>
       {row.entryTime && (
         <span className="tabular-nums opacity-70">in {fmtTime(row.entryTime)}</span>
       )}
@@ -83,7 +103,7 @@ function DayTile({ row }: { row: ReportRow }) {
         <span className="absolute top-1 right-1">
           <Info className="w-3 h-3 text-slate-400" title={
             row.flags.recordedUnexplainedButFormOnFile
-              ? 'Recorded as unexplained but a form is on file'
+              ? 'Recorded as an unjustified absence even though a form was filed.'
               : 'Form submitted by a different email'
           } />
         </span>
