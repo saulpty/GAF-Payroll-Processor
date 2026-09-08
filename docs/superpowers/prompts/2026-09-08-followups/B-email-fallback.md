@@ -266,3 +266,38 @@ matcher:
 One thing these tests must **not** assert: anything about off-day rows. The
 non-scheduled-day gate runs before every form lookup and keys on punches, and
 `weekendSchedule.test.ts` W2/W3/W9/W11 already own that ground.
+
+---
+
+## Addendum — added 2026-09-08, apply together with the above
+
+### The tests already exist and are red
+
+`tests/emailFallback.test.ts` is written and committed. **Do not edit it.** Make
+it pass. Thirteen cases; seven already pass and must stay passing:
+
+- **E1, E2, E3, E6, E7, E8, E8b pass today.** E3 is the important one — a row
+  carrying employee B's address but naming employee A must attach to B and NOT
+  to A. It asserts both directions. If your change breaks E3 it has weakened the
+  authoritative match, which is worse than the bug.
+- **E4, E5, E9, E10, E11, E12 fail today** and must pass afterwards. E11 goes
+  through the **permissions** board specifically, so a fix applied only to the
+  attendance lookups will pass everything else and still fail there — that is
+  deliberate.
+
+Run `node --test "tests/emailFallback.test.ts"` mentally against your change
+before you finish: 13 of 13.
+
+### One cosmetic fix, same pass
+
+In `src/app/pages/attendance/AttendanceTable.tsx`, the new `Reporting` badge
+renders `Complete 8/8` too narrow, so the numbers stack vertically inside the
+pill. Give the badge enough width, or put the ratio outside the pill next to it,
+so it reads on one line at every count. **No other change to that file.**
+
+### Files you may change
+
+- `src/app/lib/classificationEngine.ts` — the matcher and the roster set only
+- `src/app/pages/attendance/AttendanceTable.tsx` — the badge width only
+
+**No other file.** Not the tests, not a migration, not another page.
