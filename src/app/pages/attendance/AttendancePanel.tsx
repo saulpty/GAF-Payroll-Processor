@@ -12,11 +12,12 @@ type Props = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  'On Time':               '#2AA876',
-  'Late - Reported':       '#FBBF24',
-  'Late - Unreported':     '#EF4444',
-  'Excused (PTO/FH/Perm)': '#94A3B8',
-  'Permission':            '#6366F1',
+  'On Time':                '#2AA876',
+  'Late - Reported':        '#FBBF24',
+  'Late - Unreported':      '#EF4444',
+  'Excused (PTO/FH/Perm)':  '#94A3B8',
+  'Permission':             '#6366F1',
+  'Absent - Unexplained':   '#B91C1C',
 };
 
 function MiniKpi({ label, value, color }: { label: string; value: string | number; color: string }) {
@@ -45,16 +46,18 @@ function toDateStr(val: unknown): string {
 }
 
 const SCATTER_LEGEND = [
-  { label: 'On Time',   color: '#2AA876' },
-  { label: '1–10 min',  color: '#FBBF24' },
-  { label: '11–30 min', color: '#D97706' },
-  { label: '31+ min',   color: '#EF4444' },
-  { label: 'Excused',   color: '#94A3B8' },
-  { label: 'Permission',color: '#6366F1' },
+  { label: 'On Time',          color: '#2AA876' },
+  { label: '1–10 min',         color: '#FBBF24' },
+  { label: '11–30 min',        color: '#D97706' },
+  { label: '31+ min',          color: '#EF4444' },
+  { label: 'Absent',           color: '#B91C1C' },
+  { label: 'Excused',          color: '#94A3B8' },
+  { label: 'Permission',       color: '#6366F1' },
 ];
 
-// Fixed Y position for excused/permission dots (above the normal working range)
-const EXCUSED_Y = 7 * 60 - 20; // 6:40 — rendered above 7:00 line
+// Fixed Y positions for non-arrival dots (above the normal working range)
+const EXCUSED_Y = 7 * 60 - 20;  // 6:40 — excused / permission band
+const ABSENT_Y  = 11 * 60 + 10; // 11:10 — absent band (above schedule)
 
 type ScatterTooltipProps = {
   active?: boolean;
@@ -108,6 +111,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
     { name: '1–10m',      value: stats.b1to10,     color: '#FBBF24' },
     { name: '11–30m',     value: stats.b11to30,    color: '#D97706' },
     { name: '31+m',       value: stats.b31plus,    color: '#EF4444' },
+    { name: 'Absent',     value: stats.absent,     color: '#B91C1C' },
     { name: 'Excused',    value: stats.excused,    color: '#94A3B8' },
     { name: 'Permission', value: stats.permission, color: '#6366F1' },
   ].filter(d => d.value > 0);
@@ -116,6 +120,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
     { name: 'On Time',    value: stats.onTime,     color: '#2AA876' },
     { name: 'Reported',   value: stats.reported,   color: '#FBBF24' },
     { name: 'Unreported', value: stats.unreported, color: '#EF4444' },
+    { name: 'Absent',     value: stats.absent,     color: '#B91C1C' },
     { name: 'Excused',    value: stats.excused,    color: '#94A3B8' },
     { name: 'Permission', value: stats.permission, color: '#6366F1' },
   ].filter(d => d.value > 0);
@@ -124,18 +129,17 @@ export function AttendancePanel({ stats, onClose }: Props) {
     .sort((a, b) => toDateStr(b.date).localeCompare(toDateStr(a.date)))
     .slice(0, 20);
 
-  // Arrival scatter — show excused/permission at a fixed Y so they appear
+  // Arrival scatter — show excused/permission at EXCUSED_Y, absent at ABSENT_Y
   const scatterPoints = computeArrivalScatter(stats.rows).map(p => ({
     ...p,
-    // if no entry time (excused/permission), plot at fixed top position
     minutesSinceMidnight: p.minutesSinceMidnight ?? (
-      (p.status === 'Excused (PTO/FH/Perm)' || p.status === 'Permission')
-        ? EXCUSED_Y
-        : null
+      p.status === 'Absent - Unexplained'       ? ABSENT_Y  :
+      (p.status === 'Excused (PTO/FH/Perm)' || p.status === 'Permission') ? EXCUSED_Y :
+      null
     ),
   }));
 
-  const yTicks = [EXCUSED_Y, 7*60, 7*60+30, 8*60, 8*60+30, 9*60, 9*60+10, 9*60+30, 10*60, 11*60];
+  const yTicks = [EXCUSED_Y, 7*60, 7*60+30, 8*60, 8*60+30, 9*60, 9*60+10, 9*60+30, 10*60, 11*60, ABSENT_Y];
   const step = Math.max(1, Math.floor(scatterPoints.length / 10));
 
   const totalArrival   = arrivalData.reduce((s, d) => s + d.value, 0);
@@ -187,12 +191,13 @@ export function AttendancePanel({ stats, onClose }: Props) {
 
         <div className="p-7 flex flex-col gap-6">
           {/* Mini KPIs */}
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            <MiniKpi label="Days"       value={stats.days}                        color="#1B3A6B" />
+          <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
+            <MiniKpi label="Expected"   value={stats.days}                        color="#1B3A6B" />
             <MiniKpi label="On Time"    value={stats.onTime}                      color="#2AA876" />
             <MiniKpi label="Reported"   value={stats.reported}                    color="#FBBF24" />
             <MiniKpi label="Unreported" value={stats.unreported}                  color="#EF4444" />
-            <MiniKpi label="Avg Min"    value={stats.avgMinLate.toFixed(1)}       color="#94A3B8" />
+            <MiniKpi label="Absent"     value={stats.absent}                      color="#B91C1C" />
+            <MiniKpi label="Avg Min (worked)" value={stats.avgMinLate.toFixed(1)} color="#94A3B8" />
             <MiniKpi label="% On-Time"  value={`${stats.pctOnTime.toFixed(0)}%`} color="#2AA876" />
           </div>
 
@@ -203,7 +208,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
               Arrival Trend (Day-by-Day)
             </div>
             <p className="text-xs text-muted-foreground mb-2">
-              Each dot = one workday. Excused / Permission days are plotted at the top.
+              Each dot = one workday. Excused/Permission at bottom band; Absent (no-show) at top band.
             </p>
             <div className="flex flex-wrap gap-3 mb-3">
               {SCATTER_LEGEND.map(l => (
@@ -226,13 +231,15 @@ export function AttendancePanel({ stats, onClose }: Props) {
                     height={42}
                   />
                   <YAxis
-                    domain={[EXCUSED_Y - 5, 11 * 60]}
+                    domain={[EXCUSED_Y - 5, ABSENT_Y + 5]}
                     ticks={yTicks}
-                    tickFormatter={v => v === EXCUSED_Y ? 'Excused' : fmtMinutes(v)}
+                    tickFormatter={v => v === EXCUSED_Y ? 'Excused' : v === ABSENT_Y ? 'Absent' : fmtMinutes(v)}
                     tick={{ fontSize: 10 }}
                     width={66}
                   />
                   <Tooltip content={<ArrivalTooltip />} />
+                  <ReferenceLine y={ABSENT_Y} stroke="#B91C1C" strokeDasharray="4 3" strokeWidth={1}
+                    label={{ value: 'Absent', position: 'insideTopRight', fontSize: 9, fill: '#B91C1C' }} />
                   <ReferenceLine y={EXCUSED_Y} stroke="#94A3B8" strokeDasharray="4 3" strokeWidth={1}
                     label={{ value: 'Excused/Perm', position: 'insideTopRight', fontSize: 9, fill: '#94A3B8' }} />
                   <ReferenceLine y={9 * 60} stroke="#2AA876" strokeDasharray="4 3" strokeWidth={1.5}

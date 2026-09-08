@@ -1,5 +1,6 @@
 export const EXCUSED_STATUSES  = ['Excused (PTO/FH/Perm)'];
 export const PERMISSION_STATUSES = ['Permission'];
+export const ABSENT_STATUSES   = ['Absent - Unexplained'];
 
 export type AttendanceRow = {
   email: string;
@@ -27,6 +28,10 @@ export function isExcluded(status: string) {
   return EXCUSED_STATUSES.includes(status) || PERMISSION_STATUSES.includes(status);
 }
 
+export function isAbsent(status: string) {
+  return ABSENT_STATUSES.includes(status);
+}
+
 export type EmpStats = {
   email: string;
   name: string;
@@ -40,6 +45,8 @@ export type EmpStats = {
   unreported: number;
   excused: number;
   permission: number;
+  absent: number;
+  daysWorked: number;
   avgMinLate: number;
   pctOnTime: number;
   b1to10: number;
@@ -61,19 +68,24 @@ export function computeEmployeeStats(
 
   return Array.from(byEmp.entries()).map(([email, empRows]) => {
     const info = empMap.get(email);
-    const active = empRows.filter(r => !isExcluded(r.status));
-    const onTime = active.filter(r => r.status === 'On Time').length;
-    const reported = active.filter(r => r.status === 'Late - Reported').length;
-    const unreported = active.filter(r => r.status === 'Late - Unreported').length;
-    const excused = empRows.filter(r => r.status === 'Excused (PTO/FH/Perm)').length;
-    const permission = empRows.filter(r => r.status === 'Permission').length;
-    const sumMin = active.reduce((s, r) => s + r.minutes_late, 0);
-    const avgMinLate = active.length > 0 ? sumMin / active.length : 0;
-    const days = active.length;
-    const pctOnTime = days > 0 ? (onTime / days) * 100 : 0;
-    const b1to10  = active.filter(r => r.bucket === 'late_1to10').length;
-    const b11to30 = active.filter(r => r.bucket === 'late_11to30').length;
-    const b31plus = active.filter(r => r.bucket === 'late_830plus').length;
+    // active = rows that count toward on-time rate (excused & permission excluded)
+    const active  = empRows.filter(r => !isExcluded(r.status));
+    // arrived = active rows that are NOT an unexplained absence (have real arrival)
+    const arrived = active.filter(r => !isAbsent(r.status));
+    const absent  = active.filter(r => isAbsent(r.status)).length;
+    const onTime       = arrived.filter(r => r.status === 'On Time').length;
+    const reported     = arrived.filter(r => r.status === 'Late - Reported').length;
+    const unreported   = arrived.filter(r => r.status === 'Late - Unreported').length;
+    const excused      = empRows.filter(r => r.status === 'Excused (PTO/FH/Perm)').length;
+    const permission   = empRows.filter(r => r.status === 'Permission').length;
+    const sumMin       = arrived.reduce((s, r) => s + r.minutes_late, 0);
+    const daysWorked   = arrived.length;
+    const avgMinLate   = daysWorked > 0 ? sumMin / daysWorked : 0;
+    const days         = active.length;   // includes absent rows → "expected"
+    const pctOnTime    = days > 0 ? (onTime / days) * 100 : 0;
+    const b1to10  = arrived.filter(r => r.bucket === 'late_1to10').length;
+    const b11to30 = arrived.filter(r => r.bucket === 'late_11to30').length;
+    const b31plus = arrived.filter(r => r.bucket === 'late_830plus').length;
     return {
       email,
       name: info?.name ?? email,
@@ -81,7 +93,7 @@ export function computeEmployeeStats(
       manager: info?.manager ?? '',
       schedule: info ? `${info.standard_start} – ${info.standard_end}` : '—',
       days, onTime, totalLate: reported + unreported,
-      reported, unreported, excused, permission,
+      reported, unreported, excused, permission, absent, daysWorked,
       avgMinLate, pctOnTime, b1to10, b11to30, b31plus,
       rows: empRows,
     };
@@ -95,22 +107,27 @@ export type CompanyKpis = {
   lateUnreported: number;
   excused: number;
   permission: number;
+  absent: number;
+  totalRows: number;
   avgMinLate: number;
   onTimeRate: number;
 };
 
 export function computeCompanyKpis(rows: AttendanceRow[]): CompanyKpis {
-  const active = rows.filter(r => !isExcluded(r.status));
-  const onTime = active.filter(r => r.status === 'On Time').length;
-  const lateReported = active.filter(r => r.status === 'Late - Reported').length;
-  const lateUnreported = active.filter(r => r.status === 'Late - Unreported').length;
-  const excused = rows.filter(r => r.status === 'Excused (PTO/FH/Perm)').length;
-  const permission = rows.filter(r => r.status === 'Permission').length;
-  const sumMin = active.reduce((s, r) => s + r.minutes_late, 0);
-  const daysTracked = active.length;
-  const avgMinLate = daysTracked > 0 ? sumMin / daysTracked : 0;
-  const onTimeRate = daysTracked > 0 ? (onTime / daysTracked) * 100 : 0;
-  return { daysTracked, onTime, lateReported, lateUnreported, excused, permission, avgMinLate, onTimeRate };
+  const active  = rows.filter(r => !isExcluded(r.status));
+  const arrived = active.filter(r => !isAbsent(r.status));
+  const onTime        = arrived.filter(r => r.status === 'On Time').length;
+  const lateReported  = arrived.filter(r => r.status === 'Late - Reported').length;
+  const lateUnreported = arrived.filter(r => r.status === 'Late - Unreported').length;
+  const excused       = rows.filter(r => r.status === 'Excused (PTO/FH/Perm)').length;
+  const permission    = rows.filter(r => r.status === 'Permission').length;
+  const absent        = active.filter(r => isAbsent(r.status)).length;
+  const sumMin        = arrived.reduce((s, r) => s + r.minutes_late, 0);
+  const daysTracked   = active.length;   // expected (includes absent)
+  const totalRows     = rows.length;
+  const avgMinLate    = arrived.length > 0 ? sumMin / arrived.length : 0;
+  const onTimeRate    = daysTracked > 0 ? (onTime / daysTracked) * 100 : 0;
+  return { daysTracked, onTime, lateReported, lateUnreported, excused, permission, absent, totalRows, avgMinLate, onTimeRate };
 }
 
 // ── Arrival scatter (day-by-day) ──────────────────────────────────────────
@@ -134,18 +151,20 @@ function hmToMinutes(hm: string | null): number | null {
 }
 
 const BUCKET_COLORS: Record<string, string> = {
-  'On Time':             '#2AA876',
-  'late_1to10':          '#FBBF24',
-  'late_11to30':         '#D97706',
-  'late_830plus':        '#EF4444',
-  'Excused (PTO/FH/Perm)': '#94A3B8',
-  'Permission':          '#6366F1',
+  'On Time':                '#2AA876',
+  'late_1to10':             '#FBBF24',
+  'late_11to30':            '#D97706',
+  'late_830plus':           '#EF4444',
+  'Excused (PTO/FH/Perm)':  '#94A3B8',
+  'Permission':             '#6366F1',
+  'Absent - Unexplained':   '#B91C1C',
 };
 
 function arrivalColor(row: AttendanceRow): string {
   if (row.status === 'Excused (PTO/FH/Perm)') return BUCKET_COLORS['Excused (PTO/FH/Perm)'];
-  if (row.status === 'Permission') return BUCKET_COLORS['Permission'];
-  if (row.status === 'On Time') return BUCKET_COLORS['On Time'];
+  if (row.status === 'Permission')             return BUCKET_COLORS['Permission'];
+  if (row.status === 'Absent - Unexplained')   return BUCKET_COLORS['Absent - Unexplained'];
+  if (row.status === 'On Time')                return BUCKET_COLORS['On Time'];
   return BUCKET_COLORS[row.bucket ?? 'late_830plus'] ?? '#EF4444';
 }
 
@@ -188,6 +207,8 @@ export type TrendPoint = {
   tracked: number;
   onTime: number;
   sumMin: number;
+  absent: number;
+  worked: number;
   isPartial: boolean;
 };
 
@@ -230,11 +251,16 @@ export function computeTrends(
     const key = gran === 'month' ? monthKey(dateNorm) : isoWeekMonday(dateNorm);
     if (!key) return;
     const label = gran === 'month' ? fmtMonth(key) : fmtWeek(key);
-    if (!groups.has(key)) groups.set(key, { key, label, tracked: 0, onTime: 0, sumMin: 0, isPartial: false });
+    if (!groups.has(key)) groups.set(key, { key, label, tracked: 0, onTime: 0, sumMin: 0, absent: 0, worked: 0, isPartial: false });
     const g = groups.get(key)!;
     g.tracked++;
-    if (r.status === 'On Time') g.onTime++;
-    g.sumMin += r.minutes_late;
+    if (isAbsent(r.status)) {
+      g.absent++;
+    } else {
+      g.worked++;
+      if (r.status === 'On Time') g.onTime++;
+      g.sumMin += r.minutes_late;
+    }
   });
 
   const sorted = Array.from(groups.values()).sort((a, b) => a.key.localeCompare(b.key));

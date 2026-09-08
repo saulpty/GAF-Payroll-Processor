@@ -26,15 +26,22 @@ function Kpi({
 }
 
 export function AttendanceKpis({ kpis }: Props) {
+  const totalCheck = kpis.onTime + kpis.lateReported + kpis.lateUnreported + kpis.absent;
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-4">
-      <Kpi label="On-Time Rate"      value={`${kpis.onTimeRate.toFixed(1)}%`}   sub={`${kpis.onTime} of ${kpis.daysTracked}`} tone="lead"  color="text-secondary" />
-      <Kpi label="Late — Reported"   value={`${kpis.lateReported}`}              sub="GAF filed"                                tone="plain" />
-      <Kpi label="Late — Unreported" value={`${kpis.lateUnreported}`}            sub="no GAF"                                   tone="alert" color="text-destructive" />
-      <Kpi label="Excused"           value={`${kpis.excused}`}                   sub="PTO / Holiday"                            tone="plain" />
-      <Kpi label="Permission"        value={`${kpis.permission}`}                sub="Approved"                                 tone="plain" />
-      <Kpi label="Avg Min Late"      value={`${kpis.avgMinLate.toFixed(1)}m`}    sub="per workday"                              tone="plain" />
-      <Kpi label="Days Tracked"      value={`${kpis.daysTracked}`}               sub="excl. excused"                            tone="plain" />
+    <div className="mb-4">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-1">
+        <Kpi label="On-Time Rate"      value={`${kpis.onTimeRate.toFixed(1)}%`}    sub={`${kpis.onTime} of ${kpis.daysTracked}`} tone="lead"  color="text-secondary" />
+        <Kpi label="Late — Reported"   value={`${kpis.lateReported}`}              sub="GAF filed"                                tone="plain" />
+        <Kpi label="Late — Unreported" value={`${kpis.lateUnreported}`}            sub="no GAF"                                   tone="alert" color="text-destructive" />
+        <Kpi label="Absent"            value={`${kpis.absent}`}                    sub="Unexplained"                              tone="alert" color="text-[#B91C1C]" />
+        <Kpi label="Excused"           value={`${kpis.excused}`}                   sub="PTO / Holiday"                            tone="plain" />
+        <Kpi label="Permission"        value={`${kpis.permission}`}                sub="Approved"                                 tone="plain" />
+        <Kpi label="Avg Min Late"      value={`${kpis.avgMinLate.toFixed(1)}m`}    sub="per day worked"                           tone="plain" />
+        <Kpi label="Days Expected"     value={`${kpis.daysTracked}`}               sub="excl. excused/perm"                       tone="plain" />
+      </div>
+      <div className="text-[10px] text-muted-foreground px-1">
+        Identity: On-Time ({kpis.onTime}) + Late Reported ({kpis.lateReported}) + Late Unreported ({kpis.lateUnreported}) + Absent ({kpis.absent}) = {totalCheck} = Days Expected ({kpis.daysTracked})
+      </div>
     </div>
   );
 }

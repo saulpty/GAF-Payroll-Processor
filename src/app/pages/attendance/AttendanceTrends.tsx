@@ -52,10 +52,14 @@ export function AttendanceTrends({ rows, empStats, search }: Props) {
 
   const points: TrendPoint[] = useMemo(() => computeTrends(filteredRows, gran), [filteredRows, gran]);
 
+  // avg lateness uses p.worked (days with an actual arrival) as denominator
   const chartData = points.map(p => ({
     label: p.label,
-    value: p.tracked > 0 ? (isRate ? (p.onTime / p.tracked) * 100 : p.sumMin / p.tracked) : null,
+    value: isRate
+      ? (p.tracked > 0 ? (p.onTime / p.tracked) * 100 : null)
+      : (p.worked  > 0 ? p.sumMin / p.worked           : null),
     n: p.tracked,
+    worked: p.worked,
     isPartial: p.isPartial,
   }));
 
@@ -103,7 +107,9 @@ export function AttendanceTrends({ rows, empStats, search }: Props) {
       <div className="bg-white border border-border rounded-lg shadow-md px-3 py-2 text-sm">
         <div className="font-semibold mb-1">{label}{point?.isPartial ? ' (in progress)' : ''}</div>
         <div>{isRate ? `${payload[0].value?.toFixed(1)}%` : `${payload[0].value?.toFixed(1)} min`}</div>
-        <div className="text-muted-foreground text-xs">n = {point?.n ?? '?'} days</div>
+        <div className="text-muted-foreground text-xs">
+          n = {point?.n ?? '?'} expected{!isRate && point?.worked !== undefined ? ` / ${point.worked} worked` : ''}
+        </div>
       </div>
     );
   };
@@ -151,13 +157,13 @@ export function AttendanceTrends({ rows, empStats, search }: Props) {
       {/* Chart */}
       <div className="bg-white border border-border rounded-xl p-4 shadow-sm">
         <div className="text-sm font-semibold mb-1">
-          {isRate ? 'On-Time Rate' : 'Avg Minutes Late / Workday'} — {gran === 'month' ? 'Monthly' : 'Weekly'}
+          {isRate ? 'On-Time Rate' : 'Avg Minutes Late / Day Worked'} — {gran === 'month' ? 'Monthly' : 'Weekly'}
           {isSingle ? ` · ${singleEmp!.name}` : cohort === 'consistent' ? ' · Consistent roster' : ' · Company'}
         </div>
         <div className="text-xs text-muted-foreground mb-4">
           {isRate
-            ? 'On-time rate = on-time days ÷ tracked days (excused & permission excluded).'
-            : 'Average lateness across every tracked workday (on-time counted as 0). Lower is better.'}
+            ? 'On-time rate = on-time days ÷ expected days (excused & permission excluded; absent counts against rate).'
+            : 'Average lateness over days worked (absent days excluded from denominator). Lower is better.'}
           {partialIdx >= 0 ? ` Final period (${chartData[partialIdx]?.label}) is in progress — shown dashed.` : ''}
         </div>
         <div style={{ height: 240 }}>
@@ -191,7 +197,8 @@ export function AttendanceTrends({ rows, empStats, search }: Props) {
           <thead>
             <tr className="bg-muted/40 border-b border-border">
               <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Period</th>
-              <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tracked</th>
+              <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Expected</th>
+              <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Absent</th>
               <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">On Time</th>
               <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rate / Avg</th>
               <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">vs Prev</th>
@@ -199,15 +206,22 @@ export function AttendanceTrends({ rows, empStats, search }: Props) {
           </thead>
           <tbody>
             {tableRows.map((p, i) => {
-              const val = p.tracked > 0 ? (isRate ? (p.onTime / p.tracked) * 100 : p.sumMin / p.tracked) : null;
+              const val = isRate
+                ? (p.tracked > 0 ? (p.onTime / p.tracked) * 100 : null)
+                : (p.worked  > 0 ? p.sumMin / p.worked           : null);
               const prevP = tableRows[i + 1];
-              const prevVal = prevP && prevP.tracked > 0 ? (isRate ? (prevP.onTime / prevP.tracked) * 100 : prevP.sumMin / prevP.tracked) : null;
+              const prevVal = prevP
+                ? (isRate
+                  ? (prevP.tracked > 0 ? (prevP.onTime / prevP.tracked) * 100 : null)
+                  : (prevP.worked  > 0 ? prevP.sumMin / prevP.worked           : null))
+                : null;
               const diff = val !== null && prevVal !== null ? val - prevVal : null;
               const improved = diff !== null && (isRate ? diff > 0 : diff < 0);
               return (
                 <tr key={p.key} className={`border-b border-border/50 ${p.isPartial ? 'opacity-60 italic' : ''}`}>
                   <td className="px-4 py-2.5 font-medium">{p.label}{p.isPartial ? ' ⋯' : ''}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.tracked}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold" style={{ color: p.absent > 0 ? '#B91C1C' : undefined }}>{p.absent || '—'}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{p.onTime}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums font-medium">
                     {val !== null ? (isRate ? `${val.toFixed(1)}%` : `${val.toFixed(1)}m`) : '—'}

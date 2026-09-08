@@ -68,12 +68,13 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
               <Th label="Manager"        col="manager" />
               <Th label="Schedule"       col="schedule" />
               <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-slate-50 border-b border-border whitespace-nowrap">Status</th>
-              <Th label="Days"           col="days" />
+              <Th label="Expected"       col="days" />
               <Th label="On Time"        col="onTime" />
               <Th label="Total Late"     col="totalLate" />
               <Th label="Reported"       col="reported" />
               <Th label="Unreported"     col="unreported" />
-              <Th label="Avg Min"        col="avgMinLate" />
+              <Th label="Absent"         col="absent" />
+              <Th label="Avg Min (worked)" col="avgMinLate" />
               <Th label="% On-Time"      col="pctOnTime" />
               <Th label="1–10m"          col="b1to10" />
               <Th label="11–30m"         col="b11to30" />
@@ -82,7 +83,7 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
           </thead>
           <tbody>
             {sorted.length === 0 && (
-              <tr><td colSpan={15} className="px-4 py-12 text-center text-muted-foreground">No data</td></tr>
+              <tr><td colSpan={16} className="px-4 py-12 text-center text-muted-foreground">No data</td></tr>
             )}
             {sorted.map(s => (
               <tr key={s.email}
@@ -98,6 +99,7 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
                 <td className="px-3 py-2.5 text-right tabular-nums text-red-600 font-medium">{s.totalLate}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-amber-600">{s.reported}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-red-500">{s.unreported}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: '#B91C1C' }}>{s.absent}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{s.avgMinLate.toFixed(1)}</td>
                 <td className="px-3 py-2.5 min-w-[120px]"><PctBar pct={s.pctOnTime} /></td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-xs">{s.b1to10}</td>
