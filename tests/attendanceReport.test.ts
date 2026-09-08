@@ -519,3 +519,87 @@ test('R47: an ISO holiday date still cancels the day', () => {
   const row = only({ holidays: [{ date: '2026-06-01T00:00:00.000Z', name: 'Test Holiday' }] });
   assert.equal(row.verdict, 'holiday');
 });
+
+// ── review findings, 2026-09-08 ───────────────────────────────────────────
+// Found by an adversarial pass over the day's work, confirmed against the code.
+
+test('R48: a form whose submitted_at has no time is not automatically "filed late"', () => {
+  // syncAttendanceForms writes submitted_at verbatim from Monday and says so:
+  // "may include time on some Monday column types". A date-only value used to
+  // return null from the parser, which left onTime false — so a form filed two
+  // days EARLY was reported as filed late.
+  const row = only({
+    payrollRows: [pay({ entry_time: null })],
+    forms: [form({ form_type: 'Absence', reason: 'Sick', submitted_at: '2026-05-29' })],
+  });
+  assert.equal(row.verdict, 'absent_reported_on_time');
+  assert.equal(row.form?.onTime, true);
+});
+
+test('R49: a date-only submitted_at on the same day is not counted as on time', () => {
+  // Without a clock time there is no evidence it beat the shift. Not proven
+  // late either — but the policy claim we can defend is "not proven on time".
+  const row = only({
+    payrollRows: [pay({ entry_time: '9:20 AM', late_minutes: 20 })],
+    forms: [form({ submitted_at: '2026-06-01' })],
+  });
+  assert.equal(row.form?.onTime, false);
+  assert.equal(row.form?.submittedMinutes, null);
+});
+
+test('R50: an ISO T separator in submitted_at parses like a space', () => {
+  const row = only({
+    payrollRows: [pay({ entry_time: '9:20 AM', late_minutes: 20 })],
+    forms: [form({ submitted_at: '2026-06-01T08:30' })],
+  });
+  assert.equal(row.verdict, 'late_reported_on_time');
+});
+
+test('R51: an employee with no payroll rows at all is not marked absent every day', () => {
+  // The processed-period gate asks "was the period run?", never "does this
+  // employee appear in it?". A new hire added mid-period, or anyone an operator
+  // excluded from a run, would otherwise read 0% on-time with a month of
+  // unexplained absences.
+  const r = build({
+    dateFrom: '2026-06-01', dateTo: '2026-06-05',
+    payrollRows: [],
+  });
+  assert.equal(r.rows.every(x => x.verdict === 'not_processed'), true,
+    `expected every day to be not_processed, got ${[...new Set(r.rows.map(x => x.verdict))].join(', ')}`);
+  assert.equal(r.perEmployee[0].expectedDays, 0);
+  assert.equal(r.perEmployee[0].onTimeRate, null);
+});
+
+test('R52: an employee WITH payroll rows still gets absences on their blank days', () => {
+  // The guard above must not suppress real absences. Ana worked 06-01 and
+  // 06-02; 06-03 has no row and no explanation, and must still be flagged.
+  const r = build({
+    dateFrom: '2026-06-01', dateTo: '2026-06-03',
+    payrollRows: [pay({ work_date: '2026-06-01' }), pay({ work_date: '2026-06-02' })],
+  });
+  const third = r.rows.find(x => x.date === '2026-06-03');
+  assert.equal(third?.verdict, 'unexplained_absence');
+});
+
+test('R53: request types match regardless of case and surrounding whitespace', () => {
+  // The engine matches these with a lowercased substring test. This module used
+  // an exact === against a fixed list, so the two could disagree on the same
+  // board row and show opposite verdicts on the same day.
+  const row = only({
+    dateFrom: '2026-06-08', dateTo: '2026-06-08',
+    requests: [req({ request_type: '  pto / vacation  ' })],
+  });
+  assert.equal(row.verdict, 'pto');
+  assert.equal(row.countsToScore, false);
+});
+
+test('R54: a one-day request whose return_date equals start_date still covers that day', () => {
+  // Someone reading "return date" as "the day I am off" records both the same.
+  // return_date being exclusive then covered zero days and the day became a
+  // scored unexplained absence.
+  const row = only({
+    dateFrom: '2026-06-08', dateTo: '2026-06-08',
+    requests: [req({ start_date: '2026-06-08', end_date: '2026-06-08', return_date: '2026-06-08' })],
+  });
+  assert.equal(row.verdict, 'pto');
+});
