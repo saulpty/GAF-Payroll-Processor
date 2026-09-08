@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { EmpStats } from '@/app/lib/attendanceStats';
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 
-type SortKey = keyof EmpStats;
+type SortKey = keyof EmpStats | 'reporting';
 
 function SortIcon({ col, sortKey, dir }: { col: SortKey; sortKey: SortKey; dir: 'asc' | 'desc' }) {
   if (col !== sortKey) return <ChevronsUpDown className="w-3 h-3 opacity-30 inline ml-0.5" />;
@@ -58,6 +58,42 @@ function StatusBadge({ pct }: { pct: number }) {
   );
 }
 
+const REPORTING_TOOLTIP = 'Of the days that needed an explanation — late or absent — how many had a GAF Attendance form on file.';
+
+/** Ratio for sorting: -1 means needed=0 (always last in both directions) */
+function reportingRatio(s: EmpStats): number {
+  if (s.filing.needed === 0) return -1;
+  return s.filing.filed / s.filing.needed;
+}
+
+function ReportingBadge({ s }: { s: EmpStats }) {
+  const { filed, needed } = s.filing;
+  if (needed === 0) {
+    return <span className="text-muted-foreground text-xs tabular-nums">—</span>;
+  }
+  const label = `${filed} / ${needed}`;
+  if (filed === needed) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700 tabular-nums">
+        Complete <span className="font-normal opacity-70">{label}</span>
+      </span>
+    );
+  }
+  const missing = needed - filed;
+  if (missing < needed / 2) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 tabular-nums">
+        Gaps <span className="font-normal opacity-70">{label}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 tabular-nums">
+      Rarely <span className="font-normal opacity-70">{label}</span>
+    </span>
+  );
+}
+
 type Props = { stats: EmpStats[]; onRowClick: (email: string) => void; search: string };
 
 export function AttendanceTable({ stats, onRowClick, search }: Props) {
@@ -71,7 +107,15 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
 
   const filtered = stats.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
   const sorted = [...filtered].sort((a, b) => {
-    const av = a[sortKey], bv = b[sortKey];
+    if (sortKey === 'reporting') {
+      const ar = reportingRatio(a), br = reportingRatio(b);
+      // needed=0 rows always last (ratio=-1) regardless of direction
+      if (ar === -1 && br === -1) return 0;
+      if (ar === -1) return 1;
+      if (br === -1) return -1;
+      return sortDir === 'asc' ? ar - br : br - ar;
+    }
+    const av = a[sortKey as keyof EmpStats], bv = b[sortKey as keyof EmpStats];
     if (typeof av === 'string' && typeof bv === 'string')
       return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
     if (typeof av === 'number' && typeof bv === 'number')
@@ -105,6 +149,7 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
               >
                 Status
               </th>
+              <Th label="Reporting" col="reporting" tooltip={REPORTING_TOOLTIP} />
               <Th label="Expected"         col="days"        tooltip="Scheduled work days in range, excluding time off and permissions." />
               <Th label="On Time"          col="onTime" />
               <Th label="Total Late"       col="totalLate" />
@@ -120,7 +165,7 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
           </thead>
           <tbody>
             {sorted.length === 0 && (
-              <tr><td colSpan={16} className="px-4 py-12 text-center text-muted-foreground">No data</td></tr>
+              <tr><td colSpan={17} className="px-4 py-12 text-center text-muted-foreground">No data</td></tr>
             )}
             {sorted.map(s => (
               <tr key={s.email}
@@ -131,6 +176,7 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.manager || <span className="text-slate-300">—</span>}</td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.schedule}</td>
                 <td className="px-3 py-2.5"><StatusBadge pct={s.pctOnTime} /></td>
+                <td className="px-3 py-2.5"><ReportingBadge s={s} /></td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{s.days}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-green-700 font-medium">{s.onTime}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-red-600 font-medium">{s.totalLate}</td>

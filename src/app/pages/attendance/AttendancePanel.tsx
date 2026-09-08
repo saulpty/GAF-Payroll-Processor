@@ -51,7 +51,7 @@ const SCATTER_LEGEND = [
   { label: '11–30 min',        color: '#D97706' },
   { label: '31+ min',          color: '#EF4444' },
   { label: 'Absent',           color: '#B91C1C' },
-  { label: 'Excused',          color: '#94A3B8' },
+  { label: 'Time off',         color: '#94A3B8' },
   { label: 'Permission',       color: '#6366F1' },
 ];
 
@@ -112,7 +112,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
     { name: '11–30m',     value: stats.b11to30,    color: '#D97706' },
     { name: '31+m',       value: stats.b31plus,    color: '#EF4444' },
     { name: 'Absent',     value: stats.absent,     color: '#B91C1C' },
-    { name: 'Excused',    value: stats.excused,    color: '#94A3B8' },
+    { name: 'Time off',   value: stats.excused,    color: '#94A3B8' },
     { name: 'Permission', value: stats.permission, color: '#6366F1' },
   ].filter(d => d.value > 0);
 
@@ -121,7 +121,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
     { name: 'Reported',   value: stats.reported,   color: '#FBBF24' },
     { name: 'Unreported', value: stats.unreported, color: '#EF4444' },
     { name: 'Absent',     value: stats.absent,     color: '#B91C1C' },
-    { name: 'Excused',    value: stats.excused,    color: '#94A3B8' },
+    { name: 'Time off',   value: stats.excused,    color: '#94A3B8' },
     { name: 'Permission', value: stats.permission, color: '#6366F1' },
   ].filter(d => d.value > 0);
 
@@ -208,7 +208,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
               Arrival Trend (Day-by-Day)
             </div>
             <p className="text-xs text-muted-foreground mb-2">
-              Each dot = one workday. Excused/Permission at bottom band; Absent (no-show) at top band.
+              Each dot = one workday. Time off/Permission at bottom band; Absent (no-show) at top band.
             </p>
             <div className="flex flex-wrap gap-3 mb-3">
               {SCATTER_LEGEND.map(l => (
@@ -233,7 +233,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
                   <YAxis
                     domain={[EXCUSED_Y - 5, ABSENT_Y + 5]}
                     ticks={yTicks}
-                    tickFormatter={v => v === EXCUSED_Y ? 'Excused' : v === ABSENT_Y ? 'Absent' : fmtMinutes(v)}
+                    tickFormatter={v => v === EXCUSED_Y ? 'Time off' : v === ABSENT_Y ? 'Absent' : fmtMinutes(v)}
                     tick={{ fontSize: 10 }}
                     width={66}
                   />
@@ -241,7 +241,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
                   <ReferenceLine y={ABSENT_Y} stroke="#B91C1C" strokeDasharray="4 3" strokeWidth={1}
                     label={{ value: 'Absent', position: 'insideTopRight', fontSize: 9, fill: '#B91C1C' }} />
                   <ReferenceLine y={EXCUSED_Y} stroke="#94A3B8" strokeDasharray="4 3" strokeWidth={1}
-                    label={{ value: 'Excused/Perm', position: 'insideTopRight', fontSize: 9, fill: '#94A3B8' }} />
+                    label={{ value: 'Time off/Perm', position: 'insideTopRight', fontSize: 9, fill: '#94A3B8' }} />
                   <ReferenceLine y={9 * 60} stroke="#2AA876" strokeDasharray="4 3" strokeWidth={1.5}
                     label={{ value: '9:00 AM', position: 'insideTopRight', fontSize: 9, fill: '#2AA876' }} />
                   <ReferenceLine y={9 * 60 + 10} stroke="#FBBF24" strokeDasharray="4 3" strokeWidth={1}

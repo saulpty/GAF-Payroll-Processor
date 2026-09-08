@@ -85,7 +85,17 @@ export function AttendanceDonuts({ kpis, empStats }: { kpis: CompanyKpis; empSta
 
   const reportPct = totalLate > 0 ? Math.round(kpis.lateReported / totalLate * 100) : 0;
 
-  // Overview legend — Time off as single entry (no event_type_1 in view data)
+  // Time-off breakdown by kind — derived from rows inside empStats
+  const allRows = empStats.flatMap(e => e.rows);
+  const kindCounts = { pto: 0, holiday: 0, birthday: 0, comp_day: 0, approved_absence: 0 };
+  allRows.forEach(r => {
+    if (r.time_off_kind && r.time_off_kind in kindCounts) {
+      kindCounts[r.time_off_kind as keyof typeof kindCounts]++;
+    }
+  });
+  const birthdayComp = kindCounts.birthday + kindCounts.comp_day;
+
+  // Overview legend — Time off row + non-zero sub-rows (indented)
   const overviewLegend: LegendItem[] = [
     { label: 'On Time',          value: kpis.onTime,          color: '#2AA876' },
     { label: 'Late Reported',    value: kpis.lateReported,    color: '#FBBF24' },
@@ -93,6 +103,10 @@ export function AttendanceDonuts({ kpis, empStats }: { kpis: CompanyKpis; empSta
     { label: 'Absent',           value: kpis.absent,          color: '#B91C1C' },
     { label: 'Permission',       value: kpis.permission,      color: '#6366F1' },
     { label: 'Time off',         value: kpis.excused,         color: '#94A3B8' },
+    ...(kindCounts.pto > 0           ? [{ label: 'PTO',                value: kindCounts.pto,           color: '#94A3B8', indent: true }] : []),
+    ...(kindCounts.holiday > 0       ? [{ label: 'Holiday',            value: kindCounts.holiday,       color: '#94A3B8', indent: true }] : []),
+    ...(birthdayComp > 0             ? [{ label: 'Birthday / comp day', value: birthdayComp,             color: '#94A3B8', indent: true }] : []),
+    ...(kindCounts.approved_absence > 0 ? [{ label: 'Approved absence', value: kindCounts.approved_absence, color: '#94A3B8', indent: true }] : []),
   ];
 
   return (

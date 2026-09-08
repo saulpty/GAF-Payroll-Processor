@@ -12,6 +12,7 @@ export type AttendanceRow = {
   filed_gaf: boolean;
   minutes_late: number;
   period_name: string;
+  time_off_kind: string | null;
 };
 
 export type EmpInfo = {
@@ -52,6 +53,8 @@ export type EmpStats = {
   b1to10: number;
   b11to30: number;
   b31plus: number;
+  /** GAF form reporting: filed = days with filed_gaf=true, needed = late+absent days */
+  filing: { filed: number; needed: number };
   rows: AttendanceRow[];
 };
 
@@ -86,6 +89,10 @@ export function computeEmployeeStats(
     const b1to10  = arrived.filter(r => r.bucket === 'late_1to10').length;
     const b11to30 = arrived.filter(r => r.bucket === 'late_11to30').length;
     const b31plus = arrived.filter(r => r.bucket === 'late_830plus').length;
+    // Reporting: needed = late + absent days; filed = those with filed_gaf=true
+    const needReporting = [...arrived.filter(r => r.status !== 'On Time'), ...active.filter(r => isAbsent(r.status))];
+    const filedCount  = needReporting.filter(r => r.filed_gaf).length;
+    const neededCount = needReporting.length;
     return {
       email,
       name: info?.name ?? email,
@@ -95,6 +102,7 @@ export function computeEmployeeStats(
       days, onTime, totalLate: reported + unreported,
       reported, unreported, excused, permission, absent, daysWorked,
       avgMinLate, pctOnTime, b1to10, b11to30, b31plus,
+      filing: { filed: filedCount, needed: neededCount },
       rows: empRows,
     };
   });

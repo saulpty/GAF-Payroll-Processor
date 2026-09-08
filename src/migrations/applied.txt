@@ -32,3 +32,4 @@ Applied migrations:
 1781992000_merge_employee_47_into_49 at 2026-09-02T15:19:43.356Z
 1781993000_v_attendance_daily_accept_attendance_form at 2026-09-08T19:40:02.211Z
 1781994000_v_attendance_daily_split_unexplained_absence at 2026-09-08T20:23:04.162Z
+1781995000_v_attendance_daily_add_time_off_kind at 2026-09-08T20:43:56.453Z

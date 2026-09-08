@@ -4,7 +4,7 @@ export function loadAttendanceDaily() {
   return action('loadAttendanceDaily', 'SQL', {
     datasourceName: 'GAF Planilla DB',
     query: `
-      SELECT email, name, date, entry_time, status, bucket, filed_gaf, minutes_late, period_name
+      SELECT email, name, date, entry_time, status, bucket, filed_gaf, minutes_late, period_name, time_off_kind
       FROM public.v_attendance_daily
       WHERE date >= {{params.dateFrom}}
         AND date <= {{params.dateTo}}
