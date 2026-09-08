@@ -33,11 +33,13 @@ function fmtDate(d: string) {
   return new Date(y, m - 1, day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+/** Times from payroll_entries are already US Eastern wall clock in
+ *  "H:MM AM" / "H:MM PM" form (AGENTS.md). They are displayed as stored —
+ *  reformatting them is what produced "9:54 AM AM", and re-deriving the
+ *  meridiem from a 12-hour hour turned "1:30 PM" into "1:30 PM AM". */
 function fmtTime(t: string | null) {
-  if (!t) return '—';
-  const [hh, mm] = t.split(':');
-  const h = parseInt(hh, 10);
-  return `${h % 12 || 12}:${mm} ${h < 12 ? 'AM' : 'PM'}`;
+  const s = (t ?? '').trim();
+  return s === '' ? '—' : s;
 }
 
 function SortIcon({ col, sortKey, dir }: { col: SortKey; sortKey: SortKey; dir: Dir }) {
