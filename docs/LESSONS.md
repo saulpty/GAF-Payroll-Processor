@@ -269,6 +269,33 @@ than chasing a blip.
 
 ## Data-shape gotchas
 
+### A count of records is not a count of days
+
+**2026-09-09.** Charles Bush recorded two floating-holiday days as one row and
+the tracker showed **FH left 1**. `fh_used` was `count(*)` over recorded
+`floating_holiday` approvals — a design decision written into the 08-20 spec,
+correct for "one row = one day" and silently wrong the moment an operator
+enters a two-day row. Nothing errored; the number was simply one too low.
+
+Twin trap on the same column: the August Excel seed wrote 2026 FH usage into a
+*separate counter* (`pto_floating_holidays.fh_used`) that no approval row backs,
+so 26 people showed "FH left 2" while the sheet said they had used them. Two
+sources, disjoint sets, one displayed number.
+
+**Whenever a KPI sums records, ask what a record of size 2 does to it.** Guarded
+by `loadPtoBalancesInputs` now using `SUM(total_days)` and the sheet counter
+via `GREATEST`; the FH-left tooltip shows both sides so the operator can see
+which one won.
+
+### "Withdraw" that hides is indistinguishable from delete
+
+Withdrawn PTO rows were a soft status but hidden behind a checkbox that only
+affected the *expanded* sub-table, and the Monday request then reappeared as
+Pending. Saul's reading: *"if I withdraw something it literally disappears
+forever."* When an undo exists but is not visible at the point of loss, it does
+not exist for the user. Withdrawn rows now stay in place, dimmed, with Restore.
+
+
 ### Postgres returns dates as full timestamps
 
 `start_date::text` comes back as `2026-02-02T00:00:00.000Z`, not `2026-02-02`.
