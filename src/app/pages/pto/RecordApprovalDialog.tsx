@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { Loader2 } from 'lucide-react';
-import { fmtDate } from '@/app/lib/fmtDate';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -10,9 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { defaultTotalDays } from '@/app/lib/ptoAccrual';
+import { weekdayCount } from '@/app/lib/fmtDay';
 import upsertPtoApprovalAction from '@/actions/upsertPtoApproval';
 import updatePtoApprovalAction from '@/actions/updatePtoApproval';
 import loadAllEmployeesAction from '@/actions/loadAllEmployees';
+import type { PayrollMatch } from '@/app/lib/ptoPayrollMatch';
+import RecordDialogPayrollPanel from './RecordDialogPayrollPanel';
 
 export interface PendingRequest {
   monday_item_id: number | null;
@@ -43,12 +45,13 @@ export interface LedgerRow {
 }
 
 export type DialogMode =
-  | { kind: 'record'; request: PendingRequest }
-  | { kind: 'edit';   row: LedgerRow }
+  | { kind: 'record'; request: PendingRequest; match?: PayrollMatch }
+  | { kind: 'edit';   row: LedgerRow;          match?: PayrollMatch }
   | { kind: 'manual' };
 
 interface Props {
   mode: DialogMode | null;
+  today: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -60,8 +63,9 @@ function ymd(v: string | null | undefined): string {
   return v ? String(v).slice(0, 10) : '';
 }
 
-export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) {
+export default function RecordApprovalDialog({ mode, today, onClose, onSaved }: Props) {
   const open = mode !== null;
+  const thisYear = today.slice(0, 4);
 
   const [leaveOn,    setLeaveOn]    = useState('');
   const [returnOn,   setReturnOn]   = useState('');
@@ -71,6 +75,9 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
   const [leaveType,  setLeaveType]  = useState<'pto' | 'floating_holiday'>('pto');
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState<string | null>(null);
+
+  // Guard: skip one auto-recalc run when onApply sets dates+days directly
+  const skipRecalcRef = useRef(false);
 
   const [upsert] = useMutateAction(upsertPtoApprovalAction);
   const [update] = useMutateAction(updatePtoApprovalAction);
@@ -91,6 +98,7 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
   useEffect(() => {
     if (!mode) return;
     setError(null);
+    skipRecalcRef.current = false;
 
     if (mode.kind === 'record') {
       const r = mode.request;
@@ -98,24 +106,26 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
       const ro = ymd(r.return_on);
       setLeaveOn(lo);
       setReturnOn(ro);
+      const lt = r.leave_type ?? 'pto';
+      setLeaveType(lt);
       const days = r.total_days
         ? String(Number(r.total_days))
-        : lo && ro ? String(defaultTotalDays(lo, ro)) : '';
+        : lo && ro ? String(lt === 'floating_holiday' ? weekdayCount(lo, ro) : defaultTotalDays(lo, ro)) : '';
       setTotalDays(days);
       setComments('');
       setEmpId(r.employee_id);
-      setLeaveType(r.leave_type ?? 'pto');
     } else if (mode.kind === 'edit') {
       const row = mode.row;
       const lo = ymd(row.leave_on);
       const ro = ymd(row.return_on);
       setLeaveOn(lo);
       setReturnOn(ro);
-      const days = row.total_days ? String(Number(row.total_days)) : lo && ro ? String(defaultTotalDays(lo, ro)) : '';
+      const lt = row.leave_type ?? 'pto';
+      setLeaveType(lt);
+      const days = row.total_days ? String(Number(row.total_days)) : lo && ro ? String(lt === 'floating_holiday' ? weekdayCount(lo, ro) : defaultTotalDays(lo, ro)) : '';
       setTotalDays(days);
       setComments(row.gaf_comments ?? '');
       setEmpId(row.employee_id);
-      setLeaveType(row.leave_type ?? 'pto');
     } else {
       setLeaveOn('');
       setReturnOn('');
@@ -127,17 +137,34 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  // Auto-recalc days when dates change
+  // Auto-recalc days when dates or leaveType change
   useEffect(() => {
-    if (leaveOn && returnOn && leaveOn <= returnOn) {
-      setTotalDays(String(defaultTotalDays(leaveOn, returnOn)));
+    if (skipRecalcRef.current) {
+      skipRecalcRef.current = false;
+      return;
     }
-  }, [leaveOn, returnOn]);
+    if (leaveOn && returnOn && leaveOn <= returnOn) {
+      setTotalDays(String(leaveType === 'floating_holiday'
+        ? weekdayCount(leaveOn, returnOn)
+        : defaultTotalDays(leaveOn, returnOn)));
+    }
+  }, [leaveOn, returnOn, leaveType]);
+
+  function handleApplyPayroll(lo: string, ro: string, days: number) {
+    skipRecalcRef.current = true;
+    setLeaveOn(lo);
+    setReturnOn(ro);
+    setTotalDays(String(days));
+  }
 
   async function handleSave() {
     if (!mode) return;
     if (!leaveOn || !returnOn) { setError('Leave date and return date are required.'); return; }
     if (returnOn < leaveOn)    { setError('Return date must be on or after the leave date.'); return; }
+    if (returnOn > today) {
+      setError('The return date has not passed yet — record this after the employee is back.');
+      return;
+    }
     const days = parseFloat(totalDays);
     if (isNaN(days) || days <= 0) { setError('Total days must be a positive number.'); return; }
     if (mode.kind === 'manual' && !empId) { setError('Please select an employee.'); return; }
@@ -212,19 +239,40 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
 
   const unmatched = mode?.kind === 'record' && !mode.request.employee_id;
 
-  const primaryLabel = mode?.kind === 'edit' ? 'Save changes'
+  const daysNum = Number(totalDays);
+  const primaryLabel = mode?.kind === 'record' && daysNum > 0
+    ? `Record ${daysNum} day(s)`
+    : mode?.kind === 'edit' ? 'Save changes'
     : mode?.kind === 'manual' ? 'Add approval'
     : 'Record approval';
 
-  // Day-count mismatch note (record mode only)
-  const daysMismatch = mode?.kind === 'record' && totalDays !== ''
-    && Number(mode.request.total_days) !== Number(totalDays)
-    ? `Monday request said ${mode.request.total_days} day(s); the calendar span is ${totalDays}.`
+  // Payroll mismatch note
+  const match = mode?.kind !== 'manual' ? (mode?.match ?? null) : null;
+  const actualDays = match?.state === 'matched' && match.actualDays !== null ? match.actualDays : null;
+  const payrollMismatchNote = actualDays !== null && String(actualDays) !== totalDays
+    ? `Payroll shows ${actualDays} day(s); recording ${totalDays}.`
     : null;
+
+  // Panel data for record/edit
+  const panelRequested = mode?.kind === 'record' ? {
+    leaveOn: ymd(mode.request.leave_on),
+    returnOn: ymd(mode.request.return_on),
+    days: Number(mode.request.total_days) || 0,
+    reason: mode.request.reason,
+    submittedAt: mode.request.submitted_at,
+    source: 'Monday' as const,
+  } : mode?.kind === 'edit' ? {
+    leaveOn: ymd(mode.row.leave_on),
+    returnOn: ymd(mode.row.return_on),
+    days: Number(mode.row.total_days) || 0,
+    reason: null,
+    submittedAt: null,
+    source: 'ledger' as const,
+  } : null;
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {subtitle && (
@@ -233,24 +281,15 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
         </DialogHeader>
 
         <div className="space-y-4 py-1">
-          {/* Monday request card — record mode only */}
-          {mode?.kind === 'record' && (
-            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">
-                Requested on Monday
-              </div>
-              <div className="text-[13px] text-slate-800">
-                {fmtDate(mode.request.leave_on)} → {fmtDate(mode.request.return_on)}
-                <span className="text-slate-500 ml-1">
-                  · {mode.request.total_days} day(s)
-                </span>
-              </div>
-              {mode.request.reason && (
-                <div className="text-[12px] text-slate-500 mt-0.5">
-                  {mode.request.reason}
-                </div>
-              )}
-            </div>
+          {/* Payroll panel — record and edit modes */}
+          {panelRequested && (
+            <RecordDialogPayrollPanel
+              requested={panelRequested}
+              match={match}
+              leaveType={leaveType}
+              thisYear={thisYear}
+              onApply={handleApplyPayroll}
+            />
           )}
 
           {/* Type — manual mode only */}
@@ -316,8 +355,8 @@ export default function RecordApprovalDialog({ mode, onClose, onSaved }: Props) 
             <Label htmlFor="totalDays" className="text-xs">Total days</Label>
             <Input id="totalDays" type="number" step="0.5" min="0.5" value={totalDays}
               onChange={e => setTotalDays(e.target.value)} className="mt-1 h-8 text-sm" />
-            {daysMismatch && (
-              <p className="text-[12px] text-slate-500 mt-0.5">{daysMismatch}</p>
+            {payrollMismatchNote && (
+              <p className="text-[12px] text-amber-600 mt-0.5">{payrollMismatchNote}</p>
             )}
           </div>
 

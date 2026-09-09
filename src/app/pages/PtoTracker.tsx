@@ -96,6 +96,7 @@ export default function PtoTracker() {
       </div>
       <RecordApprovalDialog
         mode={dialogMode}
+        today={today}
         onClose={() => setDialogMode(null)}
         onSaved={() => { setDialogMode(null); setRefreshKey(k => k + 1); }}
       />

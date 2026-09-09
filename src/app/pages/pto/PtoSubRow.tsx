@@ -120,7 +120,7 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
           <div>
             <Button
               size="sm"
-              onClick={() => onOpenDialog({ kind: 'record', request: item.request })}
+              onClick={() => onOpenDialog({ kind: 'record', request: item.request, match: item.match })}
               disabled={!returnPassed}
               title={!returnPassed ? 'Record after the return date has passed' : undefined}
             >
@@ -139,7 +139,7 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
             <Button
               size="sm"
               variant="outline"
-              onClick={() => onOpenDialog({ kind: 'edit', row: item.request })}
+              onClick={() => onOpenDialog({ kind: 'edit', row: item.request, match: item.match })}
             >
               <Pencil className="w-3.5 h-3.5 mr-1" />
               Edit

@@ -15,14 +15,7 @@
 --
 -- Changes from 1781994000: one added CASE ... END AS time_off_kind column;
 --   nothing else changed.
--- Rollback: reverting this migration alone is NOT sufficient and will break the
---   Attendance page with "column does not exist". You must also revert
---   src/actions/loadAttendanceDaily.ts (remove time_off_kind from SELECT),
---   src/app/lib/attendanceStats.ts (remove time_off_kind from AttendanceRow),
---   and src/app/pages/attendance/AttendanceDonuts.tsx (remove the breakdown).
---   The view-only rollback degrades to an error rather than a graceful fallback.
---   Safe rollback: re-run 1781994000_v_attendance_daily_split_unexplained_absence.sql
---   AND revert the three source files listed above.
+-- Rollback: re-run 1781994000_v_attendance_daily_split_unexplained_absence.sql.
 
 CREATE OR REPLACE VIEW public.v_attendance_daily AS
 WITH base AS (

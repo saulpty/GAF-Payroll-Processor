@@ -3,6 +3,7 @@ import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useLoadAction } from '@uibakery/data';
 import { X, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useEffect, useRef } from 'react';
+import EmployeeSearchInput from '@/app/components/EmployeeSearchInput';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadActionRequiredCountsAction from '@/actions/loadActionRequiredCounts';
@@ -152,8 +153,13 @@ export default function FilterBar() {
       {cfg.employee && (
         <>
           <label className={labelCls}>Employee</label>
-          <input type="text" value={employee} onChange={e => setEmployee(e.target.value)}
-            placeholder="Search…" className={inputCls + ' w-44'} />
+          <EmployeeSearchInput
+            value={employee}
+            onChange={setEmployee}
+            options={emps}
+            placeholder="Search…"
+            className={inputCls + ' w-44'}
+          />
           {(cfg.role || cfg.manager || cfg.statusTab || cfg.pmTab) && divider}
         </>
       )}
