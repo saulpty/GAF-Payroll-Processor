@@ -26,7 +26,7 @@ function loadPtoEmployeeDetail() {
           ) ORDER BY r.start_date DESC)
           FROM monday_requests r
           LEFT JOIN employees e ON e.id = r.employee_id
-          LEFT JOIN pto_approvals a ON a.monday_item_id = r.monday_item_id AND a.status <> 'withdrawn'
+          LEFT JOIN pto_approvals a ON a.monday_item_id = r.monday_item_id
           WHERE r.employee_id = {{params.employee_id}}::bigint
             AND r.request_type IN ('PTO / Vacation','Floating Holiday') AND r.deleted_on_monday = false AND a.id IS NULL
         ), '[]'::json) AS pending,
@@ -64,6 +64,19 @@ function loadPtoEmployeeDetail() {
           WHERE e.id = {{params.employee_id}}::bigint
             AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
         ) AS fh
+        , COALESCE((
+          SELECT json_agg(json_build_object(
+            'd',  LEFT(pr.work_date, 10),
+            'et', COALESCE(NULLIF(TRIM(pr.event_type_1), ''), ''),
+            'pi', COALESCE(pr.pay_impact_1, ''),
+            'p',  pr.period_name,
+            'in', NULLIF(TRIM(pr.entry_time), '') IS NOT NULL
+          ) ORDER BY LEFT(pr.work_date, 10))
+          FROM payroll_entries pr
+          WHERE pr.employee_id = {{params.employee_id}}::bigint
+            AND pr.deleted_at IS NULL
+            AND LEFT(pr.work_date, 10) >= (({{params.year}}::int - 1)::text || '-12-01')
+        ), '[]'::json) AS days
     `,
   });
 }
