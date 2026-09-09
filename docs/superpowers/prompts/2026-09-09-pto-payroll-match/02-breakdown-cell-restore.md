@@ -13,6 +13,8 @@ them into the PTO breakdown. **Do not modify either module.**
 - `src/app/pages/pto/PtoSubRow.tsx`
 - `src/app/pages/pto/PtoPayrollCell.tsx` — **new**
 - `src/actions/loadPtoEmployeeDetail.ts`
+- `src/migrations/1781995000_v_attendance_daily_add_time_off_kind.sql` — the
+  header comment only, see §0
 
 **No other file.** Not `RecordApprovalDialog.tsx` (next prompt), not
 `ptoAccrual.ts`, not `fmtDate.ts`, not anything under `src/components/ui`.
@@ -20,6 +22,24 @@ Every file stays under 15 KB. camelCase identifiers only (H4 guard). Params to
 `useLoadAction` go flat — never `{ params: {...} }`. No `toISOString()`.
 
 ---
+
+## 0. Restore a comment the last export lost
+
+In `src/migrations/1781995000_v_attendance_daily_add_time_off_kind.sql` the
+header currently ends with a one-line rollback note. Replace that single line
+(`-- Rollback: re-run 1781994000_v_attendance_daily_split_unexplained_absence.sql.`)
+with this block — comment only, the SQL below it must not change:
+
+```
+-- Rollback: reverting this migration alone is NOT sufficient and will break the
+--   Attendance page with "column does not exist". You must also revert
+--   src/actions/loadAttendanceDaily.ts (remove time_off_kind from SELECT),
+--   src/app/lib/attendanceStats.ts (remove time_off_kind from AttendanceRow),
+--   and src/app/pages/attendance/AttendanceDonuts.tsx (remove the breakdown).
+--   The view-only rollback degrades to an error rather than a graceful fallback.
+--   Safe rollback: re-run 1781994000_v_attendance_daily_split_unexplained_absence.sql
+--   AND revert the three source files listed above.
+```
 
 ## 1. `loadPtoEmployeeDetail.ts`
 
@@ -156,5 +176,5 @@ as props `requestDays: number` and `leaveOn: string` (add them to the
 
 ## Acceptance
 
-Only the seven files above changed; all under 15 KB; the full test suite is
+Only the eight files above changed; all under 15 KB; the full test suite is
 still green.
