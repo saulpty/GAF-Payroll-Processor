@@ -7,11 +7,14 @@ import type { DialogMode, PendingRequest, LedgerRow } from './RecordApprovalDial
 import PtoSubRow, { type SubItem } from './PtoSubRow';
 import loadPtoEmployeeDetailAction from '@/actions/loadPtoEmployeeDetail';
 import updatePtoApprovalStatusAction from '@/actions/updatePtoApprovalStatus';
+import { matchPayroll, type DayRow, type PeriodRow, type PayrollMatch } from '@/app/lib/ptoPayrollMatch';
+import { defaultTotalDays } from '@/app/lib/ptoAccrual';
 
 interface Props {
   row: PtoRowData;
   year: string;
-  showWithdrawn: boolean;
+  today: string;
+  periods: PeriodRow[];
   onOpenDialog: (m: DialogMode) => void;
   onChanged: () => void;
   detailKey: number;
@@ -24,6 +27,7 @@ interface DetailRow {
     fh_allocated: number; fh_used: number; notes: string | null;
     start_date: string | null; pto_start_date_override: string | null;
   } | null;
+  days: DayRow[] | string;
 }
 
 function parseJSON<T>(v: T | string | null | undefined, fallback: T): T {
@@ -34,13 +38,13 @@ function parseJSON<T>(v: T | string | null | undefined, fallback: T): T {
   return v as T;
 }
 
-const HEADERS = ['Type', 'Dates', 'Days', 'Status', 'Source', 'In payroll', 'Comments', ''];
+const HEADERS = ['Type', 'Dates', 'Days', 'Status', 'Source', 'In payroll', ''];
 
-export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, onChanged }: Props) {
+export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, onChanged }: Props) {
   const [rawDetail, loading, error, reload] = useLoadAction(
     loadPtoEmployeeDetailAction,
     null,
-    { employee_id: row.employee_id, year, manager: null },
+    { employee_id: row.employee_id, year, manager: null, daysFrom: `${Number(year) - 1}-12-01` },
   );
 
   const [withdraw] = useMutateAction(updatePtoApprovalStatusAction);
@@ -50,6 +54,7 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
 
   const pending: PendingRequest[] = parseJSON(detail?.pending, []);
   const ledger: LedgerRow[] = parseJSON(detail?.ledger, []);
+  const days: DayRow[] = parseJSON(detail?.days, []);
 
   if (loading) {
     return (
@@ -69,8 +74,9 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
     );
   }
 
-  // Build unified item list
-  const items: SubItem[] = [];
+  // Build unified item list (all statuses — withdrawn always shown)
+  type ItemWithMatch = SubItem & { match: PayrollMatch };
+  const items: ItemWithMatch[] = [];
 
   for (const req of pending) {
     items.push({
@@ -79,13 +85,13 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
       leave_on: String(req.leave_on ?? '').slice(0, 10),
       return_on: String(req.return_on ?? '').slice(0, 10),
       days: Number(req.total_days) || 0,
-      payroll: (req as { payroll?: string | null }).payroll ?? null,
       request: req,
+      match: {} as PayrollMatch, // placeholder, filled below
     });
   }
 
   for (const entry of ledger) {
-    if (!showWithdrawn && entry.status === 'withdrawn') continue;
+    const updatedAt = (entry as { updated_at?: string | null }).updated_at;
     items.push({
       kind: 'recorded',
       leave_type: (entry.leave_type ?? 'pto') as 'pto' | 'floating_holiday',
@@ -95,21 +101,42 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
       status: entry.status,
       source: entry.source,
       comments: entry.gaf_comments,
-      payroll: (entry as { payroll?: string | null }).payroll ?? null,
       id: entry.id,
-      request: entry, // passed to edit dialog
+      withdrawnAt: updatedAt ?? null,
+      request: entry,
+      match: {} as PayrollMatch, // placeholder, filled below
     });
   }
 
-  // Sort by leave_on descending (plain string compare, YYYY-MM-DD)
+  // Sort by leave_on descending (newest first)
   items.sort((a, b) => b.leave_on.localeCompare(a.leave_on));
 
-  const handleWithdraw = async (id: number, days: number) => {
+  // Compute payroll match for each item
+  // items are newest-first, so items[i-1] is the chronologically next request
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const stopBefore = i > 0 && items[i - 1].leave_on > item.leave_on
+      ? items[i - 1].leave_on
+      : null;
+    item.match = matchPayroll(
+      { leaveOn: item.leave_on, returnOn: item.return_on, days: item.days },
+      days,
+      periods,
+      { leaveType: item.leave_type, today, spanDays: defaultTotalDays, stopBefore },
+    );
+  }
+
+  const handleWithdraw = async (id: number, itemDays: number) => {
     const ok = window.confirm(
-      `Withdraw this record? Days will drop by ${days}.`
+      `Withdraw this record? Days will drop by ${itemDays}.`
     );
     if (!ok) return;
     await withdraw({ id, status: 'withdrawn' });
+    onChanged();
+  };
+
+  const handleRestore = async (id: number) => {
+    await withdraw({ id, status: 'recorded' });
     onChanged();
   };
 
@@ -138,8 +165,10 @@ export default function PtoBreakdown({ row, year, showWithdrawn, onOpenDialog, o
                   ? `p-${item.request?.monday_item_id ?? i}`
                   : `r-${item.id}`}
                 item={item}
+                today={today}
                 onOpenDialog={onOpenDialog}
                 onWithdraw={handleWithdraw}
+                onRestore={handleRestore}
               />
             ))}
           </tbody>

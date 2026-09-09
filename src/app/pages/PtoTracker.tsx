@@ -75,6 +75,8 @@ export default function PtoTracker() {
     </>
   );
 
+  const today = toLocalYMD(new Date());
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -85,6 +87,7 @@ export default function PtoTracker() {
       <div className="flex-1 min-h-0 flex flex-col">
         <PtoTable
           asOf={asOf}
+          today={today}
           refreshKey={refreshKey}
           onOpenDialog={setDialogMode}
           onRowsChange={setRows}

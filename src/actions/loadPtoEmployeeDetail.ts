@@ -10,19 +10,7 @@ function loadPtoEmployeeDetail() {
             'monday_item_id', r.monday_item_id, 'employee_id', r.employee_id, 'display_name', e.display_name,
             'employee_name_raw', r.employee_name_raw, 'leave_on', r.start_date::text, 'return_on', r.return_date::text,
             'total_days', r.total_days_requested, 'reason', r.reason, 'submitted_at', r.submitted_at::text,
-            'leave_type', CASE WHEN r.request_type = 'Floating Holiday' THEN 'floating_holiday' ELSE 'pto' END,
-            'payroll', (
-              SELECT string_agg(x.t || ' x' || x.c, ', ' ORDER BY x.c DESC, x.t)
-              FROM (
-                SELECT COALESCE(NULLIF(TRIM(pe.event_type_1),''), 'no event') AS t, count(*) AS c
-                FROM payroll_entries pe
-                WHERE pe.employee_id = r.employee_id
-                  AND LEFT(pe.work_date,10)::date >= r.start_date
-                  AND LEFT(pe.work_date,10)::date <  GREATEST(r.return_date, r.start_date + 1)
-                  AND pe.deleted_at IS NULL
-                GROUP BY 1
-              ) x
-            )
+            'leave_type', CASE WHEN r.request_type = 'Floating Holiday' THEN 'floating_holiday' ELSE 'pto' END
           ) ORDER BY r.start_date DESC)
           FROM monday_requests r
           LEFT JOIN employees e ON e.id = r.employee_id
@@ -37,18 +25,7 @@ function loadPtoEmployeeDetail() {
             'status', a.status, 'source', a.source, 'gaf_comments', a.gaf_comments, 'recorded_by', a.recorded_by,
             'monday_item_id', a.monday_item_id, 'recorded_at', a.recorded_at::text,
             'leave_type', a.leave_type,
-            'payroll', (
-              SELECT string_agg(x.t || ' x' || x.c, ', ' ORDER BY x.c DESC, x.t)
-              FROM (
-                SELECT COALESCE(NULLIF(TRIM(pe.event_type_1),''), 'no event') AS t, count(*) AS c
-                FROM payroll_entries pe
-                WHERE pe.employee_id = a.employee_id
-                  AND LEFT(pe.work_date,10)::date >= a.leave_on
-                  AND LEFT(pe.work_date,10)::date <  GREATEST(a.return_on, a.leave_on + 1)
-                  AND pe.deleted_at IS NULL
-                GROUP BY 1
-              ) x
-            )
+            'updated_at', a.updated_at::text
           ) ORDER BY a.leave_on DESC, a.id DESC)
           FROM pto_approvals a LEFT JOIN employees e ON e.id = a.employee_id
           WHERE a.employee_id = {{params.employee_id}}::bigint
@@ -75,7 +52,7 @@ function loadPtoEmployeeDetail() {
           FROM payroll_entries pr
           WHERE pr.employee_id = {{params.employee_id}}::bigint
             AND pr.deleted_at IS NULL
-            AND LEFT(pr.work_date, 10) >= (({{params.year}}::int - 1)::text || '-12-01')
+            AND LEFT(pr.work_date, 10) >= {{params.daysFrom}}
         ), '[]'::json) AS days
     `,
   });

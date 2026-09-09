@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { fmtDate } from '@/app/lib/fmtDate';
+import { fmtDay } from '@/app/lib/fmtDay';
 import StatusChip from '@/app/components/StatusChip';
 
 export interface PtoRowData {
@@ -15,6 +15,7 @@ export interface PtoRowData {
   pending_count: number | string;
   fh_allocated: number | string;
   fh_used: number | string;
+  fh_sheet_used: number | string;
   wfh_days: number | string;
   birthday_days: number | string;
   start: string | null;
@@ -29,6 +30,7 @@ interface Props {
   row: PtoRowData;
   expanded: boolean;
   onToggle: () => void;
+  thisYear: string;
   children?: ReactNode;
 }
 
@@ -46,22 +48,39 @@ function fmtInt(v: number | string | null | undefined): ReactNode {
   return String(n);
 }
 
-export default function PtoRow({ row, expanded, onToggle, children }: Props) {
+export default function PtoRow({ row, expanded, onToggle, thisYear, children }: Props) {
   const available = row.available;
   const negativeAvail = available !== null && available < 0;
+  const fhUsed = Number(row.fh_used) || 0;
+  const fhAllocated = Number(row.fh_allocated) || 2;
+  const fhSheetUsed = Number(row.fh_sheet_used) || 0;
 
   let fhCell: ReactNode;
   if (row.fh_left === 0 && row.fh_eligible_from) {
     fhCell = (
       <span
         className="text-slate-400"
-        title={`Eligible ${fmtDate(row.fh_eligible_from)} — 90 days after hire`}
+        title={`Eligible ${fmtDay(row.fh_eligible_from, thisYear)} — 90 days after hire`}
       >
         0
       </span>
     );
+  } else if (row.fh_left === 0) {
+    fhCell = (
+      <span
+        title={`Used ${fhUsed} of ${fhAllocated} this year · August sheet said ${fhSheetUsed}`}
+      >
+        {fmtInt(row.fh_left)}
+      </span>
+    );
   } else {
-    fhCell = fmtInt(row.fh_left);
+    fhCell = (
+      <span
+        title={`Used ${fhUsed} of ${fhAllocated} this year · August sheet said ${fhSheetUsed}`}
+      >
+        {fmtInt(row.fh_left)}
+      </span>
+    );
   }
 
   return (
@@ -90,7 +109,9 @@ export default function PtoRow({ row, expanded, onToggle, children }: Props) {
         {/* Title */}
         <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.role ?? muted}</td>
         {/* Start */}
-        <td className="px-3 py-2 tabular-nums whitespace-nowrap">{row.start ? fmtDate(row.start) : muted}</td>
+        <td className="px-3 py-2 tabular-nums whitespace-nowrap">
+          {row.start ? fmtDay(row.start, thisYear) : muted}
+        </td>
         {/* Accrued */}
         <td className="px-3 py-2 text-right tabular-nums">{fmt2(row.accrued)}</td>
         {/* Taken */}

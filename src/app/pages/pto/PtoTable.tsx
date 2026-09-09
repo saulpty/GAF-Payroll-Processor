@@ -8,12 +8,15 @@ import PtoBreakdown from './PtoBreakdown';
 import type { DialogMode } from './RecordApprovalDialog';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import loadPtoBalancesInputsAction from '@/actions/loadPtoBalancesInputs';
+import loadPeriodsAction from '@/actions/loadPeriods';
 import { accruedPto, fhEligibleDate, fhRemaining } from '@/app/lib/ptoAccrual';
 import { sortRows, nextSortDir } from '@/app/lib/ptoSort';
 import type { SortDir } from '@/app/lib/ptoSort';
+import type { PeriodRow } from '@/app/lib/ptoPayrollMatch';
 
 interface Props {
   asOf: string;
+  today: string;
   refreshKey: number;
   onOpenDialog: (m: DialogMode) => void;
   onRowsChange?: (rows: PtoRowData[]) => void;
@@ -32,6 +35,7 @@ type RawRow = {
   pending_count: number | string;
   fh_allocated: number | string;
   fh_used: number | string;
+  fh_sheet_used: number | string;
   wfh_days: number | string;
   birthday_days: number | string;
 };
@@ -44,13 +48,13 @@ const COLUMNS: Col<PtoRowData>[] = [
   { key: 'taken_days',   label: 'Taken',    align: 'right', tip: 'Sum of recorded PTO days. Withdrawn rows don\'t count.' },
   { key: 'available',    label: 'Available', align: 'right', tip: 'Accrued − Taken. Red when negative.' },
   { key: 'paid_pto_days',label: 'Paid PTO', align: 'right', tip: 'Days already paid in advance (CSS two-week blocks). Manual.' },
-  { key: 'fh_left',      label: 'FH left',  align: 'right', tip: '2 per calendar year, non-stacking, eligible 90 days after hire.' },
+  { key: 'fh_left',      label: 'FH left',  align: 'right', tip: '2 per calendar year, non-stacking, eligible 90 days after hire. Counts days, not records. Hover a value for the breakdown.' },
   { key: 'wfh_days',     label: 'WFH',      align: 'right', tip: 'Approved Work-From-Home requests on Monday this year.' },
   { key: 'birthday_days',label: 'Birthday', align: 'right', tip: 'Birthday day-off requests on Monday this year.' },
   { key: 'pending',      label: 'Pending',  align: 'center', tip: 'Monday PTO requests not yet recorded.' },
 ];
 
-export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange, onCountsChange }: Props) {
+export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRowsChange, onCountsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
 
   const year = asOf.slice(0, 4);
@@ -59,6 +63,8 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange,
     [] as RawRow[],
     { year, manager: manager || null },
   );
+
+  const [periods] = useLoadAction(loadPeriodsAction, [] as PeriodRow[]);
 
   // detailKey: bumped on dialog save or breakdown write, forces breakdown refetch
   const [detailKey, setDetailKey] = useState(0);
@@ -97,7 +103,6 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange,
 
   // Local controls
   const [onlyPending, setOnlyPending] = useState(false);
-  const [showWithdrawn, setShowWithdrawn] = useState(false);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -149,6 +154,8 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange,
     onCountsChange?.({ employees: sorted.length, pending: totalPending });
   }, [sorted, onRowsChange, onCountsChange, totalPending]);
 
+  const thisYear = today.slice(0, 4);
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Controls strip */}
@@ -161,15 +168,6 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange,
             className="rounded"
           />
           Only with pending
-        </label>
-        <label className="flex items-center gap-1.5 text-[13px] text-slate-600 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={showWithdrawn}
-            onChange={e => setShowWithdrawn(e.target.checked)}
-            className="rounded"
-          />
-          Show withdrawn
         </label>
       </div>
 
@@ -209,13 +207,15 @@ export default function PtoTable({ asOf, refreshKey, onOpenDialog, onRowsChange,
                 row={row}
                 expanded={expanded.has(row.employee_id)}
                 onToggle={() => handleToggle(row.employee_id)}
+                thisYear={thisYear}
               >
                 {expanded.has(row.employee_id) && (
                   <PtoBreakdown
                     key={`${row.employee_id}-${detailKey}`}
                     row={row}
                     year={year}
-                    showWithdrawn={showWithdrawn}
+                    today={today}
+                    periods={periods as PeriodRow[]}
                     onOpenDialog={onOpenDialog}
                     onChanged={handleChanged}
                     detailKey={detailKey}
