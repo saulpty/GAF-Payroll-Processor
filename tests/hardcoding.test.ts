@@ -139,6 +139,11 @@ test('H4: no Monday board or column id is hardcoded in the mirror or PTO code', 
     ...walkTs('src/app/pages/disciplinary'),
     'src/app/pages/admin/AdminEmployeesHub.tsx',
     'src/app/pages/PtoTracker.tsx',
+    // 2026-09-09: PTO payroll matcher, date formatter and the shared employee
+    // autocomplete all read mirror-derived data; enrolled at creation.
+    'src/app/lib/ptoPayrollMatch.ts',
+    'src/app/lib/fmtDay.ts',
+    'src/app/components/EmployeeSearchInput.tsx',
     'src/app/pages/Contracts.tsx',
     'src/app/pages/Disciplinary.tsx',
     ...walkTs('src/actions').filter(f =>
