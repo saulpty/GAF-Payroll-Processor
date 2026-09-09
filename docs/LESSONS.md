@@ -239,6 +239,26 @@ ignored the file-size split the design specifies. **Do not reply "no" and do not
 reply at all — send the next numbered prompt instead**, and sync straight after
 to confirm the offer left nothing behind.
 
+### The Export menu can be driven from the DOM when screenshots die
+
+**2026-09-09.** Late in a long session the Chrome extension's screenshot
+capture got stuck on a 184×92 clip (after a `zoom`) and coordinate clicks
+became impossible. The ⋮ → Export menu is an Angular overlay that `find` /
+`read_page` do not see either. What works, every time:
+
+```js
+const link=[...document.querySelectorAll('a')].find(a=>a.textContent.trim()==='GAF HR Hub');
+const btn=link.parentElement.querySelector('button');
+btn.click(); await new Promise(r=>setTimeout(r,800));
+const hit=[...document.querySelectorAll('*')].find(e=>e.children.length===0 && e.textContent.trim()==='Export');
+(hit.closest('button,a,[role=menuitem],li')||hit).click();
+```
+
+Then check Downloads for a new zip, as always. Also: the first ⋮ click after a
+navigation opens nothing; hover the app row first, and zoom on the sidebar
+before clicking Export, because the Export coordinate lands on another app's
+row when the menu is closed.
+
 ### Confirm the prompt actually submitted
 
 The panel resizes as it fills, so a submit click at yesterday's coordinates
