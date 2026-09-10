@@ -7,6 +7,7 @@ import { recordability } from '@/app/lib/ptoPayrollMatch';
 import type { DialogMode } from './RecordApprovalDialog';
 import type { PayrollMatch } from '@/app/lib/ptoPayrollMatch';
 import PtoPayrollCell from './PtoPayrollCell';
+import PtoVerdictCell from './PtoVerdictCell';
 
 export interface SubItem {
   kind: 'pending' | 'recorded';
@@ -50,18 +51,35 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
   return (
     <tr className="border-t border-slate-100">
       {/* Type */}
-      <td className={`px-3 py-2 ${dimmed}`}>
+      <td className={`px-3 py-2 align-top ${dimmed}`}>
         {item.leave_type === 'floating_holiday'
           ? <StatusChip tone="violet">Floating holiday</StatusChip>
           : <StatusChip tone="blue">PTO</StatusChip>}
+        <div className="mt-1">
+          {item.kind === 'pending'
+            ? <StatusChip tone="amber">Pending</StatusChip>
+            : withdrawn
+              ? <StatusChip tone="red" strike>Withdrawn</StatusChip>
+              : <StatusChip tone="green">Recorded</StatusChip>}
+        </div>
       </td>
 
-      {/* Dates */}
+      {/* Requested */}
       <td
-        className={`px-3 py-2 text-[13px] text-slate-700 whitespace-nowrap tabular-nums ${dimmed}`}
+        className={`px-3 py-2 align-top ${dimmed}`}
         title={item.comments ?? undefined}
       >
-        {fmtRange(item.leave_on, item.return_on, thisYear)}
+        <div className="text-[13px] text-slate-800 tabular-nums whitespace-nowrap">
+          {fmtRange(item.leave_on, item.return_on, thisYear)}
+        </div>
+        <div className="text-[11px] text-slate-400">
+          {item.days} {item.days === 1 ? 'day' : 'days'} · {sourceLabel(item.source) || 'Monday'}
+        </div>
+        {withdrawn && item.withdrawnAt && (
+          <div className="text-[11px] text-slate-400">
+            withdrawn {fmtDay(item.withdrawnAt, thisYear)}
+          </div>
+        )}
         {item.match.invalidDates && (
           <div className="mt-1">
             <StatusChip tone="red" icon={<AlertCircle className="w-3 h-3" />}>Return is before leave — fix on Monday</StatusChip>
@@ -69,49 +87,20 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
         )}
       </td>
 
-      {/* Days */}
-      <td className={`px-3 py-2 text-right tabular-nums text-[13px] text-slate-700 ${dimmed}`}>
-        {item.days}
-      </td>
-
-      {/* Status */}
-      <td className="px-3 py-2">
-        {item.kind === 'pending'
-          ? (
-            <div>
-              <StatusChip tone="amber">Pending</StatusChip>
-              <div className="text-[11px] text-slate-400">Monday</div>
-            </div>
-          )
-          : withdrawn
-            ? (
-              <div>
-                <div className="text-[11px] text-slate-400">{sourceLabel(item.source)}</div>
-                <StatusChip tone="red" strike>Withdrawn</StatusChip>
-                {item.withdrawnAt && (
-                  <div className="text-[11px] text-slate-400">
-                    withdrawn {fmtDay(item.withdrawnAt, thisYear)}
-                  </div>
-                )}
-              </div>
-            )
-            : (
-              <div>
-                <StatusChip tone="green">Recorded</StatusChip>
-                <div className="text-[11px] text-slate-400">{sourceLabel(item.source)}</div>
-              </div>
-            )}
-      </td>
-
-      {/* In payroll */}
-      <td className="px-3 py-2 text-[12px] min-w-[320px]">
-        <PtoPayrollCell
+      {/* Verdict */}
+      <td className="px-3 py-2 align-top">
+        <PtoVerdictCell
           match={item.match}
           leaveType={item.leave_type}
-          thisYear={thisYear}
           requestDays={item.days}
           leaveOn={item.leave_on}
+          thisYear={thisYear}
         />
+      </td>
+
+      {/* Payroll */}
+      <td className="px-3 py-2 align-top text-[12px]">
+        <PtoPayrollCell match={item.match} thisYear={thisYear} />
       </td>
 
       {/* Actions */}

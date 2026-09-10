@@ -1,155 +1,35 @@
-import { Clock, Hourglass, AlertTriangle, Check } from 'lucide-react';
+// Evidence-only cell: cycles + byType breakdown, no verdict words.
 import type { PayrollMatch } from '@/app/lib/ptoPayrollMatch';
-import { fmtDay } from '@/app/lib/fmtDay';
 
 interface Props {
   match: PayrollMatch;
-  leaveType: 'pto' | 'floating_holiday';
   thisYear: string;
-  requestDays: number;
-  leaveOn: string;
 }
 
-function CyclesByType({ cycles, byType }: { cycles: string[]; byType: { label: string; count: number; impact: string }[] }) {
+export default function PtoPayrollCell({ match, thisYear: _thisYear }: Props) {
+  const { state, cycles, byType } = match;
+
+  if (!state) return null;
+
+  const byTypeTitle = byType.map(b => `${b.label} ×${b.count}${b.impact ? ` · ${b.impact}` : ''}`).join('; ');
+
+  const hasData = cycles.length > 0 || byType.length > 0;
+
+  if (!hasData || state === 'future' || state === 'invalid' || state === 'not_processed' || state === 'before_history' || state === 'no_rows') {
+    return <span className="text-slate-300">—</span>;
+  }
+
   return (
-    <>
+    <div title={byTypeTitle}>
       {cycles.length > 0 && (
         <div className="font-mono text-[11px] text-slate-500">{cycles.join(', ')}</div>
       )}
       {byType.map((b, i) => (
-        <div key={i} className="text-slate-600">
+        <div key={i} className="text-[12px] text-slate-600">
           {b.label} ×{b.count}
           {b.impact && <span className="text-slate-400"> · {b.impact}</span>}
         </div>
       ))}
-    </>
-  );
-}
-
-export default function PtoPayrollCell({ match, leaveType, thisYear, requestDays, leaveOn }: Props) {
-  const { state, mismatch, cycles, byType, firstOff, actualReturn, actualDays, dataThrough } = match;
-  const byTypeTitle = byType.map(b => `${b.label} ×${b.count}${b.impact ? ` · ${b.impact}` : ''}`).join('; ');
-  const leaveLabel = leaveType === 'floating_holiday' ? 'floating holiday' : 'PTO';
-
-  // Guard: if match is empty/placeholder (no state set), show nothing
-  if (!state) return null;
-
-  if (state === 'invalid') return null;
-
-  if (state === 'before_history') {
-    return (
-      <div className="text-slate-400">
-        <div>Before payroll history</div>
-        {match.historyFrom && (
-          <div className="text-[11px]">payroll starts {fmtDay(match.historyFrom, thisYear)}</div>
-        )}
-      </div>
-    );
-  }
-
-  if (state === 'future') {
-    return (
-      <div className="flex items-center gap-1 text-slate-400">
-        <Clock className="w-3.5 h-3.5 shrink-0" />
-        <span>Future</span>
-      </div>
-    );
-  }
-
-  if (state === 'not_processed') {
-    return (
-      <div>
-        <div className="flex items-center gap-1 text-amber-600">
-          <Hourglass className="w-3.5 h-3.5 shrink-0" />
-          <span>Not processed yet</span>
-        </div>
-        {dataThrough && (
-          <div className="text-slate-400">
-            payroll runs through {fmtDay(dataThrough, thisYear)}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (state === 'no_rows') {
-    return <span className="text-slate-400">No payroll rows</span>;
-  }
-
-  if (state === 'worked') {
-    return (
-      <div title={byTypeTitle}>
-        <div className="flex items-center gap-1 text-amber-600">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          <span>Worked these days</span>
-        </div>
-        <CyclesByType cycles={cycles} byType={byType} />
-      </div>
-    );
-  }
-
-  if (state === 'partial') {
-    return (
-      <div title={byTypeTitle}>
-        <CyclesByType cycles={cycles} byType={byType} />
-        <div className="text-slate-400">
-          Return not in payroll yet
-          {dataThrough && ` · runs through ${fmtDay(dataThrough, thisYear)}`}
-        </div>
-      </div>
-    );
-  }
-
-  // state === 'matched'
-  if (firstOff === null) {
-    return (
-      <div title={byTypeTitle}>
-        <CyclesByType cycles={cycles} byType={byType} />
-        <div className="flex items-center gap-1 text-amber-600">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          <span>No {leaveLabel} day in payroll</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (actualReturn === null) {
-    return (
-      <div title={byTypeTitle}>
-        <CyclesByType cycles={cycles} byType={byType} />
-        <div className="flex items-center gap-1 text-amber-600">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          <span>Off {fmtDay(firstOff, thisYear)} · return not in payroll</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!mismatch) {
-    return (
-      <div title={byTypeTitle}>
-        <CyclesByType cycles={cycles} byType={byType} />
-        <div className="text-slate-600 flex items-center gap-1">
-          <span>Back {fmtDay(actualReturn, thisYear)} · {actualDays} {actualDays === 1 ? 'day' : 'days'}</span>
-          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 inline" />
-        </div>
-      </div>
-    );
-  }
-
-  // matched with mismatch
-  const startedDiff = firstOff !== leaveOn;
-  return (
-    <div title={byTypeTitle}>
-      <CyclesByType cycles={cycles} byType={byType} />
-      <div className="flex items-start gap-1 text-amber-600">
-        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-        <span>
-          Back {fmtDay(actualReturn, thisYear)} ·{' '}
-          {startedDiff && `started ${fmtDay(firstOff, thisYear)} · `}
-          {actualDays} {actualDays === 1 ? 'day' : 'days'}, not {requestDays}
-        </span>
-      </div>
     </div>
   );
 }
