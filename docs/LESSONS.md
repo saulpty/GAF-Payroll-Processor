@@ -85,6 +85,12 @@ Both crashed the whole page with "Something went wrong."
 *"then confirm every identifier used in the file is imported"*. And always load
 the page after a UI prompt; TypeScript-clean is not the same as runs.
 
+**It happened again on 2026-09-10**, the other way round: a prompt *added* a
+`useEffect` to `ProcessPayroll.tsx` and the file's React import only had
+`useState, useRef, useMemo`. UIB's lint passed ("TypeScript clean"), the page
+crashed. The closing line belongs on prompts that add code too — and the
+browser check on `/process` is what caught it, not the tests.
+
 ### It wraps action params in an extra object
 
 `useLoadAction(action, null, { params: {...} })` instead of
