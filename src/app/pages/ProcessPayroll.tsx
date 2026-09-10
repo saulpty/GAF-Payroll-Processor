@@ -36,7 +36,7 @@ import {
   type MondayAdjustmentRow,
   type MondayPermissionRow,
 } from '@/app/lib/classificationEngine';
-import { normalizePeriodName, isCanonical, nearMatch } from '@/app/lib/periodName';
+import { normalizePeriodName, isCanonical, nearMatch, nextPeriod } from '@/app/lib/periodName';
 
 type Employee = {
   id: number; display_name: string; teramind_email: string;
@@ -148,6 +148,18 @@ export default function ProcessPayroll() {
   const isRunning = status === 'preflight' || status === 'running';
   const existingPeriods = periods as Period[];
   const existingNames = useMemo(() => new Set(existingPeriods.map(p => p.period_name)), [existingPeriods]);
+
+  // Pre-fill the next period once the list is known and the form is untouched.
+  useEffect(() => {
+    if (periodName || startDate || endDate || existingPeriods.length === 0) return;
+    const latest = [...existingPeriods]
+      .filter(p => !!p.end_date)
+      .sort((a, b) => String(b.end_date).localeCompare(String(a.end_date)))[0];
+    if (!latest) return;
+    const nx = nextPeriod({ period_name: latest.period_name, end_date: String(latest.end_date).slice(0, 10) });
+    if (nx) { setPeriodName(nx.name); setStartDate(nx.startDate); setEndDate(nx.endDate); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingPeriods]);
   const unresolvedMap = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of unresolvedPerPeriod as { period_name: string; unresolved_count: number }[]) {
