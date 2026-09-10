@@ -1,5 +1,6 @@
 import { fmtDate } from '@/app/lib/fmtDate';
 import StatusChip from '@/app/components/StatusChip';
+import type { RenewalState } from '@/app/lib/tenure';
 
 export interface ContractRowData {
   employee_id: number;
@@ -20,6 +21,7 @@ export interface ContractRowData {
   tenure: string | null;
   endState: { kind: 'none' | 'ended' | 'future'; days: number | null };
   startMismatch: boolean;
+  renewal: RenewalState;
 }
 
 interface Props { row: ContractRowData }
@@ -113,30 +115,56 @@ export default function ContractRow({ row }: Props) {
       ));
 
   // ── Contract end cell ───────────────────────────────────────────────────
+  const { renewal } = row;
   let endCell: React.ReactNode;
   if (endState.kind === 'none' || !end) {
     endCell = muted;
   } else if (endState.kind === 'ended') {
-    endCell = (
-      <span
-        className="inline-flex flex-col items-start text-slate-400 whitespace-nowrap"
-        title={`Their fixed term ended on ${fmtDate(end)} and they are still on the active roster.`}
-      >
-        <span className="text-[12px] font-medium">Renewed</span>
-        <span className="text-[10px]">was {fmtDate(end)}</span>
-      </span>
-    );
+    if (renewal === 'renewed') {
+      endCell = (
+        <span title={`Board status Passed. Fixed term ended on ${fmtDate(end)}.`}>
+          <StatusChip tone="green">Renewed</StatusChip>
+          <div className="text-[10px] text-slate-400 mt-0.5">was {fmtDate(end)}</div>
+        </span>
+      );
+    } else if (renewal === 'not_renewed') {
+      endCell = (
+        <span title="Board status Failed — still on the active roster.">
+          <StatusChip tone="red">Not renewed</StatusChip>
+          <div className="text-[10px] text-slate-400 mt-0.5">ended {fmtDate(end)}</div>
+        </span>
+      );
+    } else {
+      endCell = (
+        <span title="Fixed term ended and the board has no renewal decision yet.">
+          <StatusChip tone="amber">Pending review</StatusChip>
+          <div className="text-[10px] text-slate-400 mt-0.5">ended {fmtDate(end)}</div>
+        </span>
+      );
+    }
   } else {
     // future
     const days = endState.days ?? 0;
     const label = `${fmtDate(end)} · in ${days} d`;
+    let chip: React.ReactNode;
     if (days <= 30) {
-      endCell = <StatusChip tone="red">{label}</StatusChip>;
+      chip = <StatusChip tone="red">{label}</StatusChip>;
     } else if (days <= 60) {
-      endCell = <StatusChip tone="amber">{label}</StatusChip>;
+      chip = <StatusChip tone="amber">{label}</StatusChip>;
     } else {
-      endCell = <span className="whitespace-nowrap tabular-nums">{fmtDate(end)}</span>;
+      chip = <span className="whitespace-nowrap tabular-nums">{fmtDate(end)}</span>;
     }
+    endCell = (
+      <span className="inline-flex flex-col items-start">
+        {chip}
+        {renewal === 'renewed' && (
+          <span className="text-[10px] text-emerald-700 font-medium mt-0.5">renewed</span>
+        )}
+        {renewal === 'not_renewed' && (
+          <span className="text-[10px] text-red-700 font-medium mt-0.5">not renewed</span>
+        )}
+      </span>
+    );
   }
 
   return (

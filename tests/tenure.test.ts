@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  addMonths, milestones, tenureLabel, daysUntil, nextMilestone, contractEndState,
+  addMonths, milestones, tenureLabel, daysUntil, nextMilestone, contractEndState, renewalState,
 } from '../src/app/lib/tenure.ts';
 
 // Sub-project D. Every fixture below is real data, read from the live database
@@ -156,4 +156,15 @@ test('T7b: tenure.ts does not reach for the clock itself', () => {
   const src = readFileSync(new URL('../src/app/lib/tenure.ts', import.meta.url), 'utf8');
   assert.ok(!/Date\.now\(\)/.test(src), 'tenure.ts must take asOf as a parameter, not read the clock');
   assert.ok(!/new Date\(\)/.test(src), 'today comes from toLocalYMD at the call site, not from tenure.ts');
+});
+
+test('T7: renewalState reads the board status - Passed renews, Failed does not, anything else is pending', () => {
+  assert.equal(renewalState('Passed'), 'renewed');
+  assert.equal(renewalState(' passed '), 'renewed');
+  assert.equal(renewalState('PASSED'), 'renewed');
+  assert.equal(renewalState('Failed'), 'not_renewed');
+  assert.equal(renewalState(''), 'pending');
+  assert.equal(renewalState(null), 'pending');
+  assert.equal(renewalState(undefined), 'pending');
+  assert.equal(renewalState('Pending review'), 'pending');
 });

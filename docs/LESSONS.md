@@ -293,6 +293,55 @@ than chasing a blip.
 
 ---
 
+### "Having trouble connecting. Try again." is a dropped stream, not a dead run
+
+**2026-09-10, on nine of eleven rounds.** The AI panel showed
+`Having trouble connecting. Try again.` mid-run, sometimes three times in one
+round. The run keeps going on the server; only the client stream dropped. The
+element is `ubk-message-connection-restore` and its button re-attaches:
+
+```js
+document.querySelector('ubk-message-connection-restore button')?.click();
+```
+
+Click it inside every poll and the round finishes normally. What does **not**
+work: re-sending the prompt while the server run is still alive (UIB then
+reports "task already complete" and the export shows the earlier edits), and
+reloading the builder tab (it loses the in-flight run). Once the placeholder is
+back to `Ask UI Bakery...` and the panel's last message ends in
+*Revert to this checkpoint*, export; an export clicked before that line appears
+comes back with `changed: 0` because UIB saves at the end of the run.
+
+### A builder tab left open across a release cannot save
+
+**2026-09-10.** The builder tab had been open since before Saul released 6.9.0
+at 11:23. The first prompt ran to completion, reported both files edited, and
+the export changed nothing. The tab was sitting on *"You have a newer version
+of your app already saved on the server: Sep 10, 11:23 by Saul — Overwrite /
+Reload from their version"*. Same trap as the second-editor-session one above,
+different trigger: a **release** bumps the server version too. Check for the
+dialog before the first prompt of a session, not only after a round:
+
+```js
+!![...document.querySelectorAll('button')].find(b => /Reload from their version/i.test(b.textContent) && b.offsetParent)
+```
+
+(`document.body.innerText` also matches the dialog's hidden template text, so
+test the button's `offsetParent`, not the text.) Choose *Reload from their
+version*, then re-send the prompt in full.
+
+### `title=` on an SVG element is not a tooltip
+
+**2026-09-10.** Every ⓘ in the app (Contracts, PTO, Disciplinary) had its
+`title` on the lucide `<svg>`. Browsers only render the HTML `title` attribute
+on HTML elements; an SVG wants a `<title>` child. Saul's report was "tooltips
+are there but not showing anything". `InfoTip` now wraps the icon in a `<span
+title>`. Screenshots cannot verify a native tooltip (it is drawn by the OS
+outside the page), so the check is the DOM: the title must sit on an HTML
+element.
+
+---
+
 ## Data-shape gotchas
 
 ### The same period run twice under two names is invisible until something joins on the name

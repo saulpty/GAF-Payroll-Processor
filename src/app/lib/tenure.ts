@@ -114,6 +114,16 @@ export function nextMilestone(
   return null;
 }
 
+export type RenewalState = 'renewed' | 'not_renewed' | 'pending';
+
+/** Board status → renewal: Passed = renewed, Failed = not renewed, anything else pending. */
+export function renewalState(status: string | null | undefined): RenewalState {
+  const s = (status ?? '').trim().toLowerCase();
+  if (s === 'passed') return 'renewed';
+  if (s === 'failed') return 'not_renewed';
+  return 'pending';
+}
+
 /**
  * contractEndState — classifies a contract end date relative to asOf.
  * 'none'   — no end date recorded

@@ -13,6 +13,7 @@ function loadContractMilestones() {
              c.position,
              c.state,
              c.contract_end_date::text     AS contract_end,
+             c.renewal_status,
              (c.monday_item_id IS NOT NULL) AS has_board_row
       FROM employees e
       LEFT JOIN LATERAL (

@@ -16,10 +16,13 @@ export default function Contracts() {
   const handleExport = () => {
     const header = ['Employee', 'Position', 'State', 'Start', 'Tenure', '1m', '3m', '6m', '1y', '2y', 'Contract end', 'Status', 'Days until'];
     const data = rows.map(r => {
-      const status =
-        r.endState.kind === 'ended'  ? 'Renewed' :
-        r.endState.kind === 'future' ? `Ending in ${r.endState.days ?? 0} days` :
-        '';
+      let status = '';
+      if (r.endState.kind === 'ended') {
+        status = r.renewal === 'renewed' ? 'Renewed' : r.renewal === 'not_renewed' ? 'Not renewed' : 'Pending review';
+      } else if (r.endState.kind === 'future') {
+        const decided = r.renewal === 'renewed' ? ' · renewed' : r.renewal === 'not_renewed' ? ' · not renewed' : '';
+        status = `Ending in ${r.endState.days ?? 0} days${decided}`;
+      }
       return [
         r.display_name,
         r.position ?? '',
