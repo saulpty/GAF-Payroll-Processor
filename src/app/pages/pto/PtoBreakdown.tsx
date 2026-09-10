@@ -40,7 +40,7 @@ function parseJSON<T>(v: T | string | null | undefined, fallback: T): T {
   return v as T;
 }
 
-const HEADERS = ['Type', 'Requested', 'Verdict', 'Payroll', ''];
+const HEADERS = ['Type', 'Requested', 'What payroll says', 'Evidence', '', 'Status'];
 
 export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, onChanged, refreshToken }: Props) {
   const { bumpPtoVersion } = useGlobalFilters();
@@ -158,13 +158,14 @@ export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, 
       {items.length === 0 ? (
         <EmptyState title="Nothing recorded or pending" compact />
       ) : (
-        <table className="w-full text-left border-collapse table-fixed">
+        <table className="table-fixed border-collapse text-left w-auto min-w-[960px]">
           <colgroup>
-            <col className="w-24" />
+            <col className="w-28" />
             <col className="w-48" />
-            <col className="w-64" />
+            <col className="w-60" />
             <col />
-            <col className="w-40" />
+            <col className="w-44" />
+            <col className="w-28" />
           </colgroup>
           <thead>
             <tr>

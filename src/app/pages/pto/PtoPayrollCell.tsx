@@ -16,7 +16,7 @@ export default function PtoPayrollCell({ match, thisYear: _thisYear }: Props) {
   const hasData = cycles.length > 0 || byType.length > 0;
 
   if (!hasData || state === 'future' || state === 'invalid' || state === 'not_processed' || state === 'before_history' || state === 'no_rows') {
-    return <span className="text-slate-300">—</span>;
+    return <span className="block text-center text-slate-300">—</span>;
   }
 
   return (

@@ -1,7 +1,8 @@
-// Verdict cell: icon + bold sentence + grey detail line.
+// Verdict cell: icon + bold sentence + grey detail line + optional "also" extra.
 import { CircleCheck, AlertTriangle, Hourglass, History, Clock, Minus, AlertCircle } from 'lucide-react';
 import type { PayrollMatch } from '@/app/lib/ptoPayrollMatch';
 import { fmtDay } from '@/app/lib/fmtDay';
+import { defaultTotalDays } from '@/app/lib/ptoAccrual';
 
 interface Props {
   match: PayrollMatch;
@@ -9,9 +10,15 @@ interface Props {
   requestDays: number;
   leaveOn: string;
   thisYear: string;
+  today: string;
 }
 
-export default function PtoVerdictCell({ match, leaveType, requestDays, leaveOn, thisYear }: Props) {
+function plural(n: number | null, w: string): string {
+  const count = n ?? 0;
+  return `${count} ${w}${count === 1 ? '' : 's'}`;
+}
+
+export default function PtoVerdictCell({ match, leaveType, requestDays, leaveOn, thisYear, today }: Props) {
   const { state, mismatch, firstOff, actualReturn, actualDays, dataThrough, historyFrom, byType } = match;
 
   if (!state) return null;
@@ -38,22 +45,23 @@ export default function PtoVerdictCell({ match, leaveType, requestDays, leaveOn,
   } else if (state === 'future') {
     tone = 'slate'; Icon = Clock;
     sentence = "Hasn't happened yet";
-    detail = `starts ${fmtDay(leaveOn, thisYear)}`;
+    const daysUntil = defaultTotalDays(today, leaveOn);
+    detail = plural(daysUntil, 'day');
   } else if (state === 'before_history') {
     tone = 'slate'; Icon = History;
     sentence = 'Before payroll history';
     detail = historyFrom ? `payroll starts ${fmtDay(historyFrom, thisYear)}` : '';
   } else if (state === 'not_processed') {
     tone = 'slate'; Icon = Hourglass;
-    sentence = "Payroll hasn't run for these days yet";
+    sentence = 'Payroll not run yet';
     detail = dataThrough ? `processed through ${fmtDay(dataThrough, thisYear)}` : '';
   } else if (state === 'partial') {
     tone = 'slate'; Icon = Hourglass;
-    sentence = 'Still out when payroll stopped';
+    sentence = 'Not in payroll yet';
     detail = dataThrough ? `processed through ${fmtDay(dataThrough, thisYear)}` : '';
   } else if (state === 'no_rows') {
     tone = 'slate'; Icon = Minus;
-    sentence = 'No payroll rows for these days';
+    sentence = 'No payroll rows';
     detail = '';
   } else if (state === 'worked') {
     tone = 'amber'; Icon = AlertTriangle;
@@ -77,21 +85,30 @@ export default function PtoVerdictCell({ match, leaveType, requestDays, leaveOn,
     } else if (!mismatch) {
       tone = 'emerald'; Icon = CircleCheck;
       if (isFh) {
-        sentence = `Matches`;
+        sentence = 'Matches';
         detail = `1 floating holiday, back ${fmtDay(actualReturn, thisYear)}`;
       } else {
         sentence = 'Matches';
-        detail = `${actualDays} ${actualDays === 1 ? 'day' : 'days'}, back ${fmtDay(actualReturn, thisYear)}`;
+        detail = `${plural(actualDays, 'day')}, back ${fmtDay(actualReturn, thisYear)}`;
       }
     } else {
       // mismatch
       tone = 'amber'; Icon = AlertTriangle;
       const startedDiff = firstOff !== leaveOn;
       const prefix = startedDiff ? `Started ${fmtDay(firstOff, thisYear)} · ` : '';
-      sentence = `${prefix}Was out ${actualDays} ${actualDays === 1 ? 'day' : 'days'}, not ${requestDays}`;
+      sentence = `${prefix}Was out ${plural(actualDays, 'day')}, not ${requestDays}`;
       detail = actualReturn ? `back ${fmtDay(actualReturn, thisYear)}` : '';
     }
   }
+
+  // "also" extras: entries whose type doesn't match the leave type, excluding Feriado
+  const ownLabel = isFh ? null : 'PTO';
+  const fhImpact = 'Floating Holiday / B-Day Off';
+  const extras = state === 'matched' ? byType.filter(b => {
+    if (b.label === 'Feriado') return false;
+    if (isFh) return b.impact !== fhImpact;
+    return b.label !== ownLabel;
+  }) : [];
 
   return (
     <div className="flex items-start gap-1.5">
@@ -99,6 +116,11 @@ export default function PtoVerdictCell({ match, leaveType, requestDays, leaveOn,
       <div>
         <div className={`text-[13px] font-medium ${toneClass[tone]}`}>{sentence}</div>
         {detail && <div className="text-[11px] text-slate-400">{detail}</div>}
+        {extras.map((b, i) => (
+          <div key={i} className="text-[11px] text-amber-700">
+            also {b.label}{b.count > 1 ? ` (×${b.count})` : ''}{b.impact ? ` · ${b.impact}` : ''}
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -32,13 +32,6 @@ interface Props {
   onRestore: (id: number) => void;
 }
 
-function sourceLabel(src: string | undefined): string {
-  if (!src) return '';
-  if (src === 'monday') return 'Monday';
-  if (src === 'excel_import') return 'Excel';
-  if (src === 'manual') return 'Manual';
-  return src;
-}
 
 export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRestore }: Props) {
   const withdrawn = item.kind === 'recorded' && item.status === 'withdrawn';
@@ -52,16 +45,9 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
     <tr className="border-t border-slate-100">
       {/* Type */}
       <td className={`px-3 py-2 align-top ${dimmed}`}>
-        {item.leave_type === 'floating_holiday'
-          ? <StatusChip tone="violet">Floating holiday</StatusChip>
-          : <StatusChip tone="blue">PTO</StatusChip>}
-        <div className="mt-1">
-          {item.kind === 'pending'
-            ? <StatusChip tone="amber">Pending</StatusChip>
-            : withdrawn
-              ? <StatusChip tone="red" strike>Withdrawn</StatusChip>
-              : <StatusChip tone="green">Recorded</StatusChip>}
-        </div>
+        <span className="text-[12px] text-slate-600 whitespace-nowrap">
+          {item.leave_type === 'floating_holiday' ? 'Floating holiday' : 'PTO'}
+        </span>
       </td>
 
       {/* Requested */}
@@ -73,13 +59,12 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
           {fmtRange(item.leave_on, item.return_on, thisYear)}
         </div>
         <div className="text-[11px] text-slate-400">
-          {item.days} {item.days === 1 ? 'day' : 'days'} · {sourceLabel(item.source) || 'Monday'}
+          {item.days} {item.days === 1 ? 'day' : 'days'}
+          {item.kind === 'pending' ? ' · from Monday board'
+            : item.source === 'excel_import' ? ' · from Excel'
+            : item.source === 'manual' ? ' · added manually'
+            : ''}
         </div>
-        {withdrawn && item.withdrawnAt && (
-          <div className="text-[11px] text-slate-400">
-            withdrawn {fmtDay(item.withdrawnAt, thisYear)}
-          </div>
-        )}
         {item.match.invalidDates && (
           <div className="mt-1">
             <StatusChip tone="red" icon={<AlertCircle className="w-3 h-3" />}>Return is before leave — fix on Monday</StatusChip>
@@ -87,7 +72,7 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
         )}
       </td>
 
-      {/* Verdict */}
+      {/* What payroll says */}
       <td className="px-3 py-2 align-top">
         <PtoVerdictCell
           match={item.match}
@@ -95,16 +80,17 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
           requestDays={item.days}
           leaveOn={item.leave_on}
           thisYear={thisYear}
+          today={today}
         />
       </td>
 
-      {/* Payroll */}
+      {/* Evidence */}
       <td className="px-3 py-2 align-top text-[12px]">
         <PtoPayrollCell match={item.match} thisYear={thisYear} />
       </td>
 
       {/* Actions */}
-      <td className="px-3 py-2 text-right whitespace-nowrap">
+      <td className="px-3 py-2 align-top text-right whitespace-nowrap">
         {withdrawn && (
           <Button
             size="sm"
@@ -131,9 +117,6 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
               <Plus className="w-3.5 h-3.5 mr-1" />
               Record
             </Button>
-            {rec.reason === 'future' && (
-              <div className="text-[11px] text-slate-400 mt-0.5">in {rec.daysUntil} day(s)</div>
-            )}
             {rec.reason === 'not_processed' && (
               <div className="text-[11px] text-slate-400 mt-0.5">after payroll runs</div>
             )}
@@ -155,8 +138,8 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
             {item.status === 'recorded' && (
               <Button
                 size="sm"
-                variant="outline"
-                className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                variant="ghost"
+                className="text-slate-500 hover:text-red-600 hover:bg-red-50"
                 onClick={() => onWithdraw(item.id!, item.days)}
               >
                 <Trash2 className="w-3.5 h-3.5 mr-1" />
@@ -165,6 +148,24 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
             )}
           </div>
         )}
+      </td>
+
+      {/* Status */}
+      <td className="px-3 py-2 align-top">
+        {item.kind === 'pending'
+          ? <StatusChip tone="amber">Pending</StatusChip>
+          : withdrawn
+            ? (
+              <div>
+                <StatusChip tone="red" strike>Withdrawn</StatusChip>
+                {item.withdrawnAt && (
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    withdrawn {fmtDay(item.withdrawnAt, thisYear)}
+                  </div>
+                )}
+              </div>
+            )
+            : <StatusChip tone="green">Recorded</StatusChip>}
       </td>
     </tr>
   );
