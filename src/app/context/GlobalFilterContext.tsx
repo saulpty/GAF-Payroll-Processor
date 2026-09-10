@@ -1,12 +1,6 @@
 'use client';
 
 import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
-import { toLocalYMD } from '@/app/lib/classificationEngine';
-
-function fmt(d: Date) { return toLocalYMD(d); }
-function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return fmt(d); }
-
-export type DayPreset = 30 | 60 | 90 | null;
 
 export interface GlobalFilters {
   periodsVersion: number;
@@ -19,8 +13,8 @@ export interface GlobalFilters {
   setDateFrom: (v: string) => void;
   dateTo: string;
   setDateTo: (v: string) => void;
-  dayPreset: DayPreset;
-  setDayPreset: (v: DayPreset) => void;
+  attendancePeriods: string[];
+  setAttendancePeriods: (names: string[], range: { from: string; to: string } | null) => void;
   employee: string;
   setEmployee: (v: string) => void;
   role: string;
@@ -35,9 +29,6 @@ export interface GlobalFilters {
   clearAll: () => void;
 }
 
-const TODAY       = fmt(new Date());
-const DEFAULT_FROM = daysAgo(30);
-
 const GlobalFilterContext = createContext<GlobalFilters | null>(null);
 
 export function GlobalFilterProvider({ children }: { children: ReactNode }) {
@@ -46,38 +37,33 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
   const [ptoVersion, setPtoVersion] = useState(0);
   const bumpPtoVersion = () => setPtoVersion(v => v + 1);
   const [period,    setPeriod]    = useState('');
-  const [dateFrom,  setDateFromRaw] = useState(DEFAULT_FROM);
-  const [dateTo,    setDateToRaw]   = useState(TODAY);
-  const [dayPreset, setDayPresetRaw] = useState<DayPreset>(30);
+  const [dateFrom,  setDateFromRaw] = useState('');
+  const [dateTo,    setDateToRaw]   = useState('');
+  const [attendancePeriods, setAttendancePeriodsRaw] = useState<string[]>([]);
   const [employee,  setEmployee]  = useState('');
   const [role,      setRole]      = useState('');
   const [manager,   setManager]   = useState('');
   const [statusTab, setStatusTab] = useState<'RED' | 'YELLOW'>('RED');
   const [pmTab,     setPmTab]     = useState<'ALL' | 'GREEN' | 'YELLOW' | 'RED'>('ALL');
 
-  // Wrappers that clear the preset when the user edits dates manually
-  const setDateFrom = (v: string) => { setDateFromRaw(v); setDayPresetRaw(null); };
-  const setDateTo   = (v: string) => { setDateToRaw(v);   setDayPresetRaw(null); };
+  const setDateFrom = (v: string) => setDateFromRaw(v);
+  const setDateTo   = (v: string) => setDateToRaw(v);
 
-  // Preset setter: also updates the actual date range
-  const setDayPreset = (v: DayPreset) => {
-    if (v === null) {
-      setDayPresetRaw(null);
-    } else {
-      setDayPresetRaw(v);
-      setDateFromRaw(daysAgo(v));
-      setDateToRaw(TODAY);
+  const setAttendancePeriods = (names: string[], range: { from: string; to: string } | null) => {
+    setAttendancePeriodsRaw(names);
+    if (range) {
+      setDateFromRaw(range.from);
+      setDateToRaw(range.to);
     }
   };
 
-  const hasAny = !!(period || employee || role || manager ||
-    dateFrom !== DEFAULT_FROM || dateTo !== TODAY);
+  const hasAny = !!(period || employee || role || manager || attendancePeriods.length > 0);
 
   const clearAll = () => {
     setPeriod('');
-    setDayPresetRaw(30);
-    setDateFromRaw(DEFAULT_FROM);
-    setDateToRaw(TODAY);
+    setDateFromRaw('');
+    setDateToRaw('');
+    setAttendancePeriodsRaw([]);
     setEmployee('');
     setRole('');
     setManager('');
@@ -89,7 +75,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     period, setPeriod,
     dateFrom, setDateFrom,
     dateTo, setDateTo,
-    dayPreset, setDayPreset,
+    attendancePeriods, setAttendancePeriods,
     employee, setEmployee,
     role, setRole,
     manager, setManager,
@@ -98,7 +84,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     hasAny,
     clearAll,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [periodsVersion, ptoVersion, period, dateFrom, dateTo, dayPreset, employee, role, manager, statusTab, pmTab, hasAny]);
+  }), [periodsVersion, ptoVersion, period, dateFrom, dateTo, attendancePeriods, employee, role, manager, statusTab, pmTab, hasAny]);
 
   return (
     <GlobalFilterContext.Provider value={value}>

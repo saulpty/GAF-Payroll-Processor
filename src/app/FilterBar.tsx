@@ -4,15 +4,23 @@ import { useLoadAction } from '@uibakery/data';
 import { X, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useEffect, useRef } from 'react';
 import EmployeeSearchInput from '@/app/components/EmployeeSearchInput';
+import PeriodMultiSelect from '@/app/components/PeriodMultiSelect';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadActionRequiredCountsAction from '@/actions/loadActionRequiredCounts';
 import type { EmpInfo } from '@/app/lib/attendanceStats';
-import type { DayPreset } from '@/app/context/GlobalFilterContext';
+
+type PeriodRow = {
+  period_name: string;
+  start_date: string;
+  end_date: string;
+  processed_at: string | null;
+};
 
 type RouteConfig = {
   period?: boolean; dateRange?: boolean; employee?: boolean;
   role?: boolean; manager?: boolean; statusTab?: boolean; pmTab?: boolean;
+  periods?: boolean;
 };
 
 const ROUTE_CONFIG: Record<string, RouteConfig> = {
@@ -20,8 +28,8 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   '/payroll-master':        { period: true, employee: true, pmTab: true },
   '/hrk-summary':           { period: true },
   '/process':               { dateRange: true },
-  '/attendance':            { dateRange: true, employee: true, role: true, manager: true },
-  '/attendance/reports':    { dateRange: true, employee: true, role: true, manager: true },
+  '/attendance':            { periods: true, employee: true, role: true, manager: true },
+  '/attendance/reports':    { periods: true, employee: true, role: true, manager: true },
   '/pto':                   { employee: true, role: true, manager: true },
   '/contracts':             { employee: true, role: true, manager: true },
   '/disciplinary':          { employee: true, role: true, manager: true },
@@ -42,8 +50,6 @@ const PM_TAB_STYLES: Record<string, { active: string; idle: string; dot?: string
   RED:    { active: 'bg-red-600 text-white',   idle: 'bg-white text-red-700 hover:bg-red-50',     dot: 'bg-red-400' },
 };
 
-const DAY_PRESETS: DayPreset[] = [30, 60, 90];
-
 export default function FilterBar() {
   const location = useLocation();
   const cfg = getConfig(location.pathname);
@@ -53,7 +59,7 @@ export default function FilterBar() {
     period, setPeriod,
     dateFrom, setDateFrom,
     dateTo, setDateTo,
-    dayPreset, setDayPreset,
+    attendancePeriods, setAttendancePeriods,
     employee, setEmployee,
     role, setRole,
     manager, setManager,
@@ -62,7 +68,7 @@ export default function FilterBar() {
     hasAny, clearAll,
   } = useGlobalFilters();
 
-  const [periodsRaw, , , refetchPeriods] = useLoadAction(loadPeriodsAction, [] as { period_name: string }[]);
+  const [periodsRaw, , , refetchPeriods] = useLoadAction(loadPeriodsAction, [] as PeriodRow[]);
   const [empsRaw]    = useLoadAction(loadAttendanceEmployeesAction, [] as EmpInfo[]);
 
   type CountsRow = { red_count: number; yellow_count: number };
@@ -81,8 +87,38 @@ export default function FilterBar() {
     }
   }, [periodsVersion, refetchPeriods]);
 
-  const periods = (periodsRaw as { period_name: string }[])
+  // All periods for single-period select (action-required, payroll-master, hrk)
+  const periods = (periodsRaw as PeriodRow[])
     .filter(p => !!p.period_name?.trim());
+
+  // Processed periods for attendance multi-select, newest first
+  const processedPeriods = useMemo(() => {
+    return (periodsRaw as PeriodRow[])
+      .filter(p => !!p.period_name?.trim() && !!p.processed_at)
+      .map(p => ({
+        period_name: p.period_name,
+        start_date: String(p.start_date).slice(0, 10),
+        end_date: String(p.end_date).slice(0, 10),
+      }))
+      .sort((a, b) => b.start_date.localeCompare(a.start_date));
+  }, [periodsRaw]);
+
+  const rangeOf = (names: string[]) => {
+    const selected = processedPeriods.filter(p => names.includes(p.period_name));
+    if (!selected.length) return null;
+    const from = selected.map(p => p.start_date).sort()[0];
+    const to   = selected.map(p => p.end_date).sort().reverse()[0];
+    return { from, to };
+  };
+
+  // Default: when on attendance route and no period selected, auto-select newest
+  useEffect(() => {
+    if (cfg?.periods && attendancePeriods.length === 0 && processedPeriods.length > 0) {
+      const newest = processedPeriods[0];
+      setAttendancePeriods([newest.period_name], rangeOf([newest.period_name]));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfg?.periods, processedPeriods.length, attendancePeriods.length]);
 
   const emps = empsRaw as EmpInfo[];
   const managers = useMemo(() => [...new Set(emps.map(e => e.manager).filter(Boolean))].sort(), [emps]);
@@ -93,9 +129,6 @@ export default function FilterBar() {
   const inputCls = 'h-8 px-2.5 text-[13px] border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30';
   const labelCls = 'text-[11px] font-semibold uppercase tracking-wide text-slate-400';
   const divider  = <div className="w-px h-5 bg-slate-200" />;
-
-  // Whether this route is an attendance route (shows presets)
-  const isAttendance = location.pathname.startsWith('/attendance');
 
   return (
     <div className="shrink-0 bg-white border-b border-slate-200 px-4 flex items-center gap-3 flex-wrap z-30 min-h-[48px]">
@@ -114,31 +147,20 @@ export default function FilterBar() {
         </>
       )}
 
+      {cfg.periods && (
+        <>
+          <label className={labelCls}>Periods</label>
+          <PeriodMultiSelect
+            periods={processedPeriods}
+            selected={attendancePeriods}
+            onChange={names => setAttendancePeriods(names, names.length ? rangeOf(names) : null)}
+          />
+          {(cfg.employee || cfg.role || cfg.manager) && divider}
+        </>
+      )}
+
       {cfg.dateRange && (
         <>
-          {/* Quick-preset buttons — attendance only */}
-          {isAttendance && (
-            <div className="flex items-center gap-1">
-              {DAY_PRESETS.map(days => {
-                const isActive = dayPreset === days;
-                return (
-                  <button
-                    key={days}
-                    onClick={() => setDayPreset(isActive ? null : days)}
-                    className={[
-                      'h-8 px-3 rounded-lg text-xs font-semibold border transition-colors select-none',
-                      isActive
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                        : 'bg-white text-slate-600 border-border hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700',
-                    ].join(' ')}
-                  >
-                    {days}d
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           <label className={labelCls}>From</label>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inputCls} />
           <label className={labelCls}>To</label>
