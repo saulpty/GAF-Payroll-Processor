@@ -39,7 +39,7 @@ export interface MatchOpts {
   stopBefore?: string | null;                   // the next request's leaveOn, exclusive
 }
 
-export type MatchState = 'matched' | 'partial' | 'not_processed' | 'future' | 'no_rows' | 'worked' | 'invalid';
+export type MatchState = 'matched' | 'partial' | 'not_processed' | 'future' | 'no_rows' | 'worked' | 'invalid' | 'before_history';
 
 export interface PayrollMatch {
   state: MatchState;
@@ -51,8 +51,9 @@ export interface PayrollMatch {
   actualDays: number | null;
   byType: { label: string; count: number; impact: string }[];
   dataThrough: string | null;   // last end_date payroll has been processed through
-  payrollCovers: boolean;       // payroll is processed through the return date
+  payrollCovers: boolean;       // a processed cycle contains the leave date and payroll runs through the return
   invalidDates: boolean;        // return before leave on the request itself
+  historyFrom: string | null;   // first day payroll has ever been processed for
 }
 
 export type RecordReason = 'future' | 'not_processed' | 'invalid' | null;
@@ -144,16 +145,25 @@ export function matchPayroll(
   }
   const processedCovers = (d: string) =>
     processed.some(p => d >= ymd(p.start_date) && d <= ymd(p.end_date));
+  let historyFrom: string | null = null;
+  for (const p of processed) {
+    const st = ymd(p.start_date);
+    if (!historyFrom || st < historyFrom) historyFrom = st;
+  }
+  // Before payroll history began nothing will ever cover the request; it is
+  // recordable on the strength of the Monday request alone.
+  const beforeHistory = !!historyFrom && !!returnOn && returnOn <= historyFrom && leaveOn < historyFrom;
 
   const isOff = (r: Row) => !r.in && (isFh ? r.pi === FH_IMPACT : OFF_TYPES.has(r.et));
   const isRet = (r: Row) => r.in && !OFF_TYPES.has(r.et);
   const inSpan = (d: string) => d >= leaveOn && (d < returnOn || d === leaveOn);
 
-  const payrollCovers = !!dataThrough && dataThrough >= returnOn;
+  const payrollCovers = beforeHistory
+    || (!!dataThrough && dataThrough >= returnOn && processedCovers(leaveOn));
   const invalidDates = !!leaveOn && !!returnOn && returnOn < leaveOn;
   const base: PayrollMatch = {
     state: 'no_rows', mismatch: false, cycles: [], firstOff: null, lastOff: null,
-    actualReturn: null, actualDays: null, byType: [], dataThrough, payrollCovers, invalidDates,
+    actualReturn: null, actualDays: null, byType: [], dataThrough, payrollCovers, invalidDates, historyFrom,
   };
   if (invalidDates) return { ...base, state: 'invalid' };
 
@@ -176,6 +186,7 @@ export function matchPayroll(
       };
     }
     if (leaveOn > opts.today) return { ...base, state: 'future' };
+    if (beforeHistory) return { ...base, state: 'before_history' };
     return { ...base, state: processedCovers(leaveOn) ? 'no_rows' : 'not_processed' };
   }
 
@@ -208,5 +219,6 @@ export function matchPayroll(
     dataThrough,
     payrollCovers,
     invalidDates,
+    historyFrom,
   };
 }

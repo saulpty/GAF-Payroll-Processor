@@ -36,6 +36,17 @@ export default function PtoPayrollCell({ match, leaveType, thisYear, requestDays
 
   if (state === 'invalid') return null;
 
+  if (state === 'before_history') {
+    return (
+      <div className="text-slate-400">
+        <div>Before payroll history</div>
+        {match.historyFrom && (
+          <div className="text-[11px]">payroll starts {fmtDay(match.historyFrom, thisYear)}</div>
+        )}
+      </div>
+    );
+  }
+
   if (state === 'future') {
     return (
       <div className="flex items-center gap-1 text-slate-400">

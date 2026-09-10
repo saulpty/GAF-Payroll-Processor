@@ -14,14 +14,28 @@ function loadPtoBalancesInputs() {
                  AND r.deleted_on_monday = false AND a.id IS NULL
                  AND r.return_date >= r.start_date
                  AND r.return_date <= {{params.today}}::date
-                 AND r.return_date <= (SELECT MAX(p.end_date) FROM periods p WHERE p.processed_at IS NOT NULL)) AS review_count,
+                 AND (
+                   (   r.return_date <= (SELECT MAX(p.end_date) FROM periods p WHERE p.processed_at IS NOT NULL)
+                   AND EXISTS (SELECT 1 FROM periods p WHERE p.processed_at IS NOT NULL
+                               AND r.start_date BETWEEN p.start_date AND p.end_date))
+                   OR (r.return_date <= (SELECT MIN(p.start_date) FROM periods p WHERE p.processed_at IS NOT NULL)
+                       AND r.start_date < (SELECT MIN(p.start_date) FROM periods p WHERE p.processed_at IS NOT NULL))
+                 )) AS review_count,
              (SELECT count(*) FROM monday_requests r
                LEFT JOIN pto_approvals a ON a.monday_item_id = r.monday_item_id
                WHERE r.employee_id = e.id AND r.request_type IN ('PTO / Vacation','Floating Holiday')
                  AND r.deleted_on_monday = false AND a.id IS NULL
-                 AND NOT (r.return_date >= r.start_date
-                          AND r.return_date <= {{params.today}}::date
-                          AND r.return_date <= (SELECT MAX(p.end_date) FROM periods p WHERE p.processed_at IS NOT NULL))) AS waiting_count,
+                 AND NOT (
+                   r.return_date >= r.start_date
+                   AND r.return_date <= {{params.today}}::date
+                   AND (
+                     (   r.return_date <= (SELECT MAX(p.end_date) FROM periods p WHERE p.processed_at IS NOT NULL)
+                     AND EXISTS (SELECT 1 FROM periods p WHERE p.processed_at IS NOT NULL
+                                 AND r.start_date BETWEEN p.start_date AND p.end_date))
+                     OR (r.return_date <= (SELECT MIN(p.start_date) FROM periods p WHERE p.processed_at IS NOT NULL)
+                         AND r.start_date < (SELECT MIN(p.start_date) FROM periods p WHERE p.processed_at IS NOT NULL))
+                   )
+                 )) AS waiting_count,
              COALESCE(fh.fh_allocated, 2) AS fh_allocated,
              GREATEST(COALESCE(fh.fh_used, 0),
                COALESCE((SELECT SUM(a.total_days) FROM pto_approvals a

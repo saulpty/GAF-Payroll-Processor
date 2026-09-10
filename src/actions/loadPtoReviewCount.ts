@@ -12,7 +12,13 @@ function loadPtoReviewCount() {
         AND r.deleted_on_monday = false AND a.id IS NULL
         AND r.return_date >= r.start_date
         AND r.return_date <= {{params.today}}::date
-        AND r.return_date <= (SELECT MAX(p.end_date) FROM periods p WHERE p.processed_at IS NOT NULL)
+        AND (
+          (   r.return_date <= (SELECT MAX(p.end_date) FROM periods p WHERE p.processed_at IS NOT NULL)
+          AND EXISTS (SELECT 1 FROM periods p WHERE p.processed_at IS NOT NULL
+                      AND r.start_date BETWEEN p.start_date AND p.end_date))
+          OR (r.return_date <= (SELECT MIN(p.start_date) FROM periods p WHERE p.processed_at IS NOT NULL)
+              AND r.start_date < (SELECT MIN(p.start_date) FROM periods p WHERE p.processed_at IS NOT NULL))
+        )
         AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
     `,
   });
