@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { defaultTotalDays } from '../src/app/lib/ptoAccrual.ts';
-import { matchPayroll } from '../src/app/lib/ptoPayrollMatch.ts';
+import { matchPayroll, recordability } from '../src/app/lib/ptoPayrollMatch.ts';
 import type { DayRow, PeriodRow } from '../src/app/lib/ptoPayrollMatch.ts';
 
 // Fixtures. Two processed cycles; the one after 09-10 has not been run and
@@ -40,7 +40,7 @@ test('M1: a full week of PTO with the return punched matches the request exactly
   assert.equal(m.actualDays, 7);
   assert.equal(m.mismatch, false);
   assert.deepEqual(m.cycles, ['Q2-Aug-2026']);
-  assert.deepEqual(m.byType, [{ label: 'PTO', count: 5 }]);
+  assert.deepEqual(m.byType, [{ label: 'PTO', count: 5, impact: 'Paid' }]);
 });
 
 test('M2: a Friday PTO returning Monday is 3 days — PTO counts the weekend', () => {
@@ -62,7 +62,7 @@ test('M4: a company holiday inside the leave counts as a day off and is listed b
   const m = run({ leaveOn: '2026-08-17', returnOn: '2026-08-24', days: 7 }, rows);
   assert.equal(m.actualDays, 7);
   assert.equal(m.mismatch, false);
-  assert.deepEqual(m.byType, [{ label: 'PTO', count: 4 }, { label: 'Feriado', count: 1 }]);
+  assert.deepEqual(m.byType, [{ label: 'PTO', count: 4, impact: 'Paid' }, { label: 'Feriado', count: 1, impact: 'Libre' }]);
 });
 
 test('M5: coming back later than requested moves the actual return and flags the row', () => {
@@ -114,7 +114,7 @@ test('M10: a Friday floating holiday is 1 day — FH never counts the weekend', 
   assert.equal(m.actualReturn, '2026-08-24');
   assert.equal(m.actualDays, 1);
   assert.equal(m.mismatch, false);
-  assert.deepEqual(m.byType, [{ label: 'Permiso Remunerado', count: 1 }]);
+  assert.deepEqual(m.byType, [{ label: 'Permiso Remunerado', count: 1, impact: FH_PI }]);
 });
 
 test('M11: a floating-holiday request whose payroll day says PTO has 0 FH days and is flagged', () => {
@@ -123,7 +123,7 @@ test('M11: a floating-holiday request whose payroll day says PTO has 0 FH days a
   assert.equal(m.firstOff, null);
   assert.equal(m.actualDays, 0);
   assert.equal(m.mismatch, true);
-  assert.deepEqual(m.byType, [{ label: 'PTO', count: 1 }]);
+  assert.deepEqual(m.byType, [{ label: 'PTO', count: 1, impact: 'Paid' }]);
 });
 
 test('M12: an unexplained absence right after the PTO is not a return — the leave grows and is flagged', () => {
@@ -141,7 +141,7 @@ test('M13: a punched PTO day mid-leave is "worked", not a return', () => {
   assert.equal(m.actualReturn, '2026-08-24');
   assert.equal(m.actualDays, 7);
   assert.equal(m.mismatch, false);
-  assert.deepEqual(m.byType, [{ label: 'PTO', count: 4 }, { label: 'PTO (worked)', count: 1 }]);
+  assert.deepEqual(m.byType, [{ label: 'PTO', count: 4, impact: 'Paid' }, { label: 'PTO (worked)', count: 1, impact: 'Paid' }]);
 });
 
 test('M14: no payroll rows inside a processed cycle is "no_rows", neutral', () => {
@@ -205,4 +205,55 @@ test('M20: dataThrough ignores unprocessed periods and periods without an end da
     { leaveType: 'pto', today: '2026-09-20', spanDays: defaultTotalDays });
   assert.equal(m.state, 'not_processed');
   assert.equal(m.dataThrough, '2026-09-10');
+});
+
+test('M21: the pay impact rides along with the event, and different impacts stay separate lines', () => {
+  const rows = [
+    pto('2026-08-17'),
+    { d: '2026-08-18', et: 'Ausencia Justificada.', pi: 'Incapacidad', p: 'Q2-Aug-2026', in: false },
+    { d: '2026-08-19', et: 'Ausencia Justificada.', pi: 'Constancia Medica', p: 'Q2-Aug-2026', in: false },
+    work('2026-08-20'),
+  ];
+  const m = run({ leaveOn: '2026-08-17', returnOn: '2026-08-20', days: 3 }, rows);
+  assert.deepEqual(m.byType, [
+    { label: 'PTO', count: 1, impact: 'Paid' },
+    { label: 'Ausencia Justificada.', count: 1, impact: 'Incapacidad' },
+    { label: 'Ausencia Justificada.', count: 1, impact: 'Constancia Medica' },
+  ]);
+  assert.equal(m.actualDays, 3);
+});
+
+test('M22: payrollCovers is true only when payroll is processed through the return date', () => {
+  const covered = run({ leaveOn: '2026-08-17', returnOn: '2026-08-24', days: 7 }, WEEK);
+  assert.equal(covered.payrollCovers, true);
+  const uncovered = run({ leaveOn: '2026-09-07', returnOn: '2026-09-14', days: 7 }, []);
+  assert.equal(uncovered.payrollCovers, false);
+  const edge = run({ leaveOn: '2026-09-07', returnOn: '2026-09-10', days: 3 }, [], { today: '2026-09-20' });
+  assert.equal(edge.payrollCovers, true); // dataThrough is exactly 09-10
+});
+
+test('M23: a return before the leave is invalid and computes nothing else', () => {
+  const m = run({ leaveOn: '2026-02-16', returnOn: '2026-02-11', days: 1 }, WEEK, { leaveType: 'floating_holiday' });
+  assert.equal(m.state, 'invalid');
+  assert.equal(m.invalidDates, true);
+  assert.equal(m.mismatch, false);
+  assert.equal(m.firstOff, null);
+  assert.deepEqual(m.byType, []);
+  assert.deepEqual(m.cycles, []);
+  const ok = run({ leaveOn: '2026-08-17', returnOn: '2026-08-24', days: 7 }, WEEK);
+  assert.equal(ok.invalidDates, false);
+});
+
+test('M24: recordability — invalid wins, then future, then not processed, then ok', () => {
+  const inv = run({ leaveOn: '2026-02-16', returnOn: '2026-02-11', days: 1 }, []);
+  assert.deepEqual(recordability(inv, '2026-02-11', TODAY, defaultTotalDays), { ok: false, reason: 'invalid', daysUntil: null });
+  const fut = run({ leaveOn: '2026-09-21', returnOn: '2026-09-25', days: 4 }, []);
+  assert.deepEqual(recordability(fut, '2026-09-25', TODAY, defaultTotalDays), { ok: false, reason: 'future', daysUntil: 16 });
+  const unproc = run({ leaveOn: '2026-09-01', returnOn: '2026-09-14', days: 9 }, [], { today: '2026-09-20' });
+  assert.deepEqual(recordability(unproc, '2026-09-14', '2026-09-20', defaultTotalDays), { ok: false, reason: 'not_processed', daysUntil: null });
+  const good = run({ leaveOn: '2026-08-17', returnOn: '2026-08-24', days: 7 }, WEEK);
+  assert.deepEqual(recordability(good, '2026-08-24', TODAY, defaultTotalDays), { ok: true, reason: null, daysUntil: null });
+  // a return exactly today is not in the future; with payroll only through 09-10 it is 'not_processed'
+  const sameDay = run({ leaveOn: '2026-09-07', returnOn: '2026-09-12', days: 5 }, [], { today: '2026-09-12' });
+  assert.equal(recordability(sameDay, '2026-09-12', '2026-09-12', defaultTotalDays).reason, 'not_processed');
 });
