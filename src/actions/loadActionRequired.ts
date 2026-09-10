@@ -11,11 +11,12 @@ function loadActionRequired() {
              pe.documentation, pe.notes, pe.auto_notes, pe.initial_status, pe.status_current
       FROM payroll_entries pe
       JOIN employees e ON e.id = pe.employee_id
-      WHERE pe.period_name = {{params.periodName}}
+      WHERE (COALESCE({{params.periodName}}, '') = '' OR pe.period_name = {{params.periodName}})
         AND pe.initial_status IN ('RED','YELLOW')
         AND pe.payroll_ready = 'NO'
         AND pe.deleted_at IS NULL
       ORDER BY
+        pe.period_name DESC,
         CASE pe.initial_status WHEN 'RED' THEN 1 WHEN 'YELLOW' THEN 2 ELSE 3 END,
         e.display_name, pe.work_date;
     `,

@@ -4,7 +4,7 @@ import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import {
   CheckCircle, Loader2, ChevronUp, ChevronDown,
   ChevronsUpDown, Edit2, GitCommit, ChevronRight, X,
-  Square, CheckSquare, Send, ClipboardList, RotateCcw,
+  Square, CheckSquare, Send, RotateCcw,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,7 +34,7 @@ type EntryRow = {
 };
 
 type CommittedRow = {
-  id: number; employee_name: string; work_date: string;
+  id: number; period_name: string; employee_name: string; work_date: string;
   event_type_1: string; pay_impact_1: string;
   event_type_2: string; pay_impact_2: string;
   documentation: string; notes: string; auto_notes: string;
@@ -113,8 +113,8 @@ export default function ActionRequired() {
   const [eventRulesRaw] = useLoadAction(loadEventTypeRulesAction, [] as { event_type: string; default_pay_impact: string; default_doc_option: string }[]);
 
   const [params, setParams] = useState({ periodName: selectedPeriod });
-  const [rows, loading, , reload] = useLoadAction(loadActionRequiredAction, [] as EntryRow[], params, { enabled: !!params.periodName });
-  const [committedRows, , , reloadCommitted] = useLoadAction(loadCommittedEntriesAction, [] as CommittedRow[], params, { enabled: !!params.periodName });
+  const [rows, loading, , reload] = useLoadAction(loadActionRequiredAction, [] as EntryRow[], params);
+  const [committedRows, , , reloadCommitted] = useLoadAction(loadCommittedEntriesAction, [] as CommittedRow[], params);
   const [updateEntry, saving] = useMutateAction(updatePayrollEntryAction);
   const [updateTimes] = useMutateAction(updateEntryExitAction);
 
@@ -349,37 +349,21 @@ export default function ActionRequired() {
 
 
       {/* ── Empty states ────────────────────────────────────────── */}
-      {!selectedPeriod && (
-        <Card className="flex-1">
-          <CardContent className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
-              <ClipboardList className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <div className="text-center">
-              <p className="font-semibold text-foreground mb-1">No Pay Period Selected</p>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Choose a pay period from the Period filter above to review and resolve unresolved entries.
-              </p>
-            </div>
-
-          </CardContent>
-        </Card>
-      )}
-      {selectedPeriod && loading && (
+      {loading && (
         <div className="flex items-center gap-2 text-muted-foreground text-sm mt-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading entries…</div>
       )}
-      {selectedPeriod && !loading && allRows.length === 0 && (
+      {!loading && allRows.length === 0 && (
         <Card className="border-green-300 bg-green-50 flex-1">
           <CardContent className="pt-12 text-center">
             <CheckCircle className="w-10 h-10 text-green-600 mx-auto mb-3" />
-            <p className="text-green-800 font-semibold text-base">All clear for {selectedPeriod}!</p>
+            <p className="text-green-800 font-semibold text-base">{selectedPeriod ? `All clear for ${selectedPeriod}!` : 'All clear — all periods!'}</p>
             <p className="text-green-700 text-sm mt-1">No unresolved entries.</p>
           </CardContent>
         </Card>
       )}
 
       {/* ── Main content ─────────────────────────────────────────── */}
-      {selectedPeriod && !loading && allRows.length > 0 && (
+      {!loading && allRows.length > 0 && (
         <div className="flex flex-col flex-1 min-h-0 gap-3 overflow-hidden">
 
 
@@ -427,6 +411,7 @@ export default function ActionRequired() {
                     </button>
                   </th>
                   <Th col="employee_name" label="Employee" className="sticky left-8 bg-slate-100 z-30 min-w-36" />
+                  {!selectedPeriod && <Th col="period_name" label="Period" />}
                   <Th col="work_date" label="Date" />
                   <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-24" style={{ width: 112, minWidth: 112 }}><Edit2 className="w-3 h-3 inline mr-1" />Entry</th>
                   <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-24" style={{ width: 112, minWidth: 112 }}><Edit2 className="w-3 h-3 inline mr-1" />Exit</th>
@@ -477,6 +462,7 @@ export default function ActionRequired() {
                           className="cursor-pointer hover:text-blue-700 transition-colors"
                         >{row.employee_name}</span>
                       </td>
+                      {!selectedPeriod && <td className="px-3 py-1.5 border-r whitespace-nowrap text-slate-600">{row.period_name}</td>}
                       <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0, 10)}</td>
                       {/* Entry/Exit */}
                       <td className="px-1 py-1.5 border-r w-24 bg-blue-50/40" style={{ width: 112, minWidth: 112 }}>
@@ -545,7 +531,7 @@ export default function ActionRequired() {
       )}
 
       {/* ── Committed section ──────────────────────────────────── */}
-      {selectedPeriod && !loading && (
+      {!loading && (
         <div className="shrink-0 border rounded-xl overflow-hidden shadow-sm">
           {/* Section header */}
           <button
@@ -573,6 +559,7 @@ export default function ActionRequired() {
                   <thead className="sticky top-0 bg-green-50 border-b border-green-200 z-10">
                     <tr>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-green-700 border-r">Employee</th>
+                      {!selectedPeriod && <th className="px-3 py-2 text-left text-xs font-semibold text-green-700 border-r">Period</th>}
                       <th className="px-3 py-2 text-left text-xs font-semibold text-green-700 border-r">Date</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-green-700 border-r">Was</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-green-700 border-r">Event 1</th>
@@ -594,6 +581,7 @@ export default function ActionRequired() {
                             {isNew && <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 align-middle" />}
                             {r.employee_name}
                           </td>
+                          {!selectedPeriod && <td className="px-3 py-1.5 border-r whitespace-nowrap text-slate-600">{r.period_name}</td>}
                           <td className="px-3 py-2 border-r font-mono text-slate-600">{r.work_date?.slice(0, 10)}</td>
                           <td className="px-3 py-2 border-r">
                             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${STATUS_CHIP[r.initial_status] || ''}`}>{r.initial_status}</span>

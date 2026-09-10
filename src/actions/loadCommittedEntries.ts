@@ -11,7 +11,7 @@ function loadCommittedEntries() {
              pe.updated_at
       FROM payroll_entries pe
       JOIN employees e ON e.id = pe.employee_id
-      WHERE pe.period_name = {{params.periodName}}
+      WHERE (COALESCE({{params.periodName}}, '') = '' OR pe.period_name = {{params.periodName}})
         AND pe.initial_status IN ('RED','YELLOW')
         AND pe.payroll_ready = 'YES'
         AND pe.deleted_at IS NULL
