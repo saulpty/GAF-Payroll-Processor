@@ -47,7 +47,7 @@ Full version in `docs/CHANGE-LOOP.md`. The short form:
    the export never happened, not that the prompt changed nothing.
 6. **`git status --short`** must show only the files the prompt allowed.
    Anything else is collateral: revert in UIB, re-export, re-prompt.
-7. **`node --test "tests/*.test.ts"`** — all pass. Baseline is 232 (2026-09-09).
+7. **`node --test "tests/*.test.ts"`** — all pass. Baseline is 242 (2026-09-10).
 8. **Load the page in the browser and look at it.** Mandatory for any change
    touching `src/actions/` or a page. TypeScript-clean is not the same as runs.
 9. **Commit**, with a message that says what changed and what was verified.
