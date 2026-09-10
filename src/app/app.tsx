@@ -8,7 +8,7 @@ import { GlobalFilterProvider } from '@/app/context/GlobalFilterContext';
 import ProcessPayroll from '@/app/pages/ProcessPayroll';
 import ActionRequired from '@/app/pages/ActionRequired';
 import PayrollMaster from '@/app/pages/PayrollMaster';
-import SummaryDashboard from '@/app/pages/SummaryDashboard';
+
 import AdminLayout from '@/app/pages/admin/AdminLayout';
 import AdminSchedules from '@/app/pages/admin/AdminSchedules';
 import AdminHolidays from '@/app/pages/admin/AdminHolidays';
@@ -31,11 +31,11 @@ function App() {
           <FilterBar />
           <main className="flex-1 overflow-auto">
             <Routes>
-              <Route path="/" element={<Navigate to="/summary" replace />} />
+              <Route path="/" element={<Navigate to="/payroll-master" replace />} />
               <Route path="/process" element={<ProcessPayroll />} />
               <Route path="/action-required" element={<ActionRequired />} />
               <Route path="/payroll-master" element={<PayrollMaster />} />
-              <Route path="/summary" element={<SummaryDashboard />} />
+
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="/admin/employees" replace />} />
                 <Route path="employees" element={<AdminEmployeesHub />} />

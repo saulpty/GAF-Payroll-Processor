@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
-  PlayCircle, AlertTriangle, TableIcon, BarChart2,
+  PlayCircle, AlertTriangle, TableIcon,
   Settings, History, Activity,
   Users, Clock, CalendarDays, Globe2,
   SlidersHorizontal, FileSpreadsheet,
@@ -23,19 +23,18 @@ const SECTIONS = [
     id: 'payroll',
     label: 'Payroll',
     icon: TableIcon,
-    home: '/summary',
+    home: '/payroll-master',
     color: 'from-[#1B3A6B] to-[#254d8e]',
     activeBg: 'bg-[#1B3A6B]',
     hoverBg: 'hover:bg-[#152d54]',
     ring: 'ring-[#1B3A6B]/30',
     subActiveBg: 'bg-[#1B3A6B]/10 text-[#1B3A6B] font-semibold',
     subHover: 'hover:bg-[#1B3A6B]/5 text-slate-600',
-    paths: ['/summary', '/process', '/action-required', '/payroll-master', '/hrk-summary', '/period-log'],
+    paths: ['/process', '/action-required', '/payroll-master', '/hrk-summary', '/period-log'],
     links: [
-      { to: '/summary',         label: 'Dashboard',      icon: BarChart2 },
+      { to: '/payroll-master',  label: 'Payroll Master',  icon: TableIcon },
       { to: '/process',         label: 'Process',         icon: PlayCircle },
       { to: '/action-required', label: 'Action Required', icon: AlertTriangle, badge: true },
-      { to: '/payroll-master',  label: 'Payroll Master',  icon: TableIcon },
       { to: '/hrk-summary',     label: 'HRK Summary',     icon: FileSpreadsheet },
       { to: '/period-log',      label: 'Period Log',       icon: History },
     ],
@@ -203,7 +202,7 @@ export default function TopNav() {
       {/* Brand */}
       <div
         className="flex items-center gap-2.5 mr-4 cursor-pointer select-none shrink-0"
-        onClick={() => navigate('/summary')}
+        onClick={() => navigate('/payroll-master')}
       >
         {/* GAF Healthcare logomark: navy shield with teal heartbeat */}
         <div className="w-8 h-8 rounded-lg bg-[#1B3A6B] flex items-center justify-center shadow-sm shrink-0 overflow-hidden">

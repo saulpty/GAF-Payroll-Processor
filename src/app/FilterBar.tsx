@@ -16,7 +16,6 @@ type RouteConfig = {
 };
 
 const ROUTE_CONFIG: Record<string, RouteConfig> = {
-  '/summary':               { period: true, employee: true },
   '/action-required':       { period: true, employee: true, statusTab: true },
   '/payroll-master':        { period: true, employee: true, pmTab: true },
   '/hrk-summary':           { period: true },

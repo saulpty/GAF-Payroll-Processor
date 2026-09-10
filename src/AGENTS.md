@@ -648,8 +648,7 @@ absence. When a real absence shows up as an unexplained RED, a missing
 
 | Route | Component | Owns |
 |---|---|---|
-| `/` | → `/summary` | redirect |
-| `/summary` | `SummaryDashboard.tsx` | per-period KPIs and charts, read-only |
+| `/` | → `/payroll-master` | redirect |
 | `/process` | `ProcessPayroll.tsx` | the whole run: Teramind upload, Monday pulls, unmapped-name resolution, engine invocation, batched writes, period counters |
 | `/action-required` | `ActionRequired.tsx` | the YELLOW/RED queue; operator assigns event types and pay impacts, bulk commit |
 | `/payroll-master` | `PayrollMaster.tsx` | full editable grid of all entries, soft delete, export |
