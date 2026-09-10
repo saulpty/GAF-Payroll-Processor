@@ -5,7 +5,7 @@ import {
   Settings, History, Activity,
   Users, Clock, CalendarDays, Globe2,
   SlidersHorizontal, FileSpreadsheet,
-  TrendingUp, Palmtree, FileSignature, ShieldAlert, FileText,
+  Palmtree, FileSignature, ShieldAlert, FileText,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLoadAction } from '@uibakery/data';
@@ -52,10 +52,8 @@ const SECTIONS = [
     subHover: 'hover:bg-[#2AA876]/5 text-slate-600',
     paths: ['/attendance'],
     links: [
-      { to: '/attendance',          label: 'Dashboard', icon: Activity },
-      { to: '/attendance/employees',label: 'Employees', icon: Users },
-      { to: '/attendance/trends',   label: 'Trends',    icon: TrendingUp },
-      { to: '/attendance/reports',  label: 'Reports',   icon: FileText },
+      { to: '/attendance',         label: 'List',    icon: Users },
+      { to: '/attendance/reports', label: 'Reports', icon: FileText },
     ],
   },
   {

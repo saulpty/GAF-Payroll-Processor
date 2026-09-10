@@ -10,20 +10,16 @@ import {
 } from '@/app/lib/attendanceStats';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { AttendanceKpis }   from '@/app/pages/attendance/AttendanceKpis';
-import { AttendanceDonuts } from '@/app/pages/attendance/AttendanceDonuts';
 import { AttendanceTable }  from '@/app/pages/attendance/AttendanceTable';
 import { AttendancePanel }  from '@/app/pages/attendance/AttendancePanel';
-import { AttendanceTrends } from '@/app/pages/attendance/AttendanceTrends';
 import AttendanceReport     from '@/app/pages/attendance/AttendanceReport';
 import { useState } from 'react';
 
-type Tab = 'dashboard' | 'employees' | 'trends' | 'reports';
+type Tab = 'list' | 'reports';
 
 function tabFromPath(pathname: string): Tab {
-  if (pathname.includes('/employees')) return 'employees';
-  if (pathname.includes('/trends'))    return 'trends';
-  if (pathname.includes('/reports'))   return 'reports';
-  return 'dashboard';
+  if (pathname.includes('/reports')) return 'reports';
+  return 'list';
 }
 
 // Reports tab has its own data layer — render it without loading the heavy daily view
@@ -33,10 +29,10 @@ export default function Attendance() {
 
   if (tab === 'reports') return <AttendanceReport />;
 
-  return <AttendanceInner tab={tab} />;
+  return <AttendanceInner tab="list" />;
 }
 
-function AttendanceInner({ tab }: { tab: Exclude<Tab, 'reports'> }) {
+function AttendanceInner({ tab }: { tab: 'list' }) {
   const {
     dateFrom, dateTo,
     employee: globalEmployee,
@@ -119,27 +115,17 @@ function AttendanceInner({ tab }: { tab: Exclude<Tab, 'reports'> }) {
             <>
               <AttendanceKpis kpis={kpis} />
 
-              {tab === 'dashboard' && (
-                <AttendanceDonuts kpis={kpis} empStats={empStats} />
-              )}
-
-              {tab === 'employees' && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <span className="text-base font-semibold">Employee Directory</span>
-                      <span className="bg-muted text-muted-foreground text-xs font-medium px-2.5 py-1 rounded-full">
-                        {empStats.length} employees
-                      </span>
-                    </div>
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-base font-semibold">Employee Directory</span>
+                    <span className="bg-muted text-muted-foreground text-xs font-medium px-2.5 py-1 rounded-full">
+                      {empStats.length} employees
+                    </span>
                   </div>
-                  <AttendanceTable stats={empStats} onRowClick={setPanelEmail} search={globalEmployee} />
                 </div>
-              )}
-
-              {tab === 'trends' && (
-                <AttendanceTrends rows={filteredRows} empStats={empStats} search={globalEmployee} />
-              )}
+                <AttendanceTable stats={empStats} onRowClick={setPanelEmail} search={globalEmployee} />
+              </div>
             </>
           )}
         </div>

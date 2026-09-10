@@ -654,7 +654,7 @@ absence. When a real absence shows up as an unexplained RED, a missing
 | `/payroll-master` | `PayrollMaster.tsx` | full editable grid of all entries, soft delete, export |
 | `/hrk-summary` | `HrkSummary.tsx` | the HRK payroll summary and its export into `hrk_exports` |
 | `/period-log` | `PeriodLog.tsx` | period list, rename, delete, restore soft-deleted entries, past exports |
-| `/attendance/*` | `Attendance.tsx` | attendance dashboard; four tabs driven by URL (Dashboard, Employees, Trends, Reports), one component instance so tab switching does not remount |
+| `/attendance/*` | `Attendance.tsx` | two tabs driven by URL (List, Reports), one component instance so tab switching does not remount |
 | `/attendance/reports` | `attendance/AttendanceReport.tsx` | per-employee-day report: punches, the Absence/Tardiness form behind the day, and whether it was filed before the shift started. Owns the loaders; `AttendanceReportStrips.tsx` (default view) and `AttendanceReportTable.tsx` take plain props. Verdicts come from `lib/attendanceReport.ts` |
 | `/contracts` | `Contracts.tsx` | tenure milestones and contract end dates, one row per active employee; read-only |
 | `/disciplinary` | `Disciplinary.tsx` | disciplinary actions filed in the separate GAF Disciplinary Actions Form app, one row per employee; read-only except closing a case |
