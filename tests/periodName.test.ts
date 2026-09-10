@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizePeriodName, isCanonical, nearMatch } from '../src/app/lib/periodName.ts';
+import { normalizePeriodName, isCanonical, nearMatch, nextPeriod } from '../src/app/lib/periodName.ts';
 
 const EXISTING = ['Q2-Aug-2026', 'Q1-Aug-2026', 'Q2-Jul-2026', 'Test Period May 25th - Jun 10th', 'Planilla 2 Junio 2026 11-19'];
 
@@ -32,4 +32,21 @@ test('P4: a genuinely new name is not near anything, and legacy free-text names 
 test('P5: an exact existing name is not flagged — that is a re-run, not a typo', () => {
   assert.equal(nearMatch('Q1-Aug-2026', EXISTING), null);
   assert.equal(nearMatch(' Q1-Aug-2026 ', EXISTING), null);
+});
+
+test('P6: the period after Q1 is Q2 of the same month, starting the day after the latest end', () => {
+  assert.deepEqual(nextPeriod({ period_name: 'Q1-Aug-2026', end_date: '2026-08-09' }),
+    { name: 'Q2-Aug-2026', startDate: '2026-08-10', endDate: '2026-08-24' });
+});
+
+test('P7: the period after Q2 rolls to Q1 of the next month, and December rolls the year', () => {
+  assert.deepEqual(nextPeriod({ period_name: 'Q2-Aug-2026', end_date: '2026-08-25' }),
+    { name: 'Q1-Sep-2026', startDate: '2026-08-26', endDate: '2026-09-09' });
+  assert.deepEqual(nextPeriod({ period_name: 'Q2-Dec-2026', end_date: '2026-12-25T00:00:00.000Z' }),
+    { name: 'Q1-Jan-2027', startDate: '2026-12-26', endDate: '2027-01-09' });
+});
+
+test('P8: a legacy free-text period or a missing end date gives no suggestion', () => {
+  assert.equal(nextPeriod({ period_name: 'Test Period May 25th - Jun 10th', end_date: '2026-06-10' }), null);
+  assert.equal(nextPeriod({ period_name: 'Q1-Aug-2026', end_date: null }), null);
 });
