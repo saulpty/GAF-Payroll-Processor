@@ -42,7 +42,6 @@ interface Props {
   asOf: string;
   onRowsChange?: (rows: ContractRowData[]) => void;
   onCountsChange?: (c: { employees: number; expiring: number; offBoard: number }) => void;
-  dueWithin: 30 | 60 | 90 | null;
 }
 
 // Numeric sort value for default ordering: soonest upcoming event first.
@@ -53,7 +52,7 @@ function urgencyScore(row: ContractRowData): number {
   return candidates.length > 0 ? Math.min(...candidates) : Infinity;
 }
 
-export default function ContractsTable({ asOf, onRowsChange, onCountsChange, dueWithin }: Props) {
+export default function ContractsTable({ asOf, onRowsChange, onCountsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
 
   const [rawRows, loading, error, reload] = useLoadAction(
@@ -102,14 +101,8 @@ export default function ContractsTable({ asOf, onRowsChange, onCountsChange, due
     if (role) {
       rows = rows.filter(r => (r.role ?? '').toLowerCase().includes(role.toLowerCase()));
     }
-    if (dueWithin !== null) {
-      rows = rows.filter(r =>
-        (r.next && r.next.days <= dueWithin) ||
-        (r.endState.kind === 'future' && r.endState.days !== null && r.endState.days <= dueWithin),
-      );
-    }
     return rows;
-  }, [derived, employee, role, dueWithin]);
+  }, [derived, employee, role]);
 
   // Sort — default: urgency score asc, then name
   const sorted = useMemo(() => {

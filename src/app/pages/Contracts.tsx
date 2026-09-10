@@ -8,11 +8,8 @@ import ContractsTable from './contracts/ContractsTable';
 import type { ContractRowData } from './contracts/ContractRow';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 
-const DUE_OPTIONS = [30, 60, 90] as const;
-
 export default function Contracts() {
   const [asOf] = useState(() => toLocalYMD(new Date()));
-  const [dueWithin, setDueWithin] = useState<30 | 60 | 90 | null>(null);
   const [rows, setRows] = useState<ContractRowData[]>([]);
   const [counts, setCounts] = useState<{ employees: number; expiring: number; offBoard: number } | null>(null);
 
@@ -59,33 +56,6 @@ export default function Contracts() {
         <span className="text-[12px] text-slate-400 mr-1">{countSummary}</span>
       )}
 
-      {/* Due-within toggle */}
-      <div
-        className="flex items-center gap-1"
-        aria-label="Show only upcoming"
-        role="group"
-      >
-        {DUE_OPTIONS.map(days => {
-          const isActive = dueWithin === days;
-          return (
-            <button
-              key={days}
-              type="button"
-              onClick={() => setDueWithin(isActive ? null : days)}
-              aria-pressed={isActive}
-              className={[
-                'h-8 px-3 rounded-lg text-xs font-semibold border transition-colors select-none focus-visible:ring-2 focus-visible:ring-primary/30 focus:outline-none',
-                isActive
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                  : 'bg-white text-slate-600 border-border hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700',
-              ].join(' ')}
-            >
-              {days}d
-            </button>
-          );
-        })}
-      </div>
-
       <Button
         size="sm"
         variant="outline"
@@ -125,7 +95,6 @@ export default function Contracts() {
       <div className="flex-1 min-h-0 flex flex-col">
         <ContractsTable
           asOf={asOf}
-          dueWithin={dueWithin}
           onRowsChange={setRows}
           onCountsChange={setCounts}
         />
