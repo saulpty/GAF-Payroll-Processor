@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EmpStats } from '@/app/lib/attendanceStats';
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import InfoTip from '@/app/components/InfoTip';
 
 type SortKey = keyof EmpStats | 'reporting';
 
@@ -135,7 +136,7 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
       onClick={() => handleSort(col)}
       title={tooltip}
     >
-      {label}<SortIcon col={col} sortKey={sortKey} dir={sortDir} />
+      {label}{tooltip && <InfoTip text={tooltip} />}<SortIcon col={col} sortKey={sortKey} dir={sortDir} />
     </th>
   );
 
@@ -145,28 +146,28 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead className="sticky top-0 z-10">
             <tr>
-              <Th label="Employee"         col="name" />
-              <Th label="Role"             col="role" />
-              <Th label="Manager"          col="manager" />
-              <Th label="Schedule"         col="schedule" />
+              <Th label="Employee"         col="name"      tooltip="Name from the roster. Click a row to open the viewer." />
+              <Th label="Role"             col="role"      tooltip="Role from the Employee Directory." />
+              <Th label="Manager"          col="manager"   tooltip="Manager from the Employee Directory." />
+              <Th label="Schedule"         col="schedule"  tooltip="The shift assigned in Admin → Schedules; lateness is measured against its start time." />
               <th
                 className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-slate-50 border-b border-border whitespace-nowrap cursor-default"
                 title={STATUS_TOOLTIP}
               >
-                Status
+                Status<InfoTip text={STATUS_TOOLTIP} />
               </th>
               <Th label="Reporting" col="reporting" tooltip={REPORTING_TOOLTIP} />
               <Th label="Expected"         col="days"        tooltip="Scheduled work days in range, excluding time off and permissions." />
-              <Th label="On Time"          col="onTime" />
-              <Th label="Total Late"       col="totalLate" />
-              <Th label="Reported"         col="reported" />
-              <Th label="Unreported"       col="unreported" />
-              <Th label="Absent"           col="absent" />
-              <Th label="Avg Min (worked)" col="avgMinLate"   tooltip="Average minutes late across the days someone actually worked." />
-              <Th label="% On-Time"        col="pctOnTime" />
-              <Th label="1–10m"            col="b1to10" />
-              <Th label="11–30m"           col="b11to30" />
-              <Th label="31+m"             col="b31plus" />
+              <Th label="On Time"          col="onTime"      tooltip="Days clocked in at or before the scheduled start." />
+              <Th label="Total Late"       col="totalLate"   tooltip="Days clocked in after the scheduled start (Reported + Unreported)." />
+              <Th label="Reported"         col="reported"    tooltip="Late days that had a GAF Attendance form on file." />
+              <Th label="Unreported"       col="unreported"  tooltip="Late days with no GAF Attendance form." />
+              <Th label="Absent"           col="absent"      tooltip="Scheduled days with no clock-in and no time off or permission." />
+              <Th label="Avg Min (worked)" col="avgMinLate"  tooltip="Average minutes late across the days someone actually worked." />
+              <Th label="% On-Time"        col="pctOnTime"   tooltip="On Time ÷ Expected. Green 90%+, amber 75–89%, red below 75%." />
+              <Th label="1–10m"            col="b1to10"      tooltip="Late days where the delay was 1 to 10 minutes." />
+              <Th label="11–30m"           col="b11to30"     tooltip="Late days where the delay was 11 to 30 minutes." />
+              <Th label="31+m"             col="b31plus"     tooltip="Late days where the delay was more than 30 minutes." />
             </tr>
           </thead>
           <tbody>
