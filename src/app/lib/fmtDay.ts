@@ -48,6 +48,17 @@ export function fmtRange(a: string | null | undefined, b: string | null | undefi
   return `${s} → ${e}`;
 }
 
+const WD_LONG  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MON_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+/** "Thursday, September 8, 2026". Accepts a YYYY-MM-DD string or a Postgres timestamp string. */
+export function fmtDayLong(ymd: string | null | undefined): string {
+  if (!ymd) return '';
+  const p = parts(ymd);
+  if (!p) return String(ymd);
+  return `${WD_LONG[weekday(ymd)]}, ${MON_LONG[p[1] - 1]} ${p[2]}, ${p[0]}`;
+}
+
 /** Mon–Fri days in [leaveOn, returnOn). What a floating holiday spends; PTO uses calendar days instead. */
 export function weekdayCount(leaveOn: string, returnOn: string): number {
   const a = parts(leaveOn);

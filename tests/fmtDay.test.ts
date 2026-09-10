@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { weekday, fmtDay, fmtRange, weekdayCount } from '../src/app/lib/fmtDay.ts';
+import { weekday, fmtDay, fmtDayLong, fmtRange, weekdayCount } from '../src/app/lib/fmtDay.ts';
 
 test('D1: weekday is computed without Date — known anchors', () => {
   assert.equal(weekday('2026-09-09'), 3); // Wed
@@ -33,4 +33,13 @@ test('D4: weekdayCount is Mon-Fri days in [leave, return) — what a floating ho
   assert.equal(weekdayCount('2026-08-22', '2026-08-23'), 0); // Sat only
   assert.equal(weekdayCount('2026-08-24', '2026-08-24'), 0);
   assert.equal(weekdayCount('2026-08-24', '2026-08-21'), 0); // reversed -> 0
+});
+
+test('D5: fmtDayLong spells the weekday and month out in full, with the year, without a Date', () => {
+  assert.equal(fmtDayLong('2026-09-08'), 'Tuesday, September 8, 2026');
+  assert.equal(fmtDayLong('2026-09-08T00:00:00.000Z'), 'Tuesday, September 8, 2026');
+  assert.equal(fmtDayLong('2027-01-05'), 'Tuesday, January 5, 2027');
+  assert.equal(fmtDayLong('2024-02-29'), 'Thursday, February 29, 2024');
+  assert.equal(fmtDayLong(null), '');
+  assert.equal(fmtDayLong('garbage'), 'garbage');
 });

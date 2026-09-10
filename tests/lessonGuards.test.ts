@@ -95,7 +95,6 @@ const TO_ISO_ALLOWLIST: Record<string, number> = {
   // broke the suite when the import was tried.
   'src/app/lib/attendanceStats.ts': 1,
   'src/app/lib/ptoAccrual.ts': 1, // fromDayNumber - TZ-invariant by construction
-  'src/app/pages/attendance/AttendancePanel.tsx': 1, // Date coercion - harmless
 };
 
 test('L3: no new toISOString date-slicing appears, and the allowlist stays honest', () => {

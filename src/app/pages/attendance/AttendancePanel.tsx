@@ -1,5 +1,7 @@
 import { X, Briefcase, User } from 'lucide-react';
 import { EmpStats, AttendanceRow, computeArrivalScatter, ArrivalPoint } from '@/app/lib/attendanceStats';
+import { fmtDayLong } from '@/app/lib/fmtDay';
+import { toLocalYMD } from '@/app/lib/classificationEngine';
 import {
   ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Cell,
@@ -41,7 +43,7 @@ function fmtMinutes(min: number): string {
 /** Normalize any date value to YYYY-MM-DD */
 function toDateStr(val: unknown): string {
   if (!val) return '';
-  if (val instanceof Date) return val.toISOString().slice(0, 10);
+  if (val instanceof Date) return toLocalYMD(val);
   return String(val).slice(0, 10);
 }
 
@@ -359,7 +361,7 @@ export function AttendancePanel({ stats, onClose }: Props) {
                 <tbody>
                   {recentRows.map((r: AttendanceRow, i: number) => (
                     <tr key={i} className="border-b border-border/50 hover:bg-muted/20">
-                      <td className="px-3 py-2 font-mono">{toDateStr(r.date)}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{fmtDayLong(toDateStr(r.date))}</td>
                       <td className="px-3 py-2">{r.entry_time ?? '—'}</td>
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center gap-1">
