@@ -82,7 +82,10 @@ on that key, so re-running a period overwrites in place.
 **`periods`** — one row per payroll period. `period_name` (unique, and the join
 key used everywhere instead of an id), `start_date`, `end_date`,
 `processed_at` (TEXT), `employee_count`, `day_count`, `green_count`,
-`yellow_count`, `red_count`, `notes`.
+`yellow_count`, `red_count`, `notes`. `period_name` has a `NOT VALID` CHECK
+(`periods_name_shape`, migration `1782000000`) requiring `Q1|Q2-Mon-YYYY`; the
+two legacy free-text names predate it and stay. Background:
+`docs/findings/2026-09-10-q1-aug-duplicate-period.md`.
 
 **`run_snapshots`** — archive of raw run inputs. `period_name`,
 `snapshot_type`, `raw_data` (TEXT), `created_at`. Written by `saveRunSnapshot`,
@@ -680,6 +683,17 @@ loaded by `loadPtoEmployeeDetail`, which also returns the employee's payroll
 runs `lib/ptoPayrollMatch.ts` per request; `pto/PtoPayrollCell.tsx` renders
 the "In payroll" column (cycle names, off-row counts, first day off → actual
 return, calendar days for PTO / off rows for FH, ✓ or ⚠ against the request).
+The column is **Review**, not Pending: `review_count` / `waiting_count` in
+`loadPtoBalancesInputs` (flat `today` param) count only requests whose return
+date has passed and whose leave date sits inside a processed cycle (or that end
+before payroll history began). The row Record button, the record-mode dialog and
+`loadPtoReviewCount` (nav badge) all defer to `recordability()` in
+`lib/ptoPayrollMatch.ts`: invalid dates → future → payroll not processed → ok.
+Edit and Add manually keep only the "return date has passed" rule.
+`byType[].impact` carries `pay_impact_1` and is shown on every event line. A
+request whose return is before its leave gets a red chip in the row. Saves
+refresh in place — `PtoBreakdown` takes a `refreshToken` prop and reloads
+without remounting; the table never unmounts while refetching.
 `RecordApprovalDialog.tsx` has record / edit / manual modes, shows
 `pto/RecordDialogPayrollPanel.tsx` (Requested vs In payroll, "Use payroll
 dates"), refuses a return date after today, and auto-fills weekday count for
@@ -702,6 +716,8 @@ not the current one). `fh_used` in `loadPtoBalancesInputs` is
   which filters each route shows (period, date range, employee, role, manager).
 - `src/app/context/GlobalFilterContext.tsx` — holds the filter state plus
   `periodsVersion`, a counter pages bump to force a period reload.
+  `ptoVersion` / `bumpPtoVersion` — bumped after every PTO write; `TopNav`
+  refetches the PTO review badge on it.
 
 ### `src/actions/` — 81 files, one action per file
 
@@ -783,6 +799,11 @@ than adding a second action to an existing one.**
   unpunched leave-type row; the return is the first punched non-leave row;
   PTO days are calendar days (weekends count), FH days are off rows. 20
   tests in `tests/ptoPayrollMatch.test.ts`.
+- **`periodName.ts`** — `normalizePeriodName`, `isCanonical` (`Q1-Aug-2026`
+  shape), `nearMatch` (case/punctuation, prefix within two characters, or one
+  edit away from an existing name; an exact match is a re-run, not a near
+  match). Used by `ProcessPayroll.tsx` before a run. 5 tests in
+  `tests/periodName.test.ts`.
 - **`fmtDay.ts`** — weekday-first date display and `weekdayCount`, integer
   arithmetic only, no `Date`. 4 tests in `tests/fmtDay.test.ts`.
 - **`ptoAccrual.ts`** — pure functions for the PTO tracker, no I/O: `days360`
