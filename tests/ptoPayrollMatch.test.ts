@@ -230,6 +230,12 @@ test('M22: payrollCovers is true only when payroll is processed through the retu
   assert.equal(uncovered.payrollCovers, false);
   const edge = run({ leaveOn: '2026-09-07', returnOn: '2026-09-10', days: 3 }, [], { today: '2026-09-20' });
   assert.equal(edge.payrollCovers, true); // dataThrough is exactly 09-10
+  // Payroll ran past the date but no processed cycle contains the leave day (a gap) — not covered.
+  const gappy: PeriodRow[] = [PERIODS[0], { ...PERIODS[1], start_date: '2026-09-01' }];
+  const gap = matchPayroll({ leaveOn: '2026-08-27', returnOn: '2026-08-28', days: 1 }, [], gappy,
+    { leaveType: 'pto', today: '2026-09-20', spanDays: defaultTotalDays });
+  assert.equal(gap.payrollCovers, false);
+  assert.equal(gap.state, 'not_processed');
 });
 
 test('M23: a return before the leave is invalid and computes nothing else', () => {
@@ -256,4 +262,17 @@ test('M24: recordability — invalid wins, then future, then not processed, then
   // a return exactly today is not in the future; with payroll only through 09-10 it is 'not_processed'
   const sameDay = run({ leaveOn: '2026-09-07', returnOn: '2026-09-12', days: 5 }, [], { today: '2026-09-12' });
   assert.equal(recordability(sameDay, '2026-09-12', '2026-09-12', defaultTotalDays).reason, 'not_processed');
+});
+
+test('M25: a request from before payroll history began is recordable on the Monday request alone', () => {
+  const m = run({ leaveOn: '2026-02-16', returnOn: '2026-02-17', days: 1 }, [], { leaveType: 'floating_holiday' });
+  assert.equal(m.state, 'before_history');
+  assert.equal(m.historyFrom, '2026-08-11');
+  assert.equal(m.payrollCovers, true);
+  assert.equal(m.mismatch, false);
+  assert.deepEqual(recordability(m, '2026-02-17', TODAY, defaultTotalDays), { ok: true, reason: null, daysUntil: null });
+  // straddling the first day of history is not "before"
+  const straddle = run({ leaveOn: '2026-08-10', returnOn: '2026-08-12', days: 2 }, []);
+  assert.notEqual(straddle.state, 'before_history');
+  assert.equal(straddle.payrollCovers, false);
 });
