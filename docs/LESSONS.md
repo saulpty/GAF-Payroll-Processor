@@ -289,6 +289,23 @@ than chasing a blip.
 
 ## Data-shape gotchas
 
+### The same period run twice under two names is invisible until something joins on the name
+
+**2026-09-10.** `Q1-Aug-2026` was run, stopped part way, and re-run an hour
+later as `Q1-Aug-20260`. `upsertPeriod` is keyed on the name, so the second
+run got its own `periods` row and the first run's 205 payroll rows became
+orphans — no `periods` row, no dropdown entry, no page that could show them.
+For a month every screen agreed with itself. The PTO tracker's new In-payroll
+column was the first thing to *join* `payroll_entries` to `periods` by name
+in a per-employee view, and Gabriel Chu's floating holiday listed two cycles.
+
+Two rules came out of it: the period name is validated before a run
+(`src/app/lib/periodName.ts`: trimmed, canonical shape, near-miss of an
+existing name refused), and `periods.period_name` has a `NOT VALID` CHECK so a
+bad name fails even if the UI is bypassed. **When a table is keyed by a
+human-typed string, a near-duplicate is a silent fork, not an error.**
+
+
 ### A count of records is not a count of days
 
 **2026-09-09.** Charles Bush recorded two floating-holiday days as one row and
