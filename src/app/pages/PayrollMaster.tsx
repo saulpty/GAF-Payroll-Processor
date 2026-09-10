@@ -3,7 +3,7 @@ import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { useSearchParams } from 'react-router-dom';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import {
-  TableIcon, Download, Loader2, ChevronUp, ChevronDown,
+  Download, Loader2, ChevronUp, ChevronDown,
   ChevronsUpDown, X, CheckCircle, Edit2, SquareCheck, Undo2, Trash2, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -126,12 +126,10 @@ export default function PayrollMaster() {
     setSavedIds(new Set());
   }, [globalPeriod, globalEmployee, searchParams]);
 
-  const hasPeriod = !!params.periodName;
-
-  const [rows, loading, , reload] = useLoadAction(loadPayrollMasterAction, [] as EntryRow[], params, { enabled: hasPeriod });
+  const [rows, loading, , reload] = useLoadAction(loadPayrollMasterAction, [] as EntryRow[], params);
   const [countData] = useLoadAction(countPayrollMasterAction, [] as { total: number }[], {
     periodName: params.periodName, employeeName: params.employeeName, status: params.status,
-  }, { enabled: hasPeriod });
+  });
 
   const total = (countData as { total: number }[])[0]?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -405,18 +403,6 @@ export default function PayrollMaster() {
     </th>
   );
 
-  if (!hasPeriod) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-8">
-        <TableIcon className="w-10 h-10 text-slate-300" />
-        <h2 className="text-lg font-semibold text-slate-600">Select a Period</h2>
-        <p className="text-sm text-muted-foreground max-w-xs">
-          Use the <span className="font-medium text-slate-700">Period</span> filter above to choose a payroll period before loading records.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full p-6 gap-4 overflow-hidden">
       {toastMsg && (
@@ -613,6 +599,7 @@ export default function PayrollMaster() {
                   <th className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-slate-100 sticky left-[224px] z-30" style={{ width: 40, minWidth: 40 }} title="Save" />
                   <th className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-slate-100 sticky left-[264px] z-30" style={{ width: 32, minWidth: 32 }} title="Delete" />
                   <Th col="work_date" label="Date" style={{ width: 100, minWidth: 100 }} />
+                  {params.periodName === '' && <Th col="period_name" label="Period" style={{ width: 120, minWidth: 120 }} />}
                   <th className="px-2 py-2.5 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap border-r bg-blue-50 text-blue-700 w-28" style={{ width: 112, minWidth: 112 }}>
                     <Edit2 className="w-3 h-3 inline mr-1" />Entry
                   </th>
@@ -683,6 +670,7 @@ export default function PayrollMaster() {
                         </button>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0,10)}</td>
+                      {params.periodName === '' && <td className="px-2 py-1.5 border-r whitespace-nowrap text-slate-600">{row.period_name}</td>}
 
                       {/* Editable: Entry Time */}
                       <td className="px-1 py-1.5 border-r w-28 bg-blue-50/50" style={{ width: 112, minWidth: 112 }}>
