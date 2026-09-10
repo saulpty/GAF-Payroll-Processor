@@ -11,6 +11,7 @@ const KEYS = [
   'monday_col_onboarding_manager',
   'monday_col_onboarding_start_date',
   'monday_col_onboarding_contract_end',
+  'monday_col_onboarding_renewal',
 ] as const;
 
 export async function syncContracts(deps: SyncDeps): Promise<SyncResult> {
@@ -22,7 +23,7 @@ export async function syncContracts(deps: SyncDeps): Promise<SyncResult> {
     k.monday_board_onboarding,
     [k.monday_col_onboarding_position, k.monday_col_onboarding_state,
      k.monday_col_onboarding_manager, k.monday_col_onboarding_start_date,
-     k.monday_col_onboarding_contract_end],
+     k.monday_col_onboarding_contract_end, k.monday_col_onboarding_renewal],
     deps.pull,
   );
 
@@ -47,6 +48,7 @@ export async function syncContracts(deps: SyncDeps): Promise<SyncResult> {
       manager_raw:       colText(item, k.monday_col_onboarding_manager),
       start_date:        parseDate(item, k.monday_col_onboarding_start_date),
       contract_end_date: parseDate(item, k.monday_col_onboarding_contract_end),
+      renewal_status:    colText(item, k.monday_col_onboarding_renewal),
       raw:               item,
     });
   }

@@ -7,7 +7,7 @@ function upsertMondayContracts() {
       INSERT INTO monday_contracts (
         monday_item_id, employee_id, employee_name_raw, employee_email_raw,
         board_group, position, state, manager_raw,
-        start_date, contract_end_date, raw, deleted_on_monday, synced_at
+        start_date, contract_end_date, renewal_status, raw, deleted_on_monday, synced_at
       )
       SELECT
         (r->>'monday_item_id')::bigint,
@@ -20,6 +20,7 @@ function upsertMondayContracts() {
         r->>'manager_raw',
         NULLIF(r->>'start_date', '')::date,
         NULLIF(r->>'contract_end_date', '')::date,
+        r->>'renewal_status',
         (r->'raw'),
         false,
         NOW()
@@ -34,6 +35,7 @@ function upsertMondayContracts() {
         manager_raw       = EXCLUDED.manager_raw,
         start_date        = EXCLUDED.start_date,
         contract_end_date = EXCLUDED.contract_end_date,
+        renewal_status    = EXCLUDED.renewal_status,
         raw               = EXCLUDED.raw,
         deleted_on_monday = false,
         synced_at         = NOW();
