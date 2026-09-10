@@ -39,7 +39,7 @@ export interface MatchOpts {
   stopBefore?: string | null;                   // the next request's leaveOn, exclusive
 }
 
-export type MatchState = 'matched' | 'partial' | 'not_processed' | 'future' | 'no_rows' | 'worked';
+export type MatchState = 'matched' | 'partial' | 'not_processed' | 'future' | 'no_rows' | 'worked' | 'invalid';
 
 export interface PayrollMatch {
   state: MatchState;
@@ -49,8 +49,26 @@ export interface PayrollMatch {
   lastOff: string | null;
   actualReturn: string | null;
   actualDays: number | null;
-  byType: { label: string; count: number }[];
+  byType: { label: string; count: number; impact: string }[];
   dataThrough: string | null;   // last end_date payroll has been processed through
+  payrollCovers: boolean;       // payroll is processed through the return date
+  invalidDates: boolean;        // return before leave on the request itself
+}
+
+export type RecordReason = 'future' | 'not_processed' | 'invalid' | null;
+
+/** One rule for the Record button, the record dialog and the review badge. */
+export function recordability(
+  match: PayrollMatch,
+  returnOn: string,
+  today: string,
+  spanDays: (a: string, b: string) => number,
+): { ok: boolean; reason: RecordReason; daysUntil: number | null } {
+  const ret = ymd(returnOn);
+  if (match.invalidDates) return { ok: false, reason: 'invalid', daysUntil: null };
+  if (ret > today) return { ok: false, reason: 'future', daysUntil: spanDays(today, ret) };
+  if (!match.payrollCovers) return { ok: false, reason: 'not_processed', daysUntil: null };
+  return { ok: true, reason: null, daysUntil: null };
 }
 
 const OFF_TYPES = new Set(['PTO', 'Permiso Remunerado', 'Feriado']);
@@ -64,7 +82,7 @@ function truthy(v: unknown): boolean {
   return v === true || v === 'true' || v === 't' || v === 1 || v === '1';
 }
 
-interface Row { d: string; et: string; pi: string; p: string; in: boolean }
+interface Row { d: string; et: string; pi: string; piRaw: string; p: string; in: boolean }
 
 function normalise(rows: DayRow[], stopBefore: string | null | undefined): Row[] {
   const stop = ymd(stopBefore);
@@ -77,6 +95,7 @@ function normalise(rows: DayRow[], stopBefore: string | null | undefined): Row[]
       d,
       et: String(r.et ?? '').trim(),
       pi: String(r.pi ?? '').trim().toLowerCase(),
+      piRaw: String(r.pi ?? '').trim(),
       p: String(r.p ?? '').trim(),
       in: truthy(r.in),
     });
@@ -85,16 +104,18 @@ function normalise(rows: DayRow[], stopBefore: string | null | undefined): Row[]
   return out;
 }
 
-function tally(rows: Row[]): { label: string; count: number }[] {
-  const order: string[] = [];
-  const counts = new Map<string, number>();
+function tally(rows: Row[]): { label: string; count: number; impact: string }[] {
+  // One entry per event + impact pair, first-seen order, so the same event
+  // with two impacts (Incapacidad vs Constancia Medica) stays two lines.
+  const out: { label: string; count: number; impact: string }[] = [];
   for (const r of rows) {
     const base = r.et || 'no event';
     const label = r.in && OFF_TYPES.has(r.et) ? `${base} (worked)` : base;
-    if (!counts.has(label)) order.push(label);
-    counts.set(label, (counts.get(label) ?? 0) + 1);
+    const hit = out.find(e => e.label === label && e.impact === r.piRaw);
+    if (hit) hit.count++;
+    else out.push({ label, count: 1, impact: r.piRaw });
   }
-  return order.map(label => ({ label, count: counts.get(label) ?? 0 }));
+  return out;
 }
 
 function distinctCycles(rows: Row[]): string[] {
@@ -128,10 +149,13 @@ export function matchPayroll(
   const isRet = (r: Row) => r.in && !OFF_TYPES.has(r.et);
   const inSpan = (d: string) => d >= leaveOn && (d < returnOn || d === leaveOn);
 
+  const payrollCovers = !!dataThrough && dataThrough >= returnOn;
+  const invalidDates = !!leaveOn && !!returnOn && returnOn < leaveOn;
   const base: PayrollMatch = {
     state: 'no_rows', mismatch: false, cycles: [], firstOff: null, lastOff: null,
-    actualReturn: null, actualDays: null, byType: [], dataThrough,
+    actualReturn: null, actualDays: null, byType: [], dataThrough, payrollCovers, invalidDates,
   };
+  if (invalidDates) return { ...base, state: 'invalid' };
 
   const spanRows = rows.filter(r => inSpan(r.d));
   const first = spanRows.find(isOff);
@@ -182,5 +206,7 @@ export function matchPayroll(
     actualDays,
     byType: tally(range),
     dataThrough,
+    payrollCovers,
+    invalidDates,
   };
 }

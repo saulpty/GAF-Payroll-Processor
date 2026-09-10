@@ -33,6 +33,8 @@ type RawRow = {
   paid_pto_days: number | string;
   taken_days: number | string;
   pending_count: number | string;
+  review_count: number | string;
+  waiting_count: number | string;
   fh_allocated: number | string;
   fh_used: number | string;
   fh_sheet_used: number | string;
@@ -61,7 +63,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
   const [rawRows, loading, error, reload] = useLoadAction(
     loadPtoBalancesInputsAction,
     [] as RawRow[],
-    { year, manager: manager || null },
+    { year, manager: manager || null, today },
   );
 
   const [periods] = useLoadAction(loadPeriodsAction, [] as PeriodRow[]);
@@ -96,7 +98,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
         available,
         fh_left,
         fh_eligible_from: !fhEligible && fhEligFrom ? fhEligFrom : null,
-        pending: Number(r.pending_count) || 0,
+        pending: Number(r.review_count) || 0,
       };
     });
   }, [rawRows, asOf]);
