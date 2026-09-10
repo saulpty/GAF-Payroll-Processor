@@ -46,7 +46,7 @@ export default function PtoVerdictCell({ match, leaveType, requestDays, leaveOn,
     tone = 'slate'; Icon = Clock;
     sentence = "Hasn't happened yet";
     const daysUntil = defaultTotalDays(today, leaveOn);
-    detail = plural(daysUntil, 'day');
+    detail = `in ${plural(daysUntil, 'day')}`;
   } else if (state === 'before_history') {
     tone = 'slate'; Icon = History;
     sentence = 'Before payroll history';
