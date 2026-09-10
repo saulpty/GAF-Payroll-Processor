@@ -35,11 +35,11 @@ Full version in `docs/CHANGE-LOOP.md`. The short form:
 3. **Wait.** Done = the textarea placeholder stops reading
    `Working on your request...`. Confirm the panel's last message is *your*
    prompt's summary, not the previous one — a mis-aimed submit click is common.
-4. **Export** from UIB: the ⋮ menu next to *GAF HR Hub* → screenshot → *then*
+4. **Export** from UIB: the ⋮ menu next to *GAF Panama HR Hub* → screenshot → *then*
    click Export. Clicking straight through often just closes the menu.
 5. **Sync** (PowerShell, because the Bash tool can't spawn `tar`):
    ```
-   node tools/sync-export.mjs "C:/Users/SaulFallembaum/Downloads/GAF HR Hub (N).zip"
+   node tools/sync-export.mjs "C:/Users/SaulFallembaum/Downloads/GAF Panama HR Hub (N).zip"
    ```
    Always take the newest zip; the name increments. If it reports
    `added: 0, changed: 0`, **check Downloads for a new zip before concluding

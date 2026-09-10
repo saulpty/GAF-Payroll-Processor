@@ -6,7 +6,7 @@ Anything **unverified** is inference or read from UIB's docs — treat it as a
 lead, not a fact, and confirm before relying on it.
 
 Instance: `https://uib.vitasya.cloud` (self-hosted, org `vitasya`).
-This project: `GAF HR Hub`, app id `jAaT7LYarG`.
+This project: `GAF Panama HR Hub` (renamed from `GAF HR Hub` on 2026-09-10), app id `jAaT7LYarG`.
 `uiBakeryVersion: 3.192.0-rc.0`, `modelVersion: 81`, `fileSystemVersion: 3`,
 `internalType: vibe_project`.
 
@@ -248,7 +248,7 @@ clicking through. Under **SAUL**:
 
 | App | id |
 |---|---|
-| **GAF HR Hub** | `jAaT7LYarG` |
+| **GAF Panama HR Hub** (was GAF HR Hub until 2026-09-10) | `jAaT7LYarG` |
 | **GAF Disciplinary Actions Form** | `PC3PsXDDa9` |
 | Panama SYNC | `YiSIOuBHUM` |
 | Daily Stats Tracker | `13vOmHDnbu` |

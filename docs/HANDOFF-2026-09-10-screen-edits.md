@@ -50,9 +50,12 @@ tightened twice (attendanceStats 3 → 1, AttendancePanel removed).
 
 ## Still to do
 
-- **Brand (prompt 12):** logo + "GAF Panama / HR Hub" in the nav, and the
-  UIB project renamed to *GAF Panama HR Hub*. Needs the heart logo saved as a
-  file (`docs/assets/app-logo.png`); Saul pasted it in chat only.
+- **Brand:** done — the nav reads *GAF Panama / HR Hub* (prompt 12) and the
+  UIB project is renamed *GAF Panama HR Hub* (Settings → Name, saved 17:01;
+  export zips are now `GAF Panama HR Hub (N).zip`). **Still open: the logo.**
+  UIB's app Settings has an *App icon* field, and the nav logomark is an inline
+  SVG in `TopNav.tsx`. Needs the heart logo saved as a file
+  (`docs/assets/app-logo.png`); Saul pasted it in chat only.
 - Across periods, Payroll Master and Action Required sort by period **name**
   (`ORDER BY period_name DESC` in the actions — alphabetical, so Q2-May sorts
   before Q2-Mar). Fix when it matters: order by `periods.start_date`.

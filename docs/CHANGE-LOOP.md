@@ -19,7 +19,7 @@ the next sync destroys hand-edits. All application changes go through UIB.
 4. **Export and sync.**
    ```bash
    cd "C:\Users\SaulFallembaum\Documents\GAF-Payroll-Processor"
-   node tools/sync-export.mjs "C:/Users/SaulFallembaum/Downloads/GAF HR Hub.zip"
+   node tools/sync-export.mjs "C:/Users/SaulFallembaum/Downloads/GAF Panama HR Hub.zip"
    git status --short
    ```
    Run this from PowerShell — under Git Bash, `tar` fails with EPERM.

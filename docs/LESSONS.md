@@ -134,7 +134,7 @@ a targeted prompt instead. "Ignore" is safe — it only dismisses the banner.
 
 ### The export click needs a screenshot between opening the menu and clicking
 
-Open the ⋮ menu on GAF HR Hub → screenshot → *then* click Export. Clicking
+Open the ⋮ menu on GAF Panama HR Hub → screenshot → *then* click Export. Clicking
 straight through frequently just closes the menu, and `sync-export` then reports
 "added: 0, changed: 0" for a prompt that really did run. Always confirm a new
 zip appeared before concluding nothing changed.
@@ -253,7 +253,7 @@ became impossible. The ⋮ → Export menu is an Angular overlay that `find` /
 `read_page` do not see either. What works, every time:
 
 ```js
-const link=[...document.querySelectorAll('a')].find(a=>a.textContent.trim()==='GAF HR Hub');
+const link=[...document.querySelectorAll('a')].find(a=>a.textContent.trim()==='GAF Panama HR Hub');
 const btn=link.parentElement.querySelector('button');
 btn.click(); await new Promise(r=>setTimeout(r,800));
 const hit=[...document.querySelectorAll('*')].find(e=>e.children.length===0 && e.textContent.trim()==='Export');
