@@ -97,7 +97,7 @@ export default function ContractRow({ row }: Props) {
         }
         if (isPast) {
           return (
-            <td key={m.key} className="px-3 py-2 text-center text-slate-300 whitespace-nowrap" title={fmtDate(m.date)}>
+            <td key={m.key} className="px-3 py-2 text-center text-slate-300 whitespace-nowrap" title={`${MS_TIPS[m.key]} Reached ${fmtDate(m.date)}.`}>
               ✔
             </td>
           );
