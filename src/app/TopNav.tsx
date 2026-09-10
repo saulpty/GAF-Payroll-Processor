@@ -212,7 +212,7 @@ export default function TopNav() {
         <div className="leading-tight hidden sm:block">
           <div className="flex items-baseline gap-1">
             <span className="text-[#1B3A6B] font-bold text-[14px] tracking-tight">GAF</span>
-            <span className="text-[#2AA876] font-bold text-[14px] tracking-tight">Healthcare</span>
+            <span className="text-[#2AA876] font-bold text-[14px] tracking-tight">Panama</span>
           </div>
           <div className="text-slate-400 text-[10px] tracking-wide">HR Hub</div>
         </div>
