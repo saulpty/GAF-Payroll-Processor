@@ -89,6 +89,24 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
         <PtoPayrollCell match={item.match} thisYear={thisYear} />
       </td>
 
+      {/* Status */}
+      <td className="px-3 py-2 align-top">
+        {item.kind === 'pending'
+          ? <StatusChip tone="amber">Pending</StatusChip>
+          : withdrawn
+            ? (
+              <div>
+                <StatusChip tone="red" strike>Withdrawn</StatusChip>
+                {item.withdrawnAt && (
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    withdrawn {fmtDay(item.withdrawnAt, thisYear)}
+                  </div>
+                )}
+              </div>
+            )
+            : <StatusChip tone="green">Recorded</StatusChip>}
+      </td>
+
       {/* Actions */}
       <td className="px-3 py-2 align-top text-right whitespace-nowrap">
         {withdrawn && (
@@ -150,23 +168,6 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
         )}
       </td>
 
-      {/* Status */}
-      <td className="px-3 py-2 align-top">
-        {item.kind === 'pending'
-          ? <StatusChip tone="amber">Pending</StatusChip>
-          : withdrawn
-            ? (
-              <div>
-                <StatusChip tone="red" strike>Withdrawn</StatusChip>
-                {item.withdrawnAt && (
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    withdrawn {fmtDay(item.withdrawnAt, thisYear)}
-                  </div>
-                )}
-              </div>
-            )
-            : <StatusChip tone="green">Recorded</StatusChip>}
-      </td>
     </tr>
   );
 }

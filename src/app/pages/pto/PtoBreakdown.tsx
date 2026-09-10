@@ -40,7 +40,7 @@ function parseJSON<T>(v: T | string | null | undefined, fallback: T): T {
   return v as T;
 }
 
-const HEADERS = ['Type', 'Requested', 'What payroll says', 'Evidence', '', 'Status'];
+const HEADERS = ['Type', 'Requested', 'What payroll says', 'Evidence', 'Status', ''];
 
 export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, onChanged, refreshToken }: Props) {
   const { bumpPtoVersion } = useGlobalFilters();
@@ -164,8 +164,8 @@ export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, 
             <col className="w-48" />
             <col className="w-60" />
             <col />
-            <col className="w-44" />
             <col className="w-28" />
+            <col className="w-44" />
           </colgroup>
           <thead>
             <tr>
