@@ -13,8 +13,10 @@ import { weekdayCount } from '@/app/lib/fmtDay';
 import upsertPtoApprovalAction from '@/actions/upsertPtoApproval';
 import updatePtoApprovalAction from '@/actions/updatePtoApproval';
 import loadAllEmployeesAction from '@/actions/loadAllEmployees';
+import { recordability } from '@/app/lib/ptoPayrollMatch';
 import type { PayrollMatch } from '@/app/lib/ptoPayrollMatch';
 import RecordDialogPayrollPanel from './RecordDialogPayrollPanel';
+import RecordDialogManualFields from './RecordDialogManualFields';
 
 export interface PendingRequest {
   monday_item_id: number | null;
@@ -76,7 +78,6 @@ export default function RecordApprovalDialog({ mode, today, onClose, onSaved }: 
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState<string | null>(null);
 
-  // Guard: skip one auto-recalc run when onApply sets dates+days directly
   const skipRecalcRef = useRef(false);
 
   const [upsert] = useMutateAction(upsertPtoApprovalAction);
@@ -134,8 +135,7 @@ export default function RecordApprovalDialog({ mode, today, onClose, onSaved }: 
       setEmpId(null);
       setLeaveType('pto');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-recalc days when dates or leaveType change
   useEffect(() => {
@@ -164,6 +164,17 @@ export default function RecordApprovalDialog({ mode, today, onClose, onSaved }: 
     if (returnOn > today) {
       setError('The return date has not passed yet — record this after the employee is back.');
       return;
+    }
+    if (mode.kind === 'record' && mode.match) {
+      const rec = recordability(mode.match, returnOn, today, defaultTotalDays);
+      if (!rec.ok && rec.reason === 'not_processed') {
+        setError('Payroll for these dates has not been processed yet — record this after it runs.');
+        return;
+      }
+      if (!rec.ok && rec.reason === 'invalid') {
+        setError('The Monday request has its return before its leave date — fix it on the board first.');
+        return;
+      }
     }
     const days = parseFloat(totalDays);
     if (isNaN(days) || days <= 0) { setError('Total days must be a positive number.'); return; }
@@ -292,37 +303,15 @@ export default function RecordApprovalDialog({ mode, today, onClose, onSaved }: 
             />
           )}
 
-          {/* Type — manual mode only */}
-          {mode?.kind === 'manual' && (
-            <div>
-              <Label className="text-xs text-slate-500">Type</Label>
-              <select
-                value={leaveType}
-                onChange={e => setLeaveType(e.target.value as 'pto' | 'floating_holiday')}
-                className="mt-1 block w-full h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="pto">PTO</option>
-                <option value="floating_holiday">Floating holiday</option>
-              </select>
-            </div>
-          )}
-
-          {/* Employee — manual mode picker, others show name */}
+          {/* Type + Employee — manual mode only */}
           {mode?.kind === 'manual' ? (
-            <div>
-              <Label className="text-xs text-slate-500">Employee</Label>
-              <select
-                value={empId ?? ''}
-                onChange={e => setEmpId(e.target.value ? Number(e.target.value) : null)}
-                className="mt-1 block w-full h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
-                <option value="">Select employee…</option>
-                {sortedEmps.map(e => (
-                  <option key={e.id} value={e.id}>
-                    {e.display_name}{e.active ? '' : ' (inactive)'}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <RecordDialogManualFields
+              leaveType={leaveType}
+              onLeaveType={setLeaveType}
+              empId={empId}
+              onEmpId={setEmpId}
+              employees={sortedEmps}
+            />
           ) : (
             unmatched && (
               <p className="text-xs text-amber-600">

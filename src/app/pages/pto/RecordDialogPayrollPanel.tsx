@@ -20,16 +20,30 @@ interface Props {
   onApply: (leaveOn: string, returnOn: string, days: number) => void;
 }
 
+function ByTypeLines({ byType }: { byType: { label: string; count: number; impact: string }[] }) {
+  return (
+    <>
+      {byType.map((b, i) => (
+        <div key={i}>
+          {b.label} ×{b.count}
+          {b.impact && <span className="text-sky-700/70"> · {b.impact}</span>}
+        </div>
+      ))}
+    </>
+  );
+}
+
 function PayrollBody({ match, thisYear }: { match: PayrollMatch | null; thisYear: string }) {
   if (!match) {
     return <span className="text-slate-500">No payroll data loaded</span>;
   }
   const { state, cycles, byType, firstOff, actualReturn, actualDays } = match;
-  const byTypeStr = byType.map(b => `${b.label} ×${b.count}`).join(', ');
   const cycleStr = cycles.join(', ');
 
+  if (state === 'invalid') return <span className="text-red-600">Request dates are invalid</span>;
   if (state === 'future') return <span className="text-slate-500">Future — not in payroll yet</span>;
   if (state === 'not_processed') return <span className="text-slate-500">Not processed yet</span>;
+  if (state === 'before_history') return <span className="text-slate-500">Before payroll history — recordable</span>;
   if (state === 'no_rows') return <span className="text-slate-500">No payroll rows found</span>;
   if (state === 'worked') return <span className="text-slate-500">Worked these days (no leave rows)</span>;
 
@@ -37,7 +51,7 @@ function PayrollBody({ match, thisYear }: { match: PayrollMatch | null; thisYear
     return (
       <div className="text-sky-900 text-[13px] space-y-0.5">
         {cycleStr && <div className="font-mono text-[11px] text-sky-700">{cycleStr}</div>}
-        {byTypeStr && <div>{byTypeStr}</div>}
+        <ByTypeLines byType={byType} />
         <div className="text-slate-500">Return not in payroll yet</div>
       </div>
     );
@@ -50,7 +64,7 @@ function PayrollBody({ match, thisYear }: { match: PayrollMatch | null; thisYear
   return (
     <div className="text-sky-900 text-[13px] space-y-0.5">
       {cycleStr && <div className="font-mono text-[11px] text-sky-700">{cycleStr}</div>}
-      {byTypeStr && <div>{byTypeStr}</div>}
+      <ByTypeLines byType={byType} />
       <div>
         {actualReturn
           ? `Back ${fmtDay(actualReturn, thisYear)}`
@@ -63,6 +77,7 @@ function PayrollBody({ match, thisYear }: { match: PayrollMatch | null; thisYear
 
 export default function RecordDialogPayrollPanel({ requested, match, thisYear, onApply }: Props) {
   const canApply = match?.state === 'matched'
+    && match.state !== 'invalid'
     && match.firstOff !== null
     && match.actualReturn !== null
     && match.actualDays !== null;
