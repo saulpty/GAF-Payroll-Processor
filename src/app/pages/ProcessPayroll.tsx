@@ -36,6 +36,7 @@ import {
   type MondayAdjustmentRow,
   type MondayPermissionRow,
 } from '@/app/lib/classificationEngine';
+import { normalizePeriodName, isCanonical, nearMatch } from '@/app/lib/periodName';
 
 type Employee = {
   id: number; display_name: string; teramind_email: string;
@@ -302,6 +303,16 @@ export default function ProcessPayroll() {
       setError('Complete all required fields: Period Name, Start Date, End Date, and Teramind file.');
       return;
     }
+    const cleanName = normalizePeriodName(periodName);
+    if (!isCanonical(cleanName)) {
+      setError(`Period name must look like Q1-Aug-2026 (Q1 or Q2, three-letter month, four-digit year). You typed "${cleanName}".`);
+      return;
+    }
+    const near = nearMatch(cleanName, [...existingNames]);
+    if (near) {
+      setError(`"${cleanName}" looks like the existing period "${near}". To re-run it, pick "${near}" from the list instead of typing a new name.`);
+      return;
+    }
     setError('');
     setRunLog([]);
     setProgress(5);
@@ -340,9 +351,9 @@ export default function ProcessPayroll() {
       const { attendance, adjustments, permissions } = parseMondayItems(attendanceItems, adjustmentsItems, permissionsItems);
       log(`Parsed: ${attendance.length} attendance · ${adjustments.length} adjustments · ${permissions.length} permissions.`);
 
-      await saveSnapshot({ periodName, snapshotType: 'teramind', rawData: JSON.stringify(teramindRows.slice(0, 100)) });
-      await saveSnapshot({ periodName, snapshotType: 'monday_attendance', rawData: JSON.stringify(attendance) });
-      await saveSnapshot({ periodName, snapshotType: 'monday_permissions', rawData: JSON.stringify(permissions) });
+      await saveSnapshot({ periodName: periodName.trim(), snapshotType: 'teramind', rawData: JSON.stringify(teramindRows.slice(0, 100)) });
+      await saveSnapshot({ periodName: periodName.trim(), snapshotType: 'monday_attendance', rawData: JSON.stringify(attendance) });
+      await saveSnapshot({ periodName: periodName.trim(), snapshotType: 'monday_permissions', rawData: JSON.stringify(permissions) });
 
       // Data quality checks
       const warnings: DataWarning[] = [];
@@ -426,7 +437,7 @@ export default function ProcessPayroll() {
     setProgress(50);
 
     const allEntries = runClassificationEngine({
-      periodName,
+      periodName: periodName.trim(),
       startDate,
       endDate,
       employees: employees as EmployeeRecord[],
@@ -481,12 +492,12 @@ export default function ProcessPayroll() {
     if (entries.length > 0 && processedIds.length > 0) {
       const keptKeys = entries.map(e => `${e.employee_id}:${e.work_date.slice(0, 10)}`).join(',');
       const stale = await softDeleteStale({
-        period_name: periodName,
+        period_name: periodName.trim(),
         start_date: startDate,
         end_date: endDate,
         employee_ids: processedIds.join(','),
         kept_keys: keptKeys,
-        deleted_by: `reprocess-${periodName}`,
+        deleted_by: `reprocess-${periodName.trim()}`,
       });
       const removed = Array.isArray(stale) ? stale.length : 0;
       log(removed > 0
@@ -497,7 +508,7 @@ export default function ProcessPayroll() {
     if (!singleEmpMode) {
       const empCount = new Set(entries.map(e => e.employee_id)).size;
       const dayCount = new Set(entries.map(e => e.work_date)).size;
-      await upsertPer({ period_name: periodName, start_date: startDate, end_date: endDate, employee_count: empCount, day_count: dayCount, green_count: green, yellow_count: yellow, red_count: red });
+      await upsertPer({ period_name: periodName.trim(), start_date: startDate, end_date: endDate, employee_count: empCount, day_count: dayCount, green_count: green, yellow_count: yellow, red_count: red });
       bumpPeriodsVersion();
     }
 
