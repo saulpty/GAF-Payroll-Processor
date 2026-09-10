@@ -1,8 +1,9 @@
-import { Plus, Pencil, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Pencil, Trash2, RotateCcw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StatusChip from '@/app/components/StatusChip';
 import { fmtRange, fmtDay } from '@/app/lib/fmtDay';
 import { defaultTotalDays } from '@/app/lib/ptoAccrual';
+import { recordability } from '@/app/lib/ptoPayrollMatch';
 import type { DialogMode } from './RecordApprovalDialog';
 import type { PayrollMatch } from '@/app/lib/ptoPayrollMatch';
 import PtoPayrollCell from './PtoPayrollCell';
@@ -44,9 +45,7 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
 
   const dimmed = withdrawn ? 'opacity-60' : '';
 
-  // Pending: record disabled before return_on
-  const returnPassed = item.return_on <= today;
-  const daysUntilReturn = returnPassed ? 0 : defaultTotalDays(today, item.return_on);
+  const rec = recordability(item.match, item.return_on, today, defaultTotalDays);
 
   return (
     <tr className="border-t border-slate-100">
@@ -63,6 +62,11 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
         title={item.comments ?? undefined}
       >
         {fmtRange(item.leave_on, item.return_on, thisYear)}
+        {item.match.invalidDates && (
+          <div className="mt-1">
+            <StatusChip tone="red" icon={<AlertCircle className="w-3 h-3" />}>Return is before leave — fix on Monday</StatusChip>
+          </div>
+        )}
       </td>
 
       {/* Days */}
@@ -73,10 +77,16 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
       {/* Status */}
       <td className="px-3 py-2">
         {item.kind === 'pending'
-          ? <StatusChip tone="amber">Pending</StatusChip>
+          ? (
+            <div>
+              <StatusChip tone="amber">Pending</StatusChip>
+              <div className="text-[11px] text-slate-400">Monday</div>
+            </div>
+          )
           : withdrawn
             ? (
               <div>
+                <div className="text-[11px] text-slate-400">{sourceLabel(item.source)}</div>
                 <StatusChip tone="red" strike>Withdrawn</StatusChip>
                 {item.withdrawnAt && (
                   <div className="text-[11px] text-slate-400">
@@ -85,16 +95,16 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
                 )}
               </div>
             )
-            : <StatusChip tone="green">Recorded</StatusChip>}
-      </td>
-
-      {/* Source */}
-      <td className="px-3 py-2 text-[12px] text-slate-400 whitespace-nowrap">
-        {item.kind === 'pending' ? 'Monday' : sourceLabel(item.source)}
+            : (
+              <div>
+                <StatusChip tone="green">Recorded</StatusChip>
+                <div className="text-[11px] text-slate-400">{sourceLabel(item.source)}</div>
+              </div>
+            )}
       </td>
 
       {/* In payroll */}
-      <td className="px-3 py-2 text-[12px] max-w-[260px]">
+      <td className="px-3 py-2 text-[12px] min-w-[320px]">
         <PtoPayrollCell
           match={item.match}
           leaveType={item.leave_type}
@@ -121,16 +131,25 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
             <Button
               size="sm"
               onClick={() => onOpenDialog({ kind: 'record', request: item.request, match: item.match })}
-              disabled={!returnPassed}
-              title={!returnPassed ? 'Record after the return date has passed' : undefined}
+              disabled={!rec.ok}
+              title={
+                rec.reason === 'future' ? 'Record after the return date has passed'
+                : rec.reason === 'not_processed' ? 'Payroll for these dates has not been processed yet'
+                : rec.reason === 'invalid' ? "Return date is before the leave date — fix the Monday request"
+                : undefined
+              }
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
               Record
             </Button>
-            {!returnPassed && (
-              <div className="text-[11px] text-slate-400 mt-0.5">
-                in {daysUntilReturn} {daysUntilReturn === 1 ? 'day' : 'days'}
-              </div>
+            {rec.reason === 'future' && (
+              <div className="text-[11px] text-slate-400 mt-0.5">in {rec.daysUntil} day(s)</div>
+            )}
+            {rec.reason === 'not_processed' && (
+              <div className="text-[11px] text-slate-400 mt-0.5">after payroll runs</div>
+            )}
+            {rec.reason === 'invalid' && (
+              <div className="text-[11px] text-slate-400 mt-0.5">dates don&apos;t make sense</div>
             )}
           </div>
         )}

@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/app/components/EmptyState';
 import type { PtoRowData } from './PtoRow';
@@ -17,7 +18,7 @@ interface Props {
   periods: PeriodRow[];
   onOpenDialog: (m: DialogMode) => void;
   onChanged: () => void;
-  detailKey: number;
+  refreshToken: number;
 }
 
 interface DetailRow {
@@ -38,14 +39,22 @@ function parseJSON<T>(v: T | string | null | undefined, fallback: T): T {
   return v as T;
 }
 
-const HEADERS = ['Type', 'Dates', 'Days', 'Status', 'Source', 'In payroll', ''];
+const HEADERS = ['Type', 'Dates', 'Days', 'Status', 'In payroll', ''];
 
-export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, onChanged }: Props) {
+export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, onChanged, refreshToken }: Props) {
   const [rawDetail, loading, error, reload] = useLoadAction(
     loadPtoEmployeeDetailAction,
     null,
     { employee_id: row.employee_id, year, manager: null, daysFrom: `${Number(year) - 1}-12-01` },
   );
+
+  const refreshRef = useRef(refreshToken);
+  useEffect(() => {
+    if (refreshRef.current !== refreshToken) {
+      refreshRef.current = refreshToken;
+      reload();
+    }
+  }, [refreshToken, reload]);
 
   const [withdraw] = useMutateAction(updatePtoApprovalStatusAction);
 
@@ -56,7 +65,7 @@ export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, 
   const ledger: LedgerRow[] = parseJSON(detail?.ledger, []);
   const days: DayRow[] = parseJSON(detail?.days, []);
 
-  if (loading) {
+  if (loading && !rawDetail) {
     return (
       <div className="flex items-center justify-center h-12">
         <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
@@ -145,15 +154,25 @@ export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, 
       {items.length === 0 ? (
         <EmptyState title="Nothing recorded or pending" compact />
       ) : (
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse table-fixed">
+          <colgroup>
+            <col className="w-24" />
+            <col className="w-52" />
+            <col className="w-12" />
+            <col className="w-32" />
+            <col />
+            <col className="w-44" />
+          </colgroup>
           <thead>
             <tr>
-              {HEADERS.map(h => (
+              {HEADERS.map((h, i) => (
                 <th
                   key={h}
                   className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-200 bg-transparent"
                 >
-                  {h}
+                  {i === HEADERS.length - 1 && loading
+                    ? <Loader2 className="w-3 h-3 animate-spin text-slate-300 inline" />
+                    : h}
                 </th>
               ))}
             </tr>

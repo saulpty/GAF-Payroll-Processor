@@ -20,7 +20,7 @@ interface Props {
   refreshKey: number;
   onOpenDialog: (m: DialogMode) => void;
   onRowsChange?: (rows: PtoRowData[]) => void;
-  onCountsChange?: (counts: { employees: number; pending: number }) => void;
+  onCountsChange?: (counts: { employees: number; review: number }) => void;
 }
 
 type RawRow = {
@@ -32,7 +32,6 @@ type RawRow = {
   pto_start_date_override: string | null;
   paid_pto_days: number | string;
   taken_days: number | string;
-  pending_count: number | string;
   review_count: number | string;
   waiting_count: number | string;
   fh_allocated: number | string;
@@ -53,7 +52,7 @@ const COLUMNS: Col<PtoRowData>[] = [
   { key: 'fh_left',      label: 'FH left',  align: 'right', tip: '2 per calendar year, non-stacking, eligible 90 days after hire. Counts days, not records. Hover a value for the breakdown.' },
   { key: 'wfh_days',     label: 'WFH',      align: 'right', tip: 'Approved Work-From-Home requests on Monday this year.' },
   { key: 'birthday_days',label: 'Birthday', align: 'right', tip: 'Birthday day-off requests on Monday this year.' },
-  { key: 'pending',      label: 'Pending',  align: 'center', tip: 'Monday PTO requests not yet recorded.' },
+  { key: 'review',       label: 'Review',   align: 'center', tip: 'Requests you can record now — the return date has passed and payroll for those days is processed. "N not yet" are future or not yet in payroll.' },
 ];
 
 export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRowsChange, onCountsChange }: Props) {
@@ -98,7 +97,8 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
         available,
         fh_left,
         fh_eligible_from: !fhEligible && fhEligFrom ? fhEligFrom : null,
-        pending: Number(r.review_count) || 0,
+        review: Number(r.review_count) || 0,
+        waiting: Number(r.waiting_count) || 0,
       };
     });
   }, [rawRows, asOf]);
@@ -140,7 +140,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
       String(r.employee_id) === employee || r.display_name.toLowerCase().includes(employee.toLowerCase())
     );
     if (role) rows = rows.filter(r => (r.role ?? '').toLowerCase().includes(role.toLowerCase()));
-    if (onlyPending) rows = rows.filter(r => r.pending > 0);
+    if (onlyPending) rows = rows.filter(r => r.review > 0 || r.waiting > 0);
     return rows;
   }, [derived, employee, role, onlyPending]);
 
@@ -149,12 +149,12 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
     [filtered, sortKey, sortDir],
   );
 
-  const totalPending = sorted.reduce((s, r) => s + r.pending, 0);
+  const totalReview = sorted.reduce((s, r) => s + r.review, 0);
 
   useEffect(() => {
     onRowsChange?.(sorted);
-    onCountsChange?.({ employees: sorted.length, pending: totalPending });
-  }, [sorted, onRowsChange, onCountsChange, totalPending]);
+    onCountsChange?.({ employees: sorted.length, review: totalReview });
+  }, [sorted, onRowsChange, onCountsChange, totalReview]);
 
   const thisYear = today.slice(0, 4);
 
@@ -169,12 +169,15 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
             onChange={e => setOnlyPending(e.target.checked)}
             className="rounded"
           />
-          Only with pending
+          Only with review
         </label>
+        {loading && (rawRows as RawRow[]).length > 0 && (
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+        )}
       </div>
 
       {/* Table */}
-      {loading ? (
+      {loading && (rawRows as RawRow[]).length === 0 ? (
         <div className="flex items-center justify-center py-16 text-slate-400">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
           <span className="text-sm">Loading…</span>
@@ -213,14 +216,14 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
               >
                 {expanded.has(row.employee_id) && (
                   <PtoBreakdown
-                    key={`${row.employee_id}-${detailKey}`}
+                    key={String(row.employee_id)}
                     row={row}
                     year={year}
                     today={today}
                     periods={periods as PeriodRow[]}
                     onOpenDialog={onOpenDialog}
                     onChanged={handleChanged}
-                    detailKey={detailKey}
+                    refreshToken={detailKey}
                   />
                 )}
               </PtoRow>

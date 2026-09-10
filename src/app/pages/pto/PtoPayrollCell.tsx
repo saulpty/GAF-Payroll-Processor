@@ -10,28 +10,31 @@ interface Props {
   leaveOn: string;
 }
 
-function CyclesByType({ cycles, byType }: { cycles: string[]; byType: { label: string; count: number }[] }) {
+function CyclesByType({ cycles, byType }: { cycles: string[]; byType: { label: string; count: number; impact: string }[] }) {
   return (
     <>
       {cycles.length > 0 && (
         <div className="font-mono text-[11px] text-slate-500">{cycles.join(', ')}</div>
       )}
-      {byType.length > 0 && (
-        <div className="text-slate-600">
-          {byType.map(b => `${b.label} ×${b.count}`).join(', ')}
+      {byType.map((b, i) => (
+        <div key={i} className="text-slate-600">
+          {b.label} ×{b.count}
+          {b.impact && <span className="text-slate-400"> · {b.impact}</span>}
         </div>
-      )}
+      ))}
     </>
   );
 }
 
 export default function PtoPayrollCell({ match, leaveType, thisYear, requestDays, leaveOn }: Props) {
   const { state, mismatch, cycles, byType, firstOff, actualReturn, actualDays, dataThrough } = match;
-  const byTypeTitle = byType.map(b => `${b.label} ×${b.count}`).join(', ');
+  const byTypeTitle = byType.map(b => `${b.label} ×${b.count}${b.impact ? ` · ${b.impact}` : ''}`).join('; ');
   const leaveLabel = leaveType === 'floating_holiday' ? 'floating holiday' : 'PTO';
 
   // Guard: if match is empty/placeholder (no state set), show nothing
   if (!state) return null;
+
+  if (state === 'invalid') return null;
 
   if (state === 'future') {
     return (

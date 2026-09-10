@@ -12,7 +12,6 @@ export interface PtoRowData {
   pto_start_date_override: string | null;
   paid_pto_days: number | string;
   taken_days: number | string;
-  pending_count: number | string;
   fh_allocated: number | string;
   fh_used: number | string;
   fh_sheet_used: number | string;
@@ -23,7 +22,8 @@ export interface PtoRowData {
   available: number | null;
   fh_left: number;
   fh_eligible_from: string | null;
-  pending: number;
+  review: number;
+  waiting: number;
 }
 
 interface Props {
@@ -128,11 +128,20 @@ export default function PtoRow({ row, expanded, onToggle, thisYear, children }: 
         <td className="px-3 py-2 text-right tabular-nums">{fmtInt(row.wfh_days)}</td>
         {/* Birthday */}
         <td className="px-3 py-2 text-right tabular-nums">{fmtInt(row.birthday_days)}</td>
-        {/* Pending */}
+        {/* Review */}
         <td className="px-3 py-2 text-center">
-          {row.pending === 0
+          {row.review === 0 && row.waiting === 0
             ? muted
-            : <StatusChip tone="amber">{row.pending}</StatusChip>}
+            : (
+              <div className="flex items-center justify-center gap-1 flex-wrap">
+                {row.review > 0
+                  ? <StatusChip tone="amber">{row.review}</StatusChip>
+                  : muted}
+                {row.waiting > 0 && (
+                  <span className="ml-1 text-[11px] text-slate-400 whitespace-nowrap">{row.waiting} not yet</span>
+                )}
+              </div>
+            )}
         </td>
       </tr>
       {expanded && children && (
