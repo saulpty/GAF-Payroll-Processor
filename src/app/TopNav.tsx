@@ -12,7 +12,9 @@ import { useLoadAction } from '@uibakery/data';
 import loadUnresolvedCountAction from '@/actions/loadUnresolvedCount';
 import loadContractsExpiringCountAction from '@/actions/loadContractsExpiringCount';
 import loadDisciplinaryDueCountAction from '@/actions/loadDisciplinaryDueCount';
+import loadPtoReviewCountAction from '@/actions/loadPtoReviewCount';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 
 // ── Section definitions ────────────────────────────────────────────────────────
 
@@ -100,6 +102,7 @@ const SECTIONS = [
     subHover: 'hover:bg-[#7C3AED]/5 text-slate-600',
     paths: ['/pto'],
     links: [],
+    badge: true,
   },
   {
     id: 'admin',
@@ -138,6 +141,7 @@ function getActiveSection(pathname: string): SectionId | null {
 export default function TopNav() {
   const location  = useLocation();
   const navigate  = useNavigate();
+  const { ptoVersion } = useGlobalFilters();
 
   const [unresolvedData]  = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
   const unresolvedCount   = (unresolvedData as { count: number }[])[0]?.count ?? 0;
@@ -146,6 +150,17 @@ export default function TopNav() {
   const asOf              = toLocalYMD(new Date());
   const [dueData]         = useLoadAction(loadDisciplinaryDueCountAction, [] as { count: number }[], { asOf });
   const dueCount          = (dueData as { count: number }[])[0]?.count ?? 0;
+  const [reviewData, , , reloadReview] = useLoadAction(loadPtoReviewCountAction, [] as { count: number }[], { today: asOf, manager: null });
+  const reviewCount       = (reviewData as { count: number }[])[0]?.count ?? 0;
+
+  // Reload PTO review count whenever a PTO record is written anywhere in the app
+  const ptoVersionRef = useRef(ptoVersion);
+  useEffect(() => {
+    if (ptoVersionRef.current !== ptoVersion) {
+      ptoVersionRef.current = ptoVersion;
+      reloadReview();
+    }
+  }, [ptoVersion, reloadReview]);
 
   function sectionBadge(id: string): { count: number; label: string } | null {
     if (id === 'contracts' && expiringCount > 0) {
@@ -158,6 +173,12 @@ export default function TopNav() {
       return {
         count: dueCount,
         label: `${dueCount} disciplinary re-evaluation${dueCount === 1 ? '' : 's'} due`,
+      };
+    }
+    if (id === 'pto' && reviewCount > 0) {
+      return {
+        count: reviewCount,
+        label: `${reviewCount} PTO request${reviewCount === 1 ? '' : 's'} ready to record`,
       };
     }
     return null;

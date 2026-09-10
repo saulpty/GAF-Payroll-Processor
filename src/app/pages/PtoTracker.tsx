@@ -8,8 +8,10 @@ import RecordApprovalDialog from './pto/RecordApprovalDialog';
 import type { DialogMode } from './pto/RecordApprovalDialog';
 import type { PtoRowData } from './pto/PtoRow';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 
 export default function PtoTracker() {
+  const { bumpPtoVersion } = useGlobalFilters();
   const [asOf, setAsOf] = useState(() => toLocalYMD(new Date()));
   const [refreshKey, setRefreshKey] = useState(0);
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
@@ -98,7 +100,7 @@ export default function PtoTracker() {
         mode={dialogMode}
         today={today}
         onClose={() => setDialogMode(null)}
-        onSaved={() => { setDialogMode(null); setRefreshKey(k => k + 1); }}
+        onSaved={() => { setDialogMode(null); setRefreshKey(k => k + 1); bumpPtoVersion(); }}
       />
     </div>
   );

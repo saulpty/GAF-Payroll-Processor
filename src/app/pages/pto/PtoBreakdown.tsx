@@ -3,6 +3,7 @@ import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/app/components/EmptyState';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import type { PtoRowData } from './PtoRow';
 import type { DialogMode, PendingRequest, LedgerRow } from './RecordApprovalDialog';
 import PtoSubRow, { type SubItem } from './PtoSubRow';
@@ -42,6 +43,7 @@ function parseJSON<T>(v: T | string | null | undefined, fallback: T): T {
 const HEADERS = ['Type', 'Dates', 'Days', 'Status', 'In payroll', ''];
 
 export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, onChanged, refreshToken }: Props) {
+  const { bumpPtoVersion } = useGlobalFilters();
   const [rawDetail, loading, error, reload] = useLoadAction(
     loadPtoEmployeeDetailAction,
     null,
@@ -142,11 +144,13 @@ export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, 
     if (!ok) return;
     await withdraw({ id, status: 'withdrawn' });
     onChanged();
+    bumpPtoVersion();
   };
 
   const handleRestore = async (id: number) => {
     await withdraw({ id, status: 'recorded' });
     onChanged();
+    bumpPtoVersion();
   };
 
   return (

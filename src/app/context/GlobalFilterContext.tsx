@@ -11,6 +11,8 @@ export type DayPreset = 30 | 60 | 90 | null;
 export interface GlobalFilters {
   periodsVersion: number;
   bumpPeriodsVersion: () => void;
+  ptoVersion: number;
+  bumpPtoVersion: () => void;
   period: string;
   setPeriod: (v: string) => void;
   dateFrom: string;
@@ -41,6 +43,8 @@ const GlobalFilterContext = createContext<GlobalFilters | null>(null);
 export function GlobalFilterProvider({ children }: { children: ReactNode }) {
   const [periodsVersion, setPeriodsVersion] = useState(0);
   const bumpPeriodsVersion = () => setPeriodsVersion(v => v + 1);
+  const [ptoVersion, setPtoVersion] = useState(0);
+  const bumpPtoVersion = () => setPtoVersion(v => v + 1);
   const [period,    setPeriod]    = useState('');
   const [dateFrom,  setDateFromRaw] = useState(DEFAULT_FROM);
   const [dateTo,    setDateToRaw]   = useState(TODAY);
@@ -81,6 +85,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({
     periodsVersion, bumpPeriodsVersion,
+    ptoVersion, bumpPtoVersion,
     period, setPeriod,
     dateFrom, setDateFrom,
     dateTo, setDateTo,
@@ -93,7 +98,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     hasAny,
     clearAll,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [period, dateFrom, dateTo, dayPreset, employee, role, manager, statusTab, pmTab, hasAny]);
+  }), [periodsVersion, ptoVersion, period, dateFrom, dateTo, dayPreset, employee, role, manager, statusTab, pmTab, hasAny]);
 
   return (
     <GlobalFilterContext.Provider value={value}>
