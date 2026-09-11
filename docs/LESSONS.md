@@ -342,6 +342,20 @@ element.
 
 ---
 
+### UIB's editor drops characters from long string literals
+
+**2026-09-11.** A 6192-character base64 logo was written three times and came
+out 3067, then 3089, then 6191 characters long — once with a single `7`
+missing in the middle. Lint passed every time (the file is valid TypeScript);
+only the image was blank. Below ~3.5 KB a literal survived intact. Split long
+literals into ~1.5 KB parts joined at load time, state each part's exact length
+and last characters in the prompt, and **byte-compare the export against the
+source** before committing — a length check alone would have passed the
+6191-character version. When one character is missing, ask for that one
+insertion (context + character), not a rewrite.
+
+---
+
 ## Data-shape gotchas
 
 ### The same period run twice under two names is invisible until something joins on the name
