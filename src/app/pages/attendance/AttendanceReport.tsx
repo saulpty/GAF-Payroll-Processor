@@ -111,7 +111,11 @@ export default function AttendanceReport() {
     ).length;
     const unexplained  = scored.filter(r => r.verdict === 'unexplained_absence').length;
     const pct          = scored.length > 0 ? Math.round((onTime / scored.length) * 100) : null;
-    return { total: scored.length, onTime, late, absent, unexplained, pct };
+    const lateRows     = scored.filter(r => r.verdict.startsWith('late'));
+    const avgLate      = lateRows.length > 0
+      ? Math.round(lateRows.reduce((s, r) => s + (r.minutesLate ?? 0), 0) / lateRows.length)
+      : null;
+    return { total: scored.length, onTime, late, absent, unexplained, pct, avgLate };
   }, [rows]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -149,6 +153,10 @@ export default function AttendanceReport() {
               <KpiChip label="Late"        value={String(kpis.late)}        color="amber" />
               <KpiChip label="Absent"      value={String(kpis.absent)}      color="slate" />
               <KpiChip label="Unexplained" value={String(kpis.unexplained)} color="red"   />
+              {kpis.avgLate !== null && (
+                <KpiChip label="Avg min late" value={String(kpis.avgLate)} color="amber"
+                  tooltip="Average minutes late across the late days above (reported or not). Absences are not included." />
+              )}
               {kpis.pct !== null ? (
                 <span className={[
                   'ml-auto text-lg font-bold tabular-nums',

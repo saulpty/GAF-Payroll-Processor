@@ -7,7 +7,7 @@ type Props = { rows: ReportRow[] };
 
 const VERDICT_BADGE: Record<Verdict, string> = {
   on_time:                 'bg-green-100 text-green-700',
-  late_reported_on_time:   'bg-green-100 text-green-700',
+  late_reported_on_time:   'bg-amber-100 text-amber-700',
   absent_reported_on_time: 'bg-green-100 text-green-700',
   late_reported_late:      'bg-amber-100 text-amber-700',
   absent_reported_late:    'bg-amber-100 text-amber-700',

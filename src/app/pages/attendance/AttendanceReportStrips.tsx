@@ -9,7 +9,7 @@ type TileColor = 'success' | 'warning' | 'danger' | 'muted';
 
 const VERDICT_COLOR: Record<Verdict, TileColor> = {
   on_time:                    'success',
-  late_reported_on_time:      'success',
+  late_reported_on_time:      'warning',
   absent_reported_on_time:    'success',
   late_reported_late:         'warning',
   absent_reported_late:       'warning',
