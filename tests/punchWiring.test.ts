@@ -54,7 +54,7 @@ test('PW5: unsaved edits live in the shared useRowEdits hook, not in per-page st
   const h = readFileSync(hook, 'utf8');
   assert.ok(h.includes('beforeunload'), 'the hook must warn before the page unloads with unsaved edits');
   for (const fn of ['discard', 'discardAll', 'markSaved', 'dirtyCount']) assert.ok(h.includes(fn), `hook must expose ${fn}`);
-  for (const page of [PM]) {
+  for (const page of [PM, AR]) {
     const src = readFileSync(page, 'utf8');
     assert.ok(src.includes("from '@/app/lib/useRowEdits'"), `${page} must use useRowEdits`);
     assert.ok(!/useState<Record<number,\s*EditState>>/.test(src), `${page} must not keep its own edits state`);
