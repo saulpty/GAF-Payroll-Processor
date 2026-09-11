@@ -203,3 +203,23 @@ test('L5: the off-day branch bails on missing punches before it can push a row',
       `No punches on a day off means no row, form or not.`,
   );
 });
+
+// L6 (2026-09-11): Payroll Master's handleSave must forget the row's edit after a
+// successful save. `isDirty` is presence-based (`!!edits[row.id]`), so leaving the
+// entry in place kept the Save button visible forever and made the green ✓
+// unreachable. The delete must come after `await reload()` so the row keeps its
+// edited values until the fresh database row arrives.
+test('L6: PayrollMaster.handleSave removes edits[row.id] after reload()', () => {
+  const page = 'src/app/pages/PayrollMaster.tsx';
+  assert.ok(existsSync(page), `${page} should exist`);
+  const src = readFileSync(page, 'utf8');
+  const start = src.indexOf('const handleSave');
+  assert.ok(start >= 0, 'PayrollMaster.tsx no longer defines handleSave');
+  const end = src.indexOf('const toggleSelect', start);
+  const body = src.slice(start, end > start ? end : undefined);
+  const reload = body.indexOf('await reload()');
+  assert.ok(reload >= 0, 'handleSave no longer calls reload()');
+  const clear = body.search(/(delete\s+\w+\[row\.id\]|markSaved\(row\.id\))/);
+  assert.ok(clear >= 0, 'handleSave never removes edits[row.id]; the Save button would stay visible after a successful save.');
+  assert.ok(clear > reload, 'edits[row.id] must be removed AFTER await reload(), not before.');
+});

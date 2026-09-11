@@ -237,6 +237,7 @@ export default function PayrollMaster() {
       setTimeout(() => setToastMsg(''), 3000);
     }
     await reload();
+    setEdits(prev => { const n = { ...prev }; delete n[row.id]; return n; });
   };
 
   const toggleSelect = useCallback((id: number) => {
