@@ -13,13 +13,14 @@ import { TimeInput } from '@/app/components/TimeInput';
 import loadActionRequiredAction from '@/actions/loadActionRequired';
 import loadCommittedEntriesAction from '@/actions/loadCommittedEntries';
 import updatePayrollEntryAction from '@/actions/updatePayrollEntry';
-import updateEntryExitAction from '@/actions/updateEntryExit';
+import updatePunchTimesAction from '@/actions/updatePunchTimes';
 import loadEventTypeRulesAction from '@/actions/loadEventTypeRules';
 import loadPayImpactsAction from '@/actions/loadPayImpacts';
 import loadDocumentationOptionsAction from '@/actions/loadDocumentationOptions';
 import loadEventTypesAction from '@/actions/loadEventTypes';
 
 import { computeDerivedFields } from '@/app/lib/classificationEngine';
+import { computePunchMinutes } from '@/app/lib/punchMinutes';
 
 type EntryRow = {
   id: number; period_name: string; employee_name: string; work_date: string;
@@ -116,7 +117,7 @@ export default function ActionRequired() {
   const [rows, loading, , reload] = useLoadAction(loadActionRequiredAction, [] as EntryRow[], params);
   const [committedRows, , , reloadCommitted] = useLoadAction(loadCommittedEntriesAction, [] as CommittedRow[], params);
   const [updateEntry, saving] = useMutateAction(updatePayrollEntryAction);
-  const [updateTimes] = useMutateAction(updateEntryExitAction);
+  const [updateTimes] = useMutateAction(updatePunchTimesAction);
 
 
   const [edits, setEdits] = useState<Record<number, EditState>>({});
@@ -210,17 +211,27 @@ export default function ActionRequired() {
     );
   }, [edits]);
 
-  // Save a single row, returns derived status
-  const saveRow = async (row: EntryRow): Promise<string> => {
+  // Save a single row, returns derived status; null when the row was refused
+  const saveRow = async (row: EntryRow): Promise<string | null> => {
     const edit = getEdit(row);
+    // Minutes are recomputed from the row's punches on every commit, so a row
+    // whose stored minutes are stale is corrected by any commit.
+    const mins = computePunchMinutes({
+      entry_time: edit.entry_time, exit_time: edit.exit_time,
+      scheduled_start: row.scheduled_start, scheduled_end: row.scheduled_end, grace_until: row.grace_until,
+    });
+    if (!mins) return null;
     const derived = computeDerivedFields({
       event_type_1: edit.event_type_1, pay_impact_1: edit.pay_impact_1,
       event_type_2: edit.event_type_2, pay_impact_2: edit.pay_impact_2,
-      late_minutes: row.late_minutes, late_after_grace: row.late_after_grace,
-      early_leave_minutes: row.early_leave_minutes, initial_status: row.initial_status,
+      late_minutes: mins.late_minutes, late_after_grace: mins.late_after_grace,
+      early_leave_minutes: mins.early_leave_minutes, initial_status: row.initial_status,
     });
-    const timesChanged = edit.entry_time !== (row.entry_time || '') || edit.exit_time !== (row.exit_time || '');
-    if (timesChanged) await updateTimes({ id: row.id, entry_time: edit.entry_time || null, exit_time: edit.exit_time || null });
+    await updateTimes({
+      id: row.id,
+      entry_time: edit.entry_time || null, exit_time: edit.exit_time || null,
+      late_minutes: mins.late_minutes, late_after_grace: mins.late_after_grace, early_leave_minutes: mins.early_leave_minutes,
+    });
     await updateEntry({
       id: row.id,
       event_type_1: edit.event_type_1, pay_impact_1: edit.pay_impact_1,
@@ -239,13 +250,16 @@ export default function ActionRequired() {
     if (!toSave.length) return;
     setBulkSaving(true);
     const newCommitted = new Set(sessionCommitted);
+    const refused: string[] = [];
     for (const row of toSave) {
-      await saveRow(row);
+      const status = await saveRow(row);
+      if (status === null) { refused.push(`${row.employee_name} ${row.work_date.slice(0, 10)}`); continue; }
       newCommitted.add(row.id);
     }
     setSessionCommitted(newCommitted);
     setSelected(new Set());
     setBulkSaving(false);
+    if (refused.length) window.alert(`Not committed — Entry and Exit must look like 9:05 AM:\n${refused.join('\n')}`);
     await reload();
     await reloadCommitted();
   };
@@ -434,6 +448,12 @@ export default function ActionRequired() {
                 {filtered.map((row, rowIndex) => {
                   const edit = getEdit(row);
                   const dirty = isDirty(row);
+                  const live = dirty ? computePunchMinutes({
+                    entry_time: edit.entry_time, exit_time: edit.exit_time,
+                    scheduled_start: row.scheduled_start, scheduled_end: row.scheduled_end, grace_until: row.grace_until,
+                  }) : null;
+                  const lateShown = live ? live.late_minutes : row.late_minutes;
+                  const earlyShown = live ? live.early_leave_minutes : row.early_leave_minutes;
                   const isSelected = selected.has(row.id);
                   const rowBg = isSelected
                     ? 'bg-blue-50'
@@ -477,10 +497,10 @@ export default function ActionRequired() {
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap border-r text-slate-500 text-[11px]">{row.scheduled_start}–{row.scheduled_end}</td>
                       <td className="px-3 py-2 text-center border-r">
-                        {row.late_minutes > 0 ? <span className="text-red-700 font-semibold">{row.late_minutes}</span> : <span className="text-slate-300">—</span>}
+                        {lateShown > 0 ? <span className={`font-semibold ${live && lateShown !== row.late_minutes ? 'text-amber-600' : 'text-red-700'}`}>{lateShown}</span> : <span className="text-slate-300">—</span>}
                       </td>
                       <td className="px-3 py-2 text-center border-r">
-                        {row.early_leave_minutes > 0 ? <span className="text-orange-600 font-semibold">{row.early_leave_minutes}</span> : <span className="text-slate-300">—</span>}
+                        {earlyShown > 0 ? <span className={`font-semibold ${live && earlyShown !== row.early_leave_minutes ? 'text-amber-600' : 'text-orange-600'}`}>{earlyShown}</span> : <span className="text-slate-300">—</span>}
                       </td>
                       {/* Event 1 */}
                       <td className="px-2 py-1.5 border-r min-w-36">
