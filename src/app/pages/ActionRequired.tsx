@@ -21,6 +21,7 @@ import loadEventTypesAction from '@/actions/loadEventTypes';
 
 import { computeDerivedFields } from '@/app/lib/classificationEngine';
 import { computePunchMinutes } from '@/app/lib/punchMinutes';
+import { useRowEdits } from '@/app/lib/useRowEdits';
 
 type EntryRow = {
   id: number; period_name: string; employee_name: string; work_date: string;
@@ -105,6 +106,20 @@ function BroadcastSelect({ value, options, placeholder, broadcasting, onChange }
   );
 }
 
+/** A row's loaded values in edit shape. Module level so useRowEdits sees a stable function. */
+function toEditState(row: EntryRow): EditState {
+  return {
+    entry_time: row.entry_time || '',
+    exit_time: row.exit_time || '',
+    event_type_1: row.event_type_1 || '',
+    pay_impact_1: row.pay_impact_1 || '',
+    event_type_2: row.event_type_2 || '',
+    pay_impact_2: row.pay_impact_2 || '',
+    documentation: row.documentation || '',
+    notes: row.notes || '',
+  };
+}
+
 export default function ActionRequired() {
   const { period: selectedPeriod, employee: globalEmployee, statusTab: activeTab, setStatusTab: setActiveTab } = useGlobalFilters();
   const [payImpacts] = useLoadAction(loadPayImpactsAction, [] as { name: string }[]);
@@ -115,12 +130,12 @@ export default function ActionRequired() {
 
   const [params, setParams] = useState({ periodName: selectedPeriod });
   const [rows, loading, , reload] = useLoadAction(loadActionRequiredAction, [] as EntryRow[], params);
+  const { getEdit, update, isDirty, discardAll, markSaved, dirtyCount } = useRowEdits<EntryRow, EditState>(toEditState, rows as EntryRow[]);
   const [committedRows, , , reloadCommitted] = useLoadAction(loadCommittedEntriesAction, [] as CommittedRow[], params);
   const [updateEntry, saving] = useMutateAction(updatePayrollEntryAction);
   const [updateTimes] = useMutateAction(updatePunchTimesAction);
 
 
-  const [edits, setEdits] = useState<Record<number, EditState>>({});
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -149,35 +164,21 @@ export default function ActionRequired() {
   // Sync params when global period changes
   useEffect(() => {
     setParams({ periodName: selectedPeriod });
-    setEdits({});
+    discardAll();
     setSelected(new Set());
     setSessionCommitted(new Set());
     setSortKey(null);
     setSortDir(null);
   }, [selectedPeriod]);
 
-  const getEdit = useCallback((row: EntryRow): EditState =>
-    edits[row.id] ?? {
-      entry_time: row.entry_time || '',
-      exit_time: row.exit_time || '',
-      event_type_1: row.event_type_1 || '',
-      pay_impact_1: row.pay_impact_1 || '',
-      event_type_2: row.event_type_2 || '',
-      pay_impact_2: row.pay_impact_2 || '',
-      documentation: row.documentation || '',
-      notes: row.notes || '',
-    }, [edits]);
-
   const setEditField = useCallback((id: number, field: keyof EditState, value: string, row: EntryRow, allRows?: EntryRow[]) => {
     const isBroadcast = BROADCAST_FIELDS.includes(field) && selected.has(id) && selected.size > 1;
     const targetIds = isBroadcast ? Array.from(selected) : [id];
     const rowMap = new Map((allRows ?? []).map(r => [r.id, r]));
 
-    setEdits(prev => {
-      const next = { ...prev };
-      for (const tid of targetIds) {
-        const trow = rowMap.get(tid) ?? row;
-        const current = { ...getEdit(trow), ...prev[tid] };
+    for (const tid of targetIds) {
+      const trow = rowMap.get(tid) ?? row;
+      update(tid, trow, current => {
         const updated = { ...current, [field]: value };
         if (field === 'event_type_1' && value && rulesMap.has(value)) {
           const rule = rulesMap.get(value)!;
@@ -188,28 +189,12 @@ export default function ActionRequired() {
           const rule = rulesMap.get(value)!;
           if (!current.pay_impact_2 && rule.pay_impact) updated.pay_impact_2 = rule.pay_impact;
         }
-        next[tid] = updated;
-      }
-      return next;
-    });
+        return updated;
+      });
+    }
     // auto-select the touched row
     setSelected(prev => new Set(prev).add(id));
-  }, [edits, getEdit, rulesMap, selected]);
-
-  const isDirty = useCallback((row: EntryRow): boolean => {
-    if (!edits[row.id]) return false;
-    const e = edits[row.id];
-    return (
-      e.event_type_1 !== (row.event_type_1 || '') ||
-      e.pay_impact_1 !== (row.pay_impact_1 || '') ||
-      e.event_type_2 !== (row.event_type_2 || '') ||
-      e.pay_impact_2 !== (row.pay_impact_2 || '') ||
-      e.documentation !== (row.documentation || '') ||
-      e.notes !== (row.notes || '') ||
-      e.entry_time !== (row.entry_time || '') ||
-      e.exit_time !== (row.exit_time || '')
-    );
-  }, [edits]);
+  }, [update, rulesMap, selected]);
 
   // Save a single row, returns derived status; null when the row was refused
   const saveRow = async (row: EntryRow): Promise<string | null> => {
@@ -255,6 +240,7 @@ export default function ActionRequired() {
       const status = await saveRow(row);
       if (status === null) { refused.push(`${row.employee_name} ${row.work_date.slice(0, 10)}`); continue; }
       newCommitted.add(row.id);
+      markSaved(row.id);
     }
     setSessionCommitted(newCommitted);
     setSelected(new Set());
@@ -408,6 +394,14 @@ export default function ActionRequired() {
               </div>
             </div>
           </div>
+
+          {dirtyCount > 0 && (
+            <div className="shrink-0 flex items-center gap-2">
+              <Button variant="outline" size="sm" className="text-amber-700 border-amber-300 hover:bg-amber-50" onClick={discardAll}>
+                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />{dirtyCount} unsaved · Discard all
+              </Button>
+            </div>
+          )}
 
           {/* ── Work table ─────────────────────────────────────── */}
           <div className="flex-1 min-h-0 rounded-lg border shadow-sm overflow-auto">
@@ -666,9 +660,9 @@ export default function ActionRequired() {
                   </thead>
                   <tbody>
                     {toConfirm.map(row => {
-                      const edit = edits[row.id];
-                      const event1 = edit?.event_type_1 ?? row.event_type_1;
-                      const impact1 = edit?.pay_impact_1 ?? row.pay_impact_1;
+                      const edit = getEdit(row);
+                      const event1 = edit.event_type_1 || row.event_type_1;
+                      const impact1 = edit.pay_impact_1 || row.pay_impact_1;
                       return (
                         <tr key={row.id} className="border-b last:border-b-0">
                           <td className="px-3 py-1.5 font-medium">{row.employee_name}</td>

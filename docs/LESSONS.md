@@ -356,6 +356,39 @@ insertion (context + character), not a rewrite.
 
 ---
 
+### A presence-based "dirty" flag never clears itself
+
+**2026-09-11.** Payroll Master decided a row had unsaved changes by asking
+"is there an entry in `edits` for this id?" — and `handleSave` never removed
+that entry after writing. So the Save button stayed forever, the green ✓ was
+unreachable, and a second click was a silent no-op. It had been that way since
+the first commit; Saul reported it as "seems saved but the button keeps
+showing". Two rules came out of it: a dirty flag compares the draft against
+the loaded row (never mere presence), and a successful save calls
+`markSaved(id)` from `useRowEdits`, the one shared place drafts live.
+Guarded by `lessonGuards.test.ts` L6 and `punchWiring.test.ts` PW5.
+
+### A save path that skips the engine writes stale minutes
+
+**2026-09-11.** Editing Entry or Exit saved the two strings and nothing else.
+`late_minutes`, `late_after_grace` and `early_leave_minutes` stayed whatever
+the engine had computed from the *old* punches, and the discount and status
+were then derived from those stale numbers. Luis Abad's 6/1 exit went from a
+cross-midnight "12:35 AM" to "4:00 PM" and Early stayed 985. The only
+minutes-from-punches formula lived inline inside `runClassificationEngine`.
+Now `punchMinutes.ts` holds it as a pure function, both grids recompute on
+every save through `updatePunchTimes`, and `punchMinutes.test.ts` PM6 runs the
+real engine and asserts the helper agrees with it. **When a page writes one
+half of a derived pair, ask who writes the other half.**
+
+Two neighbours found on the way: `TimeInput` threw on `12:35am` (no space)
+and the raw text was saved as typed (`parseTimeInput.test.ts` TI1); and a
+Teramind session that crosses midnight makes the engine read the exit as
+00:35 and charge 985 early minutes — the helper treats exit-before-entry as
+past-midnight, the engine still does not (prompt 08, not sent).
+
+---
+
 ## Data-shape gotchas
 
 ### The same period run twice under two names is invisible until something joins on the name
