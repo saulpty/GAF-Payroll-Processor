@@ -1,0 +1,47 @@
+# 13 — The nav shows the GAF Panama heart logo
+
+The logo file is `docs/assets/app-logo.png` in the repo (1080×1080, red heart
+with wifi arcs on white). A 64×64 PNG of it, base64-encoded, is embedded below
+so no static asset is needed.
+
+## Files you may change
+
+- **New:** `src/app/components/BrandLogo.tsx`
+- `src/app/TopNav.tsx` — the brand block only
+
+**No other file may be touched.** Nothing else in `TopNav.tsx` changes: the
+`GAF` / `Panama` / `HR Hub` text, the click to `/payroll-master`, sections and
+badges stay byte-identical.
+
+## BrandLogo.tsx
+
+Exactly this (the string is one line, copy it whole):
+
+```tsx
+const LOGO = 'data:image/png;base64,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';
+
+export default function BrandLogo() {
+  return (
+    <img
+      src={LOGO}
+      alt="GAF Panama HR Hub"
+      width={32}
+      height={32}
+      className="w-8 h-8 rounded-lg shadow-sm shrink-0 bg-white"
+    />
+  );
+}
+```
+
+## TopNav.tsx
+
+Import `BrandLogo` from `@/app/components/BrandLogo`. In the brand block,
+replace the whole logomark `<div className="w-8 h-8 rounded-lg bg-[#1B3A6B] …">…</div>`
+(the navy box with the inline `<svg>` heartbeat and its comment) with
+`<BrandLogo />`. Nothing else.
+
+## Verify
+
+- Every page's top-left shows the red heart logo beside **GAF Panama** / HR Hub.
+- `BrandLogo.tsx` is under 5 KB. Only the two files changed/created. Confirm
+  every identifier used is imported.
