@@ -17,9 +17,10 @@ import loadDocumentationOptionsAction from '@/actions/loadDocumentationOptions';
 import loadEventTypesAction from '@/actions/loadEventTypes';
 import loadEventTypeRulesAction from '@/actions/loadEventTypeRules';
 import updatePayrollEntryAction from '@/actions/updatePayrollEntry';
-import updateEntryExitAction from '@/actions/updateEntryExit';
+import updatePunchTimesAction from '@/actions/updatePunchTimes';
 import softDeletePayrollEntryAction from '@/actions/softDeletePayrollEntry';
 import { computeDerivedFields, computeDiscount } from '@/app/lib/classificationEngine';
+import { computePunchMinutes } from '@/app/lib/punchMinutes';
 
 type EntryRow = {
   id: number; period_name: string; employee_name: string; work_date: string;
@@ -84,7 +85,7 @@ export default function PayrollMaster() {
   const [eventTypes] = useLoadAction(loadEventTypesAction, [] as { name: string }[]);
   const [eventRulesRaw] = useLoadAction(loadEventTypeRulesAction, [] as { event_type: string; default_pay_impact: string }[]);
   const [updateEntry, saving] = useMutateAction(updatePayrollEntryAction);
-  const [updateTimes] = useMutateAction(updateEntryExitAction);
+  const [updateTimes] = useMutateAction(updatePunchTimesAction);
   const [softDeleteEntry] = useMutateAction(softDeletePayrollEntryAction);
 
   const { period: globalPeriod, employee: globalEmployee, pmTab: activeTab, setPmTab: setActiveTab } = useGlobalFilters();
@@ -203,21 +204,35 @@ export default function PayrollMaster() {
     );
     if (!fieldsDirty) return;
 
+    // Minutes are recomputed from the row's punches on every save, so a row
+    // whose stored minutes are stale is corrected by any save.
+    const mins = computePunchMinutes({
+      entry_time: edit.entry_time, exit_time: edit.exit_time,
+      scheduled_start: row.scheduled_start, scheduled_end: row.scheduled_end, grace_until: row.grace_until,
+    });
+    if (!mins) {
+      setToastMsg(`⚠ ${row.employee_name} — ${row.work_date.slice(0, 10)}: Entry and Exit must look like 9:05 AM. Not saved.`);
+      setTimeout(() => setToastMsg(''), 4000);
+      return;
+    }
+
     const derived = computeDerivedFields({
       event_type_1: edit.event_type_1,
       pay_impact_1: edit.pay_impact_1,
       event_type_2: edit.event_type_2,
       pay_impact_2: edit.pay_impact_2,
-      late_minutes: row.late_minutes,
-      late_after_grace: row.late_after_grace,
-      early_leave_minutes: row.early_leave_minutes,
+      late_minutes: mins.late_minutes,
+      late_after_grace: mins.late_after_grace,
+      early_leave_minutes: mins.early_leave_minutes,
       initial_status: row.initial_status,
     });
 
     setSavingId(row.id);
-    if (timesChanged) {
-      await updateTimes({ id: row.id, entry_time: edit.entry_time || null, exit_time: edit.exit_time || null });
-    }
+    await updateTimes({
+      id: row.id,
+      entry_time: edit.entry_time || null, exit_time: edit.exit_time || null,
+      late_minutes: mins.late_minutes, late_after_grace: mins.late_after_grace, early_leave_minutes: mins.early_leave_minutes,
+    });
     await updateEntry({
       id: row.id,
       event_type_1: edit.event_type_1,
@@ -407,7 +422,7 @@ export default function PayrollMaster() {
   return (
     <div className="flex flex-col h-full p-6 gap-4 overflow-hidden">
       {toastMsg && (
-        <div className="fixed top-4 right-4 z-50 bg-green-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm">
+        <div className={`fixed top-4 right-4 z-50 ${toastMsg.startsWith('⚠') ? 'bg-amber-600' : 'bg-green-700'} text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm`}>
           <CheckCircle className="w-4 h-4" />{toastMsg}
         </div>
       )}
@@ -630,6 +645,12 @@ export default function PayrollMaster() {
                   const isSavingRow = savingId === row.id;
                   const dirty = isDirty(row);
                   const saved = savedIds.has(row.id);
+                  const live = dirty ? computePunchMinutes({
+                    entry_time: edit.entry_time, exit_time: edit.exit_time,
+                    scheduled_start: row.scheduled_start, scheduled_end: row.scheduled_end, grace_until: row.grace_until,
+                  }) : null;
+                  const lateShown = live ? live.late_minutes : row.late_minutes;
+                  const earlyShown = live ? live.early_leave_minutes : row.early_leave_minutes;
                   const sc = STATUS_COLORS[row.status_current] || { bg: '', text: '', badge: '' };
                   const rowBg = dirty ? (row.status_current === 'RED' ? 'bg-[#FFE4E4]' : row.status_current === 'YELLOW' ? 'bg-[#FFF3CD]' : 'bg-blue-50') : sc.bg;
 
@@ -693,17 +714,17 @@ export default function PayrollMaster() {
                       </td>
 
                       <td className="px-3 py-2 whitespace-nowrap border-r text-slate-500 text-[11px]">{row.scheduled_start}–{row.scheduled_end}</td>
-                      <td className="px-3 py-2 text-center border-r">{row.late_minutes > 0 ? <span className="text-red-700 font-semibold">{row.late_minutes}</span> : <span className="text-slate-300">—</span>}</td>
-                      <td className="px-3 py-2 text-center border-r">{row.early_leave_minutes > 0 ? <span className="text-orange-600 font-semibold">{row.early_leave_minutes}</span> : <span className="text-slate-300">—</span>}</td>
+                      <td className="px-3 py-2 text-center border-r">{lateShown > 0 ? <span className={`font-semibold ${live && lateShown !== row.late_minutes ? 'text-amber-600' : 'text-red-700'}`}>{lateShown}</span> : <span className="text-slate-300">—</span>}</td>
+                      <td className="px-3 py-2 text-center border-r">{earlyShown > 0 ? <span className={`font-semibold ${live && earlyShown !== row.early_leave_minutes ? 'text-amber-600' : 'text-orange-600'}`}>{earlyShown}</span> : <span className="text-slate-300">—</span>}</td>
                       {(() => {
                         const liveDiscount = computeDiscount({
                           event_type_1: edit.event_type_1,
                           pay_impact_1: edit.pay_impact_1,
                           event_type_2: edit.event_type_2,
                           pay_impact_2: edit.pay_impact_2,
-                          late_minutes: row.late_minutes,
-                          late_after_grace: row.late_after_grace,
-                          early_leave_minutes: row.early_leave_minutes,
+                          late_minutes: live ? live.late_minutes : row.late_minutes,
+                          late_after_grace: live ? live.late_after_grace : row.late_after_grace,
+                          early_leave_minutes: live ? live.early_leave_minutes : row.early_leave_minutes,
                         });
                         const changed = liveDiscount !== row.discount_total_minutes && edits[row.id] !== undefined;
                         return (
