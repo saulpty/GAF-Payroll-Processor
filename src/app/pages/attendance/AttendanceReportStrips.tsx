@@ -80,7 +80,7 @@ function DayTile({ row, thisYear }: { row: ReportRow; thisYear: string }) {
 
   return (
     <div
-      className={`relative w-[150px] shrink-0 bg-white border border-slate-200 border-t-[3px] ${t.stripe} rounded-lg px-2.5 pt-1.5 pb-2 shadow-sm text-[11px] leading-snug`}
+      className={`relative w-[170px] shrink-0 bg-white border border-slate-200 border-t-[3px] ${t.stripe} rounded-lg px-2.5 pt-1.5 pb-2 shadow-sm text-[11px] leading-snug`}
       title={VERDICT_LABEL[row.verdict]}
     >
       {/* Date */}

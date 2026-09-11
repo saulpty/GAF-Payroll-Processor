@@ -63,6 +63,23 @@ tightened twice (attendanceStats 3 → 1, AttendancePanel removed).
 - `Q1-Sep-2026` is not processed yet, so the Attendance picker tops out at
   Q2-Aug-2026 — by design.
 
+## 2026-09-11 additions (prompts 17-19)
+
+- **Reports summary strip** gains **Avg min late** (mean of `minutesLate` over
+  late days, absences excluded), placed before the on-time percentage.
+- **Reports cards redesigned** (Saul picked mockup "A"): white 170 px card
+  with a coloured top stripe and dot, `MON Aug 10` date, title-case status
+  (`Late · Reported Ahead`, `Late · Reported After Shift`, `Late · No Form`,
+  `Absent · …`), one **in → out** line (`no exit` / `no punches`), a
+  minutes-late pill and `✓` / `⚠` + form type. Six tones: green on time,
+  amber reported ahead, **orange** reported after shift, red no form or
+  unexplained, **sky** absence reported ahead, grey PTO/permission/holiday.
+  Employee header shows `avg +Nm`. The Table view chips use the same orange
+  and sky. `AttendanceReportStrips.tsx` no longer builds a `Date`
+  (`fmtDay` from `fmtDay.ts`); `VERDICT_LABEL` (filter-chip wording) is unchanged.
+- Mockups that led here: `cards-mockup.html` / `cards-mockup-v2.html` were
+  scratch files sent in chat, not kept in the repo.
+
 ## Things that went wrong on the way
 
 - The builder tab had been open across Saul's 11:23 release, so the first
