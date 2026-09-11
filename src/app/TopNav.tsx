@@ -15,6 +15,7 @@ import loadDisciplinaryDueCountAction from '@/actions/loadDisciplinaryDueCount';
 import loadPtoReviewCountAction from '@/actions/loadPtoReviewCount';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import BrandLogo from '@/app/components/BrandLogo';
 
 // ── Section definitions ────────────────────────────────────────────────────────
 
@@ -202,17 +203,11 @@ export default function TopNav() {
         className="flex items-center gap-2.5 mr-4 cursor-pointer select-none shrink-0"
         onClick={() => navigate('/payroll-master')}
       >
-        {/* GAF Healthcare logomark: navy shield with teal heartbeat */}
-        <div className="w-8 h-8 rounded-lg bg-[#1B3A6B] flex items-center justify-center shadow-sm shrink-0 overflow-hidden">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {/* Heart/pulse line — teal */}
-            <polyline points="2,10 5,10 7,6 9,14 11,8 13,10 18,10" stroke="#2AA876" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-          </svg>
-        </div>
+        <BrandLogo />
         <div className="leading-tight hidden sm:block">
           <div className="flex items-baseline gap-1">
             <span className="text-[#1B3A6B] font-bold text-[14px] tracking-tight">GAF</span>
-            <span className="text-[#2AA876] font-bold text-[14px] tracking-tight">Panama</span>
+            <span className="text-[#E5262B] font-bold text-[14px] tracking-tight">Panama</span>
           </div>
           <div className="text-slate-400 text-[10px] tracking-wide">HR Hub</div>
         </div>
