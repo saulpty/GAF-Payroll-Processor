@@ -694,7 +694,15 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
 
       const late_minutes = Math.max(0, entryMins - schedStartMins);
       const late_after_grace = Math.max(0, late_minutes - emp.grace_minutes);
-      const early_leave_minutes = Math.max(0, schedEndMins - exitMins);
+      let early_leave_minutes = Math.max(0, schedEndMins - exitMins);
+      // Exit earlier than entry on the clock means the session ran past
+      // midnight (the parser keeps the latest exit of the day). That is not
+      // an early leave; leave the operator a note instead of charging minutes.
+      let pastMidnightNote = '';
+      if (exitMins < entryMins) {
+        early_leave_minutes = 0;
+        pastMidnightNote = ' Session ran past midnight (exit next day) — early leave not assessed.';
+      }
 
       const hasTardForm = tardinessForms.length > 0;
       // TFT = Time-for-Time detection:
@@ -801,6 +809,7 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
         autoNotes = 'On time, full shift.';
         initial_status = 'GREEN';
       }
+      if (pastMidnightNote) autoNotes += pastMidnightNote;
 
       if (isWfh) {
         // WFH employees follow normal rules — just note it in auto_notes

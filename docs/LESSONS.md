@@ -385,7 +385,7 @@ Two neighbours found on the way: `TimeInput` threw on `12:35am` (no space)
 and the raw text was saved as typed (`parseTimeInput.test.ts` TI1); and a
 Teramind session that crosses midnight makes the engine read the exit as
 00:35 and charge 985 early minutes — the helper treats exit-before-entry as
-past-midnight, the engine still does not (prompt 08, not sent).
+past-midnight, the engine now agrees (prompt 08, `crossMidnight.test.ts` CM1–CM2).
 
 ---
 
