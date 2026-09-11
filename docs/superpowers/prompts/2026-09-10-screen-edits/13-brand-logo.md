@@ -45,3 +45,8 @@ replace the whole logomark `<div className="w-8 h-8 rounded-lg bg-[#1B3A6B] …"
 - Every page's top-left shows the red heart logo beside **GAF Panama** / HR Hub.
 - `BrandLogo.tsx` is under 5 KB. Only the two files changed/created. Confirm
   every identifier used is imported.
+
+## Also
+
+- `BrandLogo.tsx` already exists from an interrupted run with a **truncated** LOGO string (the nav shows a broken image). Overwrite it with the block above in full: the string after `base64,` is exactly 3488 characters and ends in `ElFTkSuQmCC`.
+- In `TopNav.tsx` the `Panama` span turns red: its class `text-[#2AA876]` becomes `text-[#E5262B]`. The `GAF` span stays navy.
