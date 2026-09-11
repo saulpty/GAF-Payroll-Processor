@@ -48,6 +48,20 @@ test('PW3: ActionRequired commits through computePunchMinutes + updatePunchTimes
   assert.ok(!/late_minutes:\s*row\.late_minutes/.test(body), 'saveRow must not feed the stale row.late_minutes into the derived fields');
 });
 
+test('PW5: unsaved edits live in the shared useRowEdits hook, not in per-page state', () => {
+  const hook = 'src/app/lib/useRowEdits.ts';
+  assert.ok(existsSync(hook), `${hook} should exist`);
+  const h = readFileSync(hook, 'utf8');
+  assert.ok(h.includes('beforeunload'), 'the hook must warn before the page unloads with unsaved edits');
+  for (const fn of ['discard', 'discardAll', 'markSaved', 'dirtyCount']) assert.ok(h.includes(fn), `hook must expose ${fn}`);
+  for (const page of [PM]) {
+    const src = readFileSync(page, 'utf8');
+    assert.ok(src.includes("from '@/app/lib/useRowEdits'"), `${page} must use useRowEdits`);
+    assert.ok(!/useState<Record<number,\s*EditState>>/.test(src), `${page} must not keep its own edits state`);
+    assert.ok(src.includes('discardAll'), `${page} must offer Discard all`);
+  }
+});
+
 test('PW4: the old two-column updateEntryExit action is gone', () => {
   assert.ok(!existsSync('src/actions/updateEntryExit.ts'), 'updateEntryExit.ts writes times without minutes; it must stay deleted');
 });
