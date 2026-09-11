@@ -8,9 +8,9 @@ type Props = { rows: ReportRow[] };
 const VERDICT_BADGE: Record<Verdict, string> = {
   on_time:                 'bg-green-100 text-green-700',
   late_reported_on_time:   'bg-amber-100 text-amber-700',
-  absent_reported_on_time: 'bg-green-100 text-green-700',
-  late_reported_late:      'bg-amber-100 text-amber-700',
-  absent_reported_late:    'bg-amber-100 text-amber-700',
+  absent_reported_on_time: 'bg-sky-100 text-sky-700',
+  late_reported_late:      'bg-orange-100 text-orange-700',
+  absent_reported_late:    'bg-orange-100 text-orange-700',
   late_no_form:            'bg-red-100 text-red-700',
   unexplained_absence:     'bg-red-100 text-red-700',
   pto:                     'bg-slate-100 text-slate-600',

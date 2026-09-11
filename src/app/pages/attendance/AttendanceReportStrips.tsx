@@ -1,31 +1,34 @@
 import { useMemo } from 'react';
 import { Info, AlertTriangle, Copy } from 'lucide-react';
 import type { ReportRow, ReportSummary, Verdict } from '@/app/lib/attendanceReportTypes';
+import { fmtDay } from '@/app/lib/fmtDay';
 
 type Props = { rows: ReportRow[]; perEmployee: ReportSummary[] };
 
-// ── Colour mapping ─────────────────────────────────────────────────────────────
-type TileColor = 'success' | 'warning' | 'danger' | 'muted';
+// ── Tone system ────────────────────────────────────────────────────────────────
+type Tone = 'green' | 'amber' | 'orange' | 'red' | 'sky' | 'grey';
 
-const VERDICT_COLOR: Record<Verdict, TileColor> = {
-  on_time:                    'success',
-  late_reported_on_time:      'warning',
-  absent_reported_on_time:    'success',
-  late_reported_late:         'warning',
-  absent_reported_late:       'warning',
-  late_no_form:               'danger',
-  unexplained_absence:        'danger',
-  pto:                        'muted',
-  permission:                 'muted',
-  holiday:                    'muted',
-  not_processed:              'muted',
+const VERDICT_TONE: Record<Verdict, Tone> = {
+  on_time:                 'green',
+  late_reported_on_time:   'amber',
+  absent_reported_on_time: 'sky',
+  late_reported_late:      'orange',
+  absent_reported_late:    'orange',
+  late_no_form:            'red',
+  unexplained_absence:     'red',
+  pto:                     'grey',
+  permission:              'grey',
+  holiday:                 'grey',
+  not_processed:           'grey',
 };
 
-const TILE_BG: Record<TileColor, string> = {
-  success: 'bg-green-100 border-green-300 text-green-800',
-  warning: 'bg-amber-100 border-amber-300 text-amber-800',
-  danger:  'bg-red-100 border-red-300 text-red-800',
-  muted:   'bg-slate-100 border-slate-300 text-slate-500',
+const TONE: Record<Tone, { stripe: string; dot: string; text: string; pill: string }> = {
+  green:  { stripe: 'border-t-green-500',  dot: 'bg-green-500',  text: 'text-green-700',  pill: 'bg-green-50 text-green-700 border-green-200' },
+  amber:  { stripe: 'border-t-amber-500',  dot: 'bg-amber-500',  text: 'text-amber-700',  pill: 'bg-amber-50 text-amber-700 border-amber-200' },
+  orange: { stripe: 'border-t-orange-500', dot: 'bg-orange-500', text: 'text-orange-700', pill: 'bg-orange-50 text-orange-700 border-orange-200' },
+  red:    { stripe: 'border-t-red-500',    dot: 'bg-red-500',    text: 'text-red-700',    pill: 'bg-red-50 text-red-700 border-red-200' },
+  sky:    { stripe: 'border-t-sky-500',    dot: 'bg-sky-500',    text: 'text-sky-700',    pill: 'bg-sky-50 text-sky-700 border-sky-200' },
+  grey:   { stripe: 'border-t-slate-300',  dot: 'bg-slate-400',  text: 'text-slate-500',  pill: 'bg-slate-50 text-slate-600 border-slate-200' },
 };
 
 // Full wording shared across all three surfaces (tile, chip, badge)
@@ -43,62 +46,78 @@ export const VERDICT_LABEL: Record<Verdict, string> = {
   not_processed:           'Payroll not run yet',
 };
 
-// Short label for the narrow tile (≤80px); full label in tooltip
-const VERDICT_TILE_SHORT: Record<Verdict, string> = {
-  on_time:                 'On time',
-  late_reported_on_time:   'Late',
-  late_reported_late:      'Late',
-  late_no_form:            'Late — no form',
-  absent_reported_on_time: 'Absent',
-  absent_reported_late:    'Absent',
-  unexplained_absence:     'Absent — unexplained',
+// Card wording (title case, shorter than VERDICT_LABEL)
+const CARD_LABEL: Record<Verdict, string> = {
+  on_time:                 'On Time',
+  late_reported_on_time:   'Late · Reported Ahead',
+  late_reported_late:      'Late · Reported After Shift',
+  late_no_form:            'Late · No Form',
+  absent_reported_on_time: 'Absent · Reported Ahead',
+  absent_reported_late:    'Absent · Reported After Shift',
+  unexplained_absence:     'Absent · Unexplained',
   pto:                     'PTO',
   permission:              'Permission',
   holiday:                 'Holiday',
-  not_processed:           'Not run yet',
+  not_processed:           'Not Run Yet',
 };
 
-function fmtDate(d: string) {
-  // YYYY-MM-DD → "Mon Jun 2"
-  const [y, m, day] = d.split('-').map(Number);
-  return new Date(y, m - 1, day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
 /** Times from payroll_entries are already US Eastern wall clock in
- *  "H:MM AM" / "H:MM PM" form (AGENTS.md). They are displayed as stored —
- *  reformatting them is what produced "9:54 AM AM", and re-deriving the
- *  meridiem from a 12-hour hour turned "1:30 PM" into "1:30 PM AM". */
+ *  "H:MM AM" / "H:MM PM" form (AGENTS.md). They are displayed as stored. */
 function fmtTime(t: string | null) {
   const s = (t ?? '').trim();
   return s === '' ? '—' : s;
 }
 
 // ── Tile ──────────────────────────────────────────────────────────────────────
-function DayTile({ row }: { row: ReportRow }) {
-  const color  = VERDICT_COLOR[row.verdict];
-  const bgCls  = TILE_BG[color];
-  const short  = VERDICT_TILE_SHORT[row.verdict];
-  const full   = VERDICT_LABEL[row.verdict];
+function DayTile({ row, thisYear }: { row: ReportRow; thisYear: string }) {
+  const t = TONE[VERDICT_TONE[row.verdict]];
+
+  // Split "Mon Aug 10" into weekday and month-day — no Date object
+  const dayStr = fmtDay(row.date, thisYear);
+  const spaceIdx = dayStr.indexOf(' ');
+  const wd = spaceIdx >= 0 ? dayStr.slice(0, spaceIdx) : dayStr;
+  const md = spaceIdx >= 0 ? dayStr.slice(spaceIdx + 1) : '';
 
   return (
     <div
-      className={`relative border rounded-lg px-2 py-1.5 flex flex-col gap-0.5 text-[11px] leading-snug min-w-[80px] ${bgCls}`}
-      title={full}
+      className={`relative w-[150px] shrink-0 bg-white border border-slate-200 border-t-[3px] ${t.stripe} rounded-lg px-2.5 pt-1.5 pb-2 shadow-sm text-[11px] leading-snug`}
+      title={VERDICT_LABEL[row.verdict]}
     >
-      <span className="font-semibold">{fmtDate(row.date)}</span>
-      <span className="opacity-80">{short}</span>
-      {row.entryTime && (
-        <span className="tabular-nums opacity-70">in {fmtTime(row.entryTime)}</span>
+      {/* Date */}
+      <div className="flex items-baseline gap-1.5 mb-1">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{wd}</span>
+        <span className="text-[14px] font-bold text-slate-900">{md}</span>
+      </div>
+
+      {/* Status label */}
+      <div className={`flex items-center gap-1.5 font-semibold mb-1 whitespace-nowrap ${t.text}`}>
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.dot}`} />
+        {CARD_LABEL[row.verdict]}
+      </div>
+
+      {/* Time line */}
+      {row.entryTime ? (
+        <div className="tabular-nums text-slate-900 whitespace-nowrap">
+          {fmtTime(row.entryTime)} <span className="text-slate-400">→</span>{' '}
+          {row.exitTime ? fmtTime(row.exitTime) : <span className="text-slate-400">no exit</span>}
+        </div>
+      ) : (
+        <div className="text-slate-400">{row.coveredBy ? row.coveredBy.label : 'no punches'}</div>
       )}
-      {row.minutesLate > 0 && (
-        <span className="font-medium">+{row.minutesLate}m late</span>
-      )}
-      {row.form && (
-        <span className="opacity-60 truncate">
-          Form: {row.form.type}
-        </span>
-      )}
-      {/* Subtle flags */}
+
+      {/* Meta row */}
+      <div className="flex items-center gap-1.5 mt-1.5 min-h-[18px]">
+        {row.minutesLate > 0 && (
+          <span className={`rounded-full border px-1.5 py-px text-[10px] font-bold ${t.pill}`}>+{row.minutesLate}m</span>
+        )}
+        {row.form && (
+          <span className="text-slate-500 truncate" title={row.form.onTime ? 'Form sent before the shift' : 'Form sent after the shift'}>
+            {row.form.onTime ? '✓' : '⚠'} {row.form.type}
+          </span>
+        )}
+      </div>
+
+      {/* Subtle flags — top-right / bottom-right */}
       {(row.flags.recordedUnexplainedButFormOnFile || row.flags.formEmailUnrecognised) && (
         <span className="absolute top-1 right-1">
           <Info className="w-3 h-3 text-slate-400" title={
@@ -118,14 +137,19 @@ function DayTile({ row }: { row: ReportRow }) {
 }
 
 // ── Employee card ─────────────────────────────────────────────────────────────
-function EmployeeCard({ summary, rows }: { summary: ReportSummary; rows: ReportRow[] }) {
-  // Sort rows by date
+function EmployeeCard({ summary, rows, thisYear }: { summary: ReportSummary; rows: ReportRow[]; thisYear: string }) {
   const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
 
   const rateColor = summary.onTimeRate === null ? 'text-slate-400'
     : summary.onTimeRate >= 90 ? 'text-green-600'
     : summary.onTimeRate >= 75 ? 'text-amber-600'
     : 'text-red-600';
+
+  // Average minutes late across late days
+  const lateRows = rows.filter(r => r.verdict.startsWith('late'));
+  const avgLate = lateRows.length > 0
+    ? Math.round(lateRows.reduce((s, r) => s + (r.minutesLate ?? 0), 0) / lateRows.length)
+    : null;
 
   return (
     <div className="bg-white border border-border rounded-xl shadow-sm p-4 mb-4">
@@ -146,6 +170,9 @@ function EmployeeCard({ summary, rows }: { summary: ReportSummary; rows: ReportR
               {summary.lateDays} late
             </span>
           )}
+          {avgLate !== null && (
+            <span className="text-amber-600">avg +{avgLate}m</span>
+          )}
           {summary.unexplainedAbsences > 0 && (
             <span className="text-red-600 font-medium">
               {summary.unexplainedAbsences} absent
@@ -158,8 +185,8 @@ function EmployeeCard({ summary, rows }: { summary: ReportSummary; rows: ReportR
       </div>
 
       {/* Tile grid */}
-      <div className="flex flex-wrap gap-1.5">
-        {sorted.map(r => <DayTile key={r.date + r.employeeId} row={r} />)}
+      <div className="flex flex-wrap gap-2">
+        {sorted.map(r => <DayTile key={r.date + r.employeeId} row={r} thisYear={thisYear} />)}
       </div>
     </div>
   );
@@ -167,7 +194,6 @@ function EmployeeCard({ summary, rows }: { summary: ReportSummary; rows: ReportR
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export function AttendanceReportStrips({ rows, perEmployee }: Props) {
-  // Group rows by employeeId
   const byEmp = useMemo(() => {
     const m = new Map<number, ReportRow[]>();
     for (const r of rows) {
@@ -178,7 +204,8 @@ export function AttendanceReportStrips({ rows, perEmployee }: Props) {
     return m;
   }, [rows]);
 
-  // Sort summaries by name
+  const thisYear = rows.length > 0 ? rows[0].date.slice(0, 4) : '';
+
   const sorted = [...perEmployee].sort((a, b) =>
     a.employeeName.localeCompare(b.employeeName),
   );
@@ -190,6 +217,7 @@ export function AttendanceReportStrips({ rows, perEmployee }: Props) {
           key={s.employeeId}
           summary={s}
           rows={byEmp.get(s.employeeId) ?? []}
+          thisYear={thisYear}
         />
       ))}
     </div>
