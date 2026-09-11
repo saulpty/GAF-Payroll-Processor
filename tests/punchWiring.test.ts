@@ -33,3 +33,21 @@ test('PW2: PayrollMaster saves through computePunchMinutes + updatePunchTimes, n
   assert.ok(/early_leave_minutes:\s*mins\.early_leave_minutes/.test(body), 'computeDerivedFields must receive the recomputed early_leave_minutes');
   assert.ok(!/late_minutes:\s*row\.late_minutes/.test(body), 'handleSave must not feed the stale row.late_minutes into the derived fields');
 });
+
+const AR = 'src/app/pages/ActionRequired.tsx';
+
+test('PW3: ActionRequired commits through computePunchMinutes + updatePunchTimes', () => {
+  const src = readFileSync(AR, 'utf8');
+  assert.ok(src.includes("from '@/app/lib/punchMinutes'"), 'ActionRequired must import computePunchMinutes');
+  assert.ok(src.includes("from '@/actions/updatePunchTimes'"), 'ActionRequired must import updatePunchTimes');
+  assert.ok(!src.includes('updateEntryExit'), 'ActionRequired must no longer reference updateEntryExit');
+  const start = src.indexOf('const saveRow');
+  const body = src.slice(start, src.indexOf('const handleBulkCommit', start));
+  assert.ok(body.includes('computePunchMinutes('), 'saveRow must recompute minutes');
+  assert.ok(/late_minutes:\s*mins\.late_minutes/.test(body), 'computeDerivedFields must receive the recomputed late_minutes');
+  assert.ok(!/late_minutes:\s*row\.late_minutes/.test(body), 'saveRow must not feed the stale row.late_minutes into the derived fields');
+});
+
+test('PW4: the old two-column updateEntryExit action is gone', () => {
+  assert.ok(!existsSync('src/actions/updateEntryExit.ts'), 'updateEntryExit.ts writes times without minutes; it must stay deleted');
+});
