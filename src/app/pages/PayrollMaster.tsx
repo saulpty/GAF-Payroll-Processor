@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import {
   Download, Loader2, ChevronUp, ChevronDown,
-  ChevronsUpDown, X, CheckCircle, Edit2, SquareCheck, Undo2, Trash2, AlertTriangle,
+  ChevronsUpDown, X, CheckCircle, Edit2, SquareCheck, Undo2, Trash2, AlertTriangle, RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import updatePunchTimesAction from '@/actions/updatePunchTimes';
 import softDeletePayrollEntryAction from '@/actions/softDeletePayrollEntry';
 import { computeDerivedFields, computeDiscount } from '@/app/lib/classificationEngine';
 import { computePunchMinutes } from '@/app/lib/punchMinutes';
+import { useRowEdits } from '@/app/lib/useRowEdits';
 
 type EntryRow = {
   id: number; period_name: string; employee_name: string; work_date: string;
@@ -78,6 +79,20 @@ function shortName(full: string): string {
   return `${parts[0]} ${parts[parts.length - 1]}`;
 }
 
+/** A row's loaded values in edit shape. Module level so useRowEdits sees a stable function. */
+function toEditState(row: EntryRow): EditState {
+  return {
+    entry_time: row.entry_time || '',
+    exit_time: row.exit_time || '',
+    event_type_1: row.event_type_1 || '',
+    pay_impact_1: row.pay_impact_1 || '',
+    event_type_2: row.event_type_2 || '',
+    pay_impact_2: row.pay_impact_2 || '',
+    documentation: row.documentation || '',
+    notes: row.notes || '',
+  };
+}
+
 export default function PayrollMaster() {
   const [searchParams] = useSearchParams();
   const [payImpacts] = useLoadAction(loadPayImpactsAction, [] as { name: string }[]);
@@ -97,7 +112,6 @@ export default function PayrollMaster() {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
 
-  const [edits, setEdits] = useState<Record<number, EditState>>({});
   const [savingId, setSavingId] = useState<number | null>(null);
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
   const [toastMsg, setToastMsg] = useState('');
@@ -123,11 +137,12 @@ export default function PayrollMaster() {
     const p = searchParams.get('period') || globalPeriod;
     setParams(prev => ({ ...prev, periodName: p || '', employeeName: globalEmployee || '', offset: 0 }));
     setPage(0);
-    setEdits({});
+    discardAll();
     setSavedIds(new Set());
   }, [globalPeriod, globalEmployee, searchParams]);
 
   const [rows, loading, , reload] = useLoadAction(loadPayrollMasterAction, [] as EntryRow[], params);
+  const { getEdit, update, isDirty, discard, discardAll, markSaved, dirtyCount } = useRowEdits<EntryRow, EditState>(toEditState, rows as EntryRow[]);
   const [countData] = useLoadAction(countPayrollMasterAction, [] as { total: number }[], {
     periodName: params.periodName, employeeName: params.employeeName, status: params.status,
   });
@@ -159,50 +174,27 @@ export default function PayrollMaster() {
     setParams(prev => ({ ...prev, offset: p * PAGE_SIZE }));
   };
 
-  const getEdit = (row: EntryRow): EditState =>
-    edits[row.id] ?? {
-      entry_time: row.entry_time || '',
-      exit_time: row.exit_time || '',
-      event_type_1: row.event_type_1 || '',
-      pay_impact_1: row.pay_impact_1 || '',
-      event_type_2: row.event_type_2 || '',
-      pay_impact_2: row.pay_impact_2 || '',
-      documentation: row.documentation || '',
-      notes: row.notes || '',
-    };
-
   const setEditField = (id: number, field: keyof EditState, value: string, row: EntryRow) => {
-    const current = { ...getEdit(row), ...edits[id] };
-    const updated = { ...current, [field]: value };
-    // Auto-fill pay impact from rules when event type changes
-    if (field === 'event_type_1' && value && rulesMap.has(value)) {
-      const rule = rulesMap.get(value)!;
-      if (!current.pay_impact_1 && rule.pay_impact) updated.pay_impact_1 = rule.pay_impact;
-      if (!current.documentation && rule.doc_option) updated.documentation = rule.doc_option;
-    }
-    if (field === 'event_type_2' && value && rulesMap.has(value)) {
-      const rule = rulesMap.get(value)!;
-      if (!current.pay_impact_2 && rule.pay_impact) updated.pay_impact_2 = rule.pay_impact;
-    }
-    setEdits(prev => ({ ...prev, [id]: updated }));
+    update(id, row, current => {
+      const updated = { ...current, [field]: value };
+      // Auto-fill pay impact from rules when event type changes
+      if (field === 'event_type_1' && value && rulesMap.has(value)) {
+        const rule = rulesMap.get(value)!;
+        if (!current.pay_impact_1 && rule.pay_impact) updated.pay_impact_1 = rule.pay_impact;
+        if (!current.documentation && rule.doc_option) updated.documentation = rule.doc_option;
+      }
+      if (field === 'event_type_2' && value && rulesMap.has(value)) {
+        const rule = rulesMap.get(value)!;
+        if (!current.pay_impact_2 && rule.pay_impact) updated.pay_impact_2 = rule.pay_impact;
+      }
+      return updated;
+    });
     setSavedIds(prev => { const s = new Set(prev); s.delete(id); return s; });
   };
 
-  const isDirty = (row: EntryRow) => !!edits[row.id];
-
   const handleSave = async (row: EntryRow) => {
+    if (!isDirty(row)) return;
     const edit = getEdit(row);
-    // Save entry/exit times separately if changed
-    const timesChanged = edit.entry_time !== (row.entry_time || '') || edit.exit_time !== (row.exit_time || '');
-    const fieldsDirty = isDirty(row) && (
-      edit.event_type_1 !== (row.event_type_1 || '') ||
-      edit.pay_impact_1 !== (row.pay_impact_1 || '') ||
-      edit.event_type_2 !== (row.event_type_2 || '') ||
-      edit.pay_impact_2 !== (row.pay_impact_2 || '') ||
-      edit.documentation !== (row.documentation || '') ||
-      edit.notes !== (row.notes || '') || timesChanged
-    );
-    if (!fieldsDirty) return;
 
     // Minutes are recomputed from the row's punches on every save, so a row
     // whose stored minutes are stale is corrected by any save.
@@ -252,7 +244,7 @@ export default function PayrollMaster() {
       setTimeout(() => setToastMsg(''), 3000);
     }
     await reload();
-    setEdits(prev => { const n = { ...prev }; delete n[row.id]; return n; });
+    markSaved(row.id);
   };
 
   const toggleSelect = useCallback((id: number) => {
@@ -491,6 +483,11 @@ export default function PayrollMaster() {
           </button>
         )}
         <div className="ml-auto flex items-center gap-2">
+          {dirtyCount > 0 && (
+            <Button variant="outline" size="sm" className="text-amber-700 border-amber-300 hover:bg-amber-50" onClick={discardAll}>
+              <RotateCcw className="w-3.5 h-3.5 mr-1.5" />{dirtyCount} unsaved · Discard all
+            </Button>
+          )}
           {undoSnapshot && (
             <Button variant="outline" size="sm" className="text-amber-700 border-amber-300 hover:bg-amber-50"
               disabled={bulkSaving} onClick={handleUndo}>
@@ -678,18 +675,28 @@ export default function PayrollMaster() {
                           </button>
                         ) : null}
                       </td>
-                      {/* Delete — sticky, always visible */}
+                      {/* Delete / Discard — sticky, always visible */}
                       <td className={`px-1 py-1.5 text-center border-r sticky left-[264px] z-10 ${rowBg}`}>
-                        <button
-                          title="Delete entry"
-                          disabled={deletingId === row.id}
-                          onClick={() => setDeleteConfirmRow(row)}
-                          className="p-1 rounded hover:bg-red-100 text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
-                        >
-                          {deletingId === row.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <Trash2 className="w-3.5 h-3.5" />}
-                        </button>
+                        {dirty ? (
+                          <button
+                            title="Discard unsaved changes"
+                            onClick={() => discard(row.id)}
+                            className="p-1 rounded hover:bg-amber-100 text-amber-600 hover:text-amber-800 transition-colors"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            title="Delete entry"
+                            disabled={deletingId === row.id}
+                            onClick={() => setDeleteConfirmRow(row)}
+                            className="p-1 rounded hover:bg-red-100 text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+                          >
+                            {deletingId === row.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0,10)}</td>
                       {params.periodName === '' && <td className="px-2 py-1.5 border-r whitespace-nowrap text-slate-600">{row.period_name}</td>}
@@ -726,7 +733,7 @@ export default function PayrollMaster() {
                           late_after_grace: live ? live.late_after_grace : row.late_after_grace,
                           early_leave_minutes: live ? live.early_leave_minutes : row.early_leave_minutes,
                         });
-                        const changed = liveDiscount !== row.discount_total_minutes && edits[row.id] !== undefined;
+                        const changed = liveDiscount !== row.discount_total_minutes && dirty;
                         return (
                           <td className="px-3 py-2 text-center border-r font-semibold">
                             {liveDiscount > 0
