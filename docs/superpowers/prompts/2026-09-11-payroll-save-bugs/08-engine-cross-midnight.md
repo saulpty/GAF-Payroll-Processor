@@ -1,7 +1,5 @@
 # 08 — Engine: a session that crosses midnight is not an early leave
 
-**NOT SENT.** This touches `classificationEngine.ts`, which is untouchable
-without Saul's explicit go. Rename to drop `.NOT-SENT` when sending.
 
 ## Files that may change
 
