@@ -109,16 +109,21 @@ export function computeEmployeeStats(
 }
 
 export type CompanyKpis = {
-  daysTracked: number;
+  daysTracked: number;     // expected days = on time + late + absent (rate denominator)
   onTime: number;
   lateReported: number;
   lateUnreported: number;
-  excused: number;
+  lateDays: number;        // lateReported + lateUnreported
+  excused: number;         // "Time off"
   permission: number;
   absent: number;
+  reported: number;        // late or absent days with a form
+  unreported: number;      // late or absent days without a form
   totalRows: number;
-  avgMinLate: number;
+  workDays: number;        // every scheduled shift day, incl. time off and permission
+  avgMinLate: number;      // over late days only
   onTimeRate: number;
+  lateRate: number;
 };
 
 export function computeCompanyKpis(rows: AttendanceRow[]): CompanyKpis {
@@ -130,12 +135,22 @@ export function computeCompanyKpis(rows: AttendanceRow[]): CompanyKpis {
   const excused       = rows.filter(r => r.status === 'Excused (PTO/FH/Perm)').length;
   const permission    = rows.filter(r => r.status === 'Permission').length;
   const absent        = active.filter(r => isAbsent(r.status)).length;
-  const sumMin        = arrived.reduce((s, r) => s + r.minutes_late, 0);
+  const lateRows      = arrived.filter(r => r.status === 'Late - Reported' || r.status === 'Late - Unreported');
+  const sumLate       = lateRows.reduce((s, r) => s + r.minutes_late, 0);
+  const lateDays      = lateReported + lateUnreported;
   const daysTracked   = active.length;   // expected (includes absent)
   const totalRows     = rows.length;
-  const avgMinLate    = arrived.length > 0 ? sumMin / arrived.length : 0;
+  const workDays      = totalRows;
+  // List only knows unexplained absences, so every absence here is unreported
+  const reported      = lateReported;
+  const unreported    = lateUnreported + absent;
+  const avgMinLate    = lateRows.length > 0 ? sumLate / lateRows.length : 0;
   const onTimeRate    = daysTracked > 0 ? (onTime / daysTracked) * 100 : 0;
-  return { daysTracked, onTime, lateReported, lateUnreported, excused, permission, absent, totalRows, avgMinLate, onTimeRate };
+  const lateRate      = daysTracked > 0 ? (lateDays / daysTracked) * 100 : 0;
+  return {
+    daysTracked, onTime, lateReported, lateUnreported, lateDays, excused, permission, absent,
+    reported, unreported, totalRows, workDays, avgMinLate, onTimeRate, lateRate,
+  };
 }
 
 // ── Arrival scatter (day-by-day) ──────────────────────────────────────────

@@ -17,6 +17,8 @@ import loadHolidaysAction                from '@/actions/loadHolidays';
 import loadPeriodsAction                 from '@/actions/loadPeriods';
 import loadDstCalendarAction             from '@/actions/loadDstCalendar';
 
+import { reportRowsToKpis } from '@/app/lib/reportKpis';
+import { AttendanceKpis } from './AttendanceKpis';
 import { AttendanceReportStrips } from './AttendanceReportStrips';
 import { AttendanceReportTable }  from './AttendanceReportTable';
 
@@ -99,24 +101,7 @@ export default function AttendanceReport() {
       safeFrom, safeTo, manager, role, globalEmployee]);
 
   // ── Summary strip KPIs ─────────────────────────────────────────────────────
-  const kpis = useMemo(() => {
-    const scored       = rows.filter(r => r.countsToScore);
-    const onTime       = scored.filter(r => r.verdict === 'on_time').length;
-    const late         = scored.filter(r => r.verdict.startsWith('late')).length;
-    // absent = all three absence verdicts; unexplained = the subset needing attention
-    const absent       = scored.filter(r =>
-      r.verdict === 'unexplained_absence' ||
-      r.verdict === 'absent_reported_on_time' ||
-      r.verdict === 'absent_reported_late',
-    ).length;
-    const unexplained  = scored.filter(r => r.verdict === 'unexplained_absence').length;
-    const pct          = scored.length > 0 ? Math.round((onTime / scored.length) * 100) : null;
-    const lateRows     = scored.filter(r => r.verdict.startsWith('late'));
-    const avgLate      = lateRows.length > 0
-      ? Math.round(lateRows.reduce((s, r) => s + (r.minutesLate ?? 0), 0) / lateRows.length)
-      : null;
-    return { total: scored.length, onTime, late, absent, unexplained, pct, avgLate };
-  }, [rows]);
+  const kpis = useMemo(() => reportRowsToKpis(rows), [rows]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -141,35 +126,11 @@ export default function AttendanceReport() {
 
         {!loading && !anyError && (
           <>
-            {/* KPI bar */}
-            <div className="flex flex-wrap items-center gap-4 mb-4 bg-white border border-border rounded-xl px-5 py-3 shadow-sm">
-              <KpiChip
-                label="Scheduled days"
-                value={String(kpis.total)}
-                color="slate"
-                tooltip="Days someone was expected to work in this range. Time off, permissions and holidays are excluded."
-              />
-              <KpiChip label="On-time"     value={String(kpis.onTime)}      color="green" />
-              <KpiChip label="Late"        value={String(kpis.late)}        color="amber" />
-              <KpiChip label="Absent"      value={String(kpis.absent)}      color="slate" />
-              <KpiChip label="Unexplained" value={String(kpis.unexplained)} color="red"   />
-              {kpis.avgLate !== null && (
-                <KpiChip label="Avg min late" value={String(kpis.avgLate)} color="amber"
-                  tooltip="Average minutes late across the late days above (reported or not). Absences are not included." />
-              )}
-              {kpis.pct !== null ? (
-                <span className={[
-                  'ml-auto text-lg font-bold tabular-nums',
-                  kpis.pct >= 90 ? 'text-green-600' : kpis.pct >= 75 ? 'text-amber-600' : 'text-red-600',
-                ].join(' ')}>
-                  {kpis.pct}% on-time
-                </span>
-              ) : (
-                <span className="ml-auto text-sm text-muted-foreground">No scored days</span>
-              )}
+            <AttendanceKpis kpis={kpis} />
 
-              {/* View toggle */}
-              <div className="flex rounded-lg border border-border overflow-hidden shadow-sm ml-2">
+            {/* View toggle */}
+            <div className="flex justify-end mb-3">
+              <div className="flex rounded-lg border border-border overflow-hidden shadow-sm">
                 <button
                   onClick={() => setView('strips')}
                   className={['flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors',
@@ -220,25 +181,4 @@ export default function AttendanceReport() {
   );
 }
 
-function KpiChip({ label, value, color, tooltip }: { label: string; value: string; color: string; tooltip?: string }) {
-  const colors: Record<string, string> = {
-    slate: 'text-slate-700 bg-slate-100',
-    green: 'text-green-700 bg-green-50',
-    amber: 'text-amber-700 bg-amber-50',
-    red:   'text-red-700 bg-red-50',
-  };
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`text-base font-bold tabular-nums px-2 py-0.5 rounded-md ${colors[color] ?? colors.slate}`}>
-        {value}
-      </span>
-      <span
-        className="text-xs text-muted-foreground cursor-default"
-        title={tooltip}
-        tabIndex={tooltip ? 0 : undefined}
-      >
-        {label}{tooltip && <span className="ml-0.5 opacity-50">ⓘ</span>}
-      </span>
-    </div>
-  );
-}
+
