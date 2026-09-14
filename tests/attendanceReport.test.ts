@@ -617,3 +617,64 @@ test('R54: a one-day request whose return_date equals start_date still covers th
   });
   assert.equal(row.verdict, 'pto');
 });
+
+// ── payroll's label wins for time off and permission (Saul, 2026-09-14) ────
+// The List tab reads payroll's event_type_1. Reports now does too, so the two
+// tabs agree; Monday requests are only the fallback, and a day payroll excused
+// with no Monday request behind it carries a quiet flag.
+
+test('R55: payroll PTO with no Monday request is pto, and flagged', () => {
+  const row = only({ payrollRows: [pay({ entry_time: null, exit_time: null, event_type_1: 'PTO' })] });
+  assert.equal(row.verdict, 'pto');
+  assert.equal(row.countsToScore, false);
+  assert.equal(row.coveredBy?.label, 'PTO');
+  assert.equal(row.flags.excusedInPayrollNoRequest, true);
+});
+
+test('R56: payroll permission with a matching Monday request is permission, not flagged', () => {
+  const row = only({
+    dateFrom: '2026-06-08', dateTo: '2026-06-08',
+    payrollRows: [pay({ work_date: '2026-06-08', entry_time: null, exit_time: null, event_type_1: 'Permiso Remunerado' })],
+    requests: [req({ request_type: 'Time Off / Permission' })],
+  });
+  assert.equal(row.verdict, 'permission');
+  assert.equal(row.countsToScore, false);
+  assert.equal(row.flags.excusedInPayrollNoRequest, false);
+});
+
+test('R57: payroll wins over a Monday request that says something else', () => {
+  const row = only({
+    dateFrom: '2026-06-08', dateTo: '2026-06-08',
+    payrollRows: [pay({ work_date: '2026-06-08', entry_time: null, exit_time: null, event_type_1: 'Permission' })],
+    requests: [req()],
+  });
+  assert.equal(row.verdict, 'permission');
+  assert.equal(row.coveredBy?.label, 'Permission');
+});
+
+test('R58: Ausencia Justificada. is time off, as on List, and the form still shows', () => {
+  const row = only({
+    payrollRows: [pay({ entry_time: null, exit_time: null, event_type_1: 'Ausencia Justificada.' })],
+    forms: [form({ form_type: 'Absence', submitted_at: '2026-06-01 07:05' })],
+  });
+  assert.equal(row.verdict, 'pto');
+  assert.equal(row.countsToScore, false);
+  assert.equal(row.form?.type, 'Absence');
+});
+
+test('R59: Ausencia Injustificada with a form on file is still a reported absence', () => {
+  const row = only({
+    payrollRows: [pay({ entry_time: null, exit_time: null, event_type_1: 'Ausencia Injustificada' })],
+    forms: [form({ form_type: 'Absence', submitted_at: '2026-06-01 07:05' })],
+  });
+  assert.equal(row.verdict, 'absent_reported_on_time');
+  assert.equal(row.flags.recordedUnexplainedButFormOnFile, true);
+  assert.equal(row.flags.excusedInPayrollNoRequest, false);
+});
+
+test('R60: payroll Feriado is a holiday and is never flagged', () => {
+  const row = only({ payrollRows: [pay({ entry_time: null, exit_time: null, event_type_1: 'Feriado' })] });
+  assert.equal(row.verdict, 'holiday');
+  assert.equal(row.countsToScore, false);
+  assert.equal(row.flags.excusedInPayrollNoRequest, false);
+});
