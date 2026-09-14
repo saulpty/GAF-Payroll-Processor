@@ -3,6 +3,7 @@ import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useLoadAction } from '@uibakery/data';
 import { X, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useEffect, useRef } from 'react';
+import { fmtDate } from '@/app/lib/fmtDate';
 import EmployeeSearchInput from '@/app/components/EmployeeSearchInput';
 import PeriodMultiSelect from '@/app/components/PeriodMultiSelect';
 import loadPeriodsAction from '@/actions/loadPeriods';
@@ -155,6 +156,11 @@ export default function FilterBar() {
             selected={attendancePeriods}
             onChange={names => setAttendancePeriods(names, names.length ? rangeOf(names) : null)}
           />
+          {attendancePeriods.length > 0 && dateFrom && dateTo && (
+            <span className="text-[12px] text-slate-500 tabular-nums whitespace-nowrap">
+              {fmtDate(dateFrom)} → {fmtDate(dateTo)}
+            </span>
+          )}
           {(cfg.employee || cfg.role || cfg.manager) && divider}
         </>
       )}
