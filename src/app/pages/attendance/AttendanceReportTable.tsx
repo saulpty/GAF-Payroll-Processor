@@ -194,6 +194,10 @@ export function AttendanceReportTable({ rows }: Props) {
                       <Info className="w-3 h-3 inline ml-1 text-slate-400"
                         title="Form submitted under a different email" />
                     )}
+                    {r.flags.excusedInPayrollNoRequest && (
+                      <Info className="w-3 h-3 inline ml-1 text-slate-400"
+                        title="Excused in payroll — no Monday request found" />
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground max-w-[180px] truncate">
                     {r.form

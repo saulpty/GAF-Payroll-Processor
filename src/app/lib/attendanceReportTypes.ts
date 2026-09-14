@@ -67,6 +67,8 @@ export type ReportRow = {
     multipleForms: boolean;
     recordedUnexplainedButFormOnFile: boolean;
     formEmailUnrecognised: boolean;
+    /** payroll labelled the day time off / permission, but no Monday request covers it */
+    excusedInPayrollNoRequest: boolean;
   };
 };
 

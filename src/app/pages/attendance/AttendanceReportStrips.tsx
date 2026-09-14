@@ -118,12 +118,14 @@ function DayTile({ row, thisYear }: { row: ReportRow; thisYear: string }) {
       </div>
 
       {/* Subtle flags — top-right / bottom-right */}
-      {(row.flags.recordedUnexplainedButFormOnFile || row.flags.formEmailUnrecognised) && (
+      {(row.flags.recordedUnexplainedButFormOnFile || row.flags.formEmailUnrecognised || row.flags.excusedInPayrollNoRequest) && (
         <span className="absolute top-1 right-1">
           <Info className="w-3 h-3 text-slate-400" title={
             row.flags.recordedUnexplainedButFormOnFile
               ? 'Recorded as an unjustified absence even though a form was filed.'
-              : 'Form submitted by a different email'
+              : row.flags.formEmailUnrecognised
+                ? 'Form submitted by a different email'
+                : 'Excused in payroll — no Monday request found'
           } />
         </span>
       )}

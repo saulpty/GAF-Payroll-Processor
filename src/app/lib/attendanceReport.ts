@@ -60,6 +60,15 @@ const PTO_REQUEST_TYPES = new Set([
   'compensatory day',
 ]);
 
+// payroll_entries.event_type_1 labels — the same lists v_attendance_daily uses.
+// 'Ausencia Justificada.' carries a trailing period in the data.
+export const PAYROLL_TIME_OFF_EVENTS: string[] = [
+  'PTO', 'Feriado', 'Compensatory Day', 'Birthday Day Off', 'Ausencia Justificada.',
+];
+export const PAYROLL_PERMISSION_EVENTS: string[] = [
+  'Permiso Remunerado', 'Permiso No remunerado', 'Permission', 'Time Off',
+];
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -298,49 +307,57 @@ export function buildAttendanceReport(input: ReportInput): ReportOutput {
       let verdict: Verdict;
       let coveredBy: ReportRow['coveredBy'] = null;
 
-      // Check holiday
+      // Payroll's own time-off / permission label wins, so Reports matches the
+      // List tab (decided 2026-09-14). Monday requests are the fallback.
+      const payrollEvent = (payrollRow?.event_type_1 ?? '').trim();
+      const payrollTimeOff = PAYROLL_TIME_OFF_EVENTS.includes(payrollEvent);
+      const payrollPermission = PAYROLL_PERMISSION_EVENTS.includes(payrollEvent);
+
+      // Away requests — normalise to lowercase+trim so the matcher
+      // agrees with classificationEngine.ts which also lowercases.
+      const awayRequest = empRequests.find(r => {
+        const rt = (r.request_type ?? '').trim().toLowerCase();
+        if (PASSTHROUGH_REQUEST_TYPES.has(rt)) return false;
+        if (!AWAY_REQUEST_TYPES.includes(rt)) return false;
+        return requestCoversDate(r, date);
+      });
+
       const holidayName = holidayMap.get(date);
       if (holidayName) {
         verdict = 'holiday';
         coveredBy = { kind: 'holiday', label: holidayName };
-      } else {
-        // Check away requests — normalise to lowercase+trim so the matcher
-        // agrees with classificationEngine.ts which also lowercases.
-        const awayRequest = empRequests.find(r => {
-          const rt = (r.request_type ?? '').trim().toLowerCase();
-          if (PASSTHROUGH_REQUEST_TYPES.has(rt)) return false;
-          if (!AWAY_REQUEST_TYPES.includes(rt)) return false;
-          return requestCoversDate(r, date);
-        });
-
-        if (awayRequest) {
-          const rt = (awayRequest.request_type ?? '').trim().toLowerCase();
-          verdict = PTO_REQUEST_TYPES.has(rt) ? 'pto' : 'permission';
-          coveredBy = { kind: verdict as 'pto' | 'permission', label: awayRequest.request_type };
-        } else if (!hasAnyPayroll || !dateInProcessedPeriod(date, periods)) {
-          verdict = 'not_processed';
-        } else if (payrollRow && payrollRow.entry_time != null) {
-          // Has punches
-          if (payrollRow.late_minutes > 0) {
-            if (!form) verdict = 'late_no_form';
-            else if (form.onTime) verdict = 'late_reported_on_time';
-            else verdict = 'late_reported_late';
-          } else {
-            verdict = 'on_time';
-          }
+      } else if (payrollTimeOff || payrollPermission) {
+        verdict = payrollPermission ? 'permission' : payrollEvent === 'Feriado' ? 'holiday' : 'pto';
+        coveredBy = { kind: verdict as 'pto' | 'permission' | 'holiday', label: payrollEvent };
+      } else if (awayRequest) {
+        const rt = (awayRequest.request_type ?? '').trim().toLowerCase();
+        verdict = PTO_REQUEST_TYPES.has(rt) ? 'pto' : 'permission';
+        coveredBy = { kind: verdict as 'pto' | 'permission', label: awayRequest.request_type };
+      } else if (!hasAnyPayroll || !dateInProcessedPeriod(date, periods)) {
+        verdict = 'not_processed';
+      } else if (payrollRow && payrollRow.entry_time != null) {
+        // Has punches
+        if (payrollRow.late_minutes > 0) {
+          if (!form) verdict = 'late_no_form';
+          else if (form.onTime) verdict = 'late_reported_on_time';
+          else verdict = 'late_reported_late';
         } else {
-          // No punches
-          if (form) {
-            verdict = form.onTime ? 'absent_reported_on_time' : 'absent_reported_late';
-          } else {
-            verdict = 'unexplained_absence';
-          }
+          verdict = 'on_time';
+        }
+      } else {
+        // No punches
+        if (form) {
+          verdict = form.onTime ? 'absent_reported_on_time' : 'absent_reported_late';
+        } else {
+          verdict = 'unexplained_absence';
         }
       }
 
       const countsToScore = SCORED_VERDICTS.includes(verdict);
 
       // Flags
+      const excusedInPayrollNoRequest =
+        !holidayName && payrollEvent !== 'Feriado' && (payrollTimeOff || payrollPermission) && !awayRequest;
       const multipleForms = allForms.length > 1;
       const recordedUnexplainedButFormOnFile =
         (payrollRow?.event_type_1 === 'Ausencia Injustificada') && form !== null;
@@ -377,7 +394,7 @@ export function buildAttendanceReport(input: ReportInput): ReportOutput {
         coveredBy,
         verdict,
         countsToScore,
-        flags: { multipleForms, recordedUnexplainedButFormOnFile, formEmailUnrecognised },
+        flags: { multipleForms, recordedUnexplainedButFormOnFile, formEmailUnrecognised, excusedInPayrollNoRequest },
       });
     }
 
