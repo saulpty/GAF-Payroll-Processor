@@ -5,9 +5,11 @@ import DataTable, { Col } from '@/app/components/DataTable';
 import EmptyState from '@/app/components/EmptyState';
 import DisciplinaryRow, { DisciplinaryRowData, DISCIPLINARY_COL_COUNT } from './DisciplinaryRow';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { useViewer } from '@/app/context/ViewerContext';
 import loadDisciplinaryActionsAction from '@/actions/loadDisciplinaryActions';
 import loadAllEmployeesAction from '@/actions/loadAllEmployees';
 import loadNameAliasesAction from '@/actions/loadNameAliases';
+import loadVisibleEmployeeIdsAction from '@/actions/loadVisibleEmployeeIds';
 import {
   groupByEmployee,
   sortEmployeeCases,
@@ -61,6 +63,7 @@ interface Props {
 
 export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, onCountsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
+  const { viewAs, allEmployees } = useViewer();
 
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
@@ -76,6 +79,15 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
 
   const [empsRaw] = useLoadAction(loadAllEmployeesAction, []);
   const [aliasesRaw] = useLoadAction(loadNameAliasesAction, []);
+  const [visibleRaw, loadingVisible] = useLoadAction(
+    loadVisibleEmployeeIdsAction,
+    [] as { employee_id: number | string }[],
+    { viewAs },
+  );
+  const visibleIds = useMemo(
+    () => new Set((visibleRaw as { employee_id: number | string }[]).map(r => String(r.employee_id))),
+    [visibleRaw],
+  );
 
   // ── Sort handler ─────────────────────────────────────────────────────────
 
@@ -157,6 +169,10 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
   const filtered = useMemo((): DisciplinaryRowData[] => {
     let rows = derived;
 
+    if (!allEmployees) {
+      rows = rows.filter(r => r.employeeId !== null && visibleIds.has(String(r.employeeId)));
+    }
+
     if (employee) {
       const q = employee.toLowerCase();
       rows = rows.filter(r => r.displayName.toLowerCase().includes(q));
@@ -179,7 +195,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
     // 'all' keeps everything
 
     return rows;
-  }, [derived, employee, role, statusFilter]);
+  }, [derived, employee, role, statusFilter, allEmployees, visibleIds]);
 
   // ── Stage 3: Sort ─────────────────────────────────────────────────────────
 
@@ -206,7 +222,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (loading) {
+  if (loading || (!allEmployees && loadingVisible)) {
     return (
       <div className="flex items-center justify-center py-16 text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin mr-2" />
