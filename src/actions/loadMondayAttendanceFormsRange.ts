@@ -20,10 +20,10 @@ export function loadMondayAttendanceFormsRange() {
         AND f.form_date <= {{params.dateTo}}::date
         AND (COALESCE({{params.manager}}, '') = '' OR e.manager = {{params.manager}})
         AND (f.employee_id IN (SELECT a.employee_id FROM public.v_employee_access a
-                                WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text))
+                                WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
              OR (f.employee_id IS NULL AND EXISTS (
                    SELECT 1 FROM public.app_users u
-                    WHERE u.email = access_viewer({{ user.email }}, {{params.viewAs}}::text)
+                    WHERE u.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text)
                       AND u.role = 'super_user' AND u.active)))
       ORDER BY f.form_date, f.monday_item_id
     `,

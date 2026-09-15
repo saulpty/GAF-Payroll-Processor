@@ -18,7 +18,7 @@ export function loadMondayRequestsRange() {
         AND COALESCE(r.return_date, r.end_date, r.start_date) >= {{params.dateFrom}}::date
         AND (COALESCE({{params.manager}}, '') = '' OR e.manager = {{params.manager}})
         AND r.employee_id IN (SELECT a.employee_id FROM public.v_employee_access a
-                               WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text))
+                               WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
       ORDER BY r.start_date
     `,
   });

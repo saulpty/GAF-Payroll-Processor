@@ -16,7 +16,7 @@ function loadContractsExpiringCount() {
       ) c ON true
       WHERE e.active = true
         AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a
-                      WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text))
+                      WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
         AND c.contract_end_date >= CURRENT_DATE
         AND c.contract_end_date < CURRENT_DATE + 30;
     `,

@@ -6,7 +6,7 @@ function loadVisibleEmployeeIds() {
     query: `
       SELECT a.employee_id
         FROM v_employee_access a
-       WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text)
+       WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text)
        ORDER BY a.employee_id;
     `,
   });

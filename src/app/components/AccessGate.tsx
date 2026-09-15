@@ -4,7 +4,7 @@ import { useViewer } from '@/app/context/ViewerContext';
 import type { ReactNode } from 'react';
 
 export default function AccessGate({ children }: { children: ReactNode }) {
-  const { status, realEmail, viewAs, isViewingAs, setViewAs, reload } = useViewer();
+  const { status, realEmail, viewAs, isViewingAs, setViewAs } = useViewer();
 
   if (status === 'ready') return <>{children}</>;
 
@@ -22,7 +22,7 @@ export default function AccessGate({ children }: { children: ReactNode }) {
           <>
             <ShieldX className="w-8 h-8 text-red-400" />
             <p className="text-slate-700 text-sm">Couldn't check your access.</p>
-            <Button variant="outline" size="sm" onClick={reload}>Retry</Button>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
           </>
         )}
 

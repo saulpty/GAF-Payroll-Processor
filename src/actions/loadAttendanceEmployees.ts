@@ -23,7 +23,7 @@ export function loadAttendanceEmployees() {
       WHERE e.active = true
         AND COALESCE(e.excluded_from_payroll, false) = false
         AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a
-                      WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text))
+                      WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
       ORDER BY e.display_name
     `,
   });

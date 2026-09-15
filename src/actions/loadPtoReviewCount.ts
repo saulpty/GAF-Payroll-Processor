@@ -21,7 +21,7 @@ function loadPtoReviewCount() {
         )
         AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
         AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a
-                      WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text))
+                      WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
     `,
   });
 }

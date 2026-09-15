@@ -43,6 +43,7 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
       else window.sessionStorage.removeItem(VIEW_AS_KEY);
     } catch { /* storage unavailable */ }
     setViewAsState(v);
+    window.location.reload();
   }, []);
 
   const value = useMemo<Viewer>(() => {
