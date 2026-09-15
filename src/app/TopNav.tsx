@@ -6,7 +6,7 @@ import {
   Users, Clock, CalendarDays, Globe2,
   SlidersHorizontal, FileSpreadsheet,
   Palmtree, FileSignature, ShieldAlert, FileText,
-  Eye, X,
+  Eye, X, KeyRound,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLoadAction } from '@uibakery/data';
@@ -119,6 +119,7 @@ const SECTIONS = [
     paths: ['/admin'],
     links: [
       { to: '/admin/employees',      label: 'Employees',           icon: Users },
+      { to: '/admin/access',         label: 'Access',              icon: KeyRound },
       { to: '/admin/schedules',      label: 'Schedules',           icon: Clock },
       { to: '/admin/holidays',       label: 'Holidays',            icon: CalendarDays },
       { to: '/admin/dst-calendar',   label: 'DST Calendar',        icon: Globe2 },

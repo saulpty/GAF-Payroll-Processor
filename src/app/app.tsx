@@ -18,6 +18,7 @@ import AdminHolidays from '@/app/pages/admin/AdminHolidays';
 import AdminDstCalendar from '@/app/pages/admin/AdminDstCalendar';
 import AdminLookups from '@/app/pages/admin/AdminLookups';
 import AdminEmployeesHub from '@/app/pages/admin/AdminEmployeesHub';
+import AdminAccessHub from '@/app/pages/admin/AdminAccessHub';
 import PeriodLog from '@/app/pages/PeriodLog';
 import Attendance from '@/app/pages/Attendance';
 import HrkSummary from '@/app/pages/HrkSummary';
@@ -44,6 +45,7 @@ function App() {
                   <Route path="/admin" element={<RequireSuper><AdminLayout /></RequireSuper>}>
                     <Route index element={<Navigate to="/admin/employees" replace />} />
                     <Route path="employees" element={<AdminEmployeesHub />} />
+                    <Route path="access" element={<AdminAccessHub />} />
                     <Route path="aliases" element={<Navigate to="/admin/employees?tab=aliases" replace />} />
                     <Route path="directory-sync" element={<Navigate to="/admin/employees?tab=monday" replace />} />
                     <Route path="schedules" element={<AdminSchedules />} />
