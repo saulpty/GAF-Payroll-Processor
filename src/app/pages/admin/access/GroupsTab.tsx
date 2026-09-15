@@ -15,6 +15,7 @@ import upsertAccessGroupManagerAction from '@/actions/upsertAccessGroupManager';
 import deleteAccessGroupManagerAction from '@/actions/deleteAccessGroupManager';
 import GroupCard from '@/app/pages/admin/access/GroupCard';
 import type { GroupRow, MemberRow, ManagerOption, EmployeeOption } from '@/app/pages/admin/access/GroupCard';
+import BuildFromMonday from '@/app/pages/admin/access/BuildFromMonday';
 
 type UnassignedRow = { employee_id: number | string; display_name: string; teramind_email: string; monday_manager: string };
 type UserRow = { id: number | string; display_name: string; email: string; role: string; all_employees: boolean; active: boolean };
@@ -134,6 +135,9 @@ export default function GroupsTab() {
           {normalisedGroups.length} groups · {assignedCount} employees in groups · {unassList.length} not in any group
         </span>
         {!addingGroup && (
+          <BuildFromMonday onDone={reloadAll} />
+        )}
+        {!addingGroup && (
           <Button size="sm" onClick={() => { setAddingGroup(true); setAddGroupErr(''); setNewGroupName(''); }}>
             <Plus className="w-4 h-4 mr-1.5" />Add group
           </Button>
@@ -199,7 +203,7 @@ export default function GroupsTab() {
         filtered.length === 0 ? (
           <p className="text-sm text-slate-500 py-6">
             {normalisedGroups.length === 0
-              ? 'No groups yet. Add one, or build them from Monday (coming next).'
+              ? 'No groups yet. Click Build from Monday, or add one by hand.'
               : 'No groups match your search.'}
           </p>
         ) : (
