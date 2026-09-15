@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/app/components/EmptyState';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { useViewer } from '@/app/context/ViewerContext';
 import type { PtoRowData } from './PtoRow';
 import type { DialogMode, PendingRequest, LedgerRow } from './RecordApprovalDialog';
 import PtoSubRow, { type SubItem } from './PtoSubRow';
@@ -44,10 +45,11 @@ const HEADERS = ['Type', 'Requested', 'What payroll says', 'Evidence', 'Status',
 
 export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, onChanged, refreshToken }: Props) {
   const { bumpPtoVersion } = useGlobalFilters();
+  const { viewAs } = useViewer();
   const [rawDetail, loading, error, reload] = useLoadAction(
     loadPtoEmployeeDetailAction,
     null,
-    { employee_id: row.employee_id, year, manager: null, daysFrom: `${Number(year) - 1}-12-01` },
+    { employee_id: row.employee_id, year, manager: null, daysFrom: `${Number(year) - 1}-12-01`, viewAs },
   );
 
   const refreshRef = useRef(refreshToken);

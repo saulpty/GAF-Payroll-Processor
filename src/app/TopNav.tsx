@@ -144,17 +144,17 @@ export default function TopNav() {
   const location  = useLocation();
   const navigate  = useNavigate();
   const { ptoVersion } = useGlobalFilters();
-  const { isSuper, isViewingAs, name, email, setViewAs } = useViewer();
+  const { isSuper, isViewingAs, name, email, setViewAs, viewAs } = useViewer();
   const visibleSections = SECTIONS.filter(s => canSeeSection(isSuper, s.id));
 
   const [unresolvedData]  = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
   const unresolvedCount   = (unresolvedData as { count: number }[])[0]?.count ?? 0;
-  const [expiringData]    = useLoadAction(loadContractsExpiringCountAction, [] as { count: number }[]);
+  const [expiringData]    = useLoadAction(loadContractsExpiringCountAction, [] as { count: number }[], { viewAs });
   const expiringCount     = (expiringData as { count: number }[])[0]?.count ?? 0;
   const asOf              = toLocalYMD(new Date());
   const [dueData]         = useLoadAction(loadDisciplinaryDueCountAction, [] as { count: number }[], { asOf });
   const dueCount          = (dueData as { count: number }[])[0]?.count ?? 0;
-  const [reviewData, , , reloadReview] = useLoadAction(loadPtoReviewCountAction, [] as { count: number }[], { today: asOf, manager: null });
+  const [reviewData, , , reloadReview] = useLoadAction(loadPtoReviewCountAction, [] as { count: number }[], { today: asOf, manager: null, viewAs });
   const reviewCount       = (reviewData as { count: number }[])[0]?.count ?? 0;
 
   // Reload PTO review count whenever a PTO record is written anywhere in the app
@@ -167,7 +167,7 @@ export default function TopNav() {
   }, [ptoVersion, reloadReview]);
 
   function sectionBadge(id: string): { count: number; label: string } | null {
-    if (!isSuper) return null;
+    if (!isSuper && id === 'disciplinary') return null;
     if (id === 'contracts' && expiringCount > 0) {
       return {
         count: expiringCount,

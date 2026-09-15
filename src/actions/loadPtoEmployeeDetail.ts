@@ -16,6 +16,8 @@ function loadPtoEmployeeDetail() {
           LEFT JOIN employees e ON e.id = r.employee_id
           LEFT JOIN pto_approvals a ON a.monday_item_id = r.monday_item_id
           WHERE r.employee_id = {{params.employee_id}}::bigint
+            AND {{params.employee_id}}::bigint IN (SELECT a.employee_id FROM public.v_employee_access a
+                                                    WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text))
             AND r.request_type IN ('PTO / Vacation','Floating Holiday') AND r.deleted_on_monday = false AND a.id IS NULL
         ), '[]'::json) AS pending,
         COALESCE((
@@ -29,6 +31,8 @@ function loadPtoEmployeeDetail() {
           ) ORDER BY a.leave_on DESC, a.id DESC)
           FROM pto_approvals a LEFT JOIN employees e ON e.id = a.employee_id
           WHERE a.employee_id = {{params.employee_id}}::bigint
+            AND {{params.employee_id}}::bigint IN (SELECT a.employee_id FROM public.v_employee_access a
+                                                    WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text))
         ), '[]'::json) AS ledger,
         (
           SELECT json_build_object(
@@ -39,6 +43,8 @@ function loadPtoEmployeeDetail() {
           LEFT JOIN pto_employees pe ON pe.employee_id = e.id
           LEFT JOIN pto_floating_holidays fh ON fh.employee_id = e.id AND fh.calendar_year::text = {{params.year}}::text
           WHERE e.id = {{params.employee_id}}::bigint
+            AND {{params.employee_id}}::bigint IN (SELECT a.employee_id FROM public.v_employee_access a
+                                                    WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text))
             AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
         ) AS fh
         , COALESCE((
@@ -51,6 +57,8 @@ function loadPtoEmployeeDetail() {
           ) ORDER BY LEFT(pr.work_date, 10))
           FROM payroll_entries pr
           WHERE pr.employee_id = {{params.employee_id}}::bigint
+            AND {{params.employee_id}}::bigint IN (SELECT a.employee_id FROM public.v_employee_access a
+                                                    WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text))
             AND pr.deleted_at IS NULL
             AND LEFT(pr.work_date, 10) >= {{params.daysFrom}}
         ), '[]'::json) AS days

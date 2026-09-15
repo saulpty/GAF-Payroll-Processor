@@ -7,6 +7,7 @@ import PtoRow, { PtoRowData } from './PtoRow';
 import PtoBreakdown from './PtoBreakdown';
 import type { DialogMode } from './RecordApprovalDialog';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { useViewer } from '@/app/context/ViewerContext';
 import loadPtoBalancesInputsAction from '@/actions/loadPtoBalancesInputs';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import { accruedPto, fhEligibleDate, fhRemaining } from '@/app/lib/ptoAccrual';
@@ -57,12 +58,13 @@ const COLUMNS: Col<PtoRowData>[] = [
 
 export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRowsChange, onCountsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
+  const { viewAs } = useViewer();
 
   const year = asOf.slice(0, 4);
   const [rawRows, loading, error, reload] = useLoadAction(
     loadPtoBalancesInputsAction,
     [] as RawRow[],
-    { year, manager: manager || null, today },
+    { year, manager: manager || null, today, viewAs },
   );
 
   const [periods] = useLoadAction(loadPeriodsAction, [] as PeriodRow[]);

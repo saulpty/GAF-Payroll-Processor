@@ -5,6 +5,7 @@ import DataTable, { Col } from '@/app/components/DataTable';
 import EmptyState from '@/app/components/EmptyState';
 import ContractRow, { ContractRowData, MS_LABELS } from './ContractRow';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { useViewer } from '@/app/context/ViewerContext';
 import loadContractMilestonesAction from '@/actions/loadContractMilestones';
 import { milestones, nextMilestone, tenureLabel, contractEndState, renewalState } from '@/app/lib/tenure';
 import { sortRows, nextSortDir } from '@/app/lib/ptoSort';
@@ -55,11 +56,12 @@ function urgencyScore(row: ContractRowData): number {
 
 export default function ContractsTable({ asOf, onRowsChange, onCountsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
+  const { viewAs } = useViewer();
 
   const [rawRows, loading, error, reload] = useLoadAction(
     loadContractMilestonesAction,
     [] as RawRow[],
-    { manager: manager || null, employeeId: null },
+    { manager: manager || null, employeeId: null, viewAs },
   );
 
   const [sortKey, setSortKey] = useState<string | null>(null);

@@ -27,6 +27,8 @@ function loadContractMilestones() {
       WHERE e.active = true
         AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
         AND ({{params.employeeId}} IS NULL OR {{params.employeeId}} = '' OR e.id::text = {{params.employeeId}}::text)
+        AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a
+                      WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text))
       ORDER BY e.display_name;
     `,
   });
