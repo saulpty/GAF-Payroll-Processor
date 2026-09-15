@@ -99,6 +99,13 @@ banner.
 - **One action per file**, named `load*` / `upsert*` / `update*` / `delete*`.
   Every new `load*` takes an optional `manager` param so manager-scoped access
   stays a wiring job later.
+- **Every loader that returns employee data is scoped to the viewer** (since
+  2026-09-15). Add `AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a
+  WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))`
+  and pass `viewAs` from `useViewer()` flat. Add the action to `SCOPED_ACTIONS` in
+  `tests/accessGuards.test.ts`. Payroll and Admin pages stay behind `RequireSuper`.
+- **After a UIB edit, hard-refresh `/dev` (Ctrl+Shift+R) before judging a page.**
+  A stale bundle once made working scoping look broken for an hour.
 
 ---
 
