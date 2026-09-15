@@ -1,7 +1,7 @@
 // ActionDetail — full detail view for one disciplinary action.
 // Prop-driven, no useLoadAction, no useGlobalFilters. Reusable by Employee 360.
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { useMutateAction } from '@uibakery/data';
 import StatusChip from '@/app/components/StatusChip';
 import { Button } from '@/components/ui/button';
@@ -62,26 +62,9 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
 
   return (
     <div className="bg-white border border-slate-200 rounded-lg mx-2 my-1 overflow-hidden">
-      {/* Facts */}
-      <div className="px-4 py-4 space-y-3">
-        <Fact label="What was expected" value={action.q_expected} />
-        <Fact label="What happened"     value={action.q_happened} />
-        <Fact label="When"              value={action.q_when} />
-        <Fact label="Impact"            value={action.q_impact} />
-        <Fact label="Expectations set"  value={action.expectations} />
-        <Fact label="Consequences"      value={action.consequences} />
-      </div>
-
-      {/* Meta line */}
-      {metaParts.length > 0 && (
-        <div className="px-4 py-2.5 border-t border-dashed border-slate-200 text-[11px] text-slate-400 leading-relaxed">
-          {metaParts.join(' · ')}
-        </div>
-      )}
-
-      {/* Footer */}
+      {/* Status bar */}
       {state === 'closed' ? (
-        <div className="px-4 py-2.5 bg-emerald-50 border-t border-emerald-100 flex items-center justify-between gap-3 flex-wrap">
+        <div className="px-4 py-2.5 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between gap-3 flex-wrap">
           <span className="text-[12px] text-emerald-700">
             Closed {fmtDate(action.closed_at)} by {action.closed_by}
             {action.closure_note && (
@@ -100,10 +83,32 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
           </button>
         </div>
       ) : (
-        <div className="px-4 py-2.5 border-t border-slate-100 flex justify-end">
-          <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
+        <div className="px-4 py-3 bg-rose-50 border-b border-rose-100 flex items-center justify-between gap-3 flex-wrap">
+          <span className="text-[12px] font-medium text-rose-800">This case is open.</span>
+          <Button
+            onClick={() => setDialogOpen(true)}
+            className="bg-[#BE123C] hover:bg-[#9F1239] text-white h-9 px-4 text-[13px] font-semibold shadow-sm"
+          >
+            <CheckCircle2 className="w-4 h-4 mr-1.5" />
             Close case
           </Button>
+        </div>
+      )}
+
+      {/* Facts */}
+      <div className="px-4 py-4 space-y-3">
+        <Fact label="What was expected" value={action.q_expected} />
+        <Fact label="What happened"     value={action.q_happened} />
+        <Fact label="When"              value={action.q_when} />
+        <Fact label="Impact"            value={action.q_impact} />
+        <Fact label="Expectations set"  value={action.expectations} />
+        <Fact label="Consequences"      value={action.consequences} />
+      </div>
+
+      {/* Meta line */}
+      {metaParts.length > 0 && (
+        <div className="px-4 py-2.5 border-t border-dashed border-slate-200 text-[11px] text-slate-400 leading-relaxed">
+          {metaParts.join(' · ')}
         </div>
       )}
 
