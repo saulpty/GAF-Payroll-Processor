@@ -9,6 +9,9 @@ export function loadAttendanceDaily() {
       WHERE date >= {{params.dateFrom}}
         AND date <= {{params.dateTo}}
         AND (COALESCE({{params.email}}, '') = '' OR email = {{params.email}})
+        AND email IN (SELECT e.teramind_email FROM public.employees e
+                        JOIN public.v_employee_access a ON a.employee_id = e.id
+                       WHERE a.email = access_viewer({{ user.email }}, {{params.viewAs}}::text))
       ORDER BY date, name
     `,
   });

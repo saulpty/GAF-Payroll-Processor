@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { useViewer } from '@/app/context/ViewerContext';
 import { useLoadAction } from '@uibakery/data';
 import { X, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useEffect, useRef } from 'react';
@@ -69,8 +70,10 @@ export default function FilterBar() {
     hasAny, clearAll,
   } = useGlobalFilters();
 
+  const { viewAs } = useViewer();
+
   const [periodsRaw, , , refetchPeriods] = useLoadAction(loadPeriodsAction, [] as PeriodRow[]);
-  const [empsRaw]    = useLoadAction(loadAttendanceEmployeesAction, [] as EmpInfo[]);
+  const [empsRaw]    = useLoadAction(loadAttendanceEmployeesAction, [] as EmpInfo[], { viewAs });
 
   type CountsRow = { red_count: number; yellow_count: number };
   const [countsRaw] = useLoadAction(

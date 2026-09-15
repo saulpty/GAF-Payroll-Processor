@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useLoadAction } from '@uibakery/data';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { useViewer } from '@/app/context/ViewerContext';
 import { useLocation } from 'react-router-dom';
 import { Activity } from 'lucide-react';
 import loadAttendanceDailyAction from '@/actions/loadAttendanceDaily';
@@ -38,6 +39,7 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
     employee: globalEmployee,
     manager, role,
   } = useGlobalFilters();
+  const { viewAs } = useViewer();
 
   const [panelEmail, setPanelEmail] = useState<string | null>(null);
 
@@ -49,11 +51,12 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
   const [rawRows, loadingRows, rowsError] = useLoadAction(
     loadAttendanceDailyAction,
     [] as AttendanceRow[],
-    { dateFrom: safeFrom, dateTo: safeTo, email: '' },
+    { dateFrom: safeFrom, dateTo: safeTo, email: '', viewAs },
   );
   const [empList, loadingEmps] = useLoadAction(
     loadAttendanceEmployeesAction,
     [] as EmpInfo[],
+    { viewAs },
   );
 
   const rows = (rawRows as AttendanceRow[]) ?? [];

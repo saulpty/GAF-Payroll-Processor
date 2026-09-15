@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLoadAction } from '@uibakery/data';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { useViewer } from '@/app/context/ViewerContext';
 import { Activity, AlertCircle, Info, LayoutGrid, TableIcon } from 'lucide-react';
 import { toLocalYMD,
   isScheduledWorkDay, getSchedule, parseTimeToMinutes,
@@ -37,6 +38,7 @@ export default function AttendanceReport() {
     employee: globalEmployee,
     manager, role,
   } = useGlobalFilters();
+  const { viewAs } = useViewer();
 
   const safeFrom = dateFrom || daysAgo(30);
   const safeTo   = dateTo   || today();
@@ -44,18 +46,19 @@ export default function AttendanceReport() {
   // ── Data loads ─────────────────────────────────────────────────────────────
   const [rawDays,     loadingDays,    errDays]    = useLoadAction(
     loadAttendanceReportDaysAction, [] as ReportPayrollRow[],
-    { dateFrom: safeFrom, dateTo: safeTo, manager: manager || '' },
+    { dateFrom: safeFrom, dateTo: safeTo, manager: manager || '', viewAs },
   );
   const [rawForms,    loadingForms,   errForms]   = useLoadAction(
     loadMondayAttendanceFormsRangeAction, [] as ReportForm[],
-    { dateFrom: safeFrom, dateTo: safeTo, manager: manager || '' },
+    { dateFrom: safeFrom, dateTo: safeTo, manager: manager || '', viewAs },
   );
   const [rawRequests, loadingReqs,    errReqs]    = useLoadAction(
     loadMondayRequestsRangeAction, [] as ReportRequest[],
-    { dateFrom: safeFrom, dateTo: safeTo, manager: manager || '' },
+    { dateFrom: safeFrom, dateTo: safeTo, manager: manager || '', viewAs },
   );
   const [rawEmps,     loadingEmps,    errEmps]    = useLoadAction(
     loadAttendanceEmployeesAction, [] as ReportEmployee[],
+    { viewAs },
   );
   const [rawHolidays, loadingHols]                = useLoadAction(
     loadHolidaysAction, [] as ReportHoliday[],
