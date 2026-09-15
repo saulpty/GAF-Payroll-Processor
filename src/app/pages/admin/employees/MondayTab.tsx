@@ -24,6 +24,7 @@ import { buildResolver } from '@/app/lib/mondayResolve';
 import { normalizeName } from '@/app/lib/classificationEngine';
 import { requireKeys } from './mondaySync';
 import { syncDirectory, DirectoryDeps } from './syncDirectory';
+import { useGroupPlacement } from '@/app/pages/admin/access/useGroupPlacement';
 import { syncRequests } from './syncRequests';
 import { syncAttendanceForms } from './syncAttendanceForms';
 import { syncContracts } from './syncContracts';
@@ -102,6 +103,8 @@ export default function MondayTab() {
   const [delAttForms]       = useMutateAction(updateMondayAttendanceFormsDeletedAction);
   const [delContracts]      = useMutateAction(updateMondayContractsDeletedAction);
 
+  const placeInGroups = useGroupPlacement();
+
   const [pendingCandidates, setPendingCandidates] = useState<NewEmpCandidate[] | null>(null);
   const [pendingResolve, setPendingResolve] = useState<((v: NewEmpCandidate[]) => void) | null>(null);
   const [addingCandidates, setAddingCandidates] = useState(false);
@@ -166,9 +169,16 @@ export default function MondayTab() {
       defaultScheduleId, askCandidates, onSummary: setDirSummary,
       onItems: setMondayDirectory,
     };
-    return syncDirectory(dirDeps);
+    const result = await syncDirectory(dirDeps);
+    try {
+      const placed = await placeInGroups(cfg, resolver);
+      if (placed) setDirSummary(s => `${s ?? ''} · ${placed.membersAdded} placed in access groups`);
+    } catch (e) {
+      setDirSummary(s => `${s ?? ''} · access group placement failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    return result;
   }, [cfg, emps, resolver, callMondayBoard, updateRoleManager, updateFlag,
-      upsertEmp, updateStartDate, defaultScheduleId, askCandidates]);
+      upsertEmp, updateStartDate, defaultScheduleId, askCandidates, placeInGroups]);
 
   const onSyncRequests = useCallback((): Promise<SyncResult> =>
     syncRequests({

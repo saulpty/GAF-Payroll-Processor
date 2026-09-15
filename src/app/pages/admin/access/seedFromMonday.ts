@@ -17,6 +17,7 @@ export type SeedDeps = {
   pull: PullFn;
   resolve: (name: string | null | undefined, email: string | null | undefined) => number | null;
   mode: 'seed' | 'newOnly';
+  fetchEmployees?: () => Promise<unknown>; // loadAllEmployees, fresh
   fetchUsers: () => Promise<unknown>;
   fetchGroups: () => Promise<unknown>;
   fetchMembers: () => Promise<unknown>;
@@ -69,8 +70,18 @@ export async function seedFromMonday(deps: SeedDeps): Promise<SeedResult> {
       managerEmail: norm(colText(it, k.monday_col_directory_manager_email)),
     }));
 
+  const freshByEmail = new Map<string, string>();
+  if (deps.fetchEmployees) {
+    for (const r of rowsOf(await deps.fetchEmployees())) {
+      const e = norm(r.teramind_email);
+      if (e) freshByEmail.set(e, String(r.id));
+    }
+  }
+
   const before = await readExisting(deps);
   const plan = planAccessSeed(people, p => {
+    const byEmail = p.email ? freshByEmail.get(p.email) : undefined;
+    if (byEmail) return byEmail;
     const id = deps.resolve(p.name, p.email || null);
     return id === null ? null : String(id);
   }, before.existing, deps.mode);
