@@ -6,6 +6,7 @@ import {
   Users, Clock, CalendarDays, Globe2,
   SlidersHorizontal, FileSpreadsheet,
   Palmtree, FileSignature, ShieldAlert, FileText,
+  Eye, X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLoadAction } from '@uibakery/data';
@@ -16,6 +17,8 @@ import loadPtoReviewCountAction from '@/actions/loadPtoReviewCount';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import BrandLogo from '@/app/components/BrandLogo';
+import { useViewer } from '@/app/context/ViewerContext';
+import { canSeeSection, homeFor } from '@/app/lib/access';
 
 // ── Section definitions ────────────────────────────────────────────────────────
 
@@ -140,6 +143,8 @@ export default function TopNav() {
   const location  = useLocation();
   const navigate  = useNavigate();
   const { ptoVersion } = useGlobalFilters();
+  const { isSuper, isViewingAs, name, email, setViewAs } = useViewer();
+  const visibleSections = SECTIONS.filter(s => canSeeSection(isSuper, s.id));
 
   const [unresolvedData]  = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
   const unresolvedCount   = (unresolvedData as { count: number }[])[0]?.count ?? 0;
@@ -161,6 +166,7 @@ export default function TopNav() {
   }, [ptoVersion, reloadReview]);
 
   function sectionBadge(id: string): { count: number; label: string } | null {
+    if (!isSuper) return null;
     if (id === 'contracts' && expiringCount > 0) {
       return {
         count: expiringCount,
@@ -201,7 +207,7 @@ export default function TopNav() {
       {/* Brand */}
       <div
         className="flex items-center gap-2.5 mr-4 cursor-pointer select-none shrink-0"
-        onClick={() => navigate('/payroll-master')}
+        onClick={() => navigate(homeFor(isSuper))}
       >
         <BrandLogo />
         <div className="leading-tight hidden sm:block">
@@ -217,7 +223,7 @@ export default function TopNav() {
 
       {/* Section buttons */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {SECTIONS.map(s => {
+        {visibleSections.map(s => {
           const isActive = activeSection === s.id;
           return (
             <button
@@ -289,6 +295,17 @@ export default function TopNav() {
             );
           })}
         </nav>
+      )}
+      {isViewingAs && (
+        <button
+          onClick={() => setViewAs('')}
+          title="Stop viewing as this person"
+          className="ml-auto shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
+        >
+          <Eye className="w-3.5 h-3.5" />
+          Viewing as {name || email}
+          <X className="w-3.5 h-3.5" />
+        </button>
       )}
     </header>
   );
