@@ -32,7 +32,7 @@ test('G2: every scoped action filters through v_employee_access with the signed-
   for (const name of SCOPED_ACTIONS) {
     const src = read(`src/actions/${name}.ts`);
     assert.match(src, /v_employee_access/, `${name} is not scoped`);
-    assert.match(src, /access_viewer\(\{\{\s*user\.email\s*\}\},\s*\{\{params\.viewAs\}\}::text\)/,
+    assert.match(src, /access_viewer\(\{\{\s*user\.email\s*\}\}(::text)?,\s*\{\{params\.viewAs\}\}::text\)/,
       `${name} must take the viewer from {{ user.email }}, never from a browser param alone`);
   }
 });
