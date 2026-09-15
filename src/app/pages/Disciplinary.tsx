@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download, ExternalLink } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import PageHeader from '@/app/components/PageHeader';
@@ -88,6 +88,17 @@ export default function Disciplinary() {
 
   const actions = (
     <>
+      <a
+        href="https://uib.vitasya.cloud/share/PC3PsXDDa9"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors select-none"
+        title="Open Disciplinary Action Form"
+      >
+        <ExternalLink className="w-3.5 h-3.5" />
+        New action form
+      </a>
+
       {countSummary !== null && (
         <span className="text-[12px] text-slate-400 mr-1">{countSummary}</span>
       )}
