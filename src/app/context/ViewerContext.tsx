@@ -6,6 +6,20 @@ import loadCurrentViewerAction from '@/actions/loadCurrentViewer';
 import { viewerStatus, normalizeEmail } from '@/app/lib/access';
 import type { ViewerRow } from '@/app/lib/access';
 
+/** Restart the whole app. The app runs inside an iframe; reloading only the
+ *  iframe shows "Page not found", so reload the top window when we can. */
+export function reloadApp(): void {
+  try {
+    if (window.top && window.top !== window) {
+      window.top.location.reload();
+      return;
+    }
+  } catch {
+    /* top window not reachable — fall back to this frame */
+  }
+  window.location.reload();
+}
+
 const VIEW_AS_KEY = 'gaf_view_as';
 
 function readViewAs(): string {
@@ -43,7 +57,7 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
       else window.sessionStorage.removeItem(VIEW_AS_KEY);
     } catch { /* storage unavailable */ }
     setViewAsState(v);
-    window.location.reload();
+    reloadApp();
   }, []);
 
   const value = useMemo<Viewer>(() => {

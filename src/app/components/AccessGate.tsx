@@ -1,6 +1,6 @@
 import { Loader2, ShieldX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useViewer } from '@/app/context/ViewerContext';
+import { useViewer, reloadApp } from '@/app/context/ViewerContext';
 import type { ReactNode } from 'react';
 
 export default function AccessGate({ children }: { children: ReactNode }) {
@@ -22,7 +22,7 @@ export default function AccessGate({ children }: { children: ReactNode }) {
           <>
             <ShieldX className="w-8 h-8 text-red-400" />
             <p className="text-slate-700 text-sm">Couldn't check your access.</p>
-            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
+            <Button variant="outline" size="sm" onClick={reloadApp}>Retry</Button>
           </>
         )}
 
