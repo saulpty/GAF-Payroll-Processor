@@ -9,9 +9,11 @@ import type { DialogMode } from './pto/RecordApprovalDialog';
 import type { PtoRowData } from './pto/PtoRow';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { useViewer } from '@/app/context/ViewerContext';
 
 export default function PtoTracker() {
   const { bumpPtoVersion } = useGlobalFilters();
+  const { isSuper } = useViewer();
   const [asOf, setAsOf] = useState(() => toLocalYMD(new Date()));
   const [refreshKey, setRefreshKey] = useState(0);
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
@@ -57,14 +59,16 @@ export default function PtoTracker() {
           className="h-8 px-2.5 text-[13px] font-normal normal-case tracking-normal border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </label>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => setDialogMode({ kind: 'manual' })}
-      >
-        <Plus className="w-3.5 h-3.5 mr-1" />
-        Add manually
-      </Button>
+      {isSuper && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setDialogMode({ kind: 'manual' })}
+        >
+          <Plus className="w-3.5 h-3.5 mr-1" />
+          Add manually
+        </Button>
+      )}
       <Button
         size="sm"
         variant="outline"
@@ -96,12 +100,14 @@ export default function PtoTracker() {
           onCountsChange={setCounts}
         />
       </div>
-      <RecordApprovalDialog
-        mode={dialogMode}
-        today={today}
-        onClose={() => setDialogMode(null)}
-        onSaved={() => { setDialogMode(null); setRefreshKey(k => k + 1); bumpPtoVersion(); }}
-      />
+      {isSuper && (
+        <RecordApprovalDialog
+          mode={dialogMode}
+          today={today}
+          onClose={() => setDialogMode(null)}
+          onSaved={() => { setDialogMode(null); setRefreshKey(k => k + 1); bumpPtoVersion(); }}
+        />
+      )}
     </div>
   );
 }

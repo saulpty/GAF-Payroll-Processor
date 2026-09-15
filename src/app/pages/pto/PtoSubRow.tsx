@@ -1,5 +1,6 @@
 import { Plus, Pencil, Trash2, RotateCcw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useViewer } from '@/app/context/ViewerContext';
 import StatusChip from '@/app/components/StatusChip';
 import { fmtRange, fmtDay } from '@/app/lib/fmtDay';
 import { defaultTotalDays } from '@/app/lib/ptoAccrual';
@@ -34,6 +35,7 @@ interface Props {
 
 
 export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRestore }: Props) {
+  const { isSuper } = useViewer();
   const withdrawn = item.kind === 'recorded' && item.status === 'withdrawn';
   const thisYear = today.slice(0, 4);
 
@@ -109,62 +111,66 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
 
       {/* Actions */}
       <td className="px-3 py-2 align-top text-right whitespace-nowrap">
-        {withdrawn && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onRestore(item.id!)}
-          >
-            <RotateCcw className="w-3.5 h-3.5 mr-1" />
-            Restore
-          </Button>
-        )}
-        {item.kind === 'pending' && (
-          <div>
-            <Button
-              size="sm"
-              onClick={() => onOpenDialog({ kind: 'record', request: item.request, match: item.match })}
-              disabled={!rec.ok}
-              title={
-                rec.reason === 'future' ? 'Record after the return date has passed'
-                : rec.reason === 'not_processed' ? 'Payroll for these dates has not been processed yet'
-                : rec.reason === 'invalid' ? "Return date is before the leave date — fix the Monday request"
-                : undefined
-              }
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              Record
-            </Button>
-            {rec.reason === 'not_processed' && (
-              <div className="text-[11px] text-slate-400 mt-0.5">after payroll runs</div>
-            )}
-            {rec.reason === 'invalid' && (
-              <div className="text-[11px] text-slate-400 mt-0.5">dates don&apos;t make sense</div>
-            )}
-          </div>
-        )}
-        {item.kind === 'recorded' && !withdrawn && (
-          <div className="flex items-center justify-end gap-1">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onOpenDialog({ kind: 'edit', row: item.request, match: item.match })}
-            >
-              <Pencil className="w-3.5 h-3.5 mr-1" />
-              Edit
-            </Button>
-            {item.status === 'recorded' && (
+        {isSuper && (
+          <>
+            {withdrawn && (
               <Button
                 size="sm"
-                variant="ghost"
-                className="text-slate-500 hover:text-red-600 hover:bg-red-50"
-                onClick={() => onWithdraw(item.id!, item.days)}
+                variant="outline"
+                onClick={() => onRestore(item.id!)}
               >
-                <Trash2 className="w-3.5 h-3.5 mr-1" />
-                Withdraw
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Restore
               </Button>
             )}
-          </div>
+            {item.kind === 'pending' && (
+              <div>
+                <Button
+                  size="sm"
+                  onClick={() => onOpenDialog({ kind: 'record', request: item.request, match: item.match })}
+                  disabled={!rec.ok}
+                  title={
+                    rec.reason === 'future' ? 'Record after the return date has passed'
+                    : rec.reason === 'not_processed' ? 'Payroll for these dates has not been processed yet'
+                    : rec.reason === 'invalid' ? "Return date is before the leave date — fix the Monday request"
+                    : undefined
+                  }
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  Record
+                </Button>
+                {rec.reason === 'not_processed' && (
+                  <div className="text-[11px] text-slate-400 mt-0.5">after payroll runs</div>
+                )}
+                {rec.reason === 'invalid' && (
+                  <div className="text-[11px] text-slate-400 mt-0.5">dates don&apos;t make sense</div>
+                )}
+              </div>
+            )}
+            {item.kind === 'recorded' && !withdrawn && (
+              <div className="flex items-center justify-end gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onOpenDialog({ kind: 'edit', row: item.request, match: item.match })}
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1" />
+                  Edit
+                </Button>
+                {item.status === 'recorded' && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-slate-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => onWithdraw(item.id!, item.days)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                    Withdraw
+                  </Button>
+                )}
+              </div>
+            )}
+          </>
         )}
       </td>
 
