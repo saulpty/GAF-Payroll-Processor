@@ -59,7 +59,7 @@ export default function ContractRow({ row }: Props) {
     startCell = (
       <span className="inline-flex items-center gap-1">
         {muted}
-        <StatusChip tone="amber">No start date</StatusChip>
+        <StatusChip tone="amber">No Start Date</StatusChip>
       </span>
     );
   } else {
@@ -130,14 +130,14 @@ export default function ContractRow({ row }: Props) {
     } else if (renewal === 'not_renewed') {
       endCell = (
         <span title="Board status Failed — still on the active roster.">
-          <StatusChip tone="red">Not renewed</StatusChip>
+          <StatusChip tone="red">Not Renewed</StatusChip>
           <div className="text-[10px] text-slate-400 mt-0.5">ended {fmtDate(end)}</div>
         </span>
       );
     } else {
       endCell = (
         <span title="Fixed term ended and the board has no renewal decision yet.">
-          <StatusChip tone="amber">Pending review</StatusChip>
+          <StatusChip tone="amber">Pending Review</StatusChip>
           <div className="text-[10px] text-slate-400 mt-0.5">ended {fmtDate(end)}</div>
         </span>
       );

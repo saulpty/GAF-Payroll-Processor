@@ -158,7 +158,7 @@ export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, 
   return (
     <div className="px-6 py-3">
       {items.length === 0 ? (
-        <EmptyState title="Nothing recorded or pending" compact />
+        <EmptyState title="Nothing Recorded or Pending" compact />
       ) : (
         <table className="table-fixed border-collapse text-left w-auto min-w-[960px]">
           <colgroup>

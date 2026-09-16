@@ -52,7 +52,7 @@ function stateChip(row: DisciplinaryRowData, asOf: string): { label: string; ton
         ? overdueRevDates.reduce((a, b) => (a < b ? a : b))
         : today;
       const days = daysBetween(earliest, today);
-      return { label: `review overdue ${days} d`, tone: 'red' };
+      return { label: `Review Overdue ${days} d`, tone: 'red' };
     }
     case 'outcome': {
       // Use the final_outcome from the newest action that has one
@@ -62,10 +62,10 @@ function stateChip(row: DisciplinaryRowData, asOf: string): { label: string; ton
       return { label: withOutcome?.final_outcome ?? 'Outcome', tone: 'red' };
     }
     case 'open':
-      if (nextReval) return { label: `re-eval ${fmtDate(nextReval)}`, tone: 'amber' };
-      return { label: 'no re-evaluation set', tone: 'slate' };
+      if (nextReval) return { label: `Re-Eval ${fmtDate(nextReval)}`, tone: 'amber' };
+      return { label: 'No Re-Evaluation Set', tone: 'slate' };
     case 'closed':
-      return { label: 'all closed', tone: 'green' };
+      return { label: 'All Closed', tone: 'green' };
   }
 }
 
@@ -151,8 +151,8 @@ export default function DisciplinaryRow({ row, asOf, expanded, onToggle, onChang
             {row.branch && <span>{row.branch}</span>}
           </div>
           <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-            {!row.onRoster && <StatusChip tone="slate">not on roster</StatusChip>}
-            {!row.active && <StatusChip tone="slate">inactive</StatusChip>}
+            {!row.onRoster && <StatusChip tone="slate">Not on Roster</StatusChip>}
+            {!row.active && <StatusChip tone="slate">Inactive</StatusChip>}
           </div>
         </td>
 

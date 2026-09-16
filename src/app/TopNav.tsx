@@ -6,7 +6,7 @@ import {
   Users, Clock, CalendarDays, Globe2,
   SlidersHorizontal, FileSpreadsheet,
   Palmtree, FileSignature, ShieldAlert, FileText,
-  Eye, X, KeyRound,
+  Eye, X, KeyRound, UserCircle,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLoadAction } from '@uibakery/data';
@@ -297,16 +297,25 @@ export default function TopNav() {
           })}
         </nav>
       )}
-      {isViewingAs && (
+      {isViewingAs ? (
         <button
           onClick={() => setViewAs('')}
           title="Stop viewing as this person"
           className="ml-auto shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
         >
           <Eye className="w-3.5 h-3.5" />
-          Viewing as {name || email}
+          Viewing As {name || email}
           <X className="w-3.5 h-3.5" />
         </button>
+      ) : (
+        <div
+          title={email}
+          className="ml-auto shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
+        >
+          <UserCircle className="w-3.5 h-3.5" />
+          {name || email}
+          <span className="text-slate-400">· {isSuper ? 'Super User' : 'Manager'}</span>
+        </div>
       )}
     </header>
   );

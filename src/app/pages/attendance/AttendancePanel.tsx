@@ -62,7 +62,7 @@ const SCATTER_LEGEND = [
   { label: '11–30 min',        color: '#D97706' },
   { label: '31+ min',          color: '#EF4444' },
   { label: 'Absent',           color: '#B91C1C' },
-  { label: 'Time off',         color: '#94A3B8' },
+  { label: 'Time Off',         color: '#94A3B8' },
   { label: 'Permission',       color: '#6366F1' },
 ];
 

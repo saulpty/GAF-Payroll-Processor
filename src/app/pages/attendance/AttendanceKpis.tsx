@@ -40,7 +40,7 @@ export function AttendanceKpis({ kpis }: Props) {
         <Kpi
           label="On-Time Rate"
           value={`${kpis.onTimeRate.toFixed(1)}%`}
-          sub={`${kpis.onTime} of ${kpis.daysTracked} expected`}
+          sub={`${kpis.onTime} of ${kpis.daysTracked} Expected`}
           tone="lead"
           color="text-secondary"
           tooltip="On-time days divided by expected days (on time + late + absent). Time off and permissions are not counted either way."
@@ -48,7 +48,7 @@ export function AttendanceKpis({ kpis }: Props) {
         <Kpi
           label="Late Rate"
           value={`${kpis.lateRate.toFixed(1)}%`}
-          sub={`${kpis.lateDays} of ${kpis.daysTracked} expected`}
+          sub={`${kpis.lateDays} of ${kpis.daysTracked} Expected`}
           tone="alert"
           color="text-amber-600"
           tooltip="Late days divided by expected days (on time + late + absent)."
@@ -56,28 +56,28 @@ export function AttendanceKpis({ kpis }: Props) {
         <Kpi
           label="Work Days"
           value={`${kpis.workDays}`}
-          sub="scheduled shifts"
+          sub="Scheduled Shifts"
           tone="plain"
           tooltip="Every day someone was scheduled on their shift in this range, including time off and permissions."
         />
         <Kpi
           label="Late Days"
           value={`${kpis.lateDays}`}
-          sub={`${kpis.lateReported} reported · ${kpis.lateUnreported} not`}
+          sub={`${kpis.lateReported} Reported · ${kpis.lateUnreported} Not`}
           tone="plain"
           tooltip="Days someone clocked in after their shift start."
         />
         <Kpi
           label="Avg Min Late"
           value={`${kpis.avgMinLate.toFixed(1)}m`}
-          sub="per late day"
+          sub="Per Late Day"
           tone="plain"
           tooltip="Average minutes late across the late days only. On-time days and absences are not included."
         />
         <Kpi
           label="Absent Days"
           value={`${kpis.absent}`}
-          sub="reported or not"
+          sub="Reported or Not"
           tone="alert"
           color="text-[#B91C1C]"
           tooltip="Scheduled to work with no clock-in and no time off or permission covering the day, whether or not a form was filed."
@@ -85,14 +85,14 @@ export function AttendanceKpis({ kpis }: Props) {
         <Kpi
           label="Reported"
           value={`${kpis.reported}`}
-          sub="late/absent, form filed"
+          sub="Late/Absent, Form Filed"
           tone="plain"
           tooltip="Late or absent days with an attendance form on file."
         />
         <Kpi
           label="Unreported"
           value={`${kpis.unreported}`}
-          sub="late/absent, no form"
+          sub="Late/Absent, No Form"
           tone="alert"
           color="text-destructive"
           tooltip="Late or absent days with no attendance form on file."
@@ -100,7 +100,7 @@ export function AttendanceKpis({ kpis }: Props) {
         <Kpi
           label="Time Off"
           value={`${kpis.excused}`}
-          sub="PTO, holidays"
+          sub="PTO, Holidays"
           tone="plain"
           tooltip="Approved days away: PTO, company holidays, birthday and compensatory days. These never affect the score."
         />

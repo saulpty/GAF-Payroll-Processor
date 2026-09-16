@@ -32,12 +32,12 @@ const COLUMNS: Col<DisciplinaryRowData>[] = [
   { key: 'displayName',  label: 'Employee',      align: 'left' },
   {
     key: 'manager',
-    label: 'Filed by',
+    label: 'Filed By',
     align: 'left',
     tip: 'The manager who filed the latest action. Use the Manager filter above to see every case for the employees a manager covers.',
   },
   { key: 'actions',      label: 'Actions',       align: 'right', sortable: false },
-  { key: 'highestRank',  label: 'Highest level', align: 'left',  sortable: false },
+  { key: 'highestRank',  label: 'Highest Level', align: 'left',  sortable: false },
   { key: 'escalation',   label: 'Escalation',    align: 'left',  sortable: false },
   { key: 'latest',       label: 'Latest',        align: 'left',  sortable: false },
   { key: 'worstState',   label: 'Status',        align: 'left',  sortable: false },
@@ -278,7 +278,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
         <tr>
           <td colSpan={COLUMNS.length} className="p-0">
             <EmptyState
-              title="No employees match"
+              title="No Employees Match"
               hint="Try clearing the search or filters."
               compact
             />

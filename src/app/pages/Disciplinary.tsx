@@ -93,10 +93,10 @@ export default function Disciplinary() {
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors select-none"
-        title="Open Disciplinary Action Form"
+        title="New Disciplinary Action"
       >
         <ExternalLink className="w-3.5 h-3.5" />
-        New action form
+        New Disciplinary Action
       </a>
 
       {countSummary !== null && (
@@ -143,7 +143,7 @@ export default function Disciplinary() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Disciplinary actions"
+        title="Disciplinary Actions"
         subtitle="One row per employee with a record. Expand a row to read the file."
         actions={actions}
       />

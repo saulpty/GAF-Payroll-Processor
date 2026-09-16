@@ -66,7 +66,7 @@ export default function PtoTracker() {
           onClick={() => setDialogMode({ kind: 'manual' })}
         >
           <Plus className="w-3.5 h-3.5 mr-1" />
-          Add manually
+          Add Manually
         </Button>
       )}
       <Button

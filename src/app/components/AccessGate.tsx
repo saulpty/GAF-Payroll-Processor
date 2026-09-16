@@ -29,7 +29,7 @@ export default function AccessGate({ children }: { children: ReactNode }) {
         {status === 'blocked' && (
           <>
             <ShieldX className="w-8 h-8 text-red-400" />
-            <h2 className="text-lg font-semibold text-slate-800">No access</h2>
+            <h2 className="text-lg font-semibold text-slate-800">No Access</h2>
             <p className="text-slate-500 text-sm">
               Your account ({realEmail}) is not on the GAF Panama HR Hub access list.
               Contact Saul at saul.f@vitasyahc.com to be added.
@@ -40,7 +40,7 @@ export default function AccessGate({ children }: { children: ReactNode }) {
                   You are viewing as {viewAs}, who is not on the list or is inactive.
                 </p>
                 <Button variant="outline" size="sm" onClick={() => setViewAs('')}>
-                  Stop viewing as
+                  Stop Viewing As
                 </Button>
               </>
             )}

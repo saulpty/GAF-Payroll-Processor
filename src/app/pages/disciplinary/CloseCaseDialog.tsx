@@ -54,7 +54,7 @@ export default function CloseCaseDialog({ action: da, onClose, onSaved }: Props)
     <Dialog open={open} onOpenChange={v => { if (!v && !saving) onClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Close case</DialogTitle>
+          <DialogTitle>Close Case</DialogTitle>
           {da && (
             <p className="text-[12px] text-slate-500 mt-0.5">
               {da.employee_name}
@@ -66,7 +66,7 @@ export default function CloseCaseDialog({ action: da, onClose, onSaved }: Props)
 
         <div className="space-y-4 py-1">
           <div>
-            <Label htmlFor="closedBy" className="text-xs">Closed by</Label>
+            <Label htmlFor="closedBy" className="text-xs">Closed By</Label>
             <Input
               id="closedBy"
               value={closedBy}
@@ -106,7 +106,7 @@ export default function CloseCaseDialog({ action: da, onClose, onSaved }: Props)
           >
             {saving
               ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Closing…</>
-              : 'Close case'}
+              : 'Close Case'}
           </Button>
         </DialogFooter>
       </DialogContent>

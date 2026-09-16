@@ -171,7 +171,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
             onChange={e => setOnlyPending(e.target.checked)}
             className="rounded"
           />
-          Only with review
+          Only With Review
         </label>
         {loading && (rawRows as RawRow[]).length > 0 && (
           <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
@@ -201,7 +201,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
             <tr>
               <td colSpan={11} className="p-0">
                 <EmptyState
-                  title="No employees match"
+                  title="No Employees Match"
                   hint="Try clearing the search or filters."
                   compact
                 />

@@ -84,13 +84,13 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
         </div>
       ) : (
         <div className="px-4 py-3 bg-rose-50 border-b border-rose-100 flex items-center justify-between gap-3 flex-wrap">
-          <span className="text-[12px] font-medium text-rose-800">This case is open.</span>
+          <span className="text-[12px] font-medium text-rose-800">This Case Is Open</span>
           <Button
             onClick={() => setDialogOpen(true)}
             className="bg-[#BE123C] hover:bg-[#9F1239] text-white h-9 px-4 text-[13px] font-semibold shadow-sm"
           >
             <CheckCircle2 className="w-4 h-4 mr-1.5" />
-            Close case
+            Close Case
           </Button>
         </div>
       )}
