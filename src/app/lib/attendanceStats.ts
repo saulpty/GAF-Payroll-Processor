@@ -7,6 +7,7 @@ export type AttendanceRow = {
   name: string;
   date: string;
   entry_time: string | null;
+  exit_time?: string | null;
   status: string;
   bucket: string | null;
   filed_gaf: boolean;
