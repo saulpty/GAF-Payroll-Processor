@@ -40,6 +40,15 @@ function fmtMinutes(min: number): string {
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
+/** "17:01" or "09:17" -> "5:01 PM" / "9:17 AM"; blank -> "—"; anything else unchanged. */
+function fmtClock(t: string | null | undefined): string {
+  const s = (t ?? '').trim();
+  if (!s) return '—';
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s);
+  if (!m) return s;
+  return fmtMinutes(Number(m[1]) * 60 + Number(m[2]));
+}
+
 /** Normalize any date value to YYYY-MM-DD */
 function toDateStr(val: unknown): string {
   if (!val) return '';
@@ -72,7 +81,7 @@ function ArrivalTooltip({ active, payload }: ScatterTooltipProps) {
   return (
     <div className="bg-white border border-border rounded-lg shadow-md px-3 py-2 text-xs">
       <div className="font-semibold mb-0.5">{p.date}</div>
-      <div>Arrival: <span className="font-medium">{p.entry_time ?? '—'}</span></div>
+      <div>Arrival: <span className="font-medium">{fmtClock(p.entry_time)}</span></div>
       <div>Status: <span className="font-medium" style={{ color: p.color }}>{p.status}</span></div>
       {p.minutes_late > 0 && <div>Min Late: <span className="font-medium">{p.minutes_late}</span></div>}
     </div>
@@ -242,8 +251,8 @@ export function AttendancePanel({ stats, onClose }: Props) {
                   {recentRows.map((r: AttendanceRow, i: number) => (
                     <tr key={i} className="border-b border-border/50 hover:bg-muted/20">
                       <td className="px-3 py-2 whitespace-nowrap">{fmtDayLong(toDateStr(r.date))}</td>
-                      <td className="px-3 py-2">{r.entry_time ?? '—'}</td>
-                      <td className="px-3 py-2">{r.exit_time ?? '—'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{fmtClock(r.entry_time)}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{fmtClock(r.exit_time)}</td>
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
