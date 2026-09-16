@@ -24,7 +24,7 @@ import { buildResolver } from '@/app/lib/mondayResolve';
 import { normalizeName } from '@/app/lib/classificationEngine';
 import { requireKeys } from './mondaySync';
 import { syncDirectory, DirectoryDeps } from './syncDirectory';
-import { useGroupPlacement } from '@/app/pages/admin/access/useGroupPlacement';
+import { useAccessSync } from '@/app/pages/admin/access/useAccessSync';
 import { syncRequests } from './syncRequests';
 import { syncAttendanceForms } from './syncAttendanceForms';
 import { syncContracts } from './syncContracts';
@@ -103,7 +103,7 @@ export default function MondayTab() {
   const [delAttForms]       = useMutateAction(updateMondayAttendanceFormsDeletedAction);
   const [delContracts]      = useMutateAction(updateMondayContractsDeletedAction);
 
-  const placeInGroups = useGroupPlacement();
+  const syncAccess = useAccessSync();
 
   const [pendingCandidates, setPendingCandidates] = useState<NewEmpCandidate[] | null>(null);
   const [pendingResolve, setPendingResolve] = useState<((v: NewEmpCandidate[]) => void) | null>(null);
@@ -171,14 +171,14 @@ export default function MondayTab() {
     };
     const result = await syncDirectory(dirDeps);
     try {
-      const placed = await placeInGroups(cfg, resolver);
-      if (placed) setDirSummary(s => `${s ?? ''} · ${placed.membersAdded} placed in access groups`);
+      const access = await syncAccess(true);
+      if (access) setDirSummary(s => `${s ?? ''} · ${access.summary}`);
     } catch (e) {
-      setDirSummary(s => `${s ?? ''} · access group placement failed: ${e instanceof Error ? e.message : String(e)}`);
+      setDirSummary(s => `${s ?? ''} · access groups sync failed: ${e instanceof Error ? e.message : String(e)}`);
     }
     return result;
   }, [cfg, emps, resolver, callMondayBoard, updateRoleManager, updateFlag,
-      upsertEmp, updateStartDate, defaultScheduleId, askCandidates, placeInGroups]);
+      upsertEmp, updateStartDate, defaultScheduleId, askCandidates, syncAccess]);
 
   const onSyncRequests = useCallback((): Promise<SyncResult> =>
     syncRequests({

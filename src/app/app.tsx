@@ -7,6 +7,7 @@ import FilterBar from '@/app/FilterBar';
 import { GlobalFilterProvider } from '@/app/context/GlobalFilterContext';
 import { ViewerProvider } from '@/app/context/ViewerContext';
 import AccessGate from '@/app/components/AccessGate';
+import AccessAutoSync from '@/app/components/AccessAutoSync';
 import RequireSuper, { HomeRedirect } from '@/app/components/RequireSuper';
 import ProcessPayroll from '@/app/pages/ProcessPayroll';
 import ActionRequired from '@/app/pages/ActionRequired';
@@ -32,6 +33,7 @@ function App() {
       <ViewerProvider>
         <AccessGate>
           <GlobalFilterProvider>
+            <AccessAutoSync />
             <div className="flex flex-col h-screen overflow-hidden bg-background">
               <TopNav />
               <FilterBar />
