@@ -11,6 +11,7 @@ import type { ReportEmployee, ReportPayrollRow, ReportForm, ReportRequest,
   ReportPeriod, ReportHoliday, ReportRow, ReportSummary } from '@/app/lib/attendanceReportTypes';
 
 import loadAttendanceReportDaysAction    from '@/actions/loadAttendanceReportDays';
+import { matchesManager }               from '@/app/lib/managerFilter';
 import loadMondayAttendanceFormsRangeAction from '@/actions/loadMondayAttendanceFormsRange';
 import loadMondayRequestsRangeAction     from '@/actions/loadMondayRequestsRange';
 import loadAttendanceEmployeesAction     from '@/actions/loadAttendanceEmployees';
@@ -79,7 +80,7 @@ export default function AttendanceReport() {
     if (loading) return { rows: [] as ReportRow[], perEmployee: [] as ReportSummary[], unmatchedForms: 0 };
 
     const employees = (rawEmps as ReportEmployee[]).filter(e => {
-      if (manager && e.manager !== manager) return false;
+      if (!matchesManager(e, manager)) return false;
       if (role    && e.role    !== role)    return false;
       if (globalEmployee) {
         const q = globalEmployee.toLowerCase();

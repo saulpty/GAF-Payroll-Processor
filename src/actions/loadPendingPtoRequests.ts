@@ -22,7 +22,7 @@ function loadPendingPtoRequests() {
       WHERE r.request_type = 'PTO / Vacation'
         AND r.deleted_on_monday = false
         AND a.id IS NULL
-        AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
+        AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.id IN (SELECT vm.employee_id FROM public.v_employee_managers vm WHERE vm.manager_name = {{params.manager}}::text))
         AND r.employee_id IN (SELECT a.employee_id FROM public.v_employee_access a
                                WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
       ORDER BY r.start_date DESC

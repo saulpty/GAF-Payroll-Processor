@@ -18,7 +18,7 @@ export function loadMondayAttendanceFormsRange() {
       WHERE f.deleted_on_monday = false
         AND f.form_date >= {{params.dateFrom}}::date
         AND f.form_date <= {{params.dateTo}}::date
-        AND (COALESCE({{params.manager}}, '') = '' OR e.manager = {{params.manager}})
+        AND (COALESCE({{params.manager}}, '') = '' OR e.id IN (SELECT vm.employee_id FROM public.v_employee_managers vm WHERE vm.manager_name = {{params.manager}}::text))
         AND (f.employee_id IN (SELECT a.employee_id FROM public.v_employee_access a
                                 WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
              OR (f.employee_id IS NULL AND EXISTS (

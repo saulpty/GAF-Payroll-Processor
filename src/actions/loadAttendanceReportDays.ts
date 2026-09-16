@@ -23,7 +23,7 @@ export function loadAttendanceReportDays() {
         AND LEFT(pe.work_date, 10) <= {{params.dateTo}}
         AND e.active = true
         AND COALESCE(e.excluded_from_payroll, false) = false
-        AND (COALESCE({{params.manager}}, '') = '' OR e.manager = {{params.manager}})
+        AND (COALESCE({{params.manager}}, '') = '' OR e.id IN (SELECT vm.employee_id FROM public.v_employee_managers vm WHERE vm.manager_name = {{params.manager}}::text))
         AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a
                       WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
       ORDER BY pe.employee_id, LEFT(pe.work_date, 10), pe.period_name DESC

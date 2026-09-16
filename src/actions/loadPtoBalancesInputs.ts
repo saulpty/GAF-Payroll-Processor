@@ -4,7 +4,9 @@ function loadPtoBalancesInputs() {
   return action('loadPtoBalancesInputs', 'SQL', {
     datasourceName: 'GAF Planilla DB',
     query: `
-      SELECT e.id AS employee_id, e.display_name, e.role, e.manager, e.start_date::text AS start_date,
+      SELECT e.id AS employee_id, e.display_name, e.role,
+             COALESCE((SELECT vm.manager_name FROM public.v_employee_managers vm WHERE vm.employee_id = e.id AND vm.rank = 1 LIMIT 1), '') AS manager,
+             e.start_date::text AS start_date,
              pe.pto_start_date_override::text AS pto_start_date_override,
              COALESCE(pe.paid_pto_days, 0) AS paid_pto_days,
              COALESCE((SELECT SUM(total_days) FROM pto_approvals a WHERE a.employee_id = e.id AND a.status = 'recorded' AND a.leave_type = 'pto'), 0) AS taken_days,
@@ -48,7 +50,7 @@ function loadPtoBalancesInputs() {
       LEFT JOIN pto_employees pe ON pe.employee_id = e.id
       LEFT JOIN pto_floating_holidays fh ON fh.employee_id = e.id AND fh.calendar_year::text = {{params.year}}::text
       WHERE e.active = true
-        AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
+        AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.id IN (SELECT vm.employee_id FROM public.v_employee_managers vm WHERE vm.manager_name = {{params.manager}}::text))
         AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a
                       WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
       ORDER BY e.display_name

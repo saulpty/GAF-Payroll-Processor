@@ -7,7 +7,7 @@ function loadContractMilestones() {
       SELECT e.id                          AS employee_id,
              e.display_name,
              COALESCE(e.role, '')          AS role,
-             COALESCE(e.manager, '')       AS manager,
+             COALESCE((SELECT vm.manager_name FROM public.v_employee_managers vm WHERE vm.employee_id = e.id AND vm.rank = 1 LIMIT 1), '') AS manager,
              e.start_date::text            AS roster_start,
              c.start_date::text            AS board_start,
              c.position,
@@ -25,7 +25,7 @@ function loadContractMilestones() {
         LIMIT 1
       ) c ON true
       WHERE e.active = true
-        AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
+        AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.id IN (SELECT vm.employee_id FROM public.v_employee_managers vm WHERE vm.manager_name = {{params.manager}}::text))
         AND ({{params.employeeId}} IS NULL OR {{params.employeeId}} = '' OR e.id::text = {{params.employeeId}}::text)
         AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a
                       WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))

@@ -14,6 +14,7 @@ import { AttendanceKpis }   from '@/app/pages/attendance/AttendanceKpis';
 import { AttendanceTable }  from '@/app/pages/attendance/AttendanceTable';
 import { AttendancePanel }  from '@/app/pages/attendance/AttendancePanel';
 import AttendanceReport     from '@/app/pages/attendance/AttendanceReport';
+import { matchesManager }   from '@/app/lib/managerFilter';
 import { useState } from 'react';
 
 type Tab = 'list' | 'reports';
@@ -72,7 +73,7 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
     () => new Set(
       emps
         .filter(e =>
-          (!manager || e.manager === manager) &&
+          matchesManager(e, manager) &&
           (!role || e.role === role) &&
           (!globalEmployee || e.name?.toLowerCase().includes(globalEmployee.toLowerCase()) ||
             e.email?.toLowerCase().includes(globalEmployee.toLowerCase()))

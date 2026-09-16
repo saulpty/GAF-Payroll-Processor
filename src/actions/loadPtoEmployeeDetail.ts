@@ -45,7 +45,7 @@ function loadPtoEmployeeDetail() {
           WHERE e.id = {{params.employee_id}}::bigint
             AND {{params.employee_id}}::bigint IN (SELECT a.employee_id FROM public.v_employee_access a
                                                     WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
-            AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
+            AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.id IN (SELECT vm.employee_id FROM public.v_employee_managers vm WHERE vm.manager_name = {{params.manager}}::text))
         ) AS fh
         , COALESCE((
           SELECT json_agg(json_build_object(

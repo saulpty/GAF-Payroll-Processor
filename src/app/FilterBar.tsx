@@ -8,6 +8,7 @@ import { fmtDate } from '@/app/lib/fmtDate';
 import EmployeeSearchInput from '@/app/components/EmployeeSearchInput';
 import PeriodMultiSelect from '@/app/components/PeriodMultiSelect';
 import loadPeriodsAction from '@/actions/loadPeriods';
+import { managerOptions } from '@/app/lib/managerFilter';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadActionRequiredCountsAction from '@/actions/loadActionRequiredCounts';
 import type { EmpInfo } from '@/app/lib/attendanceStats';
@@ -125,7 +126,7 @@ export default function FilterBar() {
   }, [cfg?.periods, processedPeriods.length, attendancePeriods.length]);
 
   const emps = empsRaw as EmpInfo[];
-  const managers = useMemo(() => [...new Set(emps.map(e => e.manager).filter(Boolean))].sort(), [emps]);
+  const managers = useMemo(() => managerOptions(emps), [emps]);
   const roles    = useMemo(() => [...new Set(emps.map(e => e.role).filter(Boolean))].sort(),    [emps]);
 
   if (!cfg) return null;

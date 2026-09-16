@@ -19,7 +19,7 @@ function loadPtoReviewCount() {
           OR (r.return_date <= (SELECT MIN(p.start_date) FROM periods p WHERE p.processed_at IS NOT NULL)
               AND r.start_date < (SELECT MIN(p.start_date) FROM periods p WHERE p.processed_at IS NOT NULL))
         )
-        AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.manager = {{params.manager}})
+        AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.id IN (SELECT vm.employee_id FROM public.v_employee_managers vm WHERE vm.manager_name = {{params.manager}}::text))
         AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a
                       WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
     `,
