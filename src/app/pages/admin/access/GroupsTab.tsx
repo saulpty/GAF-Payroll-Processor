@@ -203,7 +203,7 @@ export default function GroupsTab() {
         filtered.length === 0 ? (
           <p className="text-sm text-slate-500 py-6">
             {normalisedGroups.length === 0
-              ? 'No groups yet. Click Build from Monday, or add one by hand.'
+              ? 'No groups yet. Click Rebuild from Monday, or add one by hand.'
               : 'No groups match your search.'}
           </p>
         ) : (

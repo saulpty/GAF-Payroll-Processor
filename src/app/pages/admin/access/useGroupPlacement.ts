@@ -27,7 +27,7 @@ export function useGroupPlacement() {
     cfg: Record<string, string>,
     resolve: (name: string | null | undefined, email: string | null | undefined) => number | null,
   ): Promise<SeedResult | null> => {
-    if (!cfg.monday_col_directory_manager_email) return null;
+    if (!cfg.monday_col_directory_manager_email || !cfg.monday_col_directory_manager4_email) return null;
     return seedFromMonday({
       cfg, resolve, mode: 'newOnly',
       pull: p => pull(p),
