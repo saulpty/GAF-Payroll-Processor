@@ -128,7 +128,7 @@ COALESCE((SELECT vm.manager_name FROM public.v_employee_managers vm WHERE vm.emp
 
 1. The migration applied without error.
 2. Lint clean.
-3. `grep -rn "e.manager = {{params.manager}}" src/actions/` returns only `loadDirectoryReconciliation.ts`-style lines outside the 8 listed actions (report what remains).
+3. `grep -rn "e.manager = {{params.manager}}" src/actions/` returns nothing.
 4. Every action still contains its `v_employee_access` / `access_viewer({{ user.email }}::text, {{params.viewAs}}::text)` clause, unchanged.
 5. Confirm every identifier used in the three components is imported.
 
