@@ -12,8 +12,9 @@
 - `src/app/pages/admin/employees/MondayTab.tsx` — the access-group lines only (section 6)
 - `src/app/app.tsx` — one import and one element (section 7)
 - `src/app/pages/admin/access/GroupsTab.tsx` — one string (section 8)
+- `src/migrations/1782002200_access_more_super_users.sql` (new) — create and apply (section 9)
 
-No other file may be touched. No action changes, no migration.
+No other file may be touched. No action changes.
 
 ## Why
 
@@ -538,9 +539,26 @@ Nothing else changes. Routes and `RequireSuper` stay exactly as they are.
 Replace the string `'No groups yet. Click Rebuild from Monday, or add one by hand.'` with
 `'No groups yet. Click Check Monday now.'`. Nothing else changes.
 
+## 9. Migration `src/migrations/1782002200_access_more_super_users.sql`
+
+Create this file with exactly this SQL, then apply it. Saul named these six as super users on 2026-09-16.
+
+```sql
+-- Access roles: six more super users, named by Saul on 2026-09-16.
+-- Rollback: UPDATE app_users SET role = 'manager' WHERE email IN (...) or DELETE the rows.
+INSERT INTO app_users (email, display_name, role, all_employees, active, notes) VALUES
+  ('jesse@vitasyahc.com',     'Jesse Hoffman',    'super_user', false, true, 'Super user named by Saul 2026-09-16'),
+  ('stephanie@vitasyahc.com', 'Stephanie Mullis', 'super_user', false, true, 'Super user named by Saul 2026-09-16'),
+  ('matt@vitasyahc.com',      'Matt Sherfield',   'super_user', false, true, 'Super user named by Saul 2026-09-16'),
+  ('leibel.m@vitasyahc.com',  'Leibel Mangel',    'super_user', false, true, 'Super user named by Saul 2026-09-16'),
+  ('monty@vitasyahc.com',     'Monty Druin',      'super_user', false, true, 'Super user named by Saul 2026-09-16'),
+  ('alex.l@vitasyahc.com',    'Alex Levinger',    'super_user', false, true, 'Super user named by Saul 2026-09-16')
+ON CONFLICT (email) DO UPDATE SET role = 'super_user', active = true, display_name = EXCLUDED.display_name, updated_at = now();
+```
+
 ## Acceptance
 
-1. Lint clean.
+1. Lint clean. The migration applied, and `SELECT email FROM app_users WHERE role = 'super_user' ORDER BY email` returns 8 rows.
 2. `grep -rn "seedFromMonday\|useGroupPlacement\|planAccessSeed" src/` returns nothing.
 3. Confirm `accessSeed.ts` has no imports and exports `chainKey`, `managerChain`, `planAccessSync`, `changeCount`.
 4. Confirm every identifier used in the four new or replaced component/hook files, `MondayTab.tsx` and `app.tsx` is imported.
