@@ -7,7 +7,9 @@ import DisciplinaryRow, { DisciplinaryRowData, DISCIPLINARY_COL_COUNT } from './
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useViewer } from '@/app/context/ViewerContext';
 import loadDisciplinaryActionsAction from '@/actions/loadDisciplinaryActions';
+import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadAllEmployeesAction from '@/actions/loadAllEmployees';
+import { matchesManager } from '@/app/lib/managerFilter';
 import loadNameAliasesAction from '@/actions/loadNameAliases';
 import loadVisibleEmployeeIdsAction from '@/actions/loadVisibleEmployeeIds';
 import {
@@ -30,9 +32,9 @@ const COLUMNS: Col<DisciplinaryRowData>[] = [
   { key: 'displayName',  label: 'Employee',      align: 'left' },
   {
     key: 'manager',
-    label: 'Manager',
+    label: 'Filed by',
     align: 'left',
-    tip: 'The manager who filed this disciplinary action — not the employee\'s current roster manager. They may differ.',
+    tip: 'The manager who filed the latest action. Use the Manager filter above to see every case for the employees a manager covers.',
   },
   { key: 'actions',      label: 'Actions',       align: 'right', sortable: false },
   { key: 'highestRank',  label: 'Highest level', align: 'left',  sortable: false },
@@ -74,7 +76,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
   const [rawRows, loading, error, reload] = useLoadAction(
     loadDisciplinaryActionsAction,
     [] as DisciplinaryRowType[],
-    { manager: manager || null, employeeName: null },
+    { manager: null, employeeName: null },
   );
 
   const [empsRaw] = useLoadAction(loadAllEmployeesAction, []);
@@ -87,6 +89,18 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
   const visibleIds = useMemo(
     () => new Set((visibleRaw as { employee_id: number | string }[]).map(r => String(r.employee_id))),
     [visibleRaw],
+  );
+
+  // Each employee's managers from the access groups ("|"-separated, by rank).
+  const [mgrRaw] = useLoadAction(
+    loadAttendanceEmployeesAction,
+    [] as { id: number | string; manager: string; managers: string }[],
+    { viewAs },
+  );
+  const managersById = useMemo(
+    () => new Map((mgrRaw as { id: number | string; manager: string; managers: string }[])
+      .map(e => [String(e.id), { manager: e.manager, managers: e.managers }])),
+    [mgrRaw],
   );
 
   // ── Sort handler ─────────────────────────────────────────────────────────
@@ -173,6 +187,11 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
       rows = rows.filter(r => r.employeeId !== null && visibleIds.has(String(r.employeeId)));
     }
 
+    if (manager) {
+      rows = rows.filter(r => r.employeeId !== null
+        && matchesManager(managersById.get(String(r.employeeId)) ?? {}, manager));
+    }
+
     if (employee) {
       const q = employee.toLowerCase();
       rows = rows.filter(r => r.displayName.toLowerCase().includes(q));
@@ -195,7 +214,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
     // 'all' keeps everything
 
     return rows;
-  }, [derived, employee, role, statusFilter, allEmployees, visibleIds]);
+  }, [derived, employee, role, manager, managersById, statusFilter, allEmployees, visibleIds]);
 
   // ── Stage 3: Sort ─────────────────────────────────────────────────────────
 
