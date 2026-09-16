@@ -1,7 +1,7 @@
 // ActionDetail — full detail view for one disciplinary action.
 // Prop-driven, no useLoadAction, no useGlobalFilters. Reusable by Employee 360.
 import { useState } from 'react';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, Trash2, RotateCcw } from 'lucide-react';
 import { useMutateAction } from '@uibakery/data';
 import StatusChip from '@/app/components/StatusChip';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,10 @@ import { fmtDate } from '@/app/lib/fmtDate';
 import { caseState } from '@/app/lib/disciplinary';
 import type { DisciplinaryRow } from '@/app/lib/disciplinary';
 import CloseCaseDialog from './CloseCaseDialog';
+import DeleteActionDialog from './DeleteActionDialog';
 import updateDisciplinaryActionReopenedAction from '@/actions/updateDisciplinaryActionReopened';
+import updateDisciplinaryActionRestoredAction from '@/actions/updateDisciplinaryActionRestored';
+import { useViewer } from '@/app/context/ViewerContext';
 
 interface Props {
   action: DisciplinaryRow;
@@ -30,9 +33,13 @@ function Fact({ label, value }: { label: string; value: string | null | undefine
 }
 
 export default function ActionDetail({ action, asOf, onChanged }: Props) {
+  const { isSuper } = useViewer();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [reopening, setReopening] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [reopenCase] = useMutateAction(updateDisciplinaryActionReopenedAction);
+  const [restoreAction] = useMutateAction(updateDisciplinaryActionRestoredAction);
 
   const state = caseState(action, asOf);
 
@@ -60,10 +67,39 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
     }
   }
 
+  async function handleRestore() {
+    setRestoring(true);
+    try {
+      await restoreAction({ id: action.id });
+      onChanged();
+    } finally {
+      setRestoring(false);
+    }
+  }
+
   return (
     <div className="bg-white border border-slate-200 rounded-lg mx-2 my-1 overflow-hidden">
       {/* Status bar */}
-      {state === 'closed' ? (
+      {action.deleted_at ? (
+        <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap">
+          <span className="text-[12px] text-slate-700">
+            Deleted {fmtDate(action.deleted_at.slice(0, 10))} by {action.deleted_by}
+            {action.deletion_note && (
+              <span className="text-slate-500 ml-1">— {action.deletion_note}</span>
+            )}
+          </span>
+          {isSuper && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="outline" size="sm" onClick={handleRestore} disabled={restoring} className="h-8 text-[12px]">
+                {restoring
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                  : <RotateCcw className="w-3.5 h-3.5 mr-1" />}
+                Restore
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : state === 'closed' ? (
         <div className="px-4 py-2.5 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between gap-3 flex-wrap">
           <span className="text-[12px] text-emerald-700">
             Closed {fmtDate(action.closed_at)} by {action.closed_by}
@@ -71,27 +107,41 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
               <span className="text-emerald-600 ml-1">— {action.closure_note}</span>
             )}
           </span>
-          <button
-            type="button"
-            onClick={handleReopen}
-            disabled={reopening}
-            className="text-[12px] text-emerald-700 underline underline-offset-2 hover:text-emerald-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded disabled:opacity-50 shrink-0"
-          >
-            {reopening
-              ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" />
-              : 'Reopen'}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleReopen}
+              disabled={reopening}
+              className="text-[12px] text-emerald-700 underline underline-offset-2 hover:text-emerald-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded disabled:opacity-50"
+            >
+              {reopening
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" />
+                : 'Reopen'}
+            </button>
+            {isSuper && (
+              <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="h-8 text-[12px] text-red-700 border-red-200 hover:bg-red-50">
+                <Trash2 className="w-3.5 h-3.5 mr-1" />Delete
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="px-4 py-3 bg-rose-50 border-b border-rose-100 flex items-center justify-between gap-3 flex-wrap">
           <span className="text-[12px] font-medium text-rose-800">This Case Is Open</span>
-          <Button
-            onClick={() => setDialogOpen(true)}
-            className="bg-[#BE123C] hover:bg-[#9F1239] text-white h-9 px-4 text-[13px] font-semibold shadow-sm"
-          >
-            <CheckCircle2 className="w-4 h-4 mr-1.5" />
-            Close Case
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              onClick={() => setDialogOpen(true)}
+              className="bg-[#BE123C] hover:bg-[#9F1239] text-white h-9 px-4 text-[13px] font-semibold shadow-sm"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-1.5" />
+              Close Case
+            </Button>
+            {isSuper && (
+              <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="h-8 text-[12px] text-red-700 border-red-200 hover:bg-red-50">
+                <Trash2 className="w-3.5 h-3.5 mr-1" />Delete
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -116,6 +166,11 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
         action={dialogOpen ? action : null}
         onClose={() => setDialogOpen(false)}
         onSaved={() => { setDialogOpen(false); onChanged(); }}
+      />
+      <DeleteActionDialog
+        action={deleteOpen ? action : null}
+        onClose={() => setDeleteOpen(false)}
+        onSaved={() => { setDeleteOpen(false); onChanged(); }}
       />
     </div>
   );

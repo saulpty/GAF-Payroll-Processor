@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Download, ExternalLink } from 'lucide-react';
+import { useViewer } from '@/app/context/ViewerContext';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import PageHeader from '@/app/components/PageHeader';
@@ -10,7 +11,7 @@ import type { DisciplinaryRow as DisciplinaryRowType } from '@/app/lib/disciplin
 import { fmtDate } from '@/app/lib/fmtDate';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 
-type StatusFilter = 'all' | 'open' | 'overdue' | 'closed';
+type StatusFilter = 'all' | 'open' | 'overdue' | 'closed' | 'deleted';
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'all',     label: 'All' },
@@ -26,6 +27,7 @@ function activeClass(value: StatusFilter, active: StatusFilter): string {
   if (value === 'overdue') return 'bg-red-600 text-white border-red-600 shadow-sm';
   if (value === 'open')    return 'bg-amber-500 text-white border-amber-500 shadow-sm';
   if (value === 'closed')  return 'bg-emerald-600 text-white border-emerald-600 shadow-sm';
+  if (value === 'deleted') return 'bg-slate-800 text-white border-slate-800 shadow-sm';
   return 'bg-slate-600 text-white border-slate-600 shadow-sm'; // all
 }
 
@@ -37,6 +39,7 @@ function stateWord(s: ReturnType<typeof caseState>): string {
 }
 
 export default function Disciplinary() {
+  const { isSuper } = useViewer();
   const [asOf] = useState(() => toLocalYMD(new Date()));
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [rows, setRows] = useState<DisciplinaryRowData[]>([]);
@@ -108,7 +111,7 @@ export default function Disciplinary() {
         role="group"
         aria-label="Filter by case status"
       >
-        {STATUS_OPTIONS.map(opt => {
+        {STATUS_OPTIONS.concat(isSuper ? [{ value: 'deleted' as StatusFilter, label: 'Deleted' }] : []).map(opt => {
           const isActive = statusFilter === opt.value;
           return (
             <button

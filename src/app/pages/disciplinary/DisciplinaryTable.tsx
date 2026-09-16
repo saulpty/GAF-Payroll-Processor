@@ -54,7 +54,7 @@ void (_check === DISCIPLINARY_COL_COUNT);
 
 interface Props {
   asOf: string;
-  statusFilter: 'all' | 'open' | 'overdue' | 'closed';
+  statusFilter: 'all' | 'open' | 'overdue' | 'closed' | 'deleted';
   onRowsChange?: (rows: DisciplinaryRowData[]) => void;
   onCountsChange?: (c: { employees: number; actions: number; open: number }) => void;
 }
@@ -65,7 +65,7 @@ interface Props {
 
 export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, onCountsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
-  const { viewAs, allEmployees } = useViewer();
+  const { viewAs, allEmployees, isSuper } = useViewer();
 
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
@@ -76,7 +76,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
   const [rawRows, loading, error, reload] = useLoadAction(
     loadDisciplinaryActionsAction,
     [] as DisciplinaryRowType[],
-    { manager: null, employeeName: null },
+    { manager: null, employeeName: null, includeDeleted: isSuper },
   );
 
   const [empsRaw] = useLoadAction(loadAllEmployeesAction, []);
@@ -142,7 +142,12 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
       closed_at:        r.closed_at        ? r.closed_at.slice(0, 10)        : null,
     }));
 
-    const groups = groupByEmployee(normalised, asOf);
+    // Keep only rows matching the deleted/active view
+    const inView = normalised.filter(r =>
+      statusFilter === 'deleted' ? !!r.deleted_at : !r.deleted_at,
+    );
+
+    const groups = groupByEmployee(inView, asOf);
 
     return groups.map(group => {
       const { employeeName, actions, latest } = group;
@@ -176,7 +181,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
         onRoster,
       };
     });
-  }, [rawRows, asOf, resolver, empById]);
+  }, [rawRows, asOf, statusFilter, resolver, empById]);
 
   // ── Stage 2: Filter ───────────────────────────────────────────────────────
 
@@ -211,7 +216,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
     } else if (statusFilter === 'closed') {
       rows = rows.filter(r => r.worstState === 'closed');
     }
-    // 'all' keeps everything
+    // 'all' and 'deleted' keep everything (deleted rows already pre-filtered in Stage 1)
 
     return rows;
   }, [derived, employee, role, manager, managersById, statusFilter, allEmployees, visibleIds]);

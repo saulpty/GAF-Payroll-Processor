@@ -41,6 +41,9 @@ function levelInfo(rank: number, rawLevel: string | null): LevelInfo {
 
 function stateChip(row: DisciplinaryRowData, asOf: string): { label: string; tone: ChipTone } {
   const { worstState, nextReval, actions } = row;
+  if (actions.every(a => !!a.deleted_at)) {
+    return { label: 'Deleted', tone: 'slate' };
+  }
   switch (worstState) {
     case 'overdue': {
       // Find the earliest overdue revaluation date

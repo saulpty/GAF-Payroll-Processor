@@ -38,6 +38,9 @@ export interface DisciplinaryRow {
   consequences?: string | null;
   signature_drawn?: boolean | null;
   submitted_at?: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+  deletion_note?: string | null;
 }
 
 export interface EmployeeCase {

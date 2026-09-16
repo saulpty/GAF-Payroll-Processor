@@ -29,10 +29,12 @@ function loadDisciplinaryActions() {
              closed_at::text            AS closed_at,
              closed_by,
              closure_note,
+             deleted_at::text AS deleted_at, deleted_by, deletion_note,
              submitted_at::text         AS submitted_at
       FROM disciplinary_actions
       WHERE ({{params.manager}} IS NULL OR {{params.manager}} = '' OR manager_name = {{params.manager}})
         AND ({{params.employeeName}} IS NULL OR {{params.employeeName}} = '' OR employee_name = {{params.employeeName}})
+        AND (COALESCE({{params.includeDeleted}}::boolean, false) OR deleted_at IS NULL)
       ORDER BY employee_name, document_date DESC, id DESC;
     `,
   });

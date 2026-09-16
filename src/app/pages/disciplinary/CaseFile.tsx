@@ -122,7 +122,10 @@ export default function CaseFile({ actions, asOf, onChanged }: Props) {
 
                   {/* Status chip */}
                   <td className="px-3 py-2 whitespace-nowrap w-24">
-                    <StatusChip tone={stateTone(state)}>{stateLabel(state)}</StatusChip>
+                    {a.deleted_at
+                      ? <StatusChip tone="slate">Deleted</StatusChip>
+                      : <StatusChip tone={stateTone(state)}>{stateLabel(state)}</StatusChip>
+                    }
                   </td>
 
                   {/* Chevron */}
