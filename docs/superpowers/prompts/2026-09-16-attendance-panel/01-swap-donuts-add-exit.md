@@ -286,10 +286,8 @@ function ArrivalTooltip({ active, payload }: ScatterTooltipProps) {
   );
 }
 
-
 export function AttendancePanel({ stats, onClose }: Props) {
   if (!stats) return null;
-
 
   const recentRows = [...stats.rows]
     .sort((a, b) => toDateStr(b.date).localeCompare(toDateStr(a.date)))
@@ -307,7 +305,6 @@ export function AttendancePanel({ stats, onClose }: Props) {
 
   const yTicks = [EXCUSED_Y, 7*60, 7*60+30, 8*60, 8*60+30, 9*60, 9*60+10, 9*60+30, 10*60, 11*60, ABSENT_Y];
   const step = Math.max(1, Math.floor(scatterPoints.length / 10));
-
 
   return (
     <>
@@ -475,7 +472,8 @@ export function AttendancePanel({ stats, onClose }: Props) {
       </div>
     </>
   );
-}```
+}
+```
 
 ## Acceptance
 
