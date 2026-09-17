@@ -50,3 +50,23 @@ saved copy**, never on the live API. Worth telling the VP.
   keep-fresh sync only needs to run once each morning (an Automation, or first super-user open).
 - **Capture timing:** a period can be captured from the API from the **morning after it ends**.
   A same-day (mid-day) run still needs the uploaded file — one more reason the backup stays.
+
+## Addendum (same day) — can we get TODAY's entry time?
+
+Saul's requirement: no file uploads at all, and today's arrivals visible today.
+
+| Tried | Result |
+|---|---|
+| `login_session` / `activity` cubes for today | Empty — the BI cubes are complete through yesterday only. |
+| Other cube names (≈45 guesses) | Only `activity`, `login_session`, `task`, `computer`, `agent` exist. None carries today. |
+| REST guesses (`/v1/sessions`, `/v1/activity`, `/v1/computers`, `/v1/agents/{id}/sessions`, …) | 400 "could not find the requested resource". |
+| `/v1/agents?fields=…,online` | **Live** `online` flag per agent (206 online at 14:40 ET). `last_web_login` is the dashboard login, null for agents. |
+| **`GET /v1/activity/aggregated?from=D&to=D&agents=374`** | **Live for today** — per-app/site rows `{date, total (seconds), idle, agent_id, name, app, classify}`; the `agents` filter works; `from`/`to` accept dates only (timestamps are rejected). Summing `total` gives today's active time so far. **No timestamps**, so no first-activity time. Slow without an agent filter. |
+
+**Conclusion:** the API never states "first activity today". Exact entry/exit for a day become
+available the next morning (login sessions). For *today* the Hub can keep its **own clock**: a
+server-side UIB Automation every ~5 minutes reads the `online` flags (one cheap call for everyone)
+and records, per linked employee, `first_seen_et` / `last_seen_et` for the day → arrival accurate to
+the polling interval, replaced by the exact session times the next morning. `activity/aggregated`
+adds "active so far today". This belongs to the Live phase (E), not to payroll capture: payroll
+captures from the morning after a period ends use exact times and never need a file.
