@@ -70,3 +70,35 @@ and records, per linked employee, `first_seen_et` / `last_seen_et` for the day �
 the polling interval, replaced by the exact session times the next morning. `activity/aggregated`
 adds "active so far today". This belongs to the Live phase (E), not to payroll capture: payroll
 captures from the morning after a period ends use exact times and never need a file.
+
+## Addendum 2 (same day) — the right feed: Teramind's Time Records grid
+
+Saul pointed out that Teramind's own **Time Tracking → Time Records** screen shows today's earliest
+record for everyone — and that it is the screen Tim has always exported payroll's file from. Reading
+that screen's network traffic (Saul signed in; read-only) showed one call:
+
+`POST /tm-api/tt/r/time-records/grid` with body
+`{ agents:[], departments:[], computers:[], tasks:[], filter:"", page:0, periodStart:<epoch s>,
+periodEnd:<epoch s>, customFilter:[], partial:0 }` → `{ rows, columns, chart, pagination:{next,prev},
+settings, success }`. Each row: `agent:{name, agent_id, email}`, `period:[startEpochS, endEpochS]`,
+`duration`, `is_manual`, `meta:{id, computer_id}`, `task`, `activity`, display strings
+`started_at` / `finished_at`.
+
+Verified **through the Hub's own `Teramind API` datasource** (url `/tt/r/time-records/grid`):
+
+| Check | Result |
+|---|---|
+| Today | **Live** — agent 374 had 10 records for 2026-09-17 by 3:43 PM, newest minutes old. |
+| Agent filter | `agents:[374]` and `agents:[374,469]` work natively → we never pull the whole company. |
+| Page size | `pageSize` is honoured (`limit`, `perPage`, `per_page`, `rows` are ignored). 5,000 rows came back in 2.6 s. Default 50. Newest first. |
+| History | Rows for 2025-09-15 and 2026-03-11 → every past period is reachable. |
+| Smell test | Agent 374, 2026-08-11: first record 08:56 AM, last ends 05:01 PM = payroll's 8:56 AM / 5:01 PM. |
+| Time | `period` holds exact instants → no timezone guessing; `teramindTime.sessionClock` converts. |
+
+**Why it matters — the login-session feed was the wrong source.** The comparison screen (prompt 06),
+fed with login sessions for Q1-Sep-2026, matched payroll on only **33.4%** of days: 159 days where
+payroll has times and the feed has no session at all (people stay logged in across days), and 123
+sessions longer than 16 hours. Time Records is what the uploaded file contains, so it is what payroll
+must read. Decisions: `teramind_sessions` gains `source` (`login_session` | `time_record`) and
+`is_manual`; payroll, attendance and the comparison read `source = 'time_record'`; old rows are kept.
+This also answers "today's entry time": **it is available live**, no 5-minute polling clock needed.

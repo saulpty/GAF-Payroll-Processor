@@ -20,11 +20,12 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const HTTP_ACTIONS = ['loadTeramindAgentDirectory', 'loadTeramindLoginSessions'];
+const HTTP_ACTIONS = ['loadTeramindAgentDirectory', 'loadTeramindLoginSessions', 'loadTeramindTimeRecords']
+  .filter(n => existsSync(join(root, `src/actions/${n}.ts`)));
 // Files allowed to import the HTTP actions. Add a file here in the same commit that needs one,
 // and only if it runs for super users.
 const HTTP_CALLERS = ['src/app/pages/admin/teramind/useTeramindPull.ts'];
-const LIBS = ['teramindTypes', 'teramindTime', 'teramindRows', 'teramindPunches', 'teramindPull'];
+const LIBS = ['teramindTypes', 'teramindTime', 'teramindRows', 'teramindPunches', 'teramindPull', 'teramindCompare'];
 
 test('T1: the throwaway probe action is gone', () => {
   assert.equal(existsSync(join(root, 'src/actions/zzProbeTeramind.ts')), false);
@@ -55,7 +56,7 @@ test('T4: the pull hook drops sessions of unlinked agents and converts time only
   const p = 'src/app/pages/admin/teramind/useTeramindPull.ts';
   if (!existsSync(join(root, p))) return; // lands with prompt 04
   const src = read(p);
-  assert.match(src, /normalizeSession\([^)]*sessionClock\)/, 'sessions must be normalised with sessionClock');
+  assert.match(src, /normalize(Session|TimeRecord)\([^)]*sessionClock\)/, 'rows must be normalised with sessionClock');
   assert.match(src, /employee_id/, 'the linked-agent filter is missing');
   assert.doesNotMatch(src, /toISOString|Intl\.DateTimeFormat|getTimezoneOffset/, 'time conversion outside teramindTime.ts');
 });
