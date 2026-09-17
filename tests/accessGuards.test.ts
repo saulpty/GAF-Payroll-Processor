@@ -26,6 +26,7 @@ const SCOPED_ACTIONS = [
   'loadMondayRequestsRange', 'loadMondayAttendanceFormsRange',
   'loadPtoBalancesInputs', 'loadPtoEmployeeDetail', 'loadPtoReviewCount', 'loadPendingPtoRequests',
   'loadContractMilestones', 'loadContractsExpiringCount',
+  'loadTeramindSessions',
 ];
 
 test('G2: every scoped action filters through v_employee_access with the signed-in email', () => {

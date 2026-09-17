@@ -40,3 +40,4 @@ Applied migrations:
 1782002100_access_manager_chain_config at 2026-09-16T14:55:44.062Z
 1782002200_access_more_super_users at 2026-09-16T15:12:16.758Z
 1782002300_v_employee_managers at 2026-09-16T15:28:19.709Z
+1782003000_teramind_saved_copy at 2026-09-17T18:48:57.995Z
