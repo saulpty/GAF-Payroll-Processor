@@ -996,3 +996,22 @@ for days; it matched payroll on 33% of days, Time Records on 96–99.6%
   backfill, pull log, **Teramind vs Payroll** comparison (read-only).
 - Process Payroll step 2: `app/pages/process/TeramindSourceCard.tsx` (Capture From Teramind / Use
   Saved Copy); the upload zone under it is the backup.
+
+### Live use of the saved copy (added 2026-09-17, later the same day)
+- **Keep-fresh sync:** `app/components/TeramindAutoSync.tsx`, mounted in `app.tsx` next to
+  `AccessAutoSync`. Pulls *yesterday → today* through `useTeramindPull` with trigger `'auto'`, at most
+  every `teramind_sync_every_minutes` (Rules & Config, default 15, minimum 5). It must only ever run
+  for a **super user**, in a **visible tab**, **one pull at a time** (`if (!isSuper) return;`,
+  `document.hidden`, module-level `inFlight`). Managers never trigger a pull.
+  `loadTeramindPullLog` returns only the five newest `auto` rows so they cannot push manual /
+  backfill / capture rows (which "already covered" checks read) out of the list.
+- **Attendance → Today** (`/attendance/today`, `app/pages/attendance/AttendanceToday.tsx`, logic in
+  the pure lib `app/lib/teramindToday.ts`, data from the viewer-scoped `loadTeramindDayPunches`):
+  an **unofficial live board** — status, entry, minutes late, last activity, active time — for one
+  day. The official attendance record is still what payroll captures.
+  - Every time on the page is **US Eastern**; "today" is `easternDate(Date.now())`, "now" is
+    `easternMinutes(Date.now())`, both from `teramindTime.ts`. No `toLocaleTimeString`.
+  - The page does **not** read sick forms, PTO or permissions yet, so a scheduled person with no
+    records is shown as **No Records** (amber), never "late" or "absent". Do not re-introduce an
+    accusing label until the page attaches the reason (form / PTO / permission / holiday).
+  - It never calls Teramind and never writes anything.
