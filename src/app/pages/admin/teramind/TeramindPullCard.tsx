@@ -39,7 +39,7 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
   const [result,   setResult]   = useState<PullRangeResult | null>(null);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillStatus, setBackfillStatus] = useState<string | null>(null);
-  const [backfillTotal, setBackfillTotal]   = useState<{ saved: number; skipped: number } | null>(null);
+  const [backfillTotal, setBackfillTotal]   = useState<{ pulled: number; skipped: number; failed: number } | null>(null);
 
   const logRows = useMemo(
     () => (pullLog as PullLogRow[]),
@@ -78,31 +78,43 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
       String(a.start_date) < String(b.start_date) ? -1 : 1
     );
 
-    let totalSaved = 0;
+    let totalPulled = 0;
     let totalSkipped = 0;
+    let totalFailed  = 0;
+    // Keep a local accumulation of covered ranges so coversRange doesn't depend on
+    // React state updates (which are asynchronous and would be stale mid-loop).
+    const coveredLocal: { date_from: string; date_to: string; error: string | null; truncated: boolean }[] =
+      [...logRows];
 
-    try {
-      for (const p of ordered) {
-        const pFrom = String(p.start_date).slice(0, 10);
-        const pTo   = String(p.end_date).slice(0, 10);
-        if (coversRange(logRows, pFrom, pTo)) {
-          totalSkipped++;
-          setBackfillStatus(`Skipping ${p.period_name} (already covered)`);
-          continue;
-        }
-        setBackfillStatus(`Pulling ${p.period_name} (${pFrom} → ${pTo})…`);
-        const r = await onPull(pFrom, pTo, 'backfill');
-        totalSaved += r.saved;
-        setBackfillTotal({ saved: totalSaved, skipped: totalSkipped });
+    for (const p of ordered) {
+      const pFrom = String(p.start_date).slice(0, 10);
+      const pTo   = String(p.end_date).slice(0, 10);
+      if (coversRange(coveredLocal, pFrom, pTo)) {
+        totalSkipped++;
+        setBackfillStatus(`Skipping ${p.period_name} (already covered)`);
+        setBackfillTotal({ pulled: totalPulled, skipped: totalSkipped, failed: totalFailed });
+        continue;
       }
+      setBackfillStatus(`Pulling ${p.period_name} (${pFrom} → ${pTo})…`);
+      try {
+        await onPull(pFrom, pTo, 'backfill');
+        totalPulled++;
+        // Mark locally covered even before the reload so the next iteration skips it
+        coveredLocal.push({ date_from: pFrom, date_to: pTo, error: null, truncated: false });
+      } catch (e) {
+        totalFailed++;
+        // A failed pull is not marked covered; it will be retried on the next backfill
+      }
+      // Reload the log table after each period (success or failure)
       await reloadLog();
       onDone();
-      setBackfillStatus(`Backfill complete — ${totalSaved} sessions saved, ${totalSkipped} periods skipped.`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBackfilling(false);
+      setBackfillTotal({ pulled: totalPulled, skipped: totalSkipped, failed: totalFailed });
     }
+
+    setBackfilling(false);
+    setBackfillStatus(
+      `Backfill complete — ${totalPulled} periods pulled, ${totalSkipped} skipped, ${totalFailed} failed.`
+    );
   };
 
   const busy = pulling || backfilling;
@@ -197,7 +209,7 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
         )}
         {backfillTotal && (
           <div className="text-xs text-muted-foreground">
-            Running total: {backfillTotal.saved} sessions saved · {backfillTotal.skipped} periods skipped
+            Running: {backfillTotal.pulled} pulled · {backfillTotal.skipped} skipped · {backfillTotal.failed} failed
           </div>
         )}
 

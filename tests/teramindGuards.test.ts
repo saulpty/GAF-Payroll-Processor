@@ -89,6 +89,9 @@ test('T7: no Teramind host name is hardcoded', () => {
 test('T8: the saved-sessions upsert keeps its natural key and never deletes', () => {
   const src = read('src/actions/upsertTeramindSessions.ts');
   assert.match(src, /ON CONFLICT \(agent_id, started_raw, computer\)/);
+  // Teramind can return one session twice in a response; without this the whole batch fails with
+  // Postgres 21000 "cannot affect row a second time" (seen on /dev 2026-09-17, Q1-Aug backfill).
+  assert.match(src, /SELECT DISTINCT ON \(\(r->>'agent_id'\)::bigint, r->>'started_raw'/, 'batch is not de-duplicated');
   for (const a of readdirSync(join(root, 'src/actions')).filter(f => /teramind/i.test(f))) {
     assert.doesNotMatch(read(`src/actions/${a}`), /\bDELETE\s+FROM\b/i, `${a} deletes rows`);
   }

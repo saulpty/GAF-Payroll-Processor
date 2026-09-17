@@ -76,7 +76,7 @@ export default function TeramindTab() {
                   {logRows.map(row => (
                     <tr key={row.id} className="border-b border-slate-50 hover:bg-slate-50">
                       <td className="px-3 py-1.5 whitespace-nowrap text-slate-600">{fmtAt(row.pulled_at)}</td>
-                      <td className="px-3 py-1.5 whitespace-nowrap font-mono">{row.date_from} → {row.date_to}</td>
+                      <td className="px-3 py-1.5 whitespace-nowrap font-mono">{String(row.date_from).slice(0, 10)} → {String(row.date_to).slice(0, 10)}</td>
                       <td className="px-3 py-1.5 whitespace-nowrap text-slate-500 max-w-[120px] truncate">{row.pulled_by}</td>
                       <td className="px-3 py-1.5 whitespace-nowrap capitalize">{row.trigger}</td>
                       <td className="px-3 py-1.5 text-right">{row.row_count}</td>
