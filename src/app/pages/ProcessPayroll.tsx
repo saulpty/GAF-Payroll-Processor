@@ -24,6 +24,7 @@ import upsertPeriodAction from '@/actions/upsertPeriod';
 import saveNameAliasAction from '@/actions/saveNameAlias';
 import pullMondayBoardAction from '@/actions/pullMondayBoard';
 import { parseTeramindFile, processTeramindData, buildFullTeramindResolver } from '@/app/lib/teramindParser';
+import { TeramindSourceCard, type ApiCapture } from '@/app/pages/process/TeramindSourceCard';
 import {
   runClassificationEngine,
   buildClassificationConfig,
@@ -124,6 +125,10 @@ export default function ProcessPayroll() {
   const [teramindRows, setTeramindRows] = useState<ReturnType<typeof parseTeramindFile>>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Punches captured from the Teramind API instead of an uploaded file.
+  const [apiCapture, setApiCapture] = useState<ApiCapture | null>(null);
+  const hasPunches = !!teramindFile || !!apiCapture;
+
   // Single-employee re-run
   const [singleEmpMode, setSingleEmpMode] = useState(false);
   const [singleEmpIds, setSingleEmpIds] = useState<number[]>([]);
@@ -173,6 +178,7 @@ export default function ProcessPayroll() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setTeramindFile(file);
+    if (file) { setApiCapture(null); setTeramindRows([]); }
     if (!file) { setTeramindRows([]); return; }
     const reader = new FileReader();
     reader.onload = ev => {
@@ -311,8 +317,8 @@ export default function ProcessPayroll() {
   };
 
   const handleRun = async () => {
-    if (!periodName || !startDate || !endDate || !teramindFile) {
-      setError('Complete all required fields: Period Name, Start Date, End Date, and Teramind file.');
+    if (!periodName || !startDate || !endDate || !hasPunches || teramindRows.length === 0) {
+      setError('Complete all required fields: Period Name, Start Date, End Date, and Teramind punches (capture them or upload a file).');
       return;
     }
     const cleanName = normalizePeriodName(periodName);
@@ -363,7 +369,7 @@ export default function ProcessPayroll() {
       const { attendance, adjustments, permissions } = parseMondayItems(attendanceItems, adjustmentsItems, permissionsItems);
       log(`Parsed: ${attendance.length} attendance · ${adjustments.length} adjustments · ${permissions.length} permissions.`);
 
-      await saveSnapshot({ periodName: periodName.trim(), snapshotType: 'teramind', rawData: JSON.stringify(teramindRows.slice(0, 100)) });
+      await saveSnapshot({ periodName: periodName.trim(), snapshotType: 'teramind', rawData: JSON.stringify(apiCapture ? { source: 'teramind_api', capture: apiCapture, sample: teramindRows.slice(0, 100) } : teramindRows.slice(0, 100)) });
       await saveSnapshot({ periodName: periodName.trim(), snapshotType: 'monday_attendance', rawData: JSON.stringify(attendance) });
       await saveSnapshot({ periodName: periodName.trim(), snapshotType: 'monday_permissions', rawData: JSON.stringify(permissions) });
 
@@ -401,8 +407,8 @@ export default function ProcessPayroll() {
       const tmDates = teramindRows.map(r => r.timeStarted?.slice(0, 10)).filter(Boolean);
       const tmMin = tmDates.length ? tmDates.reduce((a, b) => a < b ? a : b) : null;
       const tmMax = tmDates.length ? tmDates.reduce((a, b) => a > b ? a : b) : null;
-      if (tmMin && tmMin > startDate) warnings.push({ level: 'warn', message: `Teramind file starts ${tmMin} but period starts ${startDate}.` });
-      if (tmMax && tmMax < endDate) warnings.push({ level: 'warn', message: `Teramind file ends ${tmMax} but period ends ${endDate}.` });
+      if (tmMin && tmMin > startDate) warnings.push({ level: 'warn', message: `Teramind data starts ${tmMin} but period starts ${startDate}.` });
+      if (tmMax && tmMax < endDate) warnings.push({ level: 'warn', message: `Teramind data ends ${tmMax} but period ends ${endDate}.` });
 
       // Name resolution
       log('Resolving employee names…');
@@ -533,6 +539,7 @@ export default function ProcessPayroll() {
   };
 
   const handleMappingSave = async () => {
+    if (teramindRows.length === 0) { setError('The Teramind punches were cleared — capture or upload them again.'); setStatus('idle'); return; }
     setStatus('running');
     setError('');
     try {
@@ -566,7 +573,7 @@ export default function ProcessPayroll() {
     return dates.length ? dates.reduce((a, b) => (a > b ? a : b)) : null;
   }, [teramindRows]);
 
-  const formReady = periodName && startDate && endDate && teramindFile && (!singleEmpMode || singleEmpIds.length > 0);
+  const formReady = periodName && startDate && endDate && hasPunches && teramindRows.length > 0 && (!singleEmpMode || singleEmpIds.length > 0);
 
   // ── render ────────────────────────────────────────────────────────────────
 
@@ -685,9 +692,21 @@ export default function ProcessPayroll() {
         </StepCard>
 
         {/* ── Step 2: Teramind file ───────────────────────── */}
-        <StepCard number={2} icon={<FileText className="w-4 h-4" />} title="Teramind Export" complete={!!teramindFile}>
+        <StepCard number={2} icon={<FileText className="w-4 h-4" />} title="Teramind Punches" complete={hasPunches && teramindRows.length > 0}>
           <input ref={fileRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleFileChange} />
 
+          <TeramindSourceCard
+            startDate={startDate}
+            endDate={endDate}
+            disabled={isRunning || status === 'mapping' || status === 'warnings' || !!teramindFile}
+            capture={apiCapture}
+            onCaptured={(rows, info) => { setTeramindFile(null); setTeramindRows(rows); setApiCapture(info); }}
+            onCleared={() => { setApiCapture(null); setTeramindRows([]); }}
+          />
+
+          {!apiCapture && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Backup: Upload A File</p>
           {!teramindFile ? (
             <div
               onDrop={handleDrop}
@@ -716,6 +735,8 @@ export default function ProcessPayroll() {
                 className="text-green-600 hover:text-red-500 transition-colors">
                 <X className="w-4 h-4" />
               </button>
+            </div>
+          )}
             </div>
           )}
 
@@ -863,6 +884,7 @@ export default function ProcessPayroll() {
               <div className="flex gap-2 pt-2">
                 <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white"
                   onClick={() => {
+                    if (teramindRows.length === 0) { setError('The Teramind punches were cleared — capture or upload them again.'); setStatus('idle'); return; }
                     if (stashedMonday) {
                       const tr = buildTeramindResolverMap();
                       const ke = new Set((employees as Employee[]).map(e => e.teramind_email.toLowerCase()));
