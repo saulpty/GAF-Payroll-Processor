@@ -97,3 +97,37 @@ test('T8: the saved-sessions upsert keeps its natural key and never deletes', ()
     assert.doesNotMatch(read(`src/actions/${a}`), /\bDELETE\s+FROM\b/i, `${a} deletes rows`);
   }
 });
+
+// ── Process Payroll capture path (prompt 09b) ────────────────────────────────────────────────
+// Found by the pre-flight review on 2026-09-17: while the warnings / name-mapping screen is open
+// the page is not "running", so step 2 stays clickable. Clearing the capture there and pressing
+// Proceed Anyway would run the engine on zero punches = a whole period of absences.
+test('T9: Process Payroll can never run the engine on empty or stale Teramind punches', () => {
+  const src = read('src/app/pages/ProcessPayroll.tsx');
+  if (!/TeramindSourceCard/.test(src)) return; // lands with prompt 09b
+  const guard = /if \(teramindRows\.length === 0\) \{ setError\('The Teramind punches were cleared/g;
+  assert.equal((src.match(guard) ?? []).length, 2, 'handleMappingSave and Proceed Anyway must both refuse empty punches');
+  assert.match(src, /!hasPunches \|\| teramindRows\.length === 0/, 'handleRun must refuse empty punches');
+  assert.match(src, /hasPunches && teramindRows\.length > 0 &&/, 'formReady must require actual rows');
+  assert.match(src, /disabled=\{isRunning \|\| status === 'mapping' \|\| status === 'warnings' \|\| !!teramindFile\}/,
+    'the capture card must be locked while the mapping / warnings screen is open');
+  assert.match(src, /if \(file\) \{ setApiCapture\(null\); setTeramindRows\(\[\]\); \}/,
+    'choosing a file must drop the captured rows immediately');
+});
+
+test('T10: payroll is always captured as the real signed-in super user, never through View As', () => {
+  const p = 'src/app/pages/process/TeramindSourceCard.tsx';
+  if (!existsSync(join(root, p))) return; // lands with prompt 09a
+  const src = read(p);
+  assert.match(src, /viewAs:\s*''/, 'the capture must pass an empty viewAs');
+  assert.match(src, /isSuper/, 'the capture card must check isSuper');
+  assert.doesNotMatch(src, /actions\/loadTeramind(TimeRecords|LoginSessions|AgentDirectory)['"]/, 'the card must go through useTeramindPull, not call Teramind itself');
+  assert.doesNotMatch(src, /upsertPayrollEntries|updatePayrollEntry|updatePunchTimes/, 'the card never writes payroll');
+});
+
+test('T11: punches handed to payroll are cut to the whole minute, like the export file always was', () => {
+  const src = read('src/app/lib/teramindPunches.ts');
+  if (!/punchDaysToRawRows/.test(src)) return; // lands with prompt 09a
+  assert.match(src, /:00`/, 'seconds must be fixed at :00');
+  assert.doesNotMatch(src, /Math\.round/, 'never round a punch — cut it');
+});
