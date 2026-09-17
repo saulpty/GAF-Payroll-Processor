@@ -7,7 +7,7 @@ import { classifyRow, summarize, clockDiff, fmtMinutes, type CompareRow } from '
 const row = (o: Partial<CompareRow>): CompareRow => ({
   employee_id: 1, name: 'A', day: '2026-08-11', period_name: 'Q2-Aug-2026',
   pay_entry: null, pay_exit: null, pay_entry_min: null, pay_exit_min: null,
-  tm_entry_min: null, tm_exit_min: null, tm_exit_next_day: false, sessions: null, longest_s: null,
+  tm_entry_min: null, tm_exit_min: null, tm_exit_next_day: false, sessions: null, longest_s: null, has_manual: false,
   event_type_1: '', initial_status: 'GREEN', touched_after_run: false, ...o,
 });
 

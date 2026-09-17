@@ -16,6 +16,8 @@ export type TeramindSessionSave = {
   started_raw: string;    // the timestamp exactly as Teramind returned it (part of the unique key)
   duration_s: number;
   computer: string;
+  source?: 'login_session' | 'time_record';  // which Teramind feed the row came from
+  is_manual?: boolean;    // a time record someone typed into Teramind by hand
 };
 
 /** A saved session as loaded back for payroll/attendance: the row plus the employee's email. */

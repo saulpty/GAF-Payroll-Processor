@@ -3,15 +3,15 @@ import { useMutateAction } from '@uibakery/data';
 import { useViewer } from '@/app/context/ViewerContext';
 import loadTeramindAgentDirectoryAction from '@/actions/loadTeramindAgentDirectory';
 import loadTeramindAgentsAction from '@/actions/loadTeramindAgents';
-import loadTeramindLoginSessionsAction from '@/actions/loadTeramindLoginSessions';
+import loadTeramindTimeRecordsAction from '@/actions/loadTeramindTimeRecords';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import upsertTeramindAgentsAction from '@/actions/upsertTeramindAgents';
 import updateTeramindAgentLinksAction from '@/actions/updateTeramindAgentLinks';
 import upsertTeramindSessionsAction from '@/actions/upsertTeramindSessions';
 import upsertTeramindPullLogAction from '@/actions/upsertTeramindPullLog';
-import { unwrapRows, normalizeAgent, linkAgents, normalizeSession } from '@/app/lib/teramindRows';
+import { unwrapRows, normalizeAgent, linkAgents, normalizeTimeRecord } from '@/app/lib/teramindRows';
 import { sessionClock } from '@/app/lib/teramindTime';
-import { pullChunks, isTruncated } from '@/app/lib/teramindPull';
+import { recordWindow, inDateRange } from '@/app/lib/teramindPull';
 import type { TeramindAgent, TeramindSessionSave } from '@/app/lib/teramindTypes';
 
 function rowsOf(raw: unknown): Record<string, unknown>[] {
@@ -36,7 +36,7 @@ export function useTeramindPull() {
 
   const [fetchDirectory]      = useMutateAction(loadTeramindAgentDirectoryAction);
   const [fetchSavedAgents]    = useMutateAction(loadTeramindAgentsAction);
-  const [fetchLoginSessions]  = useMutateAction(loadTeramindLoginSessionsAction);
+  const [fetchTimeRecords]    = useMutateAction(loadTeramindTimeRecordsAction);
   const [fetchEmployees]      = useMutateAction(loadAttendanceEmployeesAction);
   const [upsertAgents]        = useMutateAction(upsertTeramindAgentsAction);
   const [linkAgentsAction]    = useMutateAction(updateTeramindAgentLinksAction);
@@ -47,14 +47,12 @@ export function useTeramindPull() {
     setSyncing(true);
     setError(null);
     try {
-      // 1. Fetch the full Teramind roster
       const dirResp = await fetchDirectory({});
       const dirRows = unwrapRows(dirResp);
       const allAgents: TeramindAgent[] = dirRows
         .map(r => normalizeAgent(r))
         .filter((a): a is TeramindAgent => a !== null);
 
-      // 2. Load already-saved agents to know which are already linked
       const savedResp = await fetchSavedAgents({});
       const savedRows = rowsOf(savedResp);
       const linkedIds = new Set<number>(
@@ -63,12 +61,10 @@ export function useTeramindPull() {
           .map(r => Number(r.agent_id))
       );
 
-      // 3. Keep non-deleted agents OR already-linked ones
       const keptAgents = allAgents.filter(a => !a.deleted || linkedIds.has(a.agent_id));
 
-      // 4. Upsert in chunks of 200, attaching the raw directory row
       for (const chunk of chunkArray(keptAgents, 200)) {
-        const rows = chunk.map((a, i) => ({
+        const rows = chunk.map((a) => ({
           agent_id: a.agent_id,
           email: a.email,
           name: a.name,
@@ -78,17 +74,14 @@ export function useTeramindPull() {
         await upsertAgents({ rows: JSON.stringify(rows) });
       }
 
-      // 5. Load active employees
       const empResp = await fetchEmployees({ viewAs });
       const employees = rowsOf(empResp).map(e => ({
         id: Number(e.id),
         teramind_email: String(e.email ?? ''),
       }));
 
-      // 6. Link agents to employees
       const { links, unlinkedEmployees } = linkAgents(keptAgents, employees);
 
-      // 7. Bulk-update auto links
       if (links.length > 0) {
         await linkAgentsAction({ rows: JSON.stringify(links), linked_by: 'auto' });
       }
@@ -107,15 +100,16 @@ export function useTeramindPull() {
     setPulling(true);
     setError(null);
 
-    // 1. Check at least one linked agent exists
+    // 1. Linked agent ids
     const savedResp = await fetchSavedAgents({});
     const savedRows = rowsOf(savedResp);
-    const linkedAgentIds = new Set<number>(
+    const linkedAgentSet = new Set<number>(
       savedRows
         .filter(r => r.employee_id != null)
         .map(r => Number(r.agent_id))
     );
-    if (linkedAgentIds.size === 0) {
+    const agentIds = [...linkedAgentSet];
+    if (agentIds.length === 0) {
       setPulling(false);
       throw new Error('Sync the roster and link at least one employee before pulling.');
     }
@@ -126,75 +120,97 @@ export function useTeramindPull() {
     let truncated = false;
 
     try {
-      const chunks = pullChunks(from, to);
+      // 2. Build the epoch-second window (one day wider each side)
+      const { periodStart, periodEnd } = recordWindow(from, to);
 
-      for (const chunk of chunks) {
-        // 2. Fetch sessions for this chunk
-        const resp = await fetchLoginSessions({ dateFrom: chunk.from, dateTo: chunk.to });
+      // 3. Page loop — up to 40 pages of 5000
+      const PAGE_SIZE = 5000;
+      const MAX_PAGES = 40;
+      const allSessions: (TeramindSessionSave & { raw: unknown })[] = [];
+
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const resp = await fetchTimeRecords({
+          agents: agentIds,
+          page,
+          pageSize: PAGE_SIZE,
+          periodStart,
+          periodEnd,
+        });
+
         const rawRows = unwrapRows(resp);
         fetched += rawRows.length;
-        if (isTruncated(rawRows.length, 50000)) truncated = true;
 
-        // 3. Normalize and filter by linked agents
-        const sessions: (TeramindSessionSave & { raw: unknown })[] = [];
         for (const row of rawRows) {
-          const session = normalizeSession(row, sessionClock);
+          const session = normalizeTimeRecord(row, sessionClock);
           if (session === null) { dropped++; continue; }
-          if (!linkedAgentIds.has(session.agent_id)) { dropped++; continue; }
-          sessions.push({ ...session, raw: row });
+          if (!linkedAgentSet.has(session.agent_id)) { dropped++; continue; }
+          if (!inDateRange(session.work_date, from, to)) { dropped++; continue; }
+          allSessions.push({ ...session, raw: row });
         }
 
-        // 4. Upsert sessions in chunks of 200
-        for (const batch of chunkArray(sessions, 200)) {
-          const rows = batch.map(s => ({
-            agent_id:    s.agent_id,
-            work_date:   s.work_date,
-            started_et:  s.started_et,
-            finished_et: s.finished_et,
-            started_raw: s.started_raw,
-            duration_s:  s.duration_s,
-            computer:    s.computer,
-            raw:         s.raw,
-          }));
-          await upsertSessions({ rows: JSON.stringify(rows) });
-          saved += rows.length;
+        // Stop if the API signals no next page or returned nothing
+        const pagination = (resp as Record<string, unknown>)?.pagination;
+        const hasNext = (pagination as Record<string, unknown>)?.next === true;
+        if (!hasNext || rawRows.length === 0) break;
+
+        if (page === MAX_PAGES - 1) {
+          truncated = true;
         }
       }
 
-      // 5. Write pull log on success
+      // 4. Save in chunks of 200
+      for (const batch of chunkArray(allSessions, 200)) {
+        const rows = batch.map(s => ({
+          agent_id:    s.agent_id,
+          work_date:   s.work_date,
+          started_et:  s.started_et,
+          finished_et: s.finished_et,
+          started_raw: s.started_raw,
+          duration_s:  s.duration_s,
+          computer:    s.computer,
+          source:      'time_record',
+          is_manual:   s.is_manual ?? false,
+          raw:         s.raw,
+        }));
+        await upsertSessions({ rows: JSON.stringify(rows) });
+        saved += rows.length;
+      }
+
+      // 5. Write pull log
       await upsertPullLog({
         date_from:   from,
         date_to:     to,
         pulled_by:   viewerEmail,
         trigger,
-        agent_count: linkedAgentIds.size,
+        agent_count: agentIds.length,
         row_count:   fetched,
         saved_count: saved,
         truncated,
         error:       '',
+        source:      'time_record',
       });
 
       return { fetched, saved, dropped, truncated };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
-      // 6. Best-effort log on failure
       await upsertPullLog({
         date_from:   from,
         date_to:     to,
         pulled_by:   viewerEmail,
         trigger,
-        agent_count: linkedAgentIds.size,
+        agent_count: agentIds.length,
         row_count:   fetched,
         saved_count: 0,
         truncated,
         error:       msg,
+        source:      'time_record',
       }).catch(() => undefined);
       throw e;
     } finally {
       setPulling(false);
     }
-  }, [fetchSavedAgents, fetchLoginSessions, upsertSessions, upsertPullLog, viewerEmail]);
+  }, [fetchSavedAgents, fetchTimeRecords, upsertSessions, upsertPullLog, viewerEmail]);
 
   return { syncAgents, pullRange, syncing, pulling, error };
 }

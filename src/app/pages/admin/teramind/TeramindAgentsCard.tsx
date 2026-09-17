@@ -36,35 +36,43 @@ export default function TeramindAgentsCard({ onSync, syncing, onDone }: Props) {
   const [employees] = useLoadAction(loadAttendanceEmployeesAction, [], { viewAs });
   const [linkAgent] = useMutateAction(updateTeramindAgentLinkAction);
 
-  // Pending dropdown selections: empId → agentId
   const [pendingLinks, setPendingLinks] = useState<Record<number, number>>({});
   const [linking, setLinking] = useState<number | null>(null);
 
   const agentRows = useMemo(() => (agents as AgentRow[]), [agents]);
   const empRows   = useMemo(() => (employees as EmpRow[]), [employees]);
 
-  const linkedCount = useMemo(
-    () => agentRows.filter(a => a.employee_id != null).length,
-    [agentRows],
-  );
-
-  // Employees with no linked agent
+  // Count DISTINCT employees (not agents) that have at least one linked agent
   const linkedEmpIds = useMemo(
     () => new Set(agentRows.filter(a => a.employee_id != null).map(a => a.employee_id!)),
     [agentRows],
   );
+  const linkedEmployeeCount = linkedEmpIds.size;
+
+  // Employees with more than one linked agent
+  const agentsPerEmployee = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const a of agentRows) {
+      if (a.employee_id == null) continue;
+      map.set(a.employee_id, (map.get(a.employee_id) ?? 0) + 1);
+    }
+    return map;
+  }, [agentRows]);
+  const multiAgentCount = useMemo(
+    () => [...agentsPerEmployee.values()].filter(c => c > 1).length,
+    [agentsPerEmployee],
+  );
+
   const unlinkedEmps = useMemo(
     () => empRows.filter(e => !linkedEmpIds.has(e.id)),
     [empRows, linkedEmpIds],
   );
 
-  // Non-deleted, unlinked agents available for manual linking
   const freeAgents = useMemo(
     () => agentRows.filter(a => !a.deleted && a.employee_id == null),
     [agentRows],
   );
 
-  // Employees linked by a human (not 'auto')
   const humanLinked = useMemo(
     () => agentRows.filter(a => a.employee_id != null && a.linked_by && a.linked_by !== 'auto'),
     [agentRows],
@@ -126,7 +134,7 @@ export default function TeramindAgentsCard({ onSync, syncing, onDone }: Props) {
         {/* Counters */}
         <div className="grid grid-cols-2 gap-2 text-center">
           <div className="bg-slate-50 rounded-lg p-2 border">
-            <div className="text-lg font-bold text-green-700">{agentsLoading ? '—' : linkedCount}</div>
+            <div className="text-lg font-bold text-green-700">{agentsLoading ? '—' : linkedEmployeeCount}</div>
             <div className="text-[10px] text-muted-foreground">Linked Employees</div>
           </div>
           <div className="bg-slate-50 rounded-lg p-2 border">
@@ -134,6 +142,13 @@ export default function TeramindAgentsCard({ onSync, syncing, onDone }: Props) {
             <div className="text-[10px] text-muted-foreground">Employees With No Agent</div>
           </div>
         </div>
+
+        {/* Multi-agent note */}
+        {!agentsLoading && multiAgentCount > 0 && (
+          <p className="text-[11px] text-muted-foreground">
+            {multiAgentCount} employee{multiAgentCount !== 1 ? 's' : ''} have more than one Teramind account — all of their accounts are linked.
+          </p>
+        )}
 
         {/* Error */}
         {error && (
@@ -171,9 +186,7 @@ export default function TeramindAgentsCard({ onSync, syncing, onDone }: Props) {
                   ))}
                 </select>
                 <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0 px-2 h-7"
+                  size="sm" variant="outline" className="shrink-0 px-2 h-7"
                   disabled={!pendingLinks[emp.id] || linking === emp.id}
                   onClick={() => handleLink(emp.id)}
                 >
@@ -195,8 +208,7 @@ export default function TeramindAgentsCard({ onSync, syncing, onDone }: Props) {
               <div key={a.agent_id} className="flex items-center gap-2 text-xs">
                 <span className="flex-1 truncate text-slate-700">{a.employee_name} ↔ {a.name}</span>
                 <Button
-                  size="sm"
-                  variant="outline"
+                  size="sm" variant="outline"
                   className="shrink-0 px-2 h-7 text-red-600 hover:text-red-700"
                   disabled={linking === a.agent_id}
                   onClick={() => handleUnlink(a.agent_id)}

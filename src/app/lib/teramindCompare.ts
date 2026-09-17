@@ -17,6 +17,7 @@ export type CompareRow = {
   tm_exit_next_day: boolean | null;  // latest finish fell on the next calendar day
   sessions: number | null;
   longest_s: number | null;          // longest single session that day, seconds
+  has_manual: boolean;               // at least one record was entered by hand in Teramind
   event_type_1: string | null;
   initial_status: string | null;
   touched_after_run: boolean | null; // payroll row changed after it was first written

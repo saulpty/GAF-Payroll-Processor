@@ -15,10 +15,11 @@ function loadTeramindPullLog() {
         row_count,
         saved_count,
         truncated,
-        error
+        error,
+        source
       FROM teramind_pull_log
       ORDER BY pulled_at DESC
-      LIMIT 50;
+      LIMIT 100;
     `,
   });
 }

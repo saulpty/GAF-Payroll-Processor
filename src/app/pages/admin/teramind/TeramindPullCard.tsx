@@ -19,6 +19,7 @@ type PullLogRow = {
   date_to: string;
   error: string | null;
   truncated: boolean;
+  source: string | null;
 };
 
 type Props = {
@@ -30,7 +31,7 @@ type Props = {
 export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
   const today = toLocalYMD(new Date());
 
-  const [periods] = useLoadAction(loadPeriodsAction, [], {});
+  const [periods, periodsLoading] = useLoadAction(loadPeriodsAction, [], {});
   const [pullLog, , , reloadLog] = useLoadAction(loadTeramindPullLogAction, [], {});
 
   const [from, setFrom] = useState('');
@@ -41,8 +42,9 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
   const [backfillStatus, setBackfillStatus] = useState<string | null>(null);
   const [backfillTotal, setBackfillTotal]   = useState<{ pulled: number; skipped: number; failed: number } | null>(null);
 
+  // Only count time_record pulls when checking coverage
   const logRows = useMemo(
-    () => (pullLog as PullLogRow[]),
+    () => (pullLog as PullLogRow[]).filter(r => r.source === 'time_record'),
     [pullLog],
   );
 
@@ -73,7 +75,6 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
     setBackfillStatus(null);
     setBackfillTotal(null);
 
-    // oldest→newest
     const ordered = [...periodRows].sort((a, b) =>
       String(a.start_date) < String(b.start_date) ? -1 : 1
     );
@@ -81,8 +82,6 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
     let totalPulled = 0;
     let totalSkipped = 0;
     let totalFailed  = 0;
-    // Keep a local accumulation of covered ranges so coversRange doesn't depend on
-    // React state updates (which are asynchronous and would be stale mid-loop).
     const coveredLocal: { date_from: string; date_to: string; error: string | null; truncated: boolean }[] =
       [...logRows];
 
@@ -99,13 +98,10 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
       try {
         await onPull(pFrom, pTo, 'backfill');
         totalPulled++;
-        // Mark locally covered even before the reload so the next iteration skips it
         coveredLocal.push({ date_from: pFrom, date_to: pTo, error: null, truncated: false });
-      } catch (e) {
+      } catch {
         totalFailed++;
-        // A failed pull is not marked covered; it will be retried on the next backfill
       }
-      // Reload the log table after each period (success or failure)
       await reloadLog();
       onDone();
       setBackfillTotal({ pulled: totalPulled, skipped: totalSkipped, failed: totalFailed });
@@ -118,11 +114,12 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
   };
 
   const busy = pulling || backfilling;
+  const periodsReady = !periodsLoading && periodRows.length > 0;
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold">Pull Login Sessions</CardTitle>
+        <CardTitle className="text-sm font-semibold">Pull Time Records</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
 
@@ -158,7 +155,11 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
               : <Download className="w-3.5 h-3.5 mr-1.5" />}
             {pulling && !backfilling ? 'Pulling…' : 'Pull'}
           </Button>
-          <Button size="sm" variant="outline" className="flex-1" onClick={handleBackfill} disabled={busy}>
+          <Button
+            size="sm" variant="outline" className="flex-1"
+            onClick={handleBackfill}
+            disabled={busy || !periodsReady}
+          >
             {backfilling
               ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
               : <Download className="w-3.5 h-3.5 mr-1.5" />}
@@ -192,7 +193,7 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
             {result.truncated && (
               <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                This range likely holds over 50,000 sessions. Pull in smaller chunks to avoid missing data.
+                Over 200,000 records in this range. Pull in smaller chunks to avoid missing data.
               </div>
             )}
           </div>
@@ -212,6 +213,11 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
             Running: {backfillTotal.pulled} pulled · {backfillTotal.skipped} skipped · {backfillTotal.failed} failed
           </div>
         )}
+
+        {/* Footer note */}
+        <p className="text-[10px] text-muted-foreground">
+          Time Records are live — today's records are available now.
+        </p>
 
       </CardContent>
     </Card>

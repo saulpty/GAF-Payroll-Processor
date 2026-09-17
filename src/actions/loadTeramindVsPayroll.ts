@@ -14,9 +14,11 @@ function loadTeramindVsPayroll() {
                MIN(s.started_et)  AS first_start,
                MAX(s.finished_et) AS last_finish,
                COUNT(*)::int      AS sessions,
-               MAX(s.duration_s)::int AS longest_s
+               MAX(s.duration_s)::int AS longest_s,
+               BOOL_OR(s.is_manual)   AS has_manual
         FROM public.teramind_sessions s
         WHERE s.employee_id IS NOT NULL
+          AND s.source = {{params.source}}::text
           AND s.work_date BETWEEN {{params.dateFrom}}::text AND {{params.dateTo}}::text
         GROUP BY s.employee_id, s.work_date
       ),
@@ -52,13 +54,14 @@ function loadTeramindVsPayroll() {
              (LEFT(j.last_finish, 10) > j.work_date) AS tm_exit_next_day,
              j.sessions,
              j.longest_s,
+             j.has_manual,
              j.event_type_1,
              j.initial_status,
              j.touched_after_run
       FROM (
         SELECT COALESCE(tm.employee_id, pe.employee_id) AS employee_id,
                COALESCE(tm.work_date, pe.work_date)     AS work_date,
-               tm.first_start, tm.last_finish, tm.sessions, tm.longest_s,
+               tm.first_start, tm.last_finish, tm.sessions, tm.longest_s, tm.has_manual,
                pe.period_name, pe.entry_time, pe.exit_time, pe.event_type_1, pe.initial_status,
                pe.touched_after_run
         FROM tm

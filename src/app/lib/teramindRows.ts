@@ -167,3 +167,39 @@ export function normalizeSession(
     computer,
   };
 }
+
+/**
+ * One row of Teramind's Time Records grid (the screen payroll's export file comes from):
+ * `{ agent:{agent_id}, period:[startEpochSec, endEpochSec], is_manual, meta:{computer_id} }`.
+ * The instants are exact, so the clock text comes from `toClock` and never from the display strings.
+ */
+export function normalizeTimeRecord(
+  row: Record<string, unknown>,
+  toClock: (raw: string | number, durationS: number) =>
+    { work_date: string; started_et: string; finished_et: string; started_raw: string } | null,
+): TeramindSessionSave | null {
+  const agentId = agentIdOf(row.agent ?? row.agent_id);
+  if (agentId === null) return null;
+  const period = Array.isArray(row.period) ? row.period : [];
+  const start = Number(period[0]);
+  const end = Number(period[1]);
+  if (!Number.isFinite(start) || start <= 0) return null;
+  let duration = Number.isFinite(end) && end >= start ? end - start : Number(row.duration);
+  if (!Number.isFinite(duration) || duration < 0) duration = 0;
+  const clock = toClock(Math.trunc(start), Math.trunc(duration));
+  if (clock === null) return null;
+  const meta = isPlainObject(row.meta) ? row.meta : {};
+  const computerId = meta.computer_id;
+  return {
+    agent_id: agentId,
+    employee_id: null,
+    work_date: clock.work_date,
+    started_et: clock.started_et,
+    finished_et: clock.finished_et,
+    started_raw: String(Math.trunc(start)),
+    duration_s: Math.trunc(duration),
+    computer: computerId === null || computerId === undefined ? '' : String(computerId),
+    source: 'time_record',
+    is_manual: row.is_manual === true || row.is_manual === 1,
+  };
+}

@@ -19,6 +19,7 @@ type PullLogRow = {
   saved_count: number;
   truncated: boolean;
   error: string | null;
+  source: string | null;
 };
 
 function fmtAt(ts: string): string {
@@ -27,6 +28,12 @@ function fmtAt(ts: string): string {
     month: 'short', day: 'numeric', year: 'numeric',
     hour: 'numeric', minute: '2-digit',
   });
+}
+
+function fmtSource(source: string | null): string {
+  if (source === 'time_record') return 'Time Records';
+  if (source === 'login_session') return 'Login Sessions';
+  return source ?? '—';
 }
 
 export default function TeramindTab() {
@@ -68,7 +75,7 @@ export default function TeramindTab() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50">
-                    {['When', 'Range', 'By', 'Trigger', 'Fetched', 'Saved', 'Error'].map(h => (
+                    {['When', 'Range', 'Source', 'By', 'Trigger', 'Fetched', 'Saved', 'Error'].map(h => (
                       <th key={h} className="px-3 py-2 text-left font-medium text-slate-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -78,6 +85,7 @@ export default function TeramindTab() {
                     <tr key={row.id} className="border-b border-slate-50 hover:bg-slate-50">
                       <td className="px-3 py-1.5 whitespace-nowrap text-slate-600">{fmtAt(row.pulled_at)}</td>
                       <td className="px-3 py-1.5 whitespace-nowrap font-mono">{String(row.date_from).slice(0, 10)} → {String(row.date_to).slice(0, 10)}</td>
+                      <td className="px-3 py-1.5 whitespace-nowrap text-slate-500">{fmtSource(row.source)}</td>
                       <td className="px-3 py-1.5 whitespace-nowrap text-slate-500 max-w-[120px] truncate">{row.pulled_by}</td>
                       <td className="px-3 py-1.5 whitespace-nowrap capitalize">{row.trigger}</td>
                       <td className="px-3 py-1.5 text-right">{row.row_count}</td>
@@ -99,11 +107,6 @@ export default function TeramindTab() {
           )}
         </CardContent>
       </Card>
-
-      {/* Completeness note */}
-      <p className="text-xs text-muted-foreground">
-        Teramind data is complete through yesterday.
-      </p>
 
       {/* Comparison screen */}
       <TeramindCompare />
