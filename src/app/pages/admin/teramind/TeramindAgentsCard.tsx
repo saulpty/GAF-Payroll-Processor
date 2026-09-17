@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useViewer } from '@/app/context/ViewerContext';
 import loadTeramindAgentsAction from '@/actions/loadTeramindAgents';
-import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
+import loadAllEmployeesAction from '@/actions/loadAllEmployees';
 import updateTeramindAgentLinkAction from '@/actions/updateTeramindAgentLink';
 import type { SyncAgentsResult } from './useTeramindPull';
 
@@ -19,7 +19,12 @@ type AgentRow = {
   linked_by: string | null;
   employee_name: string;
 };
-type EmpRow = { id: number; name: string; email: string };
+type EmpRow = {
+  id: number;
+  display_name: string;
+  teramind_email: string;
+  active: boolean | string | number;
+};
 
 type Props = {
   onSync: () => Promise<SyncAgentsResult>;
@@ -28,26 +33,42 @@ type Props = {
 };
 
 export default function TeramindAgentsCard({ onSync, syncing, onDone }: Props) {
-  const { viewAs, email: viewerEmail } = useViewer();
+  const { email: viewerEmail } = useViewer();
   const [syncResult, setSyncResult] = useState<SyncAgentsResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [agents, agentsLoading, , reloadAgents] = useLoadAction(loadTeramindAgentsAction, [], {});
-  const [employees] = useLoadAction(loadAttendanceEmployeesAction, [], { viewAs });
+  const [employees] = useLoadAction(loadAllEmployeesAction, [], {});
   const [linkAgent] = useMutateAction(updateTeramindAgentLinkAction);
 
   const [pendingLinks, setPendingLinks] = useState<Record<number, number>>({});
   const [linking, setLinking] = useState<number | null>(null);
 
   const agentRows = useMemo(() => (agents as AgentRow[]), [agents]);
-  const empRows   = useMemo(() => (employees as EmpRow[]), [employees]);
+  const empRows   = useMemo(() => (employees as EmpRow[]).filter(
+    e => typeof e.teramind_email === 'string' && String(e.teramind_email).trim() !== ''
+  ), [employees]);
 
-  // Count DISTINCT employees (not agents) that have at least one linked agent
+  const isActive = (e: EmpRow) => e.active === true || e.active === 'true' || e.active === 1;
+
+  // Count DISTINCT employees (active + former) with at least one linked agent
   const linkedEmpIds = useMemo(
     () => new Set(agentRows.filter(a => a.employee_id != null).map(a => a.employee_id!)),
     [agentRows],
   );
   const linkedEmployeeCount = linkedEmpIds.size;
+
+  // Former employees (inactive) that are linked
+  const formerLinkedCount = useMemo(
+    () => empRows.filter(e => !isActive(e) && linkedEmpIds.has(e.id)).length,
+    [empRows, linkedEmpIds],
+  );
+
+  // Deleted agents that are linked
+  const deletedLinkedCount = useMemo(
+    () => agentRows.filter(a => a.deleted && a.employee_id != null).length,
+    [agentRows],
+  );
 
   // Employees with more than one linked agent
   const agentsPerEmployee = useMemo(() => {
@@ -63,13 +84,15 @@ export default function TeramindAgentsCard({ onSync, syncing, onDone }: Props) {
     [agentsPerEmployee],
   );
 
-  const unlinkedEmps = useMemo(
-    () => empRows.filter(e => !linkedEmpIds.has(e.id)),
+  // Active employees with no linked agent
+  const activeUnlinkedEmps = useMemo(
+    () => empRows.filter(e => isActive(e) && !linkedEmpIds.has(e.id)),
     [empRows, linkedEmpIds],
   );
 
+  // Agents available for manual linking: not deleted + unlinked; also deleted + unlinked
   const freeAgents = useMemo(
-    () => agentRows.filter(a => !a.deleted && a.employee_id == null),
+    () => agentRows.filter(a => a.employee_id == null),
     [agentRows],
   );
 
@@ -117,6 +140,8 @@ export default function TeramindAgentsCard({ onSync, syncing, onDone }: Props) {
     }
   };
 
+  const showFormerNote = !agentsLoading && (formerLinkedCount > 0 || deletedLinkedCount > 0);
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -138,10 +163,20 @@ export default function TeramindAgentsCard({ onSync, syncing, onDone }: Props) {
             <div className="text-[10px] text-muted-foreground">Linked Employees</div>
           </div>
           <div className="bg-slate-50 rounded-lg p-2 border">
-            <div className="text-lg font-bold text-amber-600">{agentsLoading ? '—' : unlinkedEmps.length}</div>
-            <div className="text-[10px] text-muted-foreground">Employees With No Agent</div>
+            <div className="text-lg font-bold text-amber-600">{agentsLoading ? '—' : activeUnlinkedEmps.length}</div>
+            <div className="text-[10px] text-muted-foreground">Active Employees With No Agent</div>
           </div>
         </div>
+
+        {/* Former + deleted note */}
+        {showFormerNote && (
+          <p className="text-[11px] text-muted-foreground">
+            Includes{formerLinkedCount > 0 ? ` ${formerLinkedCount} former employee${formerLinkedCount !== 1 ? 's' : ''}` : ''}
+            {formerLinkedCount > 0 && deletedLinkedCount > 0 ? ' and' : ''}
+            {deletedLinkedCount > 0 ? ` ${deletedLinkedCount} deleted Teramind account${deletedLinkedCount !== 1 ? 's' : ''}` : ''},
+            linked so past periods can be compared.
+          </p>
+        )}
 
         {/* Multi-agent note */}
         {!agentsLoading && multiAgentCount > 0 && (
@@ -166,22 +201,30 @@ export default function TeramindAgentsCard({ onSync, syncing, onDone }: Props) {
           {syncing ? 'Syncing…' : 'Sync Teramind Roster'}
         </Button>
 
-        {/* Unlinked employees: manual link */}
-        {unlinkedEmps.length > 0 && (
+        {/* Active unlinked employees: manual link */}
+        {activeUnlinkedEmps.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-medium text-slate-600">Employees With No Linked Agent</p>
-            {unlinkedEmps.map(emp => (
+            <p className="text-xs font-medium text-slate-600">Active Employees With No Linked Agent</p>
+            {activeUnlinkedEmps.map(emp => (
               <div key={emp.id} className="flex items-center gap-2 text-xs">
-                <span className="w-36 shrink-0 truncate font-medium text-slate-700">{emp.name}</span>
+                <span className="w-36 shrink-0 truncate font-medium text-slate-700">{emp.display_name}</span>
                 <select
                   className="flex-1 rounded border border-slate-200 px-2 py-1 text-xs bg-white"
                   value={pendingLinks[emp.id] ?? ''}
                   onChange={e => setPendingLinks(p => ({ ...p, [emp.id]: Number(e.target.value) }))}
                 >
                   <option value="">— pick agent —</option>
-                  {freeAgents.map(a => (
+                  {freeAgents.filter(a => !a.deleted).map(a => (
                     <option key={a.agent_id} value={a.agent_id}>
                       {a.name} ({a.email})
+                    </option>
+                  ))}
+                  {freeAgents.filter(a => a.deleted).length > 0 && (
+                    <option disabled>── deleted accounts ──</option>
+                  )}
+                  {freeAgents.filter(a => a.deleted).map(a => (
+                    <option key={a.agent_id} value={a.agent_id}>
+                      {a.name} ({a.email}) · deleted
                     </option>
                   ))}
                 </select>

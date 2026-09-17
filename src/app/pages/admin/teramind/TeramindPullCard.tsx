@@ -41,6 +41,7 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
   const [backfilling, setBackfilling] = useState(false);
   const [backfillStatus, setBackfillStatus] = useState<string | null>(null);
   const [backfillTotal, setBackfillTotal]   = useState<{ pulled: number; skipped: number; failed: number } | null>(null);
+  const [repullAll, setRepullAll] = useState(false);
 
   // Only count time_record pulls when checking coverage
   const logRows = useMemo(
@@ -88,12 +89,15 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
     for (const p of ordered) {
       const pFrom = String(p.start_date).slice(0, 10);
       const pTo   = String(p.end_date).slice(0, 10);
-      if (coversRange(coveredLocal, pFrom, pTo)) {
+
+      // Skip only when checkbox is off and this period is already covered
+      if (!repullAll && coversRange(coveredLocal, pFrom, pTo)) {
         totalSkipped++;
         setBackfillStatus(`Skipping ${p.period_name} (already covered)`);
         setBackfillTotal({ pulled: totalPulled, skipped: totalSkipped, failed: totalFailed });
         continue;
       }
+
       setBackfillStatus(`Pulling ${p.period_name} (${pFrom} → ${pTo})…`);
       try {
         await onPull(pFrom, pTo, 'backfill');
@@ -147,24 +151,36 @@ export default function TeramindPullCard({ onPull, pulling, onDone }: Props) {
           </div>
         </div>
 
-        {/* Pull buttons */}
-        <div className="flex gap-2">
-          <Button size="sm" className="flex-1" onClick={handlePull} disabled={busy}>
-            {pulling && !backfilling
-              ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-              : <Download className="w-3.5 h-3.5 mr-1.5" />}
-            {pulling && !backfilling ? 'Pulling…' : 'Pull'}
-          </Button>
-          <Button
-            size="sm" variant="outline" className="flex-1"
-            onClick={handleBackfill}
-            disabled={busy || !periodsReady}
-          >
-            {backfilling
-              ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-              : <Download className="w-3.5 h-3.5 mr-1.5" />}
-            {backfilling ? 'Backfilling…' : 'Backfill All Periods'}
-          </Button>
+        {/* Pull buttons + re-pull checkbox */}
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Button size="sm" className="flex-1" onClick={handlePull} disabled={busy}>
+              {pulling && !backfilling
+                ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                : <Download className="w-3.5 h-3.5 mr-1.5" />}
+              {pulling && !backfilling ? 'Pulling…' : 'Pull'}
+            </Button>
+            <Button
+              size="sm" variant="outline" className="flex-1"
+              onClick={handleBackfill}
+              disabled={busy || !periodsReady}
+            >
+              {backfilling
+                ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                : <Download className="w-3.5 h-3.5 mr-1.5" />}
+              {backfilling ? 'Backfilling…' : 'Backfill All Periods'}
+            </Button>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={repullAll}
+              onChange={e => setRepullAll(e.target.checked)}
+              className="rounded border-slate-300 w-3.5 h-3.5"
+              disabled={busy}
+            />
+            <span className="text-xs text-slate-600">Re-Pull Periods Already Covered</span>
+          </label>
         </div>
 
         {/* Error */}

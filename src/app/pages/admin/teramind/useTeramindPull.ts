@@ -4,7 +4,7 @@ import { useViewer } from '@/app/context/ViewerContext';
 import loadTeramindAgentDirectoryAction from '@/actions/loadTeramindAgentDirectory';
 import loadTeramindAgentsAction from '@/actions/loadTeramindAgents';
 import loadTeramindTimeRecordsAction from '@/actions/loadTeramindTimeRecords';
-import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
+import loadAllEmployeesAction from '@/actions/loadAllEmployees';
 import upsertTeramindAgentsAction from '@/actions/upsertTeramindAgents';
 import updateTeramindAgentLinksAction from '@/actions/updateTeramindAgentLinks';
 import upsertTeramindSessionsAction from '@/actions/upsertTeramindSessions';
@@ -29,68 +29,84 @@ export type SyncAgentsResult = { agents: number; linked: number; unlinked: numbe
 export type PullRangeResult  = { fetched: number; saved: number; dropped: number; truncated: boolean };
 
 export function useTeramindPull() {
-  const { viewAs, email: viewerEmail } = useViewer();
+  const { viewAs: _viewAs, email: viewerEmail } = useViewer();
   const [syncing, setSyncing] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
 
-  const [fetchDirectory]      = useMutateAction(loadTeramindAgentDirectoryAction);
-  const [fetchSavedAgents]    = useMutateAction(loadTeramindAgentsAction);
-  const [fetchTimeRecords]    = useMutateAction(loadTeramindTimeRecordsAction);
-  const [fetchEmployees]      = useMutateAction(loadAttendanceEmployeesAction);
-  const [upsertAgents]        = useMutateAction(upsertTeramindAgentsAction);
-  const [linkAgentsAction]    = useMutateAction(updateTeramindAgentLinksAction);
-  const [upsertSessions]      = useMutateAction(upsertTeramindSessionsAction);
-  const [upsertPullLog]       = useMutateAction(upsertTeramindPullLogAction);
+  const [fetchDirectory]   = useMutateAction(loadTeramindAgentDirectoryAction);
+  const [fetchSavedAgents] = useMutateAction(loadTeramindAgentsAction);
+  const [fetchTimeRecords] = useMutateAction(loadTeramindTimeRecordsAction);
+  const [fetchAllEmployees]= useMutateAction(loadAllEmployeesAction);
+  const [upsertAgents]     = useMutateAction(upsertTeramindAgentsAction);
+  const [linkAgentsAction] = useMutateAction(updateTeramindAgentLinksAction);
+  const [upsertSessions]   = useMutateAction(upsertTeramindSessionsAction);
+  const [upsertPullLog]    = useMutateAction(upsertTeramindPullLogAction);
 
   const syncAgents = useCallback(async (): Promise<SyncAgentsResult> => {
     setSyncing(true);
     setError(null);
     try {
+      // 1. Fetch full Teramind roster (all agents, deleted included)
       const dirResp = await fetchDirectory({});
       const dirRows = unwrapRows(dirResp);
       const allAgents: TeramindAgent[] = dirRows
         .map(r => normalizeAgent(r))
         .filter((a): a is TeramindAgent => a !== null);
 
+      // 2. Load already-saved agents to know which are already linked
       const savedResp = await fetchSavedAgents({});
       const savedRows = rowsOf(savedResp);
-      const linkedIds = new Set<number>(
-        savedRows
-          .filter(r => r.employee_id != null)
-          .map(r => Number(r.agent_id))
+      const prevLinkedIds = new Set<number>(
+        savedRows.filter(r => r.employee_id != null).map(r => Number(r.agent_id))
       );
 
-      const keptAgents = allAgents.filter(a => !a.deleted || linkedIds.has(a.agent_id));
+      // 3. Load ALL employees (active + former), skip those with no teramind_email
+      const empResp = await fetchAllEmployees({});
+      const allEmpRows = rowsOf(empResp);
+      const employees = allEmpRows
+        .filter(e => typeof e.teramind_email === 'string' && String(e.teramind_email).trim() !== '')
+        .map(e => ({
+          id: Number(e.id),
+          teramind_email: String(e.teramind_email).trim(),
+          active: e.active === true || e.active === 'true' || e.active === 1,
+        }));
 
+      // 4. Link ALL agents (deleted included) against ALL employees (former included)
+      const { links, unlinkedEmployees } = linkAgents(allAgents, employees);
+      const linkedByThisRun = new Set(links.map(l => l.agent_id));
+
+      // 5. Keep agent when: not deleted, OR already linked, OR newly linked by this run
+      const keptAgents = allAgents.filter(
+        a => !a.deleted || prevLinkedIds.has(a.agent_id) || linkedByThisRun.has(a.agent_id)
+      );
+
+      // 6. Upsert kept agents in chunks of 200
       for (const chunk of chunkArray(keptAgents, 200)) {
-        const rows = chunk.map((a) => ({
+        const rows = chunk.map(a => ({
           agent_id: a.agent_id,
-          email: a.email,
-          name: a.name,
-          deleted: a.deleted,
-          raw: dirRows[allAgents.indexOf(a)] ?? a,
+          email:    a.email,
+          name:     a.name,
+          deleted:  a.deleted,
+          raw:      dirRows[allAgents.indexOf(a)] ?? a,
         }));
         await upsertAgents({ rows: JSON.stringify(rows) });
       }
 
-      const empResp = await fetchEmployees({ viewAs });
-      const employees = rowsOf(empResp).map(e => ({
-        id: Number(e.id),
-        teramind_email: String(e.email ?? ''),
-      }));
-
-      const { links, unlinkedEmployees } = linkAgents(keptAgents, employees);
-
+      // 7. Bulk-update links
       if (links.length > 0) {
         await linkAgentsAction({ rows: JSON.stringify(links), linked_by: 'auto' });
       }
 
-      return { agents: keptAgents.length, linked: links.length, unlinked: unlinkedEmployees.length };
+      // 8. unlinked = active employees with no agent
+      const linkedEmpIds = new Set(links.map(l => l.employee_id));
+      const unlinkedActive = employees.filter(e => e.active && !linkedEmpIds.has(e.id));
+
+      return { agents: keptAgents.length, linked: links.length, unlinked: unlinkedActive.length };
     } finally {
       setSyncing(false);
     }
-  }, [fetchDirectory, fetchSavedAgents, upsertAgents, fetchEmployees, viewAs, linkAgentsAction]);
+  }, [fetchDirectory, fetchSavedAgents, fetchAllEmployees, upsertAgents, linkAgentsAction]);
 
   const pullRange = useCallback(async (
     from: string,
@@ -100,13 +116,11 @@ export function useTeramindPull() {
     setPulling(true);
     setError(null);
 
-    // 1. Linked agent ids
+    // Linked agent ids from saved roster
     const savedResp = await fetchSavedAgents({});
     const savedRows = rowsOf(savedResp);
     const linkedAgentSet = new Set<number>(
-      savedRows
-        .filter(r => r.employee_id != null)
-        .map(r => Number(r.agent_id))
+      savedRows.filter(r => r.employee_id != null).map(r => Number(r.agent_id))
     );
     const agentIds = [...linkedAgentSet];
     if (agentIds.length === 0) {
@@ -120,10 +134,8 @@ export function useTeramindPull() {
     let truncated = false;
 
     try {
-      // 2. Build the epoch-second window (one day wider each side)
       const { periodStart, periodEnd } = recordWindow(from, to);
 
-      // 3. Page loop — up to 40 pages of 5000
       const PAGE_SIZE = 5000;
       const MAX_PAGES = 40;
       const allSessions: (TeramindSessionSave & { raw: unknown })[] = [];
@@ -148,17 +160,12 @@ export function useTeramindPull() {
           allSessions.push({ ...session, raw: row });
         }
 
-        // Stop if the API signals no next page or returned nothing
         const pagination = (resp as Record<string, unknown>)?.pagination;
         const hasNext = (pagination as Record<string, unknown>)?.next === true;
         if (!hasNext || rawRows.length === 0) break;
-
-        if (page === MAX_PAGES - 1) {
-          truncated = true;
-        }
+        if (page === MAX_PAGES - 1) truncated = true;
       }
 
-      // 4. Save in chunks of 200
       for (const batch of chunkArray(allSessions, 200)) {
         const rows = batch.map(s => ({
           agent_id:    s.agent_id,
@@ -176,7 +183,6 @@ export function useTeramindPull() {
         saved += rows.length;
       }
 
-      // 5. Write pull log
       await upsertPullLog({
         date_from:   from,
         date_to:     to,
