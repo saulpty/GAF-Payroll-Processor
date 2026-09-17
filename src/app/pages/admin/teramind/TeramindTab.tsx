@@ -5,6 +5,7 @@ import loadTeramindPullLogAction from '@/actions/loadTeramindPullLog';
 import { useTeramindPull } from './useTeramindPull';
 import TeramindAgentsCard from './TeramindAgentsCard';
 import TeramindPullCard from './TeramindPullCard';
+import TeramindCompare from './TeramindCompare';
 
 type PullLogRow = {
   id: number;
@@ -103,6 +104,9 @@ export default function TeramindTab() {
       <p className="text-xs text-muted-foreground">
         Teramind data is complete through yesterday.
       </p>
+
+      {/* Comparison screen */}
+      <TeramindCompare />
 
     </div>
   );
