@@ -13,8 +13,7 @@ import {
   addSecondsToClock,
   addDays,
   sessionClock,
-  hasTimezone,
-} from '../src/app/lib/teramindTime.ts';
+  hasTimezone, easternMinutes } from '../src/app/lib/teramindTime.ts';
 
 const CLOCK_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 
@@ -208,4 +207,10 @@ test('source has no toISOString and no runtime imports (import type only)', () =
   assert.equal(/toISOString/.test(src), false);
   const badImport = /^import\s+(?!type\s)/m.test(src);
   assert.equal(badImport, false);
+});
+
+test('easternMinutes: the Eastern wall-clock minute of an instant, summer and winter', () => {
+  assert.equal(easternMinutes(Date.parse('2026-09-17T19:43:00Z')), 15 * 60 + 43); // EDT
+  assert.equal(easternMinutes(Date.parse('2026-01-12T13:56:30Z')), 8 * 60 + 56);  // EST, seconds cut
+  assert.equal(easternMinutes(Date.parse('2026-08-11T03:30:00Z')), 23 * 60 + 30); // previous Eastern day
 });

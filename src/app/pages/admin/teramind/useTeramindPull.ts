@@ -111,7 +111,7 @@ export function useTeramindPull() {
   const pullRange = useCallback(async (
     from: string,
     to: string,
-    trigger: 'manual' | 'backfill' | 'capture',
+    trigger: 'manual' | 'backfill' | 'capture' | 'auto',
   ): Promise<PullRangeResult> => {
     setPulling(true);
     setError(null);

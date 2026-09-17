@@ -131,3 +131,14 @@ test('T11: punches handed to payroll are cut to the whole minute, like the expor
   assert.match(src, /:00`/, 'seconds must be fixed at :00');
   assert.doesNotMatch(src, /Math\.round/, 'never round a punch — cut it');
 });
+
+test('T12: the keep-fresh sync only ever runs for a super user, in a visible tab, one at a time', () => {
+  const p = 'src/app/components/TeramindAutoSync.tsx';
+  if (!existsSync(join(root, p))) return; // lands with prompt 11
+  const src = read(p);
+  assert.match(src, /if \(!isSuper\) return;/, 'managers must never trigger a Teramind pull');
+  assert.match(src, /document\.hidden/, 'a background tab must not keep pulling');
+  assert.match(src, /let inFlight = false;/, 'overlapping pulls must be impossible');
+  assert.match(src, /pullRange\([^)]*'auto'\)/, 'automatic pulls must be labelled auto in the log');
+  assert.doesNotMatch(src, /actions\/loadTeramind(TimeRecords|LoginSessions|AgentDirectory)['"]/, 'must go through useTeramindPull');
+});

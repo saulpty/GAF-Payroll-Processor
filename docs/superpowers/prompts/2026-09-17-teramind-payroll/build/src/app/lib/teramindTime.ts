@@ -117,3 +117,9 @@ export function sessionClock(
   }
   return null;
 }
+
+/** Minutes since midnight, US Eastern, for an instant — "what time is it for the punches right now". */
+export function easternMinutes(ms: number): number {
+  const clock = easternClock(ms);
+  return Number(clock.slice(11, 13)) * 60 + Number(clock.slice(14, 16));
+}
