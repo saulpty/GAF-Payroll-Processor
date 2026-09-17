@@ -1,16 +1,18 @@
 import { useSearchParams } from 'react-router-dom';
-import { Users, RefreshCw, Tag } from 'lucide-react';
+import { Users, RefreshCw, Tag, Clock } from 'lucide-react';
 
 import RosterTab from '@/app/pages/admin/employees/RosterTab';
 import MondayTab from '@/app/pages/admin/employees/MondayTab';
 import AliasesTab from '@/app/pages/admin/employees/AliasesTab';
+import TeramindTab from '@/app/pages/admin/teramind/TeramindTab';
 
-type Tab = 'roster' | 'monday' | 'aliases';
+type Tab = 'roster' | 'monday' | 'aliases' | 'teramind';
 
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
-  { id: 'roster',  label: 'Roster',  icon: Users     },
-  { id: 'monday',  label: 'Monday',  icon: RefreshCw },
-  { id: 'aliases', label: 'Aliases', icon: Tag       },
+  { id: 'roster',   label: 'Roster',   icon: Users     },
+  { id: 'monday',   label: 'Monday',   icon: RefreshCw },
+  { id: 'aliases',  label: 'Aliases',  icon: Tag       },
+  { id: 'teramind', label: 'Teramind', icon: Clock     },
 ];
 
 export default function AdminEmployeesHub() {
@@ -30,7 +32,7 @@ export default function AdminEmployeesHub() {
       <div className="px-6 pt-5 pb-0 shrink-0">
         <div className="mb-4">
           <h1 className="text-lg font-bold text-slate-800 leading-tight">Employees</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Roster · Monday · Aliases</p>
+          <p className="text-xs text-slate-500 mt-0.5">Roster · Monday · Aliases · Teramind</p>
         </div>
 
         {/* Tab strip */}
@@ -56,12 +58,11 @@ export default function AdminEmployeesHub() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-auto">
-        {tab === 'roster'  && <RosterTab />}
-        {tab === 'monday'  && <MondayTab />}
-        {tab === 'aliases' && <AliasesTab />}
+        {tab === 'roster'   && <RosterTab />}
+        {tab === 'monday'   && <MondayTab />}
+        {tab === 'aliases'  && <AliasesTab />}
+        {tab === 'teramind' && <TeramindTab />}
       </div>
     </div>
   );
 }
-
-
