@@ -31,6 +31,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   '/payroll-master':        { period: true, employee: true, pmTab: true },
   '/hrk-summary':           { period: true },
   '/process':               { dateRange: true },
+  '/attendance/today':      { employee: true, role: true, manager: true },
   '/attendance':            { periods: true, employee: true, role: true, manager: true },
   '/attendance/reports':    { periods: true, employee: true, role: true, manager: true },
   '/pto':                   { employee: true, role: true, manager: true },

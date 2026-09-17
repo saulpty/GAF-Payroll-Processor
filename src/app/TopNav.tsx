@@ -56,6 +56,7 @@ const SECTIONS = [
     subHover: 'hover:bg-[#2AA876]/5 text-slate-600',
     paths: ['/attendance'],
     links: [
+      { to: '/attendance/today',   label: 'Today',   icon: Clock },
       { to: '/attendance',         label: 'List',    icon: Users },
       { to: '/attendance/reports', label: 'Reports', icon: FileText },
     ],

@@ -14,21 +14,24 @@ import { AttendanceKpis }   from '@/app/pages/attendance/AttendanceKpis';
 import { AttendanceTable }  from '@/app/pages/attendance/AttendanceTable';
 import { AttendancePanel }  from '@/app/pages/attendance/AttendancePanel';
 import AttendanceReport     from '@/app/pages/attendance/AttendanceReport';
+import AttendanceToday      from '@/app/pages/attendance/AttendanceToday';
 import { matchesManager }   from '@/app/lib/managerFilter';
 import { useState } from 'react';
 
-type Tab = 'list' | 'reports';
+type Tab = 'list' | 'reports' | 'today';
 
 function tabFromPath(pathname: string): Tab {
+  if (pathname.includes('/today')) return 'today';
   if (pathname.includes('/reports')) return 'reports';
   return 'list';
 }
 
-// Reports tab has its own data layer — render it without loading the heavy daily view
+// Reports/Today tabs have their own data layer — render them without loading the heavy daily view
 export default function Attendance() {
   const { pathname } = useLocation();
   const tab: Tab = tabFromPath(pathname);
 
+  if (tab === 'today') return <AttendanceToday />;
   if (tab === 'reports') return <AttendanceReport />;
 
   return <AttendanceInner tab="list" />;
