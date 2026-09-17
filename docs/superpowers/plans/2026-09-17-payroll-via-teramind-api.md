@@ -72,6 +72,28 @@ What the research found (shapes the design):
 - Built and green in `prompts/2026-09-17-teramind-payroll/build/`: 4 libs + types (72 tests),
   migration, 8 SQL actions, 2 HTTP actions. Not yet sent to UIB.
 
+## Course correction (2026-09-17, afternoon) — the source is Time Records, not login sessions
+
+Everything above about the `login_session` cube is superseded. Saul pointed at Teramind's own
+**Time Records** screen — where Tim has always exported payroll's file. Its feed,
+`POST /tt/r/time-records/grid`, works through the same datasource and is better in every way:
+**live for today**, native `agents` filter (we never pull the whole company), `pageSize` 5000, exact
+epoch instants, history > 1 year. The comparison screen proved the point: login sessions matched
+payroll on 33% of days; **Time Records match 96.7% to the minute across all 12 periods (99.6% on
+Q2-Aug)**, and what is left is explainable (hand edits, last-day runs with schedule-filled exits,
+time-off days where payroll clears the times, people not yet linked).
+
+What changes in the plan:
+- `teramind_sessions` rows carry `source` (`time_record` | `login_session`) and `is_manual`; payroll,
+  attendance and the comparison read `time_record` only. `loadTeramindLoginSessions` stays only as a
+  diagnostic toggle on the comparison screen.
+- **"Live" is real**: today's first record is available now. The keep-fresh sync (Phase B) and live
+  Attendance (Phase E) use Time Records for today; no polling clock, and no "through yesterday" limit.
+- **Same-day capture works**: a period can be captured from the API on its last day too (the
+  existing mid-day checkbox still applies). The upload stays purely as an emergency backup.
+- Linking covers **former employees and deleted old accounts**, so history compares fully.
+- `is_manual` (time someone typed into Teramind by hand) is saved and shown — payroll will want it.
+
 ## Build order — payroll is touched only in Phase D
 
 ```
