@@ -6,7 +6,7 @@ function upsertTeramindPullLog() {
     query: `
       INSERT INTO teramind_pull_log (
         date_from, date_to, pulled_by, trigger, agent_count, row_count, saved_count,
-        truncated, error
+        truncated, error, source
       )
       VALUES (
         {{params.date_from}}::text,
@@ -17,7 +17,8 @@ function upsertTeramindPullLog() {
         {{params.row_count}}::int,
         {{params.saved_count}}::int,
         {{params.truncated}}::boolean,
-        NULLIF({{params.error}}::text, '')
+        NULLIF({{params.error}}::text, ''),
+        COALESCE(NULLIF({{params.source}}::text, ''), 'login_session')
       )
       RETURNING id;
     `,

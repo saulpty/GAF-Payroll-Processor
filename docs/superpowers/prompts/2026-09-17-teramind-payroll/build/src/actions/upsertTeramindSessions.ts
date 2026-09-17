@@ -9,7 +9,7 @@ function upsertTeramindSessions() {
     query: `
       INSERT INTO teramind_sessions (
         agent_id, employee_id, work_date, started_et, finished_et, started_raw,
-        duration_s, computer, raw, synced_at
+        duration_s, computer, raw, synced_at, source, is_manual
       )
       SELECT DISTINCT ON ((r->>'agent_id')::bigint, r->>'started_raw', COALESCE(r->>'computer', ''))
         (r->>'agent_id')::bigint,
@@ -21,7 +21,9 @@ function upsertTeramindSessions() {
         COALESCE((r->>'duration_s')::int, 0),
         COALESCE(r->>'computer', ''),
         (r->'raw'),
-        NOW()
+        NOW(),
+        COALESCE(NULLIF(r->>'source', ''), 'login_session'),
+        COALESCE((r->>'is_manual')::boolean, false)
       FROM jsonb_array_elements({{params.rows}}::jsonb) AS r
       LEFT JOIN teramind_agents ta ON ta.agent_id = (r->>'agent_id')::bigint
       ORDER BY (r->>'agent_id')::bigint, r->>'started_raw', COALESCE(r->>'computer', ''),
@@ -31,6 +33,8 @@ function upsertTeramindSessions() {
         duration_s    = EXCLUDED.duration_s,
         employee_id   = COALESCE(EXCLUDED.employee_id, teramind_sessions.employee_id),
         raw           = EXCLUDED.raw,
+        source        = EXCLUDED.source,
+        is_manual     = EXCLUDED.is_manual,
         synced_at     = NOW()
       RETURNING id;
     `,

@@ -16,10 +16,12 @@ function loadTeramindSessions() {
         ts.finished_et,
         ts.started_raw,
         ts.duration_s,
-        ts.computer
+        ts.computer,
+        ts.is_manual
       FROM teramind_sessions ts
       INNER JOIN employees e ON e.id = ts.employee_id
-      WHERE ts.work_date BETWEEN {{params.dateFrom}}::text AND {{params.dateTo}}::text
+      WHERE ts.source = 'time_record'
+        AND ts.work_date BETWEEN {{params.dateFrom}}::text AND {{params.dateTo}}::text
         AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a
                       WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
       ORDER BY e.id, ts.started_et;

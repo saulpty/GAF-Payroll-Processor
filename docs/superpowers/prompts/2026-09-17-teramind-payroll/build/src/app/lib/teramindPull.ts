@@ -73,3 +73,20 @@ export function coversRange(
 
   return true;
 }
+
+/**
+ * Epoch-second window to ask the Time Records grid for. Deliberately one day wider on each side
+ * than the Eastern dates wanted: the rows carry exact instants, so the caller keeps only rows whose
+ * Eastern work_date is inside from..to (see `inDateRange`) and no timezone maths is needed here.
+ */
+export function recordWindow(from: string, to: string): { periodStart: number; periodEnd: number } {
+  return {
+    periodStart: (toDayNumber(from) - 1) * 86400,
+    periodEnd: (toDayNumber(to) + 2) * 86400 - 1,
+  };
+}
+
+/** Plain string comparison of YYYY-MM-DD dates, inclusive. */
+export function inDateRange(workDate: string, from: string, to: string): boolean {
+  return workDate >= from && workDate <= to;
+}
