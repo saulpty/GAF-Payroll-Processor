@@ -533,3 +533,42 @@ a round it never received.
 Related and worth separating: a renderer freeze (`Page.captureScreenshot timed
 out`, `Runtime.evaluate timed out`) is normal and harmless during generation. A
 freeze *plus* a prompt missing from the panel is a lost round.
+
+### The feed someone else already uses is not evidence that it is the right feed
+
+**2026-09-17.** The Teramind integration was first built on the `login_session` analytics feed,
+because the VP's Work Pattern Monitor used it and a three-day spot check on one employee matched
+payroll to the minute. The comparison screen then showed **33%** agreement over a whole period:
+people stay logged in for days, so most days have no "login" at all, and some sessions are eight days
+long. Saul asked one question — "when I open Time Records in Teramind I see today's earliest
+session" — and that screen's own network call (`POST /tt/r/time-records/grid`) turned out to be
+reachable through our datasource: live, filterable, exact, **96–99.6%** agreement.
+Rules: (1) a spot check on one tidy employee proves nothing — build the whole-population comparison
+*before* trusting a source; (2) when replacing a manual step, start from **the screen the human
+actually exports from** and read its network traffic, not from whatever API a neighbouring app calls.
+
+### UIB rewrites date-looking TEXT on its way to the browser — on the way out only
+
+**2026-09-17.** `teramind_pull_log.date_from` is `TEXT` holding `2026-08-10`; the browser received
+`2026-08-10T00:00:00.000Z`. Same family as "Postgres returns dates as full timestamps", but it
+happens to TEXT columns too, so a stored `YYYY-MM-DD HH:MM:SS` wall-clock string cannot be trusted
+to arrive unchanged. For anything where an hour matters (payroll punches), **return integers**
+(`YYYYMMDD`, minutes since midnight) and rebuild the text in a tested lib; for dates, slice to 10.
+
+### Inside UIB the code root *is* `src`
+
+**2026-09-17.** A prompt saying "create `src/app/lib/x.ts` exactly" produced a stray top-level
+`src/` folder (exported as `src/src/app/lib/`). Earlier prompts got away with it because UIB's AI
+usually maps the path; "character for character" made it literal. Every prompt now opens with a
+two-line note that mirror paths drop the leading `src/`, and the export diff catches the rest.
+
+### When the clipboard is unavailable, load the prompt from localhost
+
+**2026-09-17.** Under a remote-control session every Windows clipboard call failed
+("Requested Clipboard operation did not succeed"). Working alternative: serve the prompts folder
+with a ten-line Node server on `127.0.0.1` (CORS for the UIB origin +
+`Access-Control-Allow-Private-Network: true`), then in the builder tab `fetch` the file, set the
+textarea through the native `HTMLTextAreaElement` value setter and dispatch an `input` event.
+Check `.value.length` and a few distinctive substrings **before** clicking submit, and afterwards
+confirm the chat's last heading is your prompt's title. Angular picked the value up every time.
+

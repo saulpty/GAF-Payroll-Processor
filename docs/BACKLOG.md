@@ -404,6 +404,29 @@ keyed on `period_name`, so it is not a rename anyone should attempt casually.
 
 ---
 
+### 14. A one-click capture makes two old gaps easier to hit (2026-09-17)
+
+Now that a period's punches come from a button instead of a downloaded file, re-running a period is
+effortless — and the two gaps in #2 matter more: **a re-run overwrites rows Tim already reviewed**
+(`upsertPayrollEntries` has no guard; `resolved_by` is never written), and **a paid period is not
+locked** (nothing consults `hrk_exports`). Deliberately left out of the source swap. Smallest useful
+fix: refuse to re-run a period that has an HRK export unless a super user unlocks it; then start
+writing `resolved_by` and skip resolved rows on re-run.
+
+### 15. Follow-ups from the Teramind switch (2026-09-17)
+
+- **Keep-fresh sync.** Nothing pulls Time Records unless someone clicks. For live Attendance /
+  Activity: a UIB Automation (server-side timer) or a throttled super-user on-open sync
+  (`teramind_sync_every_minutes` already exists in Rules & Config).
+- **Live Attendance.** Attendance still reads `payroll_entries` only, so a day appears up to two
+  weeks late. Fill not-yet-captured days from `teramind_sessions` (captured days always win).
+- **117 days** where Teramind has punches and payroll has no row (not Timothy Moore) — never examined
+  one by one. Comparison screen → All Periods → Teramind Only → Period "—".
+- `loadTeramindLoginSessions` is now only a diagnostic toggle; remove it with the toggle once nobody
+  needs the 33% demonstration.
+- `TeramindCompare.tsx` is 13.2 KB — next feature there should split it again.
+- `ProcessPayroll.tsx` grew to 59 KB (#9). Still the largest file; still not split.
+
 ## Structural
 
 ### 9. Six files are too large to edit reliably
