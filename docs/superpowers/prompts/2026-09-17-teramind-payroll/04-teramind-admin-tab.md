@@ -2,6 +2,10 @@
 
 ## Files that may change
 
+**Paths are written as they appear in our git mirror. Inside this project the code root *is* `src`,
+so `src/app/pages/admin/…` means `app/pages/admin/…` — next to the existing `AdminEmployeesHub.tsx`.
+Never create a top-level folder named `src`.**
+
 - `src/app/pages/admin/teramind/useTeramindPull.ts` — NEW
 - `src/app/pages/admin/teramind/TeramindAgentsCard.tsx` — NEW
 - `src/app/pages/admin/teramind/TeramindPullCard.tsx` — NEW
