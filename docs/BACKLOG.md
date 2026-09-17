@@ -415,11 +415,13 @@ writing `resolved_by` and skip resolved rows on re-run.
 
 ### 15. Follow-ups from the Teramind switch (2026-09-17)
 
-- **Keep-fresh sync.** Nothing pulls Time Records unless someone clicks. For live Attendance /
-  Activity: a UIB Automation (server-side timer) or a throttled super-user on-open sync
-  (`teramind_sync_every_minutes` already exists in Rules & Config).
-- **Live Attendance.** Attendance still reads `payroll_entries` only, so a day appears up to two
-  weeks late. Fill not-yet-captured days from `teramind_sessions` (captured days always win).
+- **Keep-fresh sync — done for browsers (2026-09-17 evening):** `TeramindAutoSync`, super users only,
+  visible tab, every `teramind_sync_every_minutes`. **Still open:** a server-side UI Bakery Automation so
+  the copy is fresh when no super user is online (needs Saul; lives outside the repo).
+- **Live Attendance — first slice done:** Attendance → Today (unofficial, viewer-scoped). **Still open:**
+  attach the reason to a day with no records (sick form / PTO / permission / WFH) so the board can say
+  why — then the parked Activity plan (grid, needs-a-look, Avg Activity Time) on the same table.
+  List / Reports still show only captured days.
 - **117 days** where Teramind has punches and payroll has no row (not Timothy Moore) — never examined
   one by one. Comparison screen → All Periods → Teramind Only → Period "—".
 - `loadTeramindLoginSessions` is now only a diagnostic toggle; remove it with the toggle once nobody
