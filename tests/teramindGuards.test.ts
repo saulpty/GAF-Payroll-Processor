@@ -142,3 +142,13 @@ test('T12: the keep-fresh sync only ever runs for a super user, in a visible tab
   assert.match(src, /pullRange\([^)]*'auto'\)/, 'automatic pulls must be labelled auto in the log');
   assert.doesNotMatch(src, /actions\/loadTeramind(TimeRecords|LoginSessions|AgentDirectory)['"]/, 'must go through useTeramindPull');
 });
+
+test('T13: the Today board shows one clock and never calls a person late without knowing why', () => {
+  const p = 'src/app/pages/attendance/AttendanceToday.tsx';
+  if (!existsSync(join(root, p))) return; // lands with prompt 12
+  const src = read(p);
+  assert.doesNotMatch(src, /toLocaleTimeString|toLocaleString/, 'every time on this page is US Eastern — no browser-local clock');
+  assert.doesNotMatch(src, /Late – Not In/, 'no records is not the same as late: leave and forms are not read here yet');
+  assert.doesNotMatch(src, /actions\/loadTeramind(TimeRecords|LoginSessions|AgentDirectory)['"]|useTeramindPull/, 'a manager-visible page must never call Teramind');
+  assert.match(src, /viewAs/, 'the board must be scoped to the viewer');
+});

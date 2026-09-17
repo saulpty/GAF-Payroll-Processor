@@ -21,7 +21,7 @@ const STATUS_CHIP: Record<TodayStatus, { label: string; cls: string }> = {
   working:     { label: 'Working',       cls: 'bg-green-100 text-green-700 border-green-200' },
   away:        { label: 'Away',          cls: 'bg-amber-100 text-amber-700 border-amber-200' },
   not_in_yet:  { label: 'Not In Yet',   cls: 'bg-slate-100 text-slate-600 border-slate-200' },
-  late_not_in: { label: 'Late – Not In', cls: 'bg-red-100 text-red-700 border-red-200' },
+  late_not_in: { label: 'No Records',    cls: 'bg-amber-100 text-amber-800 border-amber-200' },
   finished:    { label: 'Finished',      cls: 'bg-blue-100 text-blue-700 border-blue-200' },
   day_off:     { label: 'Day Off',       cls: 'bg-slate-100 text-slate-400 border-slate-200' },
   holiday:     { label: 'Holiday',       cls: 'bg-slate-100 text-slate-400 border-slate-200' },
@@ -107,7 +107,8 @@ export default function AttendanceToday() {
       .filter((v): v is string => !!v);
     if (!vals.length) return '—';
     const newest = vals.reduce((a, b) => (a > b ? a : b));
-    return new Date(newest).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const ms = new Date(newest).getTime();
+    return Number.isFinite(ms) ? fmtClock(easternMinutes(ms)) : '—';
   }, [rawPunches]);
 
   const holidays = (rawHolidays as HolidayRow[]) ?? [];
@@ -135,6 +136,9 @@ export default function AttendanceToday() {
         <span className="font-semibold text-[#1e7a56] text-sm">Live View — Unofficial.</span>
         <span className="text-slate-500 text-xs">
           Data As Of {dataAsOf}. Records refresh about every 15 minutes while a super user has the Hub open. Times are US Eastern.
+        </span>
+        <span className="w-full text-[11px] text-muted-foreground mt-0.5">
+          Leave, sick forms and permissions are not shown here yet — 'No Records' does not mean absent without reason. Check Attendance → Reports for the official record.
         </span>
         {loadingPunches && <RefreshCw className="w-3.5 h-3.5 text-slate-400 animate-spin ml-auto" />}
 
@@ -187,7 +191,7 @@ export default function AttendanceToday() {
               {isToday && <SummaryTile label="Working" value={summary.working} accent="text-green-600" />}
               {isToday && <SummaryTile label="Away" value={summary.away} accent="text-amber-600" />}
               {isToday && <SummaryTile label="Not In Yet" value={summary.notInYet} />}
-              <SummaryTile label="Late – Not In" value={summary.lateNotIn} accent={summary.lateNotIn > 0 ? 'text-red-600' : undefined} />
+              <SummaryTile label="No Records" value={summary.lateNotIn} accent={summary.lateNotIn > 0 ? 'text-amber-600' : undefined} />
               <SummaryTile label="Finished" value={summary.finished} accent="text-blue-600" />
               <SummaryTile label="Day Off / Holiday" value={summary.dayOff + summary.holiday} />
               <SummaryTile label="Late Arrivals" value={summary.lateArrivals} accent={summary.lateArrivals > 0 ? 'text-red-600' : undefined} />
