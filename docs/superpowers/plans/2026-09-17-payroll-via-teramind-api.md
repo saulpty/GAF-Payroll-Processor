@@ -50,6 +50,28 @@ What the research found (shapes the design):
 - There is no test on the file parser today; every engine test builds the punches map by hand. So
   the swap breaks no test — and the new converter gets its own tests.
 
+## Probe outcome (2026-09-17 — full detail in `prompts/2026-09-17-teramind-payroll/00-probe-RESULTS.md`)
+
+- Datasource string `'Teramind API'`. All **45 active employees match exactly one agent** by email.
+- Sessions arrive as a bare array; `agent` = `[id, name, email]`, `computer` = `[id, name]`,
+  `timestamp` = ISO with the Eastern offset. **Smell test matched payroll to the minute**
+  (API 08:56:56 → 17:01:16 vs payroll 8:56 AM → 5:01 PM).
+- The cube **cannot be filtered by agent** → pull the company for the range (~500 rows/day, 7,384 for
+  a 15-day period, cap is 50,000), keep only linked agents before saving.
+- History reaches back past Sep 2025 → **every past period can be compared**.
+- **Teramind is not live through this API: both cubes are complete through *yesterday* and empty
+  for today.** Only the `online` flag on the roster is real-time. So "as live as possible" = through
+  yesterday for arrival/exit, plus who is online now. The keep-fresh sync needs to run once each
+  morning, not every 15 minutes. A period can be captured from the API from the morning after it
+  ends; a same-day run still needs the uploaded file (the backup stays for exactly that).
+- **~6% of company sessions are absurdly long** (up to exactly 8 days — machines never logged out).
+  The uploaded report must have met the same sessions; Phase C shows how they landed in payroll
+  before any capping rule is chosen.
+- UIB has server-side **Automations** (timer, no browser) — candidate for the morning sync; lives
+  outside the export/diff loop, so decide after the in-app sync works.
+- Built and green in `prompts/2026-09-17-teramind-payroll/build/`: 4 libs + types (72 tests),
+  migration, 8 SQL actions, 2 HTTP actions. Not yet sent to UIB.
+
 ## Build order — payroll is touched only in Phase D
 
 ```
