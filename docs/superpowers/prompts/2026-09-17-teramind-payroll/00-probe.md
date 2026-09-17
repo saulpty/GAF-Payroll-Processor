@@ -88,6 +88,14 @@ Keep answers short: shapes, counts and two or three sample rows each — not dat
         AND deleted_at IS NULL`.
    Do not interpret or convert the times — quote both sides as returned.
 
+7. **Scheduling.** Can this app run an action on a timer **with no browser open** (a scheduled job,
+   automation, or server-side trigger available to this project)? Answer yes or no, and if yes name
+   the feature and the shortest interval. Do not create one.
+
+8. **Today's data.** Same query as 3 for today's date only. How recent is the newest `timestamp`
+   compared with the current time? Does a session that is still in progress appear, and what does
+   its `time_s` look like?
+
 ## Acceptance
 
 1. No file other than (optionally) `src/actions/zzProbeTeramind.ts` was created, modified or deleted.

@@ -18,6 +18,13 @@ Decisions made with Saul (2026-09-17):
 - **Everything pulled is saved in our database**, so a period is pulled from Teramind once and
   afterwards read from our own copy (fast, permanent audit trail, and it is exactly what the parked
   Activity feature will read later).
+- **Live data + captured periods (Saul, 2026-09-17, later the same day).** The Hub should be as
+  live as possible everywhere: Teramind flows into our saved copy continuously, and Attendance
+  (and later Activity) read it without waiting for a payroll run. A **period is a capture**: when Tim
+  creates the period, the app takes the saved punches for those dates (after one fresh sync), runs the
+  rules engine, and writes `payroll_entries` — the frozen, workable copy he reviews and sends to HRK.
+  Live data arriving afterwards never changes a captured period unless Tim deliberately re-captures.
+  `payroll_entries` **is** the capture; no new "period" machinery is needed.
 - Past periods are **not re-processed**. Their payroll rows stay as they are.
 - Keep it tight: re-run behaviour, Action Required, Payroll Master, HRK Summary, the rules engine
   and the file parser are **not changed**.
@@ -46,12 +53,13 @@ What the research found (shapes the design):
 ## Build order — payroll is touched only in Phase D
 
 ```
-Phase 0  Park the Activity plan + save research (docs only)
+Phase 0  Park the Activity plan + save research (docs only)                          DONE 2026-09-17
 Phase A  Probe the API (no app files change)
-Phase B  Foundation: saved copy + agent links + pull, on a super-only Admin card   (no payroll file touched)
-Phase C  Backfill all past periods → comparison screen → review with Saul          ← GATE
-Phase D  Process Payroll step 2: "Pull from Teramind" (upload stays as backup)     (only payroll edit)
-Phase E  Docs, handoff; then re-plan Activity on top of the saved copy
+Phase B  Foundation: saved copy + agent links + pull + KEEP-FRESH sync                 (no payroll file touched)
+Phase C  Backfill all past periods → comparison screen → review with Saul             ← GATE
+Phase D  Process Payroll step 2: "Capture from Teramind" (upload stays as backup)      (only payroll edit)
+Phase E  Live Attendance: days not yet captured come from the saved copy, marked Live  (no payroll file touched)
+Phase F  Docs, handoff; then re-plan Activity on top of the same live copy
 ```
 
 ### Phase 0 — park and save (docs only, first commit)
@@ -123,6 +131,17 @@ to link one by hand), `TeramindPullCard.tsx` (pick a period or dates → pull �
 `useTeramindPull.ts` (the pull-and-save routine — **written once, reused by Process Payroll in
 Phase D**). Wiring: the one Admin file that lists the tabs. Not `AdminLookups.tsx`.
 
+**Keeping the copy fresh (the "live" part).** The probe asks whether this UIB instance can run an
+action on a schedule with no browser open. If yes: a scheduled sync every ~15 min pulling *today and
+yesterday* (Eastern). If no: the Monday pattern — `TeramindAutoSync.tsx` mounted in `app.tsx`
+beside `AccessAutoSync`, **super users only**, throttled (default 15 min, setting
+`teramind_sync_every_minutes` in `classification_config`), in-flight guard, success *and* failure
+written to `teramind_pull_log`; plus a **Refresh now** button. Managers never trigger a pull (an
+unfiltered pull would put the whole company in their browser) — they read the saved copy, which is
+viewer-scoped in SQL. Every live screen shows **"Teramind data as of <time>"** so nobody mistakes a
+stale copy for a missing person. Honest limit: without a scheduler, data is only as fresh as the last
+time a super user had the Hub open.
+
 ### Phase C — look backwards (the gate)
 1. From the Teramind tab, **Backfill**: loop every period in `periods` (as far back as the probe
    says the API goes), pull and save each. Progress + per-period result in `teramind_pull_log`.
@@ -138,7 +157,8 @@ Phase D**). Wiring: the one Admin file that lists the tabs. Not `AdminLookups.ts
 ### Phase D — Process Payroll (the only protected-file edit; Saul has asked for this revamp)
 One prompt, two files allowed: new `src/app/pages/process/TeramindSourceCard.tsx` and
 `ProcessPayroll.tsx`. Exact touch points in `ProcessPayroll.tsx` (nothing else):
-- Step 2 renders `<TeramindSourceCard>`: **Pull from Teramind** for the Step-1 dates
+- Step 2 renders `<TeramindSourceCard>`: **Capture from Teramind** for the Step-1 dates — always
+  does one fresh sync of that range first, then reads the saved copy
   (uses `useTeramindPull` → saves → reads the saved copy → `teramindRows` via `teramindPunches`).
   If that range is already saved, it says "Saved copy from <date> · N sessions — *Use saved* /
   *Pull again*". The existing upload zone stays underneath as **Backup: upload a file**.
@@ -156,7 +176,21 @@ Check on `/dev`: pull a **past** period under View → compare the engine's prev
 period's known green/yellow/red counts **without saving** (stop at the warnings gate); then Tim's
 next real period is the first live use, with the upload file downloaded as a safety net that day.
 
-### Phase E — wrap up
+### Phase E — live Attendance (after payroll is proven; no payroll file touched)
+Today Attendance only knows a day once its period has been processed — up to two weeks late
+(`not_processed`). With the saved copy, days **not yet captured** are filled from live data:
+- Pure lib `liveAttendance.ts`: saved sessions + the employee's schedule → entry, exit, minutes late,
+  using the **same injected helpers** the report already uses (`getSchedule`, `isScheduledWorkDay`,
+  `parseTimeToMinutes`) — no copy of engine rules, no writes. Forms / PTO / holidays attach exactly
+  as they do today via `buildAttendanceReport`.
+- **Captured days always win**: if a `payroll_entries` row exists, it is shown (it is where Tim
+  corrects things). Live rows carry a **Live** chip and never count as an official absence —
+  today's "no punches yet" is *not* an unexplained absence until the day is captured.
+- Additive only: new loader use (`loadTeramindSessions`, already viewer-scoped), a small merge in the
+  List and Reports data hooks, the Live chip. Separate prompts, separate review with Saul.
+This phase is the bridge into the parked Activity feature, which reads the same table.
+
+### Phase F — wrap up
 `src/AGENTS.md` prompt (new tables, libs, datasource, "conversion lives only in `teramindTime.ts`",
 Teramind tab); by hand: HANDOFF, LESSONS, BACKLOG — including the two safety gaps deliberately
 **not** fixed here (re-run overwrites reviewed rows; no lock after HRK export), fix stale
