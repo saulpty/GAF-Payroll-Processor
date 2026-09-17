@@ -171,9 +171,14 @@ export default function AttendanceToday() {
           </div>
         )}
 
-        {punchError && (
+        {punchError && rows.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 mb-3">
+            Couldn't refresh just now — showing the last data loaded. It will try again in a minute.
+          </div>
+        )}
+        {punchError && rows.length === 0 && (
           <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 mb-4">
-            Error loading punch data. The teramind_sessions table may not exist yet — apply migrations first.
+            Couldn't load today's records. It will try again in a minute; if this stays, tell an administrator.
           </div>
         )}
 
