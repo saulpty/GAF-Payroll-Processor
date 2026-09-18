@@ -170,7 +170,8 @@ export function whyFor(args: {
   }
   if (rr && rr.form) {
     const type = String(rr.form.type ?? '').trim();
-    if (SICK_FORM.test(type.toLowerCase())) return chip('sick', 'Sick');
+    // "Absence" with reason "Sick" is a sick day: the reason is the why.
+    if (SICK_FORM.test(`${type} ${rr.form.reason ?? ''}`.toLowerCase())) return chip('sick', 'Sick');
     return chip('form', titleCase(type) || 'Form');
   }
   if (args.scheduled && args.hasActivity && date
