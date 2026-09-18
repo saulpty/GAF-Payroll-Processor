@@ -9,6 +9,7 @@ so `src/app/…` means `app/…`, `src/actions/…` means `actions/…`, `src/mi
 - `src/migrations/1782011000_sync_every_minutes.sql` — NEW, content below, character for character (apply it)
 - `src/actions/loadSyncLog.ts` — NEW (you write it: `SELECT * FROM sync_log ORDER BY ran_at DESC LIMIT 200`, no params beyond the house `manager` no-op)
 - `src/actions/upsertSyncLog.ts` — NEW (you write it: one `INSERT INTO sync_log (kind, ran_by, created, updated, error) VALUES (...)`, flat params)
+- `src/actions/claimSyncRun.ts` — NEW (you write it: the DB-level lock described in section 3a)
 - `src/app/components/MondayAutoSync.tsx` — NEW (you write it, section 3)
 - `src/app/components/TeramindAutoSync.tsx` — smallest edit: read `sync_every_minutes` first, fall back to `teramind_sync_every_minutes` (section 4)
 - `src/app/components/AccessAutoSync.tsx` — smallest edit: same fallback (section 4)
@@ -88,6 +89,54 @@ waits for a human to pick. Add a way for a caller to skip the dialog and create 
   becomes `created` on `SyncResult` so callers (including the new auto-sync) can log it.
   `SyncResult` lives in `mondaySync.ts` — add the optional field there (`created?: number`), don't
   remove or rename `items`/`matched`/`unmatched`.
+
+## 2b. Silent create needs two brakes
+
+`upsertEmployee` is `ON CONFLICT (teramind_email) DO UPDATE`, so two tabs racing cannot produce two
+rows for the same email. The real duplicate risk is different: a candidate is anyone in the Monday
+*Current Employees* group whose email `deps.resolve` could not match and that is not already a
+`teramind_email` in `deps.emps`. When an existing employee's Monday email column differs from their
+stored `teramind_email` — which is exactly why `loadNameAliases` exists — the human dialog is what
+catches it today. Silent creation would file that person a second time, with `active: true` and
+`excluded_from_payroll: false`, i.e. straight into payroll. So in `'auto'` mode only:
+
+- Skip any candidate whose `name` case-insensitively matches an existing `display_name` in
+  `deps.emps`. Count the skips.
+- If more than **3** candidates survive in one run, create **none** of them and return the run as an
+  error (`error: 'N candidates need review'`) so the `sync_log` row and the Monday tab show it.
+  A Monday board does not gain four people in fifteen minutes; that many means something broke.
+
+Both brakes live in the `'auto'` branch. The human "Sync Now" path keeps today's behaviour exactly.
+
+## 3a. A database-level claim, not just a per-tab flag
+
+`let inFlight` is per browser tab. Every super user with the Hub open runs their own copy, and the
+`sync_log` "is it due?" row is only written **after** a run finishes — a full four-board Monday sync
+takes far longer than the 60-second tick, so two tabs will routinely both see "due" and both start.
+That is 8 board pulls against Monday's complexity budget instead of 4, and two directory syncs
+writing `employees` at once. Claim the run in the database first:
+
+`claimSyncRun.ts` — one statement, flat params, returns the inserted rows (zero rows = someone else
+has it):
+
+```sql
+INSERT INTO sync_log (kind, ran_by, created, updated, error)
+SELECT {{params.kind}}::text, {{params.ranBy}}::text, 0, 0, 'running'
+WHERE NOT EXISTS (
+  SELECT 1 FROM sync_log
+  WHERE kind = {{params.kind}}::text
+    AND ran_at > NOW() - ({{params.intervalMinutes}}::int * INTERVAL '1 minute')
+)
+RETURNING id;
+```
+
+`MondayAutoSync` runs a board only when `claimSyncRun` returns a row, and afterwards `upsertSyncLog`
+records the outcome — so `upsertSyncLog` becomes an `UPDATE sync_log SET created, updated, error
+WHERE id = {{params.id}}` rather than a second `INSERT` (keep the file, keep the name, change the
+statement). This replaces the "read `loadSyncLog`, compare `ran_at`" check in section 3 for deciding
+whether to run; `loadSyncLog` is still what section 5's status line reads. The roster's
+once-per-calendar-day rule is the same claim with `intervalMinutes` set to the minutes remaining in
+the day — or simply claim with 1440 and keep the `ran_at` date comparison as a second check.
 
 ## 3. `src/app/components/MondayAutoSync.tsx` — you write this
 

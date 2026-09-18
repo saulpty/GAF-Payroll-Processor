@@ -47,9 +47,16 @@ every param **flat** — never wrapped in a `params:` object (see "Three bugs" i
 
 - `loadTeramindActivityDays` with `{ dateFrom, dateTo, viewAs }`
 - `loadAttendanceEmployees` with `{ viewAs }` (same loader the Reports tab uses)
+- `loadAttendanceReportDays` with `{ dateFrom, dateTo, manager: '', viewAs }` — **required**:
+  `buildAttendanceReport` gets `coveredBy` (PTO / Permission / Holiday) and the official
+  entry/exit times from these payroll rows. Without them every Why chip that comes from payroll is
+  missing and every day reads as `Live` instead of `Official`.
 - `loadMondayAttendanceFormsRange` with `{ dateFrom, dateTo, manager: '', viewAs }`
 - `loadMondayRequestsRange` with `{ dateFrom, dateTo, manager: '', viewAs }`
 - `loadHolidays` with `{}`
+- `loadPeriods` with `{}` — **required**, `buildAttendanceReport` takes `periods`
+- `loadDstCalendar` with `{}` — **required**, `buildAttendanceReport` takes `dstWindows`; without
+  it `getSchedule` reads the wrong shift start and every arrival looks late or early
 - `loadClassificationConfig` with `{}` — filter its rows to `category === 'teramind'` and pick out
   `activity_min_active_minutes`, `activity_break_minutes`, `activity_break_over_minutes` by `key`,
   building an `ActivitySettings` object (numeric fallbacks 390/60/30 only if a key is missing, and
@@ -59,10 +66,26 @@ every param **flat** — never wrapped in a `params:` object (see "Three bugs" i
 
 Call `buildActivityDays` (from `@/app/lib/activityDays`) with `dateFrom`, `dateTo`, `today` (=
 `toLocalYMD(new Date())` from `classificationEngine`), the mapped employees, the raw
-`ActivityDayRow[]`, the report rows and requests, the settings, and `isScheduledWorkDay` from
-`classificationEngine`. Building the `reportRows` argument needs `buildAttendanceReport` (from
-`@/app/lib/attendanceReport`, same as `AttendanceReport.tsx` already does) fed by the forms/requests/
-holidays/employees loaded above — reuse that composition, don't reinvent Why-chip logic here.
+`ActivityDayRow[]`, the report rows and requests, and the settings.
+
+`buildActivityDays` takes `isScheduledWorkDay` as `(emp, date: string) => boolean`. The real
+`isScheduledWorkDay` in `classificationEngine.ts` has a **different signature** —
+`(date: Date, workDays: string | undefined)`. Do **not** pass it straight through (that calls
+`.getDay()` on an employee object and throws). Pass a small adapter defined in this hook:
+
+```ts
+const isScheduledFor = (emp: unknown, date: string) =>
+  isScheduledWorkDay(new Date(date + 'T12:00:00'), (emp as { work_days?: string }).work_days);
+```
+
+(the `T12:00:00` noon form is what `attendanceReport.ts`'s own `ymdToDate` uses — this is the one
+permitted `new Date(str)`, for a weekday lookup only, never for date arithmetic.)
+
+Building the `reportRows` argument needs `buildAttendanceReport` (from
+`@/app/lib/attendanceReport`, same as `AttendanceReport.tsx` already does) fed by **all eight**
+inputs it declares — `employees`, `payrollRows`, `forms`, `requests`, `holidays`, `periods`,
+`dstWindows`, `helpers: { isScheduledWorkDay, getSchedule, parseTimeToMinutes }` — copy that call
+shape from `AttendanceReport.tsx` lines 92-103 verbatim; don't reinvent Why-chip logic here.
 
 Return `{ days, byEmployee, totals, loading, error, configFallbacks }` (or equivalent) for the shell
 to consume. Keep this file under 12 KB — if the `buildAttendanceReport` wiring makes it too big,

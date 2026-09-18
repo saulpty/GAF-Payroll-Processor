@@ -1,13 +1,13 @@
-# 02 â€” Activity: settings migration, action, and the pure lib
+# 02 — Activity: settings migration, action, and the pure lib
 
-**Inside this project the code root *is* `src`, so `src/app/â€¦` means `app/â€¦`. Never create a
+**Inside this project the code root *is* `src`, so `src/app/…` means `app/…`. Never create a
 top-level folder named `src`.**
 
 ## Files that may change
 
-- `src/migrations/1782010000_activity_settings.sql` â€” NEW, content below, character for character. Apply it.
-- `src/actions/loadTeramindActivityDays.ts` â€” NEW, content below, character for character.
-- `src/app/lib/activityDays.ts` â€” NEW, content below, character for character (I will splice it in
+- `src/migrations/1782010000_activity_settings.sql` — NEW, content below, character for character. Apply it.
+- `src/actions/loadTeramindActivityDays.ts` — NEW, content below, character for character.
+- `src/app/lib/activityDays.ts` — NEW, content below, character for character (I will splice it in
   where the marker appears).
 
 No other file may be touched. Never edit `ProcessPayroll.tsx`, `PayrollMaster.tsx`,
@@ -17,7 +17,7 @@ under `src/components/ui/`. Nothing should import the action or the lib yet.
 ## Why
 
 The Activity tab (coming in later prompts) needs three things that don't exist yet: the
-thresholds it judges a day against (never hardcoded â€” they live in `classification_config` like
+thresholds it judges a day against (never hardcoded — they live in `classification_config` like
 every other setting), the one query that turns the saved Teramind copy into a per-employee,
 per-day row, and the pure lib that turns those rows plus the existing attendance/report data into
 what the screens render. This prompt lands all three with nothing wired to a page, so it cannot
@@ -79,7 +79,7 @@ import { action } from '@uibakery/data';
 // record start, last record finish, seconds of tracked time, record count, the largest gap between
 // consecutive records that day (and where it starts), whether any record was hand-typed, how many
 // distinct Teramind accounts contributed, and when the day's rows were last refreshed. Times are
-// whole minutes since midnight, US Eastern, as integers â€” date-looking text is rewritten on its way
+// whole minutes since midnight, US Eastern, as integers — date-looking text is rewritten on its way
 // to the browser. Only employees payroll actually processes (active, not excluded) are returned,
 // scoped to the signed-in viewer. Read-only.
 // `manager` is accepted (house rule: every load* takes one); manager filtering happens in React.
@@ -283,7 +283,7 @@ function coversDate(r: ReportRequest, date: string): boolean {
 }
 
 // "8-12", "8:00 AM - 12:00 PM", "8 a 12".
-const TIME_RANGE = /\d{1,2}(?::\d{2})?\s*(?:[ap]\.?\s*m\.?)?\s*(?:[-â€“â€”]|\bto\b|\ba\b)\s*\d{1,2}/i;
+const TIME_RANGE = /\d{1,2}(?::\d{2})?\s*(?:[ap]\.?\s*m\.?)?\s*(?:[-–—]|\bto\b|\ba\b)\s*\d{1,2}/i;
 const SICK_FORM = /sick|incapacidad|attendance/;
 // Legitimately away: never a flag, never Needs A Look.
 const EXCUSED: WhyKind[] = ['pto', 'permission', 'sick', 'form', 'holiday', 'day_off'];
@@ -302,7 +302,7 @@ export function whyFor(args: {
   if (rr && rr.coveredBy) {
     const en = payrollLabelToEnglish(rr.coveredBy.label);
     if (rr.coveredBy.kind === 'holiday') {
-      return chip('holiday', en && en !== 'Holiday' ? `Holiday Â· ${en}` : 'Holiday', 'gray');
+      return chip('holiday', en && en !== 'Holiday' ? `Holiday · ${en}` : 'Holiday', 'gray');
     }
     if (rr.coveredBy.kind === 'permission') {
       const req = reqs.find((r) => mine(r) && TIME_RANGE.test(String(r.permission_type ?? '')) && coversDate(r, date));
@@ -433,7 +433,7 @@ export function buildActivityDays(input: {
       avgLastMin: avg(worked.map((d) => d.lastMin)),
       needsLook: empDays.filter((d) => d.needsLook).length,
       awayDays: away.length,
-      awayLabel: away.length ? `${away.length} Â· ${[...words].join(', ')}` : '',
+      awayLabel: away.length ? `${away.length} · ${[...words].join(', ')}` : '',
       days: empDays.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
     });
   }

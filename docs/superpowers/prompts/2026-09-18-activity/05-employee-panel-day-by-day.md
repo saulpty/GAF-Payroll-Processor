@@ -58,13 +58,17 @@ so `AttendancePanel.tsx`'s render order becomes: header, `AttendancePanelBody`, 
 ## 2. Give the panel its data
 
 `AttendancePanel.tsx`'s exported component gains an optional prop `days?: ActivityDay[]` (type from
-`@/app/lib/activityDays`). When a caller passes `days`, use them as-is. When it does not, call
-`useActivityData` (from `@/app/pages/attendance/activity/useActivityData`) inside `AttendancePanel`
-itself for the page's current range — `dateFrom`/`dateTo` from `useGlobalFilters()` — and filter the
-returned `days`/`byEmployee` down to this employee (`stats.employeeId` or equivalent identifier
-already on `EmpStats` — check what `AttendanceTable.tsx`/`attendanceStats.ts` expose and use whatever
-uniquely matches the row, by id not by name). If `useActivityData` needs an id type
-`useActivityData` doesn't already accept, do not modify that hook — filter its output in this file.
+`@/app/lib/activityDays`). It also gains a required-for-this-feature prop `employeeId?: number`:
+**`EmpStats` (in `attendanceStats.ts`, which is not in the allowed file list) has no id — it is keyed
+by `email` only.** Do not invent `stats.employeeId`. Thread the id in as its own prop from each
+caller, and when a caller can only supply an email, match on `email` instead and say so.
+
+`useActivityData` must be called **unconditionally** — React forbids calling a hook inside an `if`,
+and a conditional call here crashes the panel with "rendered fewer hooks than expected" the first
+time a caller switches between passing `days` and not. Call it on every render with the page's
+current range (`dateFrom`/`dateTo` from `useGlobalFilters()`), then choose:
+`const panelDays = props.days ?? hookDays.filter(d => d.employeeId === employeeId)`. Do not modify
+`useActivityData` itself — filter its output in this file.
 
 Keep the existing `stats: EmpStats | null` prop and null-check exactly as they are.
 
@@ -74,15 +78,11 @@ Default export, props `{ days: ActivityDay[] }` (already filtered to one employe
 the contract). Section header matching the existing "Recent Activity" section style (the small
 vertical bar + bold label pattern already in `AttendancePanel.tsx`): **"Day By Day"**.
 
-Next to the header, an **"Open In Teramind ↗"** link/button, shown only when an agent id is available.
-Build it from `loadTeramindAgents` (load it here with `useLoadAction`, flat params, no wrapper —
-match this employee by `employee_id`) and the config key `teramind_base_url` from
-`loadClassificationConfig` (filter by `key === 'teramind_base_url'`). If no matching agent id is
-loaded, or the config key is missing, omit the link entirely — do not render a dead or `#` link.
-Construct the URL as `` `${baseUrl.replace(/\/$/, '')}/${agentId}` `` unless the config value already
-documents a different join pattern (check `TeramindAgentsCard.tsx` or `useTeramindPull.ts` for how an
-existing feature already builds a Teramind URL from this config key, and match that instead of
-guessing).
+**No "Open In Teramind" link in this slice.** The config key `teramind_base_url` does not exist
+anywhere in this project — not in `classification_config`, not in `TeramindAgentsCard.tsx`, not in
+`useTeramindPull.ts` — so there is no URL shape to match and nothing to read. Do not invent the key,
+do not add a migration for it, and do not render a link. It will come back in its own prompt once
+Saul confirms the Teramind URL format.
 
 Table/list below, one row per `ActivityDay`, header row: **Date** (`fmtDayShort`, e.g. `Wed Sep 11`) ·
 **First – Last** (`fmtClock` from `@/app/lib/teramindToday`, "—" when null, "+1d" suffix when
@@ -143,8 +143,7 @@ files — only the saved-copy loaders.
    fields are sparse; Day By Day still shows that person's days.
 3. If the Activity tab shipped: clicking a name in By Employee opens the panel pre-loaded with that
    row's days (no extra network call for the days themselves).
-4. "Open In Teramind" appears only when an agent id and `teramind_base_url` are both available, and
-   links to the right place; it is silently omitted otherwise — never a dead link.
+4. No "Open In Teramind" link anywhere in the panel, and no new config key was added.
 5. `AttendancePanel.tsx` is comfortably under 15 KB; all three panel files pass a visual check with no
    layout shift in the moved chart/donuts section.
 6. Only the files listed above changed; `node --test "tests/*.test.ts"` still passes.

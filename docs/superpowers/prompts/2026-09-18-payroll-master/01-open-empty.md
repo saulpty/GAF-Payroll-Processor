@@ -216,6 +216,25 @@ with:
       )}
 ```
 
+## Edit 7 — `FilterBar.tsx`: never let `'__all__'` leak onto another route
+
+`period` is **one shared context value** across `/payroll-master`, `/action-required` and
+`/hrk-summary`. `ActionRequired.tsx` line 125 passes it straight through as `periodName`, and
+`FilterBar` itself passes it to `loadActionRequiredCounts` (line 84). So if someone picks "All
+Periods" on Payroll Master and then opens Action Required, that page queries for a period literally
+named `__all__`, finds nothing, and shows an empty screen with no explanation — and the RED/YELLOW
+count badges go to 0. Neither file may be edited (`ActionRequired.tsx` is protected), so clear the
+sentinel in `FilterBar` instead. Add, next to the existing `versionRef` effect:
+
+```
+  useEffect(() => {
+    if (period === '__all__' && location.pathname !== '/payroll-master') setPeriod('');
+  }, [period, location.pathname]);
+```
+
+`setPeriod` is already destructured from `useGlobalFilters()` in this file. On `/payroll-master`
+nothing changes; everywhere else `'__all__'` collapses to the blank "all periods" it already means.
+
 `location` is already in scope in this file (`const location = useLocation();`
 near the top) — no new import needed. This is the *only* select on the page
 that changes; the multi-select used by `/attendance` (`cfg.periods`) and every

@@ -87,6 +87,16 @@ dates as strings.
 If `periods`/`processedPeriods` is empty when a quick pick is clicked, do nothing (disable the button
 or no-op) rather than setting blank/garbage dates.
 
+## 3b. The auto-select-newest-period effect must not fight Dates mode
+
+`FilterBar.tsx` already has an effect (around line 121) that fires when `cfg?.periods` is true and
+`attendancePeriods.length === 0`: it selects the newest processed period **and writes its range into
+`dateFrom`/`dateTo`**. Left alone, that effect would overwrite a quick pick — and on
+`/attendance/activity`, which defaults to Dates mode, it would clobber the range the moment the page
+mounts. Add `attendanceMode === 'periods'` to that effect's condition (and to its dependency array).
+Change nothing else about it: on `/attendance` and `/attendance/reports`, which default to Periods
+mode, the behaviour is identical to today.
+
 ## 4. Default mode per route
 
 Default: **Periods** on `/attendance` and `/attendance/reports`; **Dates** on `/attendance/activity`
