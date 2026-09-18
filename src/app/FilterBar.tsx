@@ -169,7 +169,7 @@ export default function FilterBar() {
   const hasBothModes = !!(cfg.periods && cfg.dateRange);
 
   return (
-    <div className="shrink-0 bg-white border-b border-slate-200 px-4 flex items-center gap-3 flex-wrap z-30 min-h-[48px]">
+    <div className="shrink-0 bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-x-3 gap-y-2 flex-wrap z-30 min-h-[48px]">
       <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 shrink-0" />
 
       {cfg.period && (
