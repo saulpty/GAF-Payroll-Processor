@@ -7,26 +7,22 @@ import { easternDate, easternMinutes } from '@/app/lib/teramindTime';
 import { buildToday, fmtClock, fmtDuration } from '@/app/lib/teramindToday';
 import type { TodayEmployee, TodayPunch, TodayRow, TodayStatus } from '@/app/lib/teramindToday';
 import { isScheduledWorkDay, getSchedule, parseTimeToMinutes } from '@/app/lib/classificationEngine';
+import { fmtDayShort } from '@/app/lib/activityDays';
+import type { WhyChip } from '@/app/lib/activityDays';
 import { matchesManager } from '@/app/lib/managerFilter';
+import { useTodayWhy } from './useTodayWhy';
+import { TodayTableRow, isOnLeave } from './TodayRow';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadTeramindDayPunchesAction from '@/actions/loadTeramindDayPunches';
 import loadHolidaysAction from '@/actions/loadHolidays';
 import loadDstCalendarAction from '@/actions/loadDstCalendar';
+import type { ReportEmployee } from '@/app/lib/attendanceReportTypes';
 
 type HolidayRow = { date: string; name: string };
 type DstRow = { year: number; us_dst_start: string; us_dst_end: string };
 type PunchRaw = TodayPunch & { synced_at: string | null };
 
-const STATUS_CHIP: Record<TodayStatus, { label: string; cls: string }> = {
-  working:     { label: 'Working',       cls: 'bg-green-100 text-green-700 border-green-200' },
-  away:        { label: 'Away',          cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-  not_in_yet:  { label: 'Not In Yet',   cls: 'bg-slate-100 text-slate-600 border-slate-200' },
-  late_not_in: { label: 'No Records',    cls: 'bg-amber-100 text-amber-800 border-amber-200' },
-  finished:    { label: 'Finished',      cls: 'bg-blue-100 text-blue-700 border-blue-200' },
-  day_off:     { label: 'Day Off',       cls: 'bg-slate-100 text-slate-400 border-slate-200' },
-  holiday:     { label: 'Holiday',       cls: 'bg-slate-100 text-slate-400 border-slate-200' },
-  not_started: { label: 'Not Started',  cls: 'bg-slate-100 text-slate-400 border-slate-200' },
-};
+const ON_LEAVE_KINDS = new Set<string>(['pto', 'permission', 'sick', 'form', 'holiday']);
 
 function SummaryTile({ label, value, accent }: { label: string; value: number; accent?: string }) {
   return (
@@ -114,7 +110,7 @@ export default function AttendanceToday() {
   const holidays = (rawHolidays as HolidayRow[]) ?? [];
   const dstWindows = (rawDst as DstRow[]) ?? [];
 
-  const { rows, summary } = useMemo(() => {
+  const { rows: allRows, summary } = useMemo(() => {
     if (employees.length === 0) return { rows: [], summary: { total: 0, scheduled: 0, working: 0, away: 0, notInYet: 0, lateNotIn: 0, finished: 0, dayOff: 0, holiday: 0, lateArrivals: 0 } };
     return buildToday({
       day, nowMin, isToday,
@@ -126,24 +122,75 @@ export default function AttendanceToday() {
     });
   }, [day, nowMin, isToday, employees, punches, holidays, dstWindows]);
 
+  // Drop day_off rows with zero records from the visible table and tile counts
+  const rows = useMemo(() =>
+    allRows.filter(r => !(r.status === 'day_off' && r.records === 0)),
+    [allRows]
+  );
+
+  // Maps for useTodayWhy
+  const scheduledById = useMemo(() => {
+    const m = new Map<number, boolean>();
+    for (const r of allRows) {
+      m.set(r.employeeId, r.status !== 'day_off' && r.status !== 'not_started');
+    }
+    return m;
+  }, [allRows]);
+
+  const hasActivityById = useMemo(() => {
+    const m = new Map<number, boolean>();
+    for (const r of allRows) {
+      m.set(r.employeeId, r.records > 0);
+    }
+    return m;
+  }, [allRows]);
+
+  // employees cast to ReportEmployee for useTodayWhy
+  const reportEmployees = useMemo(() =>
+    employees.map(e => e as unknown as ReportEmployee),
+    [employees]
+  );
+
+  const { whyById, loading: whyLoading } = useTodayWhy({
+    day,
+    employees: reportEmployees,
+    scheduledById,
+    hasActivityById,
+  });
+
   const loading = loadingEmps || loadingPunches || loadingHols || loadingDst;
+
+  // Derived counts from rows (day_off already filtered out)
+  const onLeaveCount = useMemo(() =>
+    rows.filter(r => isOnLeave(r.status, whyById.get(r.employeeId) ?? null)).length,
+    [rows, whyById]
+  );
+  const noRecordsCount = useMemo(() =>
+    rows.filter(r => r.status === 'late_not_in' && !isOnLeave(r.status, whyById.get(r.employeeId) ?? null)).length,
+    [rows, whyById]
+  );
+
+  // Tile counts also exclude day_off (rows already filtered)
+  const scheduledCount = rows.filter(r => r.status !== 'holiday').length;
 
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header bar */}
       <div className="shrink-0 px-5 py-3 border-b border-slate-200 bg-white flex flex-wrap items-center gap-3">
         <Clock className="w-4 h-4 text-[#2AA876] shrink-0" />
-        <span className="font-semibold text-[#1e7a56] text-sm">Live View — Unofficial.</span>
+        <span className="font-semibold text-[#1e7a56] text-sm">Live</span>
         <span className="text-slate-500 text-xs">
-          Data As Of {dataAsOf}. Records refresh about every 15 minutes while a super user has the Hub open. Times are US Eastern.
-        </span>
-        <span className="w-full text-[11px] text-muted-foreground mt-0.5">
-          Leave, sick forms and permissions are not shown here yet — 'No Records' does not mean absent without reason. Check Attendance → Reports for the official record.
+          Data As Of {dataAsOf} · Data Updates Every 15 Minutes · Times In US Eastern
         </span>
         {loadingPunches && <RefreshCw className="w-3.5 h-3.5 text-slate-400 animate-spin ml-auto" />}
 
         {/* Day picker */}
         <div className="ml-auto flex items-center gap-2">
+          {day && (
+            <span className="text-[13px] text-slate-600 font-medium whitespace-nowrap">
+              {fmtDayShort(day)}
+            </span>
+          )}
           <input
             type="date"
             value={day}
@@ -167,7 +214,7 @@ export default function AttendanceToday() {
         {loading && rows.length === 0 && (
           <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
             <Activity className="w-5 h-5 animate-pulse" />
-            Loading attendance data…
+            Loading Attendance Data…
           </div>
         )}
 
@@ -184,7 +231,7 @@ export default function AttendanceToday() {
 
         {!loading && employees.length === 0 && (
           <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
-            No employees match these filters.
+            No Employees Match These Filters.
           </div>
         )}
 
@@ -192,18 +239,18 @@ export default function AttendanceToday() {
           <>
             {/* Summary tiles */}
             <div className="flex flex-wrap gap-3 mb-5">
-              <SummaryTile label="Scheduled" value={summary.scheduled} />
+              <SummaryTile label="Scheduled" value={scheduledCount} />
               {isToday && <SummaryTile label="Working" value={summary.working} accent="text-green-600" />}
               {isToday && <SummaryTile label="Away" value={summary.away} accent="text-amber-600" />}
               {isToday && <SummaryTile label="Not In Yet" value={summary.notInYet} />}
-              <SummaryTile label="No Records" value={summary.lateNotIn} accent={summary.lateNotIn > 0 ? 'text-amber-600' : undefined} />
+              <SummaryTile label="On Leave" value={onLeaveCount} accent={onLeaveCount > 0 ? 'text-blue-600' : undefined} />
+              <SummaryTile label="No Records" value={noRecordsCount} accent={noRecordsCount > 0 ? 'text-amber-600' : undefined} />
               <SummaryTile label="Finished" value={summary.finished} accent="text-blue-600" />
-              <SummaryTile label="Day Off / Holiday" value={summary.dayOff + summary.holiday} />
               <SummaryTile label="Late Arrivals" value={summary.lateArrivals} accent={summary.lateArrivals > 0 ? 'text-red-600' : undefined} />
             </div>
 
             {/* Table */}
-            <TodayTable rows={rows} isToday={isToday} />
+            <TodayTable rows={rows} isToday={isToday} whyById={whyById} whyLoading={whyLoading} />
           </>
         )}
       </div>
@@ -211,7 +258,14 @@ export default function AttendanceToday() {
   );
 }
 
-function TodayTable({ rows, isToday }: { rows: TodayRow[]; isToday: boolean }) {
+function TodayTable({
+  rows, isToday, whyById, whyLoading,
+}: {
+  rows: TodayRow[];
+  isToday: boolean;
+  whyById: Map<number, WhyChip | null>;
+  whyLoading: boolean;
+}) {
   const thCls = 'px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap select-none';
   const tdCls = 'px-3 py-2.5 text-sm text-slate-800 align-top';
 
@@ -223,6 +277,7 @@ function TodayTable({ rows, isToday }: { rows: TodayRow[]; isToday: boolean }) {
             <tr>
               <th className={thCls}>Employee</th>
               <th className={thCls}>Status</th>
+              <th className={thCls}>Why</th>
               <th className={thCls}>Scheduled</th>
               <th className={thCls}>Entry</th>
               <th className={thCls}>Late</th>
@@ -234,80 +289,17 @@ function TodayTable({ rows, isToday }: { rows: TodayRow[]; isToday: boolean }) {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rows.map(row => (
-              <TodayTableRow key={row.employeeId} row={row} isToday={isToday} tdCls={tdCls} />
+              <TodayTableRow
+                key={row.employeeId}
+                row={row}
+                isToday={isToday}
+                why={whyLoading ? undefined : (whyById.get(row.employeeId) ?? null)}
+                tdCls={tdCls}
+              />
             ))}
           </tbody>
         </table>
       </div>
     </div>
-  );
-}
-
-function TodayTableRow({ row, isToday, tdCls }: { row: TodayRow; isToday: boolean; tdCls: string }) {
-  const chip = STATUS_CHIP[row.status];
-  const chipLabel = row.status === 'holiday' && row.holidayName ? row.holidayName : chip.label;
-
-  const scheduledStr =
-    row.scheduledStartMin !== null && row.scheduledEndMin !== null
-      ? `${fmtClock(row.scheduledStartMin)} – ${fmtClock(row.scheduledEndMin)}`
-      : '—';
-
-  const lateStr = row.entryMin !== null
-    ? row.minutesLate === 0
-      ? <span className="text-slate-400 text-xs">on time</span>
-      : <span className={row.lateAfterGrace ? 'text-red-600 font-medium' : 'text-amber-600'}>+{row.minutesLate}m</span>
-    : <span className="text-slate-400">—</span>;
-
-  const lastActivityStr = row.lastActivityMin !== null
-    ? `${fmtClock(row.lastActivityMin)}${row.lastActivityNextDay ? ' +1d' : ''}`
-    : '—';
-
-  const idleStr = (isToday && (row.status === 'working' || row.status === 'away'))
-    ? fmtDuration(row.idleMinutes)
-    : null;
-
-  return (
-    <tr className="hover:bg-slate-50 transition-colors">
-      <td className={tdCls}>
-        <div className="font-medium leading-tight">{row.name}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">{row.role}</div>
-      </td>
-      <td className={tdCls}>
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${chip.cls}`}>
-          {chipLabel}
-        </span>
-      </td>
-      <td className={`${tdCls} tabular-nums whitespace-nowrap text-slate-600 text-xs`}>
-        {scheduledStr}
-      </td>
-      <td className={`${tdCls} tabular-nums whitespace-nowrap`}>
-        {row.entryMin !== null ? fmtClock(row.entryMin) : <span className="text-slate-400">—</span>}
-      </td>
-      <td className={`${tdCls} tabular-nums`}>{lateStr}</td>
-      <td className={`${tdCls} tabular-nums whitespace-nowrap`}>
-        {lastActivityStr !== '—' ? lastActivityStr : <span className="text-slate-400">—</span>}
-      </td>
-      {isToday && (
-        <td className={`${tdCls} tabular-nums`}>
-          {idleStr !== null ? idleStr : <span className="text-slate-300">—</span>}
-        </td>
-      )}
-      <td className={`${tdCls} tabular-nums`}>
-        {row.activeMinutes > 0 ? fmtDuration(row.activeMinutes) : <span className="text-slate-400">—</span>}
-      </td>
-      <td className={tdCls}>
-        <div className="flex items-center gap-1.5">
-          {row.records > 0 && (
-            <span className="text-xs text-slate-600 tabular-nums">{row.records}</span>
-          )}
-          {row.hasManual && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 border border-amber-200">
-              manual
-            </span>
-          )}
-          {row.records === 0 && <span className="text-slate-400">—</span>}
-        </div>
-      </td>
-    </tr>
   );
 }
