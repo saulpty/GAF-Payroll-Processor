@@ -41,6 +41,19 @@ export function TodayTableRow({
   const chipLabel =
     !onLeave && row.status === 'holiday' && row.holidayName ? row.holidayName : chip.label;
 
+  const STATUS_TITLE: Record<string, string> = {
+    working:     'Has Teramind activity in the last 15 minutes.',
+    away:        'Clocked in but no activity detected in the last 15 minutes.',
+    not_in_yet:  'Scheduled today, shift has started, no entry recorded yet.',
+    late_not_in: 'Scheduled, past the grace period, no Teramind activity and no report on file.',
+    finished:    'Last activity is at or after their scheduled end time.',
+    day_off:     'Not scheduled to work today.',
+    holiday:     'A company holiday — not a working day.',
+    not_started: 'Shift has not started yet.',
+    on_leave:    'A PTO, permission, sick form, other form or holiday covers today.',
+  };
+  const chipTitle = onLeave ? STATUS_TITLE.on_leave : (STATUS_TITLE[row.status] ?? '');
+
   const scheduledStr =
     row.scheduledStartMin !== null && row.scheduledEndMin !== null
       ? `${fmtClock(row.scheduledStartMin)} – ${fmtClock(row.scheduledEndMin)}`
@@ -78,6 +91,7 @@ export function TodayTableRow({
       <td className={tdCls}>
         <span
           className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${chip.cls}`}
+          title={chipTitle}
         >
           {chipLabel}
         </span>

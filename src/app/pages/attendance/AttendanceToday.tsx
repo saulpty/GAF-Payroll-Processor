@@ -3,6 +3,8 @@ import { useLoadAction } from '@uibakery/data';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useViewer } from '@/app/context/ViewerContext';
 import { Activity, Clock, RefreshCw } from 'lucide-react';
+import InfoTip from '@/app/components/InfoTip';
+import TodayTiles from './TodayTiles';
 import { easternDate, easternMinutes } from '@/app/lib/teramindTime';
 import { buildToday, fmtClock, fmtDuration } from '@/app/lib/teramindToday';
 import type { TodayEmployee, TodayPunch, TodayRow, TodayStatus } from '@/app/lib/teramindToday';
@@ -25,14 +27,6 @@ type PunchRaw = TodayPunch & { synced_at: string | null };
 
 const ON_LEAVE_KINDS = new Set<string>(['pto', 'permission', 'sick', 'form', 'holiday']);
 
-function SummaryTile({ label, value, accent }: { label: string; value: number; accent?: string }) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex flex-col gap-1 min-w-[90px]">
-      <span className={`text-2xl font-bold tabular-nums ${accent ?? 'text-slate-800'}`}>{value}</span>
-      <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-semibold">{label}</span>
-    </div>
-  );
-}
 
 export default function AttendanceToday() {
   const today = easternDate(Date.now());
@@ -180,7 +174,10 @@ export default function AttendanceToday() {
       {/* Header bar */}
       <div className="shrink-0 px-5 py-3 border-b border-slate-200 bg-white flex flex-wrap items-center gap-3">
         <Clock className="w-4 h-4 text-[#2AA876] shrink-0" />
-        <span className="font-semibold text-[#1e7a56] text-sm">Live</span>
+        <span className="font-semibold text-[#1e7a56] text-sm flex items-center gap-0.5">
+          Live
+          <InfoTip text="Teramind data syncs every 15 minutes. The time shown is the latest sync received." />
+        </span>
         <span className="text-slate-500 text-xs">
           Data As Of {dataAsOf} · Data Updates Every 15 Minutes · Times In US Eastern
         </span>
@@ -240,16 +237,13 @@ export default function AttendanceToday() {
         {employees.length > 0 && (
           <>
             {/* Summary tiles */}
-            <div className="flex flex-wrap gap-3 mb-5">
-              <SummaryTile label="Scheduled" value={scheduledCount} />
-              {isToday && <SummaryTile label="Working" value={summary.working} accent="text-green-600" />}
-              {isToday && <SummaryTile label="Away" value={summary.away} accent="text-amber-600" />}
-              {isToday && <SummaryTile label="Not In Yet" value={summary.notInYet} />}
-              <SummaryTile label="On Leave" value={onLeaveCount} accent={onLeaveCount > 0 ? 'text-blue-600' : undefined} />
-              <SummaryTile label="No Records" value={noRecordsCount} accent={noRecordsCount > 0 ? 'text-amber-600' : undefined} />
-              <SummaryTile label="Finished" value={summary.finished} accent="text-blue-600" />
-              <SummaryTile label="Late Arrivals" value={summary.lateArrivals} accent={summary.lateArrivals > 0 ? 'text-red-600' : undefined} />
-            </div>
+            <TodayTiles
+              scheduledCount={scheduledCount}
+              isToday={isToday}
+              summary={summary}
+              onLeaveCount={onLeaveCount}
+              noRecordsCount={noRecordsCount}
+            />
 
             {/* Table */}
             <TodayTable rows={rows} isToday={isToday} whyById={whyById} whyLoading={whyLoading} onRowClick={setPanelRow} />
@@ -300,16 +294,16 @@ function TodayTable({
         <table className="w-full text-sm border-collapse">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              <th className={thCls}>Employee</th>
-              <th className={thCls}>Status</th>
-              <th className={thCls}>Why</th>
-              <th className={thCls}>Scheduled</th>
-              <th className={thCls}>Entry</th>
-              <th className={thCls}>Late</th>
-              <th className={thCls}>Last Activity</th>
-              {isToday && <th className={thCls}>Idle</th>}
-              <th className={thCls}>Active Time</th>
-              <th className={thCls}>Records</th>
+              <th className={thCls}>Employee <InfoTip text="Employee name and role from the directory." /></th>
+              <th className={thCls}>Status <InfoTip text="Current attendance status computed from Teramind activity and schedule." /></th>
+              <th className={thCls}>Why <InfoTip text="Reason pulled from Monday.com forms or the holiday calendar." /></th>
+              <th className={thCls}>Scheduled <InfoTip text="Contracted shift window for today from the employee's schedule." /></th>
+              <th className={thCls}>Entry <InfoTip text="First Teramind activity recorded today." /></th>
+              <th className={thCls}>Late <InfoTip text="Minutes after the scheduled start (plus grace period) the employee arrived." /></th>
+              <th className={thCls}>Last Activity <InfoTip text="Most recent Teramind event recorded today." /></th>
+              {isToday && <th className={thCls}>Idle <InfoTip text="Time since the last activity (live only)." /></th>}
+              <th className={thCls}>Active Time <InfoTip text="Total time Teramind recorded active usage today." /></th>
+              <th className={thCls}>Records <InfoTip text="Number of Teramind activity records imported for today." /></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 cursor-pointer" onClick={handleBodyClick}>

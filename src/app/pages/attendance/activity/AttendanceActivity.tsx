@@ -136,7 +136,7 @@ export default function AttendanceActivity() {
             </div>
 
             {/* Needs A Look list */}
-            <ActivityNeedsLook days={filteredNeedsLook} onPick={handlePickEmployee} />
+            <ActivityNeedsLook days={filteredNeedsLook} dateTo={safeTo} settings={settings} onPick={handlePickEmployee} />
 
             {/* Main table */}
             {viewMode === 'byEmployee'

@@ -78,30 +78,15 @@ export default function AttendanceRangeControls({
   const qBtnCls = 'h-7 px-2.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors whitespace-nowrap';
 
   const quickPicks = useMemo(() => {
-    const activePeriod = allNamedPeriods.find(p => p.end_date >= today) ?? allNamedPeriods[0] ?? null;
-    const lastProcessed = processedPeriods[0] ?? null;
     return [
-      { label: 'Today',            handler: (() => { setDateFrom(today); setDateTo(today); }) as Handler },
-      { label: 'This Week',        handler: (() => { setDateFrom(mondayOf(today)); setDateTo(today); }) as Handler },
-      { label: 'Last 14 Days',     handler: (() => { setDateFrom(addDaysStr(today, -13)); setDateTo(today); }) as Handler },
-      {
-        label: 'This Period So Far',
-        handler: activePeriod ? (() => {
-          const to = activePeriod.end_date < today ? activePeriod.end_date : today;
-          setDateFrom(activePeriod.start_date);
-          setDateTo(to);
-        }) as Handler : null,
-      },
-      {
-        label: 'Last Period',
-        handler: lastProcessed ? (() => {
-          setDateFrom(lastProcessed.start_date);
-          setDateTo(lastProcessed.end_date);
-        }) as Handler : null,
-      },
+      { label: 'Today',         handler: (() => { setDateFrom(today); setDateTo(today); }) as Handler },
+      { label: 'This Week',     handler: (() => { setDateFrom(mondayOf(today)); setDateTo(today); }) as Handler },
+      { label: 'Last 14 Days',  handler: (() => { setDateFrom(addDaysStr(today, -13)); setDateTo(today); }) as Handler },
+      { label: 'Last 30 Days',  handler: (() => { setDateFrom(addDaysStr(today, -29)); setDateTo(today); }) as Handler },
+      { label: 'Last 90 Days',  handler: (() => { setDateFrom(addDaysStr(today, -89)); setDateTo(today); }) as Handler },
     ];
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [today, allNamedPeriods, processedPeriods]);
+  }, [today]);
 
   return (
     <>
