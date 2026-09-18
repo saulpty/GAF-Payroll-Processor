@@ -103,6 +103,10 @@ export default function FilterBar() {
     }
   }, [periodsVersion, refetchPeriods]);
 
+  useEffect(() => {
+    if (period === '__all__' && location.pathname !== '/payroll-master') setPeriod('');
+  }, [period, location.pathname]);
+
   // All named periods sorted newest-first (includes unprocessed, used by quick picks)
   const allNamedPeriods = useMemo(() => {
     return (periodsRaw as PeriodRow[])
@@ -177,7 +181,8 @@ export default function FilterBar() {
         <>
           <label className={labelCls}>Period</label>
           <select value={period} onChange={e => setPeriod(e.target.value)} className={inputCls + ' min-w-40'}>
-            <option value="">All periods</option>
+            <option value="">{location.pathname === '/payroll-master' ? 'Choose A Period' : 'All periods'}</option>
+            {location.pathname === '/payroll-master' && <option value="__all__">All Periods</option>}
             {periods.map(p => (
               <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
             ))}

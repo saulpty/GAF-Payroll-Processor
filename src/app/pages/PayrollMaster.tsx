@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TimeInput } from '@/app/components/TimeInput';
+import EmptyState from '@/app/components/EmptyState';
 import loadPayrollMasterAction from '@/actions/loadPayrollMaster';
 import countPayrollMasterAction from '@/actions/countPayrollMaster';
 
@@ -125,8 +126,11 @@ export default function PayrollMaster() {
   const [deleteConfirmRow, setDeleteConfirmRow] = useState<EntryRow | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  const rawPeriod = searchParams.get('period') || globalPeriod || '';
+  const periodChosen = rawPeriod !== '';
+
   const [params, setParams] = useState({
-    periodName: searchParams.get('period') || globalPeriod || '',
+    periodName: rawPeriod === '__all__' ? '' : rawPeriod,
     employeeName: globalEmployee || '',
     status: '',
     offset: 0,
@@ -134,18 +138,18 @@ export default function PayrollMaster() {
 
   // Sync params when global period or employee changes
   useEffect(() => {
-    const p = searchParams.get('period') || globalPeriod;
-    setParams(prev => ({ ...prev, periodName: p || '', employeeName: globalEmployee || '', offset: 0 }));
+    const p = searchParams.get('period') || globalPeriod || '';
+    setParams(prev => ({ ...prev, periodName: p === '__all__' ? '' : p, employeeName: globalEmployee || '', offset: 0 }));
     setPage(0);
     discardAll();
     setSavedIds(new Set());
   }, [globalPeriod, globalEmployee, searchParams]);
 
-  const [rows, loading, , reload] = useLoadAction(loadPayrollMasterAction, [] as EntryRow[], params);
+  const [rows, loading, , reload] = useLoadAction(loadPayrollMasterAction, [] as EntryRow[], params, { enabled: periodChosen });
   const { getEdit, update, isDirty, discard, discardAll, markSaved, dirtyCount } = useRowEdits<EntryRow, EditState>(toEditState, rows as EntryRow[]);
   const [countData] = useLoadAction(countPayrollMasterAction, [] as { total: number }[], {
     periodName: params.periodName, employeeName: params.employeeName, status: params.status,
-  });
+  }, { enabled: periodChosen });
 
   const total = (countData as { total: number }[])[0]?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -500,13 +504,20 @@ export default function PayrollMaster() {
         </div>
       </div>
 
-      {loading && (
+      {!periodChosen && (
+        <EmptyState
+          title="Choose A Period"
+          hint="Pick a period above, or choose All Periods to load every period at once."
+        />
+      )}
+
+      {periodChosen && loading && (
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <Loader2 className="w-4 h-4 animate-spin" />Loading…
         </div>
       )}
 
-      {!loading && (
+      {periodChosen && !loading && (
         <div className="flex flex-col flex-1 min-h-0 gap-3">
 
           {/* Bulk edit toolbar */}
