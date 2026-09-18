@@ -6,11 +6,11 @@ import {
   buildActivityDays, whyFor, fmtDayShort, payrollLabelToEnglish,
   thresholdFor, shiftMinutesOf, parseClock, addDays, toYmd, titleCase,
   type ActivityDayRow, type ActivityEmployee, type ActivitySettings, type ActivityDay,
-} from '../docs/superpowers/prompts/2026-09-18-activity/build/activityDays.ts';
+} from '../src/app/lib/activityDays.ts';
 import type { ReportRow, ReportRequest } from '../src/app/lib/attendanceReportTypes.ts';
 
 const SRC_PATH = fileURLToPath(
-  new URL('../docs/superpowers/prompts/2026-09-18-activity/build/activityDays.ts', import.meta.url),
+  new URL('../src/app/lib/activityDays.ts', import.meta.url),
 );
 
 // ── Fake schedule helper (the page injects classificationEngine's) ──────────────────────────

@@ -43,3 +43,4 @@ Applied migrations:
 1782003000_teramind_saved_copy at 2026-09-17T18:48:57.995Z
 1782003100_teramind_time_records at 2026-09-17T19:52:53.570Z
 1782003200_teramind_sync_interval at 2026-09-17T21:42:52.494Z
+1782010000_activity_settings at 2026-09-18T15:17:56.193Z
