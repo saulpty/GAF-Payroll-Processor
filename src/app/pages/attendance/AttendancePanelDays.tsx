@@ -38,10 +38,10 @@ export default function AttendancePanelDays({ days }: Props) {
                 <tr key={d.date} className="border-b border-border/50 hover:bg-muted/20">
                   <td className={TD}>{fmtDayShort(d.date)}</td>
                   <td className={`${TD} whitespace-nowrap tabular-nums`}>
-                    {d.firstMin !== null ? fmtClock(d.firstMin) : '—'}
+                    {d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '—'}
                     {' – '}
-                    {d.lastMin !== null
-                      ? fmtClock(d.lastMin) + (d.crossesMidnight ? ' +1d' : '')
+                    {d.shownLastMin !== null
+                      ? fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')
                       : '—'}
                   </td>
                   <td className={`${TD} tabular-nums`}>{fmtDuration(d.activeMin)}</td>

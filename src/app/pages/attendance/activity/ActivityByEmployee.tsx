@@ -33,9 +33,9 @@ function ExpandedDayRow({ d }: { d: ActivityDay }) {
     <tr className="bg-slate-50 hover:bg-slate-100/50 transition-colors">
       <td className={SUBTD}>{fmtDayShort(d.date)}</td>
       <td className={SUBTD}>
-        {d.firstMin !== null ? fmtClock(d.firstMin) : '—'}
+        {d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '—'}
         {' – '}
-        {d.lastMin !== null ? (fmtClock(d.lastMin) + (d.crossesMidnight ? ' +1d' : '')) : '—'}
+        {d.shownLastMin !== null ? (fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')) : '—'}
       </td>
       <td className={SUBTD}>{fmtDuration(d.activeMin)}</td>
       <td className={SUBTD}>{d.records <= 1 ? '—' : fmtDuration(d.breaksMin)}</td>

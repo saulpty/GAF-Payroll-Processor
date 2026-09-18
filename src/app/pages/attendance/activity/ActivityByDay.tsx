@@ -19,8 +19,8 @@ function escape(v: unknown): string {
 function exportCsv(days: ActivityDay[], dateFrom: string, dateTo: string) {
   const header = ['employee', 'date', 'first', 'last', 'active_minutes', 'breaks_minutes', 'why', 'source'].join(',');
   const body = days.map(d => {
-    const first = d.firstMin !== null ? fmtClock(d.firstMin) : '';
-    const last = d.lastMin !== null ? (fmtClock(d.lastMin) + (d.crossesMidnight ? ' +1d' : '')) : '';
+    const first = d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '';
+    const last = d.shownLastMin !== null ? (fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')) : '';
     const why = d.why ? d.why.label : '';
     const source = !d.official ? 'Live' : d.edited ? 'Official, Edited' : 'Official';
     return [d.employeeName, d.date, first, last, d.activeMin, d.breaksMin, why, source].map(escape).join(',');
@@ -78,9 +78,9 @@ export default function ActivityByDay({ days, dateFrom, dateTo }: Props) {
                 </td>
                 <td className={TD}>{fmtDayShort(d.date)}</td>
                 <td className={TD}>
-                  {d.firstMin !== null ? fmtClock(d.firstMin) : '—'}
+                  {d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '—'}
                   {' – '}
-                  {d.lastMin !== null ? (fmtClock(d.lastMin) + (d.crossesMidnight ? ' +1d' : '')) : '—'}
+                  {d.shownLastMin !== null ? (fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')) : '—'}
                 </td>
                 <td className={TD}>{fmtDuration(d.activeMin)}</td>
                 <td className={TD}>

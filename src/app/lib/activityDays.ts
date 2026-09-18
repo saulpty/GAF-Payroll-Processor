@@ -1,6 +1,5 @@
-// Activity days: a pure combinator over Teramind day rows plus the attendance report.
-// Zero runtime imports, no Date maths: dates are 'YYYY-MM-DD' strings, compared as
-// strings and advanced by addDays(). Contract 2026-09-18.
+// Activity days: Teramind day rows + the attendance report. Pure: no runtime imports, no Date
+// maths ('YYYY-MM-DD' strings, addDays()). Contract 2026-09-18.
 
 import type { ReportRow, ReportRequest } from './attendanceReportTypes';
 
@@ -32,6 +31,8 @@ export type ActivityDay = {
   records: number; accounts: number; hasManual: boolean;
   official: boolean; edited: boolean;
   officialEntryMin: number | null; officialExitMin: number | null;
+  /** First / Last to display: official punch when captured, else Teramind. */
+  shownFirstMin: number | null; shownLastMin: number | null;
   why: WhyChip | null;
   flag: 'low_activity' | 'long_break' | null;
   needsLook: boolean; isToday: boolean;
@@ -140,8 +141,8 @@ function coversDate(r: ReportRequest, date: string): boolean {
 // "8-12", "8:00 AM - 12:00 PM", "8 a 12".
 const TIME_RANGE = /\d{1,2}(?::\d{2})?\s*(?:[ap]\.?\s*m\.?)?\s*(?:[-–—]|\bto\b|\ba\b)\s*\d{1,2}/i;
 const SICK_FORM = /sick|incapacidad|attendance/;
-// Legitimately away: never a flag, never Needs A Look. A plain form (e.g. Tardiness) only
-// counts when the person did not work that day; on a worked day it is context.
+// Legitimately away: never a flag, never Needs A Look. A plain form (e.g. Tardiness) counts
+// only on a day with no activity; on a worked day it is context.
 const EXCUSED: WhyKind[] = ['pto', 'permission', 'sick', 'holiday', 'day_off'];
 const AWAY: WhyKind[] = ['pto', 'permission', 'sick', 'holiday'];
 const awayKind = (w: WhyChip | null, hasActivity: boolean, list: WhyKind[]): boolean =>
@@ -237,7 +238,10 @@ export function buildActivityDays(input: {
       const scheduled = isScheduledWorkDay(emp, cur) === true;
       const records = toInt(row?.records, 0);
       const firstMin = toMin(row?.first_min);
-      const hasActivity = records > 0 || firstMin !== null;
+      // Hand-typed payroll punches with no Teramind record still mean the person worked.
+      const officialEntryMin = rr ? parseClock(rr.entryTime) : null;
+      const officialExitMin = rr ? parseClock(rr.exitTime) : null;
+      const hasActivity = records > 0 || firstMin !== null || officialEntryMin !== null;
 
       // Not scheduled, nothing happened: no row.
       if (!scheduled && !hasActivity) continue;
@@ -260,8 +264,6 @@ export function buildActivityDays(input: {
         else if (breaksMin > settings.breakMinutes + settings.breakOverMinutes) flag = 'long_break';
       }
 
-      const officialEntryMin = rr ? parseClock(rr.entryTime) : null;
-      const officialExitMin = rr ? parseClock(rr.exitTime) : null;
       const official = rr !== null && rr.verdict !== 'not_processed';
       const edited = official && (differs(officialEntryMin, firstMin) || differs(officialExitMin, lastMin));
 
@@ -273,7 +275,10 @@ export function buildActivityDays(input: {
         date: cur, scheduled, shiftMinutes, firstMin, lastMin, crossesMidnight, activeMin, breaksMin,
         largestGapMin: toInt(row?.largest_gap_min, 0), gapStartMin: toInt(row?.gap_start_min, 0),
         records, accounts: row ? toInt(row.accounts, 1) : 0, hasManual: row?.has_manual === true,
-        official, edited, officialEntryMin, officialExitMin, why, flag,
+        official, edited, officialEntryMin, officialExitMin,
+        shownFirstMin: official && officialEntryMin !== null ? officialEntryMin : firstMin,
+        shownLastMin: official && officialExitMin !== null ? officialExitMin : lastMin,
+        why, flag,
         needsLook: flag === 'low_activity', isToday: cur === todayYmd,
       });
     }
