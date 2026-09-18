@@ -9,6 +9,7 @@ import { ViewerProvider } from '@/app/context/ViewerContext';
 import AccessGate from '@/app/components/AccessGate';
 import AccessAutoSync from '@/app/components/AccessAutoSync';
 import TeramindAutoSync from '@/app/components/TeramindAutoSync';
+import MondayAutoSync from '@/app/components/MondayAutoSync';
 import RequireSuper, { HomeRedirect } from '@/app/components/RequireSuper';
 import ProcessPayroll from '@/app/pages/ProcessPayroll';
 import ActionRequired from '@/app/pages/ActionRequired';
@@ -36,6 +37,7 @@ function App() {
           <GlobalFilterProvider>
             <AccessAutoSync />
             <TeramindAutoSync />
+            <MondayAutoSync />
             <div className="flex flex-col h-screen overflow-hidden bg-background">
               <TopNav />
               <FilterBar />

@@ -28,7 +28,7 @@ type Props = {
   summary?: string;
 };
 
-function fmtDate(ts: string | null | undefined): string {
+export function fmtDate(ts: string | null | undefined): string {
   if (!ts) return 'Never';
   const d = new Date(ts);
   return d.toLocaleString('en-US', {

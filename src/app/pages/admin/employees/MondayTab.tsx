@@ -6,6 +6,7 @@ import loadClassificationConfigAction from '@/actions/loadClassificationConfig';
 import loadAllEmployeesAction from '@/actions/loadAllEmployees';
 import loadNameAliasesAction from '@/actions/loadNameAliases';
 import loadMondaySyncLogAction from '@/actions/loadMondaySyncLog';
+import loadSyncLogAction from '@/actions/loadSyncLog';
 import pullMondayBoardAction from '@/actions/pullMondayBoard';
 import updateEmployeeRoleManagerAction from '@/actions/updateEmployeeRoleManager';
 import updateEmployeeFlagAction from '@/actions/updateEmployeeFlag';
@@ -17,7 +18,7 @@ import upsertMondayContractsAction from '@/actions/upsertMondayContracts';
 import updateMondayRequestsDeletedAction from '@/actions/updateMondayRequestsDeleted';
 import updateMondayAttendanceFormsDeletedAction from '@/actions/updateMondayAttendanceFormsDeleted';
 import updateMondayContractsDeletedAction from '@/actions/updateMondayContractsDeleted';
-import MondaySyncCard, { SyncLogRow, SyncResult } from './MondaySyncCard';
+import MondaySyncCard, { SyncLogRow, SyncResult, fmtDate } from './MondaySyncCard';
 import ReconciliationTable, { DirectoryItem } from './ReconciliationTable';
 import UnmatchedList from './UnmatchedList';
 import { buildResolver } from '@/app/lib/mondayResolve';
@@ -29,7 +30,8 @@ import { syncRequests } from './syncRequests';
 import { syncAttendanceForms } from './syncAttendanceForms';
 import { syncContracts } from './syncContracts';
 
-type ConfigRow = { key: string; value: string };
+type ConfigRow  = { key: string; value: string };
+type NewSyncRow = { id: number; kind: string; ran_at: string; ran_by: string; created: number; updated: number; error: string | null };
 type EmpRow    = {
   id: number; display_name: string; teramind_email: string; company_domain: string;
   active: boolean; is_grace_list: boolean; is_macbook_swap: boolean;
@@ -90,6 +92,7 @@ export default function MondayTab() {
   const [empsRaw, , , reloadEmps] = useLoadAction(loadAllEmployeesAction, [] as EmpRow[]);
   const [aliasesRaw] = useLoadAction(loadNameAliasesAction, [] as AliasRow[]);
   const [syncLogRaw, , , reloadLog] = useLoadAction(loadMondaySyncLogAction, [] as SyncLogRow[]);
+  const [newSyncLogRaw] = useLoadAction(loadSyncLogAction, [] as NewSyncRow[]);
 
   const [callMondayBoard]  = useMutateAction(pullMondayBoardAction);
   const [updateRoleManager] = useMutateAction(updateEmployeeRoleManagerAction);
@@ -112,16 +115,39 @@ export default function MondayTab() {
   const [mondayDirectory, setMondayDirectory] = useState<DirectoryItem[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const config  = configRaw  as ConfigRow[];
-  const emps    = empsRaw    as EmpRow[];
-  const aliases = aliasesRaw as AliasRow[];
-  const syncLog = syncLogRaw as SyncLogRow[];
+  const config     = configRaw    as ConfigRow[];
+  const emps       = empsRaw      as EmpRow[];
+  const aliases    = aliasesRaw   as AliasRow[];
+  const syncLog    = syncLogRaw   as SyncLogRow[];
+  const newSyncLog = newSyncLogRaw as NewSyncRow[];
 
   const cfg = useMemo(() => {
     const m: Record<string, string> = {};
     for (const r of config) m[r.key] = r.value;
     return m;
   }, [config]);
+
+  const syncEveryMinutes = useMemo(() => {
+    const val = cfg['sync_every_minutes'];
+    const parsed = val ? parseInt(val, 10) : NaN;
+    return !isNaN(parsed) && parsed >= 5 ? parsed : 15;
+  }, [cfg]);
+
+  const lastAutoRunAt = useMemo(() => {
+    let best: string | null = null;
+    for (const r of newSyncLog) {
+      if (r.error && r.error !== '' && r.error !== 'running') continue;
+      if (!best || r.ran_at > best) best = r.ran_at;
+    }
+    return best;
+  }, [newSyncLog]);
+
+  const weeklyAutoCreated = useMemo(() => {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    return newSyncLog
+      .filter(r => r.kind === 'directory' && r.ran_by === 'auto' && r.ran_at >= cutoff)
+      .reduce((sum, r) => sum + (r.created ?? 0), 0);
+  }, [newSyncLog]);
 
   const resolver = useMemo(() => buildResolver(emps, aliases, normalizeName), [emps, aliases]);
 
@@ -254,9 +280,19 @@ export default function MondayTab() {
         />
       )}
 
-      <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-        <Users className="w-3.5 h-3.5" />
-        {emps.length} employees · {aliases.length} aliases loaded
+      <div className="mt-4 flex flex-col gap-1.5">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Users className="w-3.5 h-3.5" />
+          {emps.length} employees · {aliases.length} aliases loaded
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Data Updates Every {syncEveryMinutes} Minutes · Last Run {fmtDate(lastAutoRunAt)} · Sync Now still available
+          {weeklyAutoCreated > 0 && (
+            <span className="ml-2 text-amber-600 font-medium">
+              · {weeklyAutoCreated} new employee{weeklyAutoCreated !== 1 ? 's' : ''} created by sync this week
+            </span>
+          )}
+        </div>
       </div>
 
       <ReconciliationTable

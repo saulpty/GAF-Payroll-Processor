@@ -36,7 +36,7 @@ export default function TeramindAutoSync() {
       try {
         const cfgResp = await fetchConfig({});
         const rows = Array.isArray(cfgResp) ? (cfgResp as { key: string; value: string }[]) : [];
-        const row = rows.find(r => r.key === 'teramind_sync_every_minutes');
+        const row = rows.find(r => r.key === 'sync_every_minutes') ?? rows.find(r => r.key === 'teramind_sync_every_minutes');
         if (row) {
           const parsed = parseInt(row.value, 10);
           if (!isNaN(parsed) && parsed >= 5) intervalMinutes = parsed;

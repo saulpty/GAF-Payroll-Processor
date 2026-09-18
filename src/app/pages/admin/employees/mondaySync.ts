@@ -22,7 +22,7 @@ export interface SyncDeps {
   markDeleted: DeletedFn;
 }
 
-export interface SyncResult { items: number; matched: number; unmatched: number }
+export interface SyncResult { items: number; matched: number; unmatched: number; created?: number }
 
 // ── requireKeys ────────────────────────────────────────────────────────────────
 

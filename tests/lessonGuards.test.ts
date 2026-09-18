@@ -95,6 +95,9 @@ const TO_ISO_ALLOWLIST: Record<string, number> = {
   // broke the suite when the import was tried.
   'src/app/lib/attendanceStats.ts': 1,
   'src/app/lib/ptoAccrual.ts': 1, // fromDayNumber - TZ-invariant by construction
+  // "created by sync this week": compares a now-minus-7-days INSTANT against sync_log.ran_at
+  // (a timestamptz), never sliced to a date. Added 2026-09-18 with MondayAutoSync.
+  'src/app/pages/admin/employees/MondayTab.tsx': 1,
 };
 
 test('L3: no new toISOString date-slicing appears, and the allowlist stays honest', () => {

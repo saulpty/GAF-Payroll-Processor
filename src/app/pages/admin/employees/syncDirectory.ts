@@ -32,7 +32,7 @@ export type DirectoryDeps = SyncDeps & {
   upsertEmp: (p: Record<string, unknown>) => Promise<unknown>;
   updateStartDate: (p: { display_name: string; start_date: string }) => Promise<unknown>;
   defaultScheduleId: number;
-  askCandidates: (c: { name: string; email: string; role: string; manager: string }[]) => Promise<{ name: string; email: string; role: string; manager: string }[]>;
+  askCandidates: ((c: { name: string; email: string; role: string; manager: string }[]) => Promise<{ name: string; email: string; role: string; manager: string }[]>) | 'auto';
   onSummary: (s: string) => void;
   onItems?: (items: { item_id: string; name: string; email: string; role: string; manager: string; active: string }[]) => void;
 };
@@ -167,16 +167,44 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
 
   // ── Step 4: offer new employees for creation ───────────────────────────────
   if (newCandidates.length > 0) {
-    const selected = await deps.askCandidates(newCandidates);
-    for (const c of selected) {
-      const domain = c.email.includes('@') ? c.email.split('@')[1] : '';
-      await deps.upsertEmp({
-        display_name: c.name, teramind_email: c.email, company_domain: domain,
-        schedule_id: deps.defaultScheduleId, is_grace_list: false, is_macbook_swap: false,
-        excluded_from_payroll: false, active: true,
-        notes: 'Added via Monday directory sync', role: c.role || null, manager: c.manager || null,
-      });
-      createdCount++;
+    if (deps.askCandidates === 'auto') {
+      // Silent-create mode: apply two brakes before creating
+      const existingNames = new Set(deps.emps.map(e => e.display_name.toLowerCase()));
+      const safe = newCandidates.filter(c => !existingNames.has(c.name.toLowerCase()));
+      const skippedByName = newCandidates.length - safe.length;
+
+      if (safe.length > 3) {
+        // Too many candidates — something likely broke; log and skip all
+        const errMsg = `${safe.length} candidates need review`;
+        deps.onSummary(errMsg);
+        return { items: items.length, matched: items.length - unmatchedCount, unmatched: unmatchedCount, created: 0, _error: errMsg } as SyncResult & { _error: string };
+      }
+
+      for (const c of safe) {
+        const domain = c.email.includes('@') ? c.email.split('@')[1] : '';
+        await deps.upsertEmp({
+          display_name: c.name, teramind_email: c.email, company_domain: domain,
+          schedule_id: deps.defaultScheduleId, is_grace_list: false, is_macbook_swap: false,
+          excluded_from_payroll: false, active: true,
+          notes: 'Added via Monday directory sync', role: c.role || null, manager: c.manager || null,
+        });
+        createdCount++;
+      }
+      if (skippedByName > 0) {
+        console.warn(`syncDirectory auto: skipped ${skippedByName} candidate(s) whose name matched an existing employee.`);
+      }
+    } else {
+      const selected = await deps.askCandidates(newCandidates);
+      for (const c of selected) {
+        const domain = c.email.includes('@') ? c.email.split('@')[1] : '';
+        await deps.upsertEmp({
+          display_name: c.name, teramind_email: c.email, company_domain: domain,
+          schedule_id: deps.defaultScheduleId, is_grace_list: false, is_macbook_swap: false,
+          excluded_from_payroll: false, active: true,
+          notes: 'Added via Monday directory sync', role: c.role || null, manager: c.manager || null,
+        });
+        createdCount++;
+      }
     }
   }
 
@@ -205,5 +233,5 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
   deps.onSummary(
     `${updatedCount} updated · ${createdCount} created · ${startDatesSet} start dates set${dupPart} · ${unmatchedCount} unmatched`,
   );
-  return { items: items.length, matched, unmatched: unmatchedCount };
+  return { items: items.length, matched, unmatched: unmatchedCount, created: createdCount };
 }
