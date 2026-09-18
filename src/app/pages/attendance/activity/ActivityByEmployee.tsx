@@ -5,13 +5,14 @@ import { fmtDayShort } from '@/app/lib/activityDays';
 import { fmtClock, fmtDuration } from '@/app/lib/teramindToday';
 import WhyChipBadge from './WhyChipBadge';
 import SourceBadge from './SourceBadge';
+import { AttendancePanel } from '@/app/pages/attendance/AttendancePanel';
 
 type Props = { byEmployee: EmployeeActivitySummary[]; shiftMinutes?: number };
 
 const TH = 'px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap';
 const TD = 'px-3 py-2 text-sm text-slate-700 align-top';
 
-const MAX_BAR = 480; // minutes — scale bar to full shift
+const MAX_BAR = 480;
 
 function ActiveBar({ activeMin, shiftMin }: { activeMin: number | null; shiftMin: number }) {
   if (activeMin === null) return <span className="text-slate-400">—</span>;
@@ -20,17 +21,13 @@ function ActiveBar({ activeMin, shiftMin }: { activeMin: number | null; shiftMin
     <div className="flex items-center gap-2">
       <span className="tabular-nums text-sm font-medium">{fmtDuration(activeMin)}</span>
       <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-[#2AA876] rounded-full"
-          style={{ width: `${pct}%` }}
-        />
+        <div className="h-full bg-[#2AA876] rounded-full" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
 }
 
 function ExpandedDayRow({ d }: { d: ActivityDay }) {
-  const SUBTH = 'px-3 py-1.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide whitespace-nowrap';
   const SUBTD = 'px-3 py-1.5 text-xs text-slate-600';
   return (
     <tr className="bg-slate-50 hover:bg-slate-100/50 transition-colors">
@@ -62,24 +59,37 @@ function ExpandedHeader() {
   );
 }
 
-function EmployeeRow({ emp }: { emp: EmployeeActivitySummary }) {
+type EmployeeRowProps = {
+  emp: EmployeeActivitySummary;
+  onOpenPanel: (emp: EmployeeActivitySummary) => void;
+};
+
+function EmployeeRow({ emp, onOpenPanel }: EmployeeRowProps) {
   const [expanded, setExpanded] = useState(false);
   const avgShift = emp.days.length > 0 ? (emp.days[0]?.shiftMinutes ?? MAX_BAR) : MAX_BAR;
 
   return (
     <>
-      <tr
-        className="hover:bg-slate-50 transition-colors cursor-pointer"
-        onClick={() => setExpanded(e => !e)}
-      >
+      <tr className="hover:bg-slate-50 transition-colors">
         <td className={TD}>
           <div className="flex items-center gap-2">
-            {expanded
-              ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
-              : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-            }
+            <button
+              onClick={() => setExpanded(e => !e)}
+              className="shrink-0 text-slate-400 hover:text-slate-600"
+              aria-label={expanded ? 'Collapse' : 'Expand'}
+            >
+              {expanded
+                ? <ChevronDown className="w-4 h-4" />
+                : <ChevronRight className="w-4 h-4" />
+              }
+            </button>
             <div>
-              <div className="font-medium text-slate-800">{emp.employeeName}</div>
+              <button
+                className="font-medium text-slate-800 hover:text-[#2AA876] hover:underline underline-offset-2 text-left transition-colors"
+                onClick={() => onOpenPanel(emp)}
+              >
+                {emp.employeeName}
+              </button>
               <div className="text-xs text-slate-400">{emp.role}</div>
             </div>
           </div>
@@ -122,6 +132,8 @@ function EmployeeRow({ emp }: { emp: EmployeeActivitySummary }) {
 }
 
 export default function ActivityByEmployee({ byEmployee }: Props) {
+  const [panelEmp, setPanelEmp] = useState<EmployeeActivitySummary | null>(null);
+
   if (byEmployee.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
@@ -131,23 +143,39 @@ export default function ActivityByEmployee({ byEmployee }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-      <table className="w-full text-left divide-y divide-slate-100">
-        <thead className="bg-slate-50">
-          <tr>
-            <th className={TH}>Employee</th>
-            <th className={TH}>Days With Work</th>
-            <th className={TH}>Avg Active</th>
-            <th className={TH}>Avg First</th>
-            <th className={TH}>Avg Last</th>
-            <th className={TH}>Needs A Look</th>
-            <th className={TH}>Away Days</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {byEmployee.map(emp => <EmployeeRow key={emp.employeeId} emp={emp} />)}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <table className="w-full text-left divide-y divide-slate-100">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className={TH}>Employee</th>
+              <th className={TH}>Days With Work</th>
+              <th className={TH}>Avg Active</th>
+              <th className={TH}>Avg First</th>
+              <th className={TH}>Avg Last</th>
+              <th className={TH}>Needs A Look</th>
+              <th className={TH}>Away Days</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {byEmployee.map(emp => (
+              <EmployeeRow key={emp.employeeId} emp={emp} onOpenPanel={setPanelEmp} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {panelEmp && (
+        <AttendancePanel
+          stats={null}
+          employeeId={panelEmp.employeeId}
+          days={panelEmp.days}
+          displayName={panelEmp.employeeName}
+          displayRole={panelEmp.role}
+          displayManager={panelEmp.manager}
+          onClose={() => setPanelEmp(null)}
+        />
+      )}
+    </>
   );
 }

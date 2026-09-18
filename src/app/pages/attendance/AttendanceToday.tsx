@@ -12,6 +12,7 @@ import type { WhyChip } from '@/app/lib/activityDays';
 import { matchesManager } from '@/app/lib/managerFilter';
 import { useTodayWhy } from './useTodayWhy';
 import { TodayTableRow, isOnLeave } from './TodayRow';
+import { AttendancePanel } from './AttendancePanel';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadTeramindDayPunchesAction from '@/actions/loadTeramindDayPunches';
 import loadHolidaysAction from '@/actions/loadHolidays';
@@ -37,6 +38,7 @@ export default function AttendanceToday() {
   const today = easternDate(Date.now());
   const [day, setDay] = useState(today);
   const isToday = day === today;
+  const [panelRow, setPanelRow] = useState<TodayRow | null>(null);
 
   const [nowMin, setNowMin] = useState(() => easternMinutes(Date.now()));
 
@@ -250,24 +252,47 @@ export default function AttendanceToday() {
             </div>
 
             {/* Table */}
-            <TodayTable rows={rows} isToday={isToday} whyById={whyById} whyLoading={whyLoading} />
+            <TodayTable rows={rows} isToday={isToday} whyById={whyById} whyLoading={whyLoading} onRowClick={setPanelRow} />
           </>
         )}
       </div>
+
+      {panelRow && (
+        <AttendancePanel
+          stats={null}
+          employeeId={panelRow.employeeId}
+          displayName={panelRow.name}
+          displayRole={panelRow.role}
+          onClose={() => setPanelRow(null)}
+        />
+      )}
     </div>
   );
 }
 
 function TodayTable({
-  rows, isToday, whyById, whyLoading,
+  rows, isToday, whyById, whyLoading, onRowClick,
 }: {
   rows: TodayRow[];
   isToday: boolean;
   whyById: Map<number, WhyChip | null>;
   whyLoading: boolean;
+  onRowClick?: (row: TodayRow) => void;
 }) {
   const thCls = 'px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap select-none';
   const tdCls = 'px-3 py-2.5 text-sm text-slate-800 align-top';
+
+  // Event delegation: find the closest <tr> ancestor from the click target,
+  // then match its index in rows array.
+  function handleBodyClick(e: React.MouseEvent<HTMLTableSectionElement>) {
+    if (!onRowClick) return;
+    const tr = (e.target as Element).closest('tr');
+    if (!tr) return;
+    const tbody = tr.parentElement;
+    if (!tbody) return;
+    const idx = Array.from(tbody.children).indexOf(tr);
+    if (idx >= 0 && idx < rows.length) onRowClick(rows[idx]);
+  }
 
   return (
     <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
@@ -287,7 +312,7 @@ function TodayTable({
               <th className={thCls}>Records</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 cursor-pointer" onClick={handleBodyClick}>
             {rows.map(row => (
               <TodayTableRow
                 key={row.employeeId}
