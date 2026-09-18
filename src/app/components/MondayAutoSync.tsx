@@ -27,6 +27,7 @@ import updateMondayContractsDeletedAction from '@/actions/updateMondayContractsD
 import loadSyncLogAction from '@/actions/loadSyncLog';
 import claimSyncRunAction from '@/actions/claimSyncRun';
 import upsertSyncLogAction from '@/actions/upsertSyncLog';
+import upsertMondaySyncLogAction from '@/actions/upsertMondaySyncLog';
 
 type ConfigRow = { key: string; value: string };
 type EmpRow    = {
@@ -71,6 +72,7 @@ export default function MondayAutoSync() {
   const [fetchSyncLog]          = useMutateAction(loadSyncLogAction);
   const [claimRun]              = useMutateAction(claimSyncRunAction);
   const [writeSyncLog]          = useMutateAction(upsertSyncLogAction);
+  const [writeMondayLog]        = useMutateAction(upsertMondaySyncLogAction);
 
   useEffect(() => {
     if (!isSuper) return;
@@ -165,6 +167,8 @@ export default function MondayAutoSync() {
 
           let created = 0;
           let updated = 0;
+          let items = 0;
+          let unmatched = 0;
           let errMsg = '';
 
           try {
@@ -179,6 +183,8 @@ export default function MondayAutoSync() {
               });
               created = result.created ?? 0;
               updated = result.matched ?? 0;
+              items = result.items;
+              unmatched = result.unmatched;
 
               // Also sync access groups, best-effort
               try { await syncAccess(true); } catch (e) {
@@ -190,29 +196,48 @@ export default function MondayAutoSync() {
                 upsert: (p) => upsertRequests(p), markDeleted: (p) => delRequests(p),
               });
               updated = result.matched;
+              items = result.items;
+              unmatched = result.unmatched;
             } else if (board.kind === 'attendance_forms') {
               const result = await syncAttendanceForms({
                 cfg, pull: (p) => pullBoard(p), resolve,
                 upsert: (p) => upsertAttForms(p), markDeleted: (p) => delAttForms(p),
               });
               updated = result.matched;
+              items = result.items;
+              unmatched = result.unmatched;
             } else if (board.kind === 'contracts') {
               const result = await syncContracts({
                 cfg, pull: (p) => pullBoard(p), resolve,
                 upsert: (p) => upsertContracts(p), markDeleted: (p) => delContracts(p),
               });
               updated = result.matched;
+              items = result.items;
+              unmatched = result.unmatched;
             }
           } catch (e) {
             errMsg = e instanceof Error ? e.message : String(e);
             console.warn(`Monday auto-sync (${board.kind}) failed:`, e);
           }
 
-          // Record outcome
+          // Record outcome in sync_log (for the status line / Last Run display)
           try {
             await writeSyncLog({ id: claimId, created, updated, error: errMsg });
           } catch (we) {
             console.warn(`Monday auto-sync write log (${board.kind}) failed:`, we);
+          }
+
+          // Also update monday_sync_log so the four cards show the latest time
+          try {
+            await writeMondayLog({
+              board_key: board.kind,
+              item_count: errMsg ? 0 : items,
+              matched_count: errMsg ? 0 : updated,
+              unmatched_count: errMsg ? 0 : unmatched,
+              last_error: errMsg,
+            });
+          } catch (we) {
+            console.warn(`Monday auto-sync monday_sync_log (${board.kind}) failed:`, we);
           }
         }
 
