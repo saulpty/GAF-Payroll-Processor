@@ -80,11 +80,19 @@ export default function AttendanceActivity() {
           </div>
         )}
 
-        {/* Error */}
+        {/* Error — show ONLY this, never partial zero-row tables */}
         {error && !loading && (
-          <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 mb-4">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-            Error loading activity data. Check the database connection.
+          <div className="flex flex-col items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-4 text-sm text-red-700 mb-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>Couldn't Load Activity Data. It Usually Works On Retry.</span>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="ml-6 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-800 hover:bg-red-200 transition-colors border border-red-200"
+            >
+              Retry
+            </button>
           </div>
         )}
 
@@ -96,7 +104,7 @@ export default function AttendanceActivity() {
           </div>
         )}
 
-        {!loading && (
+        {!loading && !error && (
           <>
             {/* KPI tiles + Thresholds button */}
             <div className="flex flex-wrap items-start gap-3 mb-4">

@@ -1,6 +1,5 @@
-import { EmpStats, AttendanceRow, computeArrivalScatter, ArrivalPoint } from '@/app/lib/attendanceStats';
-import { fmtDayLong } from '@/app/lib/fmtDay';
-import { toLocalYMD } from '@/app/lib/classificationEngine';
+import { EmpStats, computeArrivalScatter, ArrivalPoint } from '@/app/lib/attendanceStats';
+
 import { AttendanceDonuts } from './AttendanceDonuts';
 import {
   ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -9,7 +8,7 @@ import {
 
 type Props = { stats: EmpStats };
 
-const STATUS_COLORS: Record<string, string> = {
+export const STATUS_COLORS: Record<string, string> = {
   'On Time':                '#2AA876',
   'Late - Reported':        '#FBBF24',
   'Late - Unreported':      '#EF4444',
@@ -43,11 +42,6 @@ function fmtClock(t: string | null | undefined): string {
   return fmtMinutes(Number(m[1]) * 60 + Number(m[2]));
 }
 
-function toDateStr(val: unknown): string {
-  if (!val) return '';
-  if (val instanceof Date) return toLocalYMD(val);
-  return String(val).slice(0, 10);
-}
 
 const SCATTER_LEGEND = [
   { label: 'On Time',  color: '#2AA876' },
@@ -81,10 +75,6 @@ function ArrivalTooltip({ active, payload }: ScatterTooltipProps) {
 }
 
 export default function AttendancePanelBody({ stats }: Props) {
-  const recentRows = [...stats.rows]
-    .sort((a, b) => toDateStr(b.date).localeCompare(toDateStr(a.date)))
-    .slice(0, 20);
-
   const scatterPoints = computeArrivalScatter(stats.rows).map(p => ({
     ...p,
     minutesSinceMidnight: p.minutesSinceMidnight ?? (
@@ -173,44 +163,6 @@ export default function AttendancePanelBody({ stats }: Props) {
               </Scatter>
             </ComposedChart>
           </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Recent activity log */}
-      <div>
-        <div className="flex items-center gap-2 text-sm font-semibold mb-3">
-          <div className="w-0.5 h-3.5 bg-primary rounded-full" />
-          Recent Activity
-        </div>
-        <div className="bg-white border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-muted/40 border-b border-border">
-                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Date</th>
-                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Entry</th>
-                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Exit</th>
-                <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Status</th>
-                <th className="px-3 py-2 text-right font-semibold text-muted-foreground">Min Late</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentRows.map((r: AttendanceRow, i: number) => (
-                <tr key={i} className="border-b border-border/50 hover:bg-muted/20">
-                  <td className="px-3 py-2 whitespace-nowrap">{fmtDayLong(toDateStr(r.date))}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{fmtClock(r.entry_time)}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{fmtClock(r.exit_time)}</td>
-                  <td className="px-3 py-2">
-                    <span className="inline-flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                        style={{ background: STATUS_COLORS[r.status] ?? '#ccc' }} />
-                      {r.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{r.minutes_late > 0 ? r.minutes_late : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
 

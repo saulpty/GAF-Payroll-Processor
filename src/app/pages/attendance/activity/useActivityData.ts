@@ -67,23 +67,34 @@ export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo
   const safeFrom = dateFrom || toLocalYMD(new Date());
   const safeTo   = dateTo   || toLocalYMD(new Date());
 
-  const [rawTm,      loadingTm,  errTm]                     = useLoadAction(loadTeramindActivityDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, viewAs });
-  const [rawEmps,    loadingEmps]                            = useLoadAction(loadAttendanceEmployeesAction,  [],       { viewAs });
-  const [rawDays,    loadingDays, errDays]                   = useLoadAction(loadAttendanceReportDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
-  const [rawForms,   loadingForms]                           = useLoadAction(loadMondayAttendanceFormsRangeAction, [], { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
-  const [rawReqs,    loadingReqs]                            = useLoadAction(loadMondayRequestsRangeAction,  [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
-  const [rawHols,    loadingHols]                            = useLoadAction(loadHolidaysAction,   [], {});
-  const [rawPeriods, loadingPeriods]                         = useLoadAction(loadPeriodsAction,    [], {});
-  const [rawDst,     loadingDst]                             = useLoadAction(loadDstCalendarAction, [], {});
-  const [rawConfig,  loadingConfig, , reloadConfig]          = useLoadAction(loadClassificationConfigAction, [], {});
+  const [rawTm,      loadingTm,  errTm]                        = useLoadAction(loadTeramindActivityDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, viewAs });
+  const [rawEmps,    loadingEmps,    errEmps]                  = useLoadAction(loadAttendanceEmployeesAction,  [],       { viewAs });
+  const [rawDays,    loadingDays,    errDays]                  = useLoadAction(loadAttendanceReportDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
+  const [rawForms,   loadingForms,   errForms]                 = useLoadAction(loadMondayAttendanceFormsRangeAction, [], { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
+  const [rawReqs,    loadingReqs,    errReqs]                  = useLoadAction(loadMondayRequestsRangeAction,  [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
+  const [rawHols,    loadingHols,    errHols]                  = useLoadAction(loadHolidaysAction,   [], {});
+  const [rawPeriods, loadingPeriods, errPeriods]               = useLoadAction(loadPeriodsAction,    [], {});
+  const [rawDst,     loadingDst,     errDst]                   = useLoadAction(loadDstCalendarAction, [], {});
+  const [rawConfig,  loadingConfig,  errConfig, reloadConfig]  = useLoadAction(loadClassificationConfigAction, [], {});
 
   const loading =
     loadingTm || loadingEmps || loadingDays || loadingForms ||
     loadingReqs || loadingHols || loadingPeriods || loadingDst || loadingConfig;
 
-  const error = !!(errTm || errDays);
+  const error = !!(errTm || errEmps || errDays || errForms || errReqs || errHols || errPeriods || errDst || errConfig);
 
   const result = useMemo<Omit<ActivityDataResult, 'loading' | 'error' | 'reloadConfig'>>(() => {
+    // When any loader errored, return empty safe data — never render accusations from partial state.
+    if (error) {
+      const { settings } = parseSettings([]);
+      return {
+        days: [],
+        byEmployee: [],
+        totals: { avgActiveMin: null, daysWorked: 0, needsLook: 0, lateArrivals: 0 },
+        settings,
+        configFallbacks: [],
+      };
+    }
     const allEmployees = (rawEmps as ReportEmployee[]) ?? [];
     const employees = allEmployees.filter(e =>
       matchesManager(e, manager) &&
@@ -146,7 +157,7 @@ export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo
     });
 
     return { days, byEmployee, totals, settings, configFallbacks };
-  }, [rawEmps, rawTm, rawDays, rawForms, rawReqs, rawHols, rawPeriods, rawDst, rawConfig, safeFrom, safeTo, employee, manager, role]);
+  }, [error, rawEmps, rawTm, rawDays, rawForms, rawReqs, rawHols, rawPeriods, rawDst, rawConfig, safeFrom, safeTo, employee, manager, role]);
 
   return { ...result, loading, error, reloadConfig };
 }

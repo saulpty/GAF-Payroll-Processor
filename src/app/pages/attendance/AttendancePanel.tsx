@@ -49,7 +49,7 @@ export function AttendancePanel({
   const safeTo   = dateTo   || toLocalYMD(new Date());
 
   // Always call hooks — React forbids conditional hook calls.
-  const { days: hookDays } = useActivityData({ dateFrom: safeFrom, dateTo: safeTo });
+  const { days: hookDays, error: activityError } = useActivityData({ dateFrom: safeFrom, dateTo: safeTo });
   const { stats: hookStats } = useEmployeeStats({
     employeeId,
     email: propStats?.email,
@@ -118,14 +118,22 @@ export function AttendancePanel({
         </div>
 
         <div className="p-7 flex flex-col gap-6">
-          {/* Activity KPI tiles */}
-          <AttendancePanelKpis days={panelDays} stats={stats} />
+          {activityError ? (
+            <p className="text-xs text-muted-foreground italic py-2">
+              Couldn't Load Activity Data For This Range.
+            </p>
+          ) : (
+            <>
+              {/* Activity KPI tiles */}
+              <AttendancePanelKpis days={panelDays} stats={stats} />
 
-          {/* Existing body: KPIs + arrival chart + Recent Activity + Donuts */}
-          {stats && <AttendancePanelBody stats={stats} />}
+              {/* Attendance KPIs + arrival chart + Donuts */}
+              {stats && <AttendancePanelBody stats={stats} />}
 
-          {/* Day By Day */}
-          <AttendancePanelDays days={panelDays} />
+              {/* Day By Day — single merged table */}
+              <AttendancePanelDays days={panelDays} attendanceRows={stats?.rows ?? []} />
+            </>
+          )}
         </div>
       </div>
     </>
