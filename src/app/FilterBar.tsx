@@ -4,11 +4,10 @@ import { useViewer } from '@/app/context/ViewerContext';
 import { useLoadAction } from '@uibakery/data';
 import { X, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useEffect, useRef } from 'react';
-import AttendanceQuickPicks from '@/app/components/AttendanceQuickPicks';
 import { fmtDate } from '@/app/lib/fmtDate';
-import { toLocalYMD } from '@/app/lib/classificationEngine';
 import EmployeeSearchInput from '@/app/components/EmployeeSearchInput';
 import PeriodMultiSelect from '@/app/components/PeriodMultiSelect';
+import AttendanceRangeControls from '@/app/components/AttendanceRangeControls';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import { managerOptions } from '@/app/lib/managerFilter';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
@@ -41,7 +40,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   '/disciplinary':          { employee: true, role: true, manager: true },
 };
 
-// Routes with both periods+dateRange switch, and their default mode
+// Routes with a Periods/Dates switch, keyed to their default mode
 const ATTENDANCE_SWITCH_ROUTES: Record<string, 'periods' | 'dates'> = {
   '/attendance':           'periods',
   '/attendance/reports':   'periods',
@@ -63,34 +62,17 @@ const PM_TAB_STYLES: Record<string, { active: string; idle: string; dot?: string
   RED:    { active: 'bg-red-600 text-white',   idle: 'bg-white text-red-700 hover:bg-red-50',     dot: 'bg-red-400' },
 };
 
-/** Add n days to a YYYY-MM-DD string without using Date arithmetic. */
-function addDaysStr(ymd: string, n: number): string {
-  // Use Date only for offset arithmetic (not timezone conversion)
-  const d = new Date(ymd + 'T12:00:00');
-  d.setDate(d.getDate() + n);
-  return toLocalYMD(d);
-}
-
-/** Monday of the ISO week containing today (YYYY-MM-DD). */
-function mondayOf(todayYmd: string): string {
-  const d = new Date(todayYmd + 'T12:00:00');
-  const dow = d.getDay(); // 0=Sun
-  const diff = dow === 0 ? -6 : 1 - dow;
-  d.setDate(d.getDate() + diff);
-  return toLocalYMD(d);
-}
-
 export default function FilterBar() {
   const location = useLocation();
   const cfg = getConfig(location.pathname);
 
   const {
     periodsVersion,
+    attendanceMode, setAttendanceMode,
     period, setPeriod,
     dateFrom, setDateFrom,
     dateTo, setDateTo,
     attendancePeriods, setAttendancePeriods,
-    attendanceMode, setAttendanceMode,
     employee, setEmployee,
     role, setRole,
     manager, setManager,
@@ -120,11 +102,7 @@ export default function FilterBar() {
     }
   }, [periodsVersion, refetchPeriods]);
 
-  // All periods for single-period select (action-required, payroll-master, hrk)
-  const periods = (periodsRaw as PeriodRow[])
-    .filter(p => !!p.period_name?.trim());
-
-  // All named periods (for quick picks — not just processed)
+  // All named periods sorted newest-first (includes unprocessed, used by quick picks)
   const allNamedPeriods = useMemo(() => {
     return (periodsRaw as PeriodRow[])
       .filter(p => !!p.period_name?.trim())
@@ -141,34 +119,35 @@ export default function FilterBar() {
   const processedPeriods = useMemo(() => {
     return allNamedPeriods
       .filter(p => !!p.processed_at)
-      .map(p => ({
-        period_name: p.period_name,
-        start_date: p.start_date,
-        end_date: p.end_date,
-      }));
+      .map(p => ({ period_name: p.period_name, start_date: p.start_date, end_date: p.end_date }));
   }, [allNamedPeriods]);
+
+  // All periods for single-period select (action-required, payroll-master, hrk)
+  const periods = (periodsRaw as PeriodRow[]).filter(p => !!p.period_name?.trim());
 
   const rangeOf = (names: string[]) => {
     const selected = processedPeriods.filter(p => names.includes(p.period_name));
     if (!selected.length) return null;
-    const from = selected.map(p => p.start_date).sort()[0];
-    const to   = selected.map(p => p.end_date).sort().reverse()[0];
+    const from = selected.map(p => p.start_date).sort()[0]!;
+    const to   = selected.map(p => p.end_date).sort().reverse()[0]!;
     return { from, to };
   };
 
-  // Default: auto-select newest processed period when in Periods mode and nothing selected
+  // Auto-select newest processed period when in Periods mode and nothing is selected
   useEffect(() => {
     if (cfg?.periods && attendanceMode === 'periods' && attendancePeriods.length === 0 && processedPeriods.length > 0) {
-      const newest = processedPeriods[0];
+      const newest = processedPeriods[0]!;
       setAttendancePeriods([newest.period_name], rangeOf([newest.period_name]));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg?.periods, attendanceMode, processedPeriods.length, attendancePeriods.length]);
 
-  // Reset attendanceMode to route default when navigating between attendance sub-routes
+  // Reset mode to route default on attendance sub-route change
   const prevRouteRef = useRef<string | null>(null);
   useEffect(() => {
-    const matchKey = Object.keys(ATTENDANCE_SWITCH_ROUTES).find(k => location.pathname === k || location.pathname.startsWith(k + '/'));
+    const matchKey = Object.keys(ATTENDANCE_SWITCH_ROUTES).find(
+      k => location.pathname === k || location.pathname.startsWith(k + '/'),
+    );
     const routeKey = matchKey ?? null;
     if (routeKey !== null && routeKey !== prevRouteRef.current) {
       prevRouteRef.current = routeKey;
@@ -179,39 +158,14 @@ export default function FilterBar() {
 
   const emps = empsRaw as EmpInfo[];
   const managers = useMemo(() => managerOptions(emps), [emps]);
-  const roles    = useMemo(() => [...new Set(emps.map(e => e.role).filter(Boolean))].sort(),    [emps]);
-
-  // Quick-pick handlers (Dates mode)
-  const today = toLocalYMD(new Date());
-
-  const quickPicks = useMemo(() => {
-    const activePeriod = allNamedPeriods.find(p => p.end_date >= today) ?? allNamedPeriods[0] ?? null;
-    const lastProcessed = processedPeriods[0] ?? null;
-    return {
-      today: () => { setDateFrom(today); setDateTo(today); },
-      thisWeek: () => { setDateFrom(mondayOf(today)); setDateTo(today); },
-      last14: () => { setDateFrom(addDaysStr(today, -13)); setDateTo(today); },
-      thisPeriod: activePeriod ? () => {
-        const to = activePeriod.end_date < today ? activePeriod.end_date : today;
-        setDateFrom(activePeriod.start_date);
-        setDateTo(to);
-      } : null,
-      lastPeriod: lastProcessed ? () => {
-        setDateFrom(lastProcessed.start_date);
-        setDateTo(lastProcessed.end_date);
-      } : null,
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [today, allNamedPeriods, processedPeriods]);
+  const roles    = useMemo(() => [...new Set(emps.map(e => e.role).filter(Boolean))].sort(), [emps]);
 
   if (!cfg) return null;
 
   const inputCls = 'h-8 px-2.5 text-[13px] border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30';
   const labelCls = 'text-[11px] font-semibold uppercase tracking-wide text-slate-400';
   const divider  = <div className="w-px h-5 bg-slate-200" />;
-  const qBtnCls  = 'h-7 px-2.5 text-[11px] font-medium rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors whitespace-nowrap';
 
-  // Both periods + dateRange: render the Periods/Dates segmented switch
   const hasBothModes = !!(cfg.periods && cfg.dateRange);
 
   return (
@@ -231,65 +185,19 @@ export default function FilterBar() {
         </>
       )}
 
-      {/* Periods/Dates switch — only when both modes are available */}
+      {/* Periods | Dates switch (attendance routes only) */}
       {hasBothModes && (
-        <>
-          <div className="flex rounded-lg border overflow-hidden shadow-sm h-8">
-            {(['periods', 'dates'] as const).map(mode => {
-              const isActive = attendanceMode === mode;
-              return (
-                <button
-                  key={mode}
-                  onClick={() => setAttendanceMode(mode)}
-                  className={`px-3 text-[12px] font-semibold border-r last:border-r-0 transition-colors ${
-                    isActive
-                      ? 'bg-slate-700 text-white'
-                      : 'bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {mode === 'periods' ? 'Periods' : 'Dates'}
-                </button>
-              );
-            })}
-          </div>
-
-          {attendanceMode === 'periods' ? (
-            <>
-              <PeriodMultiSelect
-                periods={processedPeriods}
-                selected={attendancePeriods}
-                onChange={names => setAttendancePeriods(names, names.length ? rangeOf(names) : null)}
-              />
-              {attendancePeriods.length > 0 && dateFrom && dateTo && (
-                <span className="text-[12px] text-slate-500 tabular-nums whitespace-nowrap">
-                  {fmtDate(dateFrom)} → {fmtDate(dateTo)}
-                </span>
-              )}
-            </>
-          ) : (
-            <>
-              <label className={labelCls}>From</label>
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inputCls} />
-              <label className={labelCls}>To</label>
-              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={inputCls} />
-              {/* Quick picks */}
-              <AttendanceQuickPicks
-                btnCls={qBtnCls}
-                picks={[
-                  { label: 'Today', handler: quickPicks.today },
-                  { label: 'This Week', handler: quickPicks.thisWeek },
-                  { label: 'Last 14 Days', handler: quickPicks.last14 },
-                  { label: 'This Period So Far', handler: quickPicks.thisPeriod },
-                  { label: 'Last Period', handler: quickPicks.lastPeriod },
-                ]}
-              />
-            </>
-          )}
-          {(cfg.employee || cfg.role || cfg.manager) && divider}
-        </>
+        <AttendanceRangeControls
+          processedPeriods={processedPeriods}
+          allNamedPeriods={allNamedPeriods}
+          showDivider={!!(cfg.employee || cfg.role || cfg.manager)}
+          inputCls={inputCls}
+          labelCls={labelCls}
+          divider={divider}
+        />
       )}
 
-      {/* Periods-only (no dateRange on this route) */}
+      {/* Periods-only (no dateRange, kept for future routes) */}
       {cfg.periods && !hasBothModes && (
         <>
           <label className={labelCls}>Periods</label>
@@ -307,7 +215,7 @@ export default function FilterBar() {
         </>
       )}
 
-      {/* DateRange-only (no periods on this route, e.g. /process) */}
+      {/* DateRange-only (e.g. /process — unchanged) */}
       {cfg.dateRange && !hasBothModes && (
         <>
           <label className={labelCls}>From</label>
@@ -368,11 +276,8 @@ export default function FilterBar() {
                 {tab}
                 {tabCount > 0 && (
                   <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
-                    isActive
-                      ? 'bg-white/25 text-white'
-                      : tab === 'RED'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-amber-100 text-amber-700'
+                    isActive ? 'bg-white/25 text-white'
+                      : tab === 'RED' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
                   }`}>
                     {tabCount}
                   </span>
