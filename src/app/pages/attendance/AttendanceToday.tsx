@@ -93,30 +93,39 @@ export default function AttendanceToday() {
     }));
   }, [rawPunches]);
 
-  const dataAsOf = useMemo(() => {
+  const { dataAsOf, dataAsOfMin } = useMemo(() => {
     const vals = ((rawPunches as PunchRaw[]) ?? [])
       .map(p => p.synced_at)
       .filter((v): v is string => !!v);
-    if (!vals.length) return '—';
+    if (!vals.length) return { dataAsOf: '—', dataAsOfMin: null };
     const newest = vals.reduce((a, b) => (a > b ? a : b));
     const ms = new Date(newest).getTime();
-    return Number.isFinite(ms) ? fmtClock(easternMinutes(ms)) : '—';
+    if (!Number.isFinite(ms)) return { dataAsOf: '—', dataAsOfMin: null };
+    const min = easternMinutes(ms);
+    return { dataAsOf: fmtClock(min), dataAsOfMin: min };
   }, [rawPunches]);
 
   const holidays = (rawHolidays as HolidayRow[]) ?? [];
   const dstWindows = (rawDst as DstRow[]) ?? [];
 
+  // When today's data is stale (last sync >2 min ago), judge statuses against the
+  // data's own clock rather than the wall clock. This prevents every employee
+  // from appearing Away just because the keep-fresh sync didn't run recently.
+  const statusNowMin = isToday && dataAsOfMin !== null && nowMin - dataAsOfMin > 2
+    ? dataAsOfMin
+    : nowMin;
+
   const { rows: allRows, summary } = useMemo(() => {
     if (employees.length === 0) return { rows: [], summary: { total: 0, scheduled: 0, working: 0, away: 0, notInYet: 0, lateNotIn: 0, finished: 0, dayOff: 0, holiday: 0, lateArrivals: 0 } };
     return buildToday({
-      day, nowMin, isToday,
+      day, nowMin: statusNowMin, isToday,
       employees,
       punches,
       holidays,
       dstWindows,
       helpers: { isScheduledWorkDay, getSchedule, parseTimeToMinutes },
     });
-  }, [day, nowMin, isToday, employees, punches, holidays, dstWindows]);
+  }, [day, statusNowMin, isToday, employees, punches, holidays, dstWindows, dataAsOfMin]);
 
   // Drop day_off rows with zero records from the visible table and tile counts
   const rows = useMemo(() =>
@@ -207,6 +216,13 @@ export default function AttendanceToday() {
           )}
         </div>
       </div>
+
+      {/* Stale data notice — only for today, only when data is >25 min old */}
+      {isToday && dataAsOfMin !== null && nowMin - dataAsOfMin > 25 && (
+        <div className="shrink-0 px-5 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800">
+          Data Is {nowMin - dataAsOfMin} Minutes Old — Statuses Are As Of {fmtClock(dataAsOfMin)}. It Refreshes While A Super User Has The Hub Open.
+        </div>
+      )}
 
       <div className="flex-1 overflow-auto px-5 py-4">
         {/* Loading state */}
