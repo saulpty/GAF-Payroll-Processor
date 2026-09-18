@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   buildActivityDays, whyFor, fmtDayShort, payrollLabelToEnglish,
@@ -11,6 +11,9 @@ import type { ReportRow, ReportRequest } from '../src/app/lib/attendanceReportTy
 
 const SRC_PATH = fileURLToPath(
   new URL('../src/app/lib/activityDays.ts', import.meta.url),
+);
+const TYPES_PATH = fileURLToPath(
+  new URL('../src/app/lib/activityTypes.ts', import.meta.url),
 );
 
 // ── Fake schedule helper (the page injects classificationEngine's) ──────────────────────────
@@ -58,6 +61,7 @@ function mkRow(date: string, o: Partial<ActivityDayRow> = {}): ActivityDayRow {
     first_min: 480, last_ymd: ymdInt(date), last_min: 1000,
     active_s: 460 * 60, records: 20, largest_gap_min: 0, gap_start_min: 0,
     has_manual: false, accounts: 1, synced_at: '2026-09-18T12:00:00Z',
+    ghost_min: -1,
     ...o,
   };
 }
@@ -106,13 +110,17 @@ function dayOn(days: ActivityDay[], date: string): ActivityDay | undefined {
 // ── Source hygiene ─────────────────────────────────────────────────────────────────────────
 
 test('source has no runtime imports, no Date maths, and stays under the 15 KB cap', () => {
-  const src = readFileSync(SRC_PATH, 'utf8');
-  const runtimeImports = src.split('\n').filter((l) => /^\s*import\b/.test(l) && !/^\s*import\s+type\b/.test(l));
-  assert.deepEqual(runtimeImports, []);
-  assert.equal(/new Date\s*\(/.test(src), false);
-  assert.equal(/Date\.now/.test(src), false);
-  assert.equal(/toISOString/.test(src), false);
-  assert.ok(Buffer.byteLength(src, 'utf8') < 15 * 1024, `lib is ${Buffer.byteLength(src, 'utf8')} bytes`);
+  const files = [SRC_PATH];
+  if (existsSync(TYPES_PATH)) files.push(TYPES_PATH);
+  for (const path of files) {
+    const src = readFileSync(path, 'utf8');
+    const runtimeImports = src.split('\n').filter((l) => /^\s*import\b/.test(l) && !/^\s*import\s+type\b/.test(l));
+    assert.deepEqual(runtimeImports, [], `${path} has a runtime import`);
+    assert.equal(/new Date\s*\(/.test(src), false, `${path} has new Date(`);
+    assert.equal(/Date\.now/.test(src), false, `${path} has Date.now`);
+    assert.equal(/toISOString/.test(src), false, `${path} has toISOString`);
+    assert.ok(Buffer.byteLength(src, 'utf8') < 15 * 1024, `${path} is ${Buffer.byteLength(src, 'utf8')} bytes`);
+  }
 });
 
 // ── Small helpers ──────────────────────────────────────────────────────────────────────────
@@ -354,6 +362,22 @@ test('a long break is flagged when the gap runs past the allowance', () => {
   assert.equal(d.gapStartMin, 720);
   assert.equal(d.flag, 'long_break');
   assert.equal(d.needsLook, false);       // needs-a-look is the low-activity list only
+});
+
+// ── Ghost records ──────────────────────────────────────────────────────────────────────────
+
+test('ghost_min flows through as ghostMin when present', () => {
+  const row = mkRow(THU, { ghost_min: 384 });
+  const { days } = run({ rows: [row] });
+  assert.equal(dayOn(days, THU)!.ghostMin, 384);
+});
+
+test('a missing or -1 ghost_min gives ghostMin null', () => {
+  const missing = run({ rows: [mkRow(THU, { ghost_min: -1 })] });
+  assert.equal(dayOn(missing.days, THU)!.ghostMin, null);
+
+  const noRow = run({});
+  assert.equal(dayOn(noRow.days, THU)!.ghostMin, null);
 });
 
 // ── Shape and totals ───────────────────────────────────────────────────────────────────────

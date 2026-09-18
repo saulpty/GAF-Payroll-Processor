@@ -185,3 +185,28 @@ test('T16: no page reloads the window — inside the UI Bakery frame a reload la
     assert.doesNotMatch(read(file), /location\.(reload|assign)\s*\(|location\.href\s*=/, ` reloads or redirects the window`);
   }
 });
+
+// ── Ghost records (2026-09-18 CONTRACT) ──────────────────────────────────────────────────────
+// A first Time Record of a few minutes followed by an hour or more of nothing is a computer event,
+// not an arrival. The rule lives in ONE view, public.v_teramind_records, so the Today board, the
+// Activity tab, the payroll capture and the comparison screen can never disagree about it.
+const GHOST_ACTIONS = ['loadTeramindDayPunches', 'loadTeramindActivityDays', 'loadTeramindPunchDays', 'loadTeramindVsPayroll']
+  .map(n => `src/actions/${n}.ts`)
+  .filter(p => existsSync(join(root, p)));
+const ghostViewLanded = GHOST_ACTIONS.some(p => /v_teramind_records/.test(read(p)));
+
+test('T17: the four Teramind read actions go through v_teramind_records, never the raw table', () => {
+  if (!ghostViewLanded) return; // lands with prompt 01 of 2026-09-18-ghost-records
+  for (const p of GHOST_ACTIONS) {
+    const src = read(p);
+    assert.match(src, /public\.v_teramind_records/, `${p} still does not read the ghost-aware view`);
+    assert.doesNotMatch(src, /FROM\s+(public\.)?teramind_sessions\b/i,
+      `${p} reads teramind_sessions directly — ghost records would come back in`);
+  }
+});
+
+test('T18: the view the actions read has a migration', () => {
+  if (!ghostViewLanded) return; // lands with prompt 01 of 2026-09-18-ghost-records
+  const found = readdirSync(join(root, 'src/migrations')).filter(f => /teramind_ghost_records/.test(f));
+  assert.equal(found.length, 1, `expected exactly one teramind_ghost_records migration, found ${found.length}`);
+});
