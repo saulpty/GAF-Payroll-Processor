@@ -15,15 +15,47 @@ type Props = {
 const TH = 'px-2 py-1 text-left text-[10px] font-semibold text-amber-700 uppercase tracking-wide whitespace-nowrap';
 const TD = 'px-2 py-1.5 text-xs text-amber-900 align-middle';
 
+/** True when `date` falls in the last 7 calendar days of the range (inclusive). */
+function inLast7(date: string, dateTo: string): boolean {
+  // d is in window iff d <= dateTo AND addDays(d, 6) >= dateTo
+  return date <= dateTo && addDays(date, 6) >= dateTo;
+}
+
+/**
+ * Step a YYYY-MM-DD string back by one day using the same month-length
+ * arithmetic addDays uses — no new Date(), no toISOString().
+ */
+function stepBack(date: string): string {
+  let y = Number(date.slice(0, 4));
+  let m = Number(date.slice(5, 7));
+  let d = Number(date.slice(8, 10)) - 1;
+  if (d < 1) {
+    if (--m < 1) { m = 12; y -= 1; }
+    // days in the new month
+    const isLeap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    const DIMS = [0,31,isLeap?29:28,31,30,31,30,31,31,30,31,30,31];
+    d = DIMS[m];
+  }
+  const pad = (n: number) => (n < 10 ? '0' + n : String(n));
+  return `${y}-${pad(m)}-${pad(d)}`;
+}
+
+/**
+ * Derive the earliest date in the last-7 window by stepping back from dateTo
+ * up to 6 times — giving the window start regardless of which dates are present.
+ */
+function windowStartDate(dateTo: string): string {
+  let cur = dateTo;
+  for (let i = 0; i < 6; i++) cur = stepBack(cur);
+  return cur;
+}
+
 export default function ActivityNeedsLook({ days, dateTo, settings, onPick }: Props) {
   const flagged = days.filter(d => d.needsLook);
   const totalFlagged = flagged.length;
 
-  // Window: last 7 calendar days of range (ending dateTo)
-  const windowStart = addDays(dateTo, -6); // 7 days inclusive
-
   const windowRows = useMemo(() => {
-    const inWindow = flagged.filter(d => d.date >= windowStart && d.date <= dateTo);
+    const inWindow = flagged.filter(d => inLast7(d.date, dateTo));
     // Sort: lowest activeMin first, then newest date first, then name
     inWindow.sort((a, b) => {
       if (a.activeMin !== b.activeMin) return a.activeMin - b.activeMin;
@@ -31,13 +63,11 @@ export default function ActivityNeedsLook({ days, dateTo, settings, onPick }: Pr
       return a.employeeName.localeCompare(b.employeeName);
     });
     return inWindow.slice(0, 10);
-  // windowStart/dateTo are derived from dateTo which is stable per render; flagged comes from days prop
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days, dateTo]);
 
   if (totalFlagged === 0) return null;
 
-  const headingStart = fmtDayShort(windowStart);
+  const headingStart = fmtDayShort(windowStartDate(dateTo));
   const headingEnd   = fmtDayShort(dateTo);
 
   return (

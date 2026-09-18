@@ -98,6 +98,9 @@ const TO_ISO_ALLOWLIST: Record<string, number> = {
   // "created by sync this week": compares a now-minus-7-days INSTANT against sync_log.ran_at
   // (a timestamptz), never sliced to a date. Added 2026-09-18 with MondayAutoSync.
   'src/app/pages/admin/employees/MondayTab.tsx': 1,
+  // Not a use: the single match is the comment "no new Date(), no toISOString()" above stepBack(),
+  // which walks a YYYY-MM-DD string back with month-length arithmetic. Added 2026-09-18 (prompt 11b).
+  'src/app/pages/attendance/activity/ActivityNeedsLook.tsx': 1,
 };
 
 test('L3: no new toISOString date-slicing appears, and the allowlist stays honest', () => {
