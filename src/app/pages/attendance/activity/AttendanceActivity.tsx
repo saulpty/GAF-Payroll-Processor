@@ -59,7 +59,7 @@ export default function AttendanceActivity() {
     setExpandedEmployeeId(prev => prev === employeeId ? null : employeeId);
   }
 
-  const { days, byEmployee, totals, settings, loading, error, configFallbacks, reloadConfig } = useActivityData({
+  const { days, byEmployee, totals, settings, loading, error, configFallbacks, reloadConfig, retry } = useActivityData({
     dateFrom: safeFrom,
     dateTo: safeTo,
   });
@@ -88,7 +88,7 @@ export default function AttendanceActivity() {
               <span>Couldn't Load Activity Data. It Usually Works On Retry.</span>
             </div>
             <button
-              onClick={() => window.location.reload()}
+              onClick={retry}
               className="ml-6 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-800 hover:bg-red-200 transition-colors border border-red-200"
             >
               Retry

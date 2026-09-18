@@ -176,3 +176,12 @@ test('T15: no attendance page reaches Teramind directly — the Activity tab rea
     );
   }
 });
+
+test('T16: no page reloads the window — inside the UI Bakery frame a reload lands on a 404', () => {
+  // Seen on staging 2026-09-18: a Retry button calling window.location.reload() replaced the app
+  // with UI Bakery's "Page not found". Refetch the loaders instead (useLoadAction's 4th element).
+  // ViewerContext.tsx is the one sanctioned place: it reloads window.top for View As.
+  for (const file of walk('src/app/pages')) {
+    assert.doesNotMatch(read(file), /location\.(reload|assign)\s*\(|location\.href\s*=/, ` reloads or redirects the window`);
+  }
+});

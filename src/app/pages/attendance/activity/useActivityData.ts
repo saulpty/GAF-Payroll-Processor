@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { useLoadAction } from '@uibakery/data';
 import { useViewer } from '@/app/context/ViewerContext';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
@@ -31,6 +31,7 @@ export type ActivityDataResult = {
   error: boolean;
   configFallbacks: string[];
   reloadConfig: () => Promise<void>;
+  retry: () => void;
 };
 
 const FALLBACK_MIN_ACTIVE = 390;
@@ -67,15 +68,15 @@ export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo
   const safeFrom = dateFrom || toLocalYMD(new Date());
   const safeTo   = dateTo   || toLocalYMD(new Date());
 
-  const [rawTm,      loadingTm,  errTm]                        = useLoadAction(loadTeramindActivityDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, viewAs });
-  const [rawEmps,    loadingEmps,    errEmps]                  = useLoadAction(loadAttendanceEmployeesAction,  [],       { viewAs });
-  const [rawDays,    loadingDays,    errDays]                  = useLoadAction(loadAttendanceReportDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
-  const [rawForms,   loadingForms,   errForms]                 = useLoadAction(loadMondayAttendanceFormsRangeAction, [], { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
-  const [rawReqs,    loadingReqs,    errReqs]                  = useLoadAction(loadMondayRequestsRangeAction,  [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
-  const [rawHols,    loadingHols,    errHols]                  = useLoadAction(loadHolidaysAction,   [], {});
-  const [rawPeriods, loadingPeriods, errPeriods]               = useLoadAction(loadPeriodsAction,    [], {});
-  const [rawDst,     loadingDst,     errDst]                   = useLoadAction(loadDstCalendarAction, [], {});
-  const [rawConfig,  loadingConfig,  errConfig, reloadConfig]  = useLoadAction(loadClassificationConfigAction, [], {});
+  const [rawTm,      loadingTm,  errTm,      refetchTm]      = useLoadAction(loadTeramindActivityDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, viewAs });
+  const [rawEmps,    loadingEmps,    errEmps,    refetchEmps]    = useLoadAction(loadAttendanceEmployeesAction,  [],       { viewAs });
+  const [rawDays,    loadingDays,    errDays,    refetchDays]    = useLoadAction(loadAttendanceReportDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
+  const [rawForms,   loadingForms,   errForms,   refetchForms]   = useLoadAction(loadMondayAttendanceFormsRangeAction, [], { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
+  const [rawReqs,    loadingReqs,    errReqs,    refetchReqs]    = useLoadAction(loadMondayRequestsRangeAction,  [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
+  const [rawHols,    loadingHols,    errHols,    refetchHols]    = useLoadAction(loadHolidaysAction,   [], {});
+  const [rawPeriods, loadingPeriods, errPeriods, refetchPeriods] = useLoadAction(loadPeriodsAction,    [], {});
+  const [rawDst,     loadingDst,     errDst,     refetchDst]     = useLoadAction(loadDstCalendarAction, [], {});
+  const [rawConfig,  loadingConfig,  errConfig,  reloadConfig]   = useLoadAction(loadClassificationConfigAction, [], {});
 
   const loading =
     loadingTm || loadingEmps || loadingDays || loadingForms ||
@@ -83,7 +84,79 @@ export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo
 
   const error = !!(errTm || errEmps || errDays || errForms || errReqs || errHols || errPeriods || errDst || errConfig);
 
-  const result = useMemo<Omit<ActivityDataResult, 'loading' | 'error' | 'reloadConfig'>>(() => {
+  // Keep latest refetch fns in refs so retry() never captures stale closures.
+  const refetchRef = useRef({
+    refetchTm, refetchEmps, refetchDays, refetchForms, refetchReqs,
+    refetchHols, refetchPeriods, refetchDst,
+  });
+  refetchRef.current = {
+    refetchTm, refetchEmps, refetchDays, refetchForms, refetchReqs,
+    refetchHols, refetchPeriods, refetchDst,
+  };
+
+  function retry() {
+    const r = refetchRef.current;
+    r.refetchTm();
+    r.refetchEmps();
+    r.refetchDays();
+    r.refetchForms();
+    r.refetchReqs();
+    r.refetchHols();
+    r.refetchPeriods();
+    r.refetchDst();
+  }
+
+  // Auto-retry once after 1.5 s on first error. Counter resets when range changes or load succeeds.
+  // Guard: attemptCount goes 0 → 1 on error (auto-retry fires), capped at 1 so it never loops.
+  const autoRetryCount = useRef(0);
+  const autoRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset counter whenever the date range changes or a successful load completes.
+  const rangeKey = `${safeFrom}/${safeTo}`;
+  const prevRangeKey = useRef(rangeKey);
+  if (prevRangeKey.current !== rangeKey) {
+    prevRangeKey.current = rangeKey;
+    autoRetryCount.current = 0;
+    if (autoRetryTimer.current !== null) {
+      clearTimeout(autoRetryTimer.current);
+      autoRetryTimer.current = null;
+    }
+  }
+
+  // When a load succeeds, reset the counter so a future transient error gets its one auto-retry.
+  useEffect(() => {
+    if (!loading && !error) {
+      autoRetryCount.current = 0;
+    }
+  }, [loading, error]);
+
+  // Trigger the one-shot auto-retry when error is true and we haven't retried yet.
+  useEffect(() => {
+    if (!error || loading) return;
+    if (autoRetryCount.current >= 1) return; // already used the one free retry
+    autoRetryCount.current += 1;
+    autoRetryTimer.current = setTimeout(() => {
+      autoRetryTimer.current = null;
+      retry();
+    }, 1500);
+    return () => {
+      if (autoRetryTimer.current !== null) {
+        clearTimeout(autoRetryTimer.current);
+        autoRetryTimer.current = null;
+      }
+    };
+  // retry is stable (reads from ref); error/loading are primitive booleans.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error, loading]);
+
+  // While the auto-retry is pending (count used but still loading) keep loading=true
+  // so the UI never briefly flashes the error box between the auto-retry fire and
+  // the loading state being set. Use a derived flag for this.
+  const pendingAutoRetry = autoRetryCount.current >= 1 && autoRetryTimer.current !== null;
+  const effectiveLoading = loading || pendingAutoRetry;
+  const effectiveError   = error && !pendingAutoRetry && !loading;
+
+  const result = useMemo<Omit<ActivityDataResult, 'loading' | 'error' | 'reloadConfig' | 'retry'>>(() => {
     // When any loader errored, return empty safe data — never render accusations from partial state.
     if (error) {
       const { settings } = parseSettings([]);
@@ -159,5 +232,5 @@ export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo
     return { days, byEmployee, totals, settings, configFallbacks };
   }, [error, rawEmps, rawTm, rawDays, rawForms, rawReqs, rawHols, rawPeriods, rawDst, rawConfig, safeFrom, safeTo, employee, manager, role]);
 
-  return { ...result, loading, error, reloadConfig };
+  return { ...result, loading: effectiveLoading, error: effectiveError, reloadConfig, retry };
 }

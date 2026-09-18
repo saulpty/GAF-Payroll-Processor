@@ -282,9 +282,9 @@ export default function MondayAutoSync() {
       }
     }
 
-    maybeSync();
+    const first = setTimeout(maybeSync, 20_000);
     const timer = setInterval(maybeSync, 60_000);
-    return () => clearInterval(timer);
+    return () => { clearTimeout(first); clearInterval(timer); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuper]);
 
