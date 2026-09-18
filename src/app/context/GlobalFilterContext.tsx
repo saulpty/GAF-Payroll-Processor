@@ -15,6 +15,8 @@ export interface GlobalFilters {
   setDateTo: (v: string) => void;
   attendancePeriods: string[];
   setAttendancePeriods: (names: string[], range: { from: string; to: string } | null) => void;
+  attendanceMode: 'periods' | 'dates';
+  setAttendanceMode: (v: 'periods' | 'dates') => void;
   employee: string;
   setEmployee: (v: string) => void;
   role: string;
@@ -40,6 +42,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
   const [dateFrom,  setDateFromRaw] = useState('');
   const [dateTo,    setDateToRaw]   = useState('');
   const [attendancePeriods, setAttendancePeriodsRaw] = useState<string[]>([]);
+  const [attendanceMode, setAttendanceMode] = useState<'periods' | 'dates'>('periods');
   const [employee,  setEmployee]  = useState('');
   const [role,      setRole]      = useState('');
   const [manager,   setManager]   = useState('');
@@ -67,6 +70,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     setEmployee('');
     setRole('');
     setManager('');
+    // attendanceMode is a view preference — not reset by clearAll
   };
 
   const value = useMemo(() => ({
@@ -76,6 +80,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     dateFrom, setDateFrom,
     dateTo, setDateTo,
     attendancePeriods, setAttendancePeriods,
+    attendanceMode, setAttendanceMode,
     employee, setEmployee,
     role, setRole,
     manager, setManager,
@@ -84,7 +89,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     hasAny,
     clearAll,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [periodsVersion, ptoVersion, period, dateFrom, dateTo, attendancePeriods, employee, role, manager, statusTab, pmTab, hasAny]);
+  }), [periodsVersion, ptoVersion, period, dateFrom, dateTo, attendancePeriods, attendanceMode, employee, role, manager, statusTab, pmTab, hasAny]);
 
   return (
     <GlobalFilterContext.Provider value={value}>
