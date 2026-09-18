@@ -140,9 +140,12 @@ function coversDate(r: ReportRequest, date: string): boolean {
 // "8-12", "8:00 AM - 12:00 PM", "8 a 12".
 const TIME_RANGE = /\d{1,2}(?::\d{2})?\s*(?:[ap]\.?\s*m\.?)?\s*(?:[-–—]|\bto\b|\ba\b)\s*\d{1,2}/i;
 const SICK_FORM = /sick|incapacidad|attendance/;
-// Legitimately away: never a flag, never Needs A Look.
-const EXCUSED: WhyKind[] = ['pto', 'permission', 'sick', 'form', 'holiday', 'day_off'];
-const AWAY: WhyKind[] = ['pto', 'permission', 'sick', 'form', 'holiday'];
+// Legitimately away: never a flag, never Needs A Look. A plain form (e.g. Tardiness) only
+// counts when the person did not work that day; on a worked day it is context.
+const EXCUSED: WhyKind[] = ['pto', 'permission', 'sick', 'holiday', 'day_off'];
+const AWAY: WhyKind[] = ['pto', 'permission', 'sick', 'holiday'];
+const awayKind = (w: WhyChip | null, hasActivity: boolean, list: WhyKind[]): boolean =>
+  w !== null && (list.indexOf(w.kind) >= 0 || (w.kind === 'form' && !hasActivity));
 const chip = (kind: WhyKind, label: string, tone: WhyChip['tone'] = 'blue'): WhyChip => ({ kind, label, tone });
 
 export function whyFor(args: {
@@ -250,7 +253,7 @@ export function buildActivityDays(input: {
       const breaksMin = span !== null ? Math.max(0, span - activeMin) : 0;
 
       const why = whyFor({ reportRow: rr, requests: empRequests, scheduled, hasActivity });
-      const excused = why !== null && EXCUSED.indexOf(why.kind) >= 0;
+      const excused = awayKind(why, hasActivity, EXCUSED);
       let flag: 'low_activity' | 'long_break' | null = null;
       if (scheduled && cur < todayYmd && !excused) {
         if (!hasActivity || activeMin < threshold) flag = 'low_activity';
@@ -278,7 +281,7 @@ export function buildActivityDays(input: {
     for (const d of empDays) days.push(d);
 
     const worked = empDays.filter(isWorked);
-    const away = empDays.map((d) => d.why).filter((w): w is WhyChip => w !== null && AWAY.indexOf(w.kind) >= 0);
+    const away = empDays.filter((d) => awayKind(d.why, d.records > 0, AWAY)).map((d) => d.why as WhyChip);
     const words = new Set(away.map((c) => (c.kind === 'holiday' ? 'Holiday' : c.kind === 'permission' ? 'Permission' : c.label)));
     byEmployee.push({
       ...who,
