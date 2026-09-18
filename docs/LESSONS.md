@@ -572,3 +572,58 @@ textarea through the native `HTMLTextAreaElement` value setter and dispatch an `
 Check `.value.length` and a few distinctive substrings **before** clicking submit, and afterwards
 confirm the chat's last heading is your prompt's title. Angular picked the value up every time.
 
+### PowerShell double-encodes `·` and `—` even when the source is UTF-8
+
+**2026-09-18, twice in the same session.** `Get-Content`/`Set-Content`, and `Get-Content -Raw`
+piped onward, both re-encode through Windows PowerShell 5.1's default (ANSI) codepage unless told
+otherwise — even when the file on disk is already valid UTF-8. The visible symptom is the same
+mojibake as the clipboard trap above (`·` and `→` come out garbled), but the cause is different:
+no clipboard was involved either time. **Use `[System.IO.File]::ReadAllText($p,
+[Text.Encoding]::UTF8)` to read and `[System.IO.File]::WriteAllText($p, $text, [Text.Encoding]::new($false))`
+(the `$false` suppresses the BOM) to write** — never PowerShell's own `Get-Content`/`Set-Content`
+for a docs file containing these characters. Re-read the file after writing it whenever a
+special character is present; that's the whole check and it's free.
+
+### The redeploy window looks exactly like a broken page
+
+**2026-09-18.** For roughly 1–2 minutes after every prompt finishes, `/dev` returns 500 "Unknown
+error" on every single DB call while UI Bakery redeploys the draft build. Loading the page during
+that window and seeing every panel error out looks identical to the prompt having broken something.
+**Never judge a page inside that window.** Wait it out (10–20 s poll, same tolerance as the
+renderer-freeze lesson above) and hard-refresh before concluding anything, good or bad.
+
+### `document.hidden` is true whenever the tab sits behind another window — test it directly, don't minimize
+
+**2026-09-18.** `MondayAutoSync` (like the Teramind auto-sync before it) refuses to run while
+`document.hidden` is true, by design — it must only run for a super user actively watching the Hub.
+The obvious way to test "does it correctly skip when backgrounded" is to switch to another window,
+but that makes Chrome report the tab hidden too, so the sync correctly does nothing — which is
+indistinguishable on screen from a sync that is simply broken. **Override the property directly on
+the page's own document instead of changing what's on screen:**
+```js
+Object.defineProperty(document, 'hidden', { get: () => false });
+document.dispatchEvent(new Event('visibilitychange'));
+```
+Flip it back to test the skip path. Neither direction requires touching the actual window focus.
+
+### Prompt acceptance must name the exact visible outcome, not the feature
+
+**2026-09-18.** Prompt 01 asked for a `No Reports Yet` amber chip when a scheduled person has no
+activity and no form. The first round rendered *no chip at all* for that case — UIB had generalized
+an earlier "no chip for a normal worked day" instruction to cover this case too. The acceptance line
+in the prompt read "the Why column works", which the empty render technically satisfied (it didn't
+crash, other chips showed correctly). Rewriting the acceptance line to name specific people and the
+literal expected chip — "Navvad and Timothy show No Reports Yet" — is what caught it, in prompt 01b.
+**Every UIB prompt's acceptance criteria should name a specific visible fact (whose row, what label,
+what color), never a description of the feature working.**
+
+### Accept an unasked-for file split when it's the 15 KB rule doing its job
+
+**2026-09-18, twice.** Two rounds came back having split a file (`FilterBar.tsx` →
+`AttendanceRangeControls.tsx`; the employee panel → frame + body + Day By Day) without being told
+to. Neither prompt asked for a split. Both were still the right call: the untouched file was
+heading toward or past the 15 KB ceiling, and the split is exactly what `CLAUDE.md`'s file-size rule
+exists to produce. **Don't revert a UIB-initiated split just because it wasn't requested — check the
+resulting file sizes and whether behavior held (screenshot before/after), accept it, and say so
+plainly in the commit message** so a later `git log` read doesn't mistake it for scope creep.
+

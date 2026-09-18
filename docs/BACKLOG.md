@@ -413,21 +413,52 @@ locked** (nothing consults `hrk_exports`). Deliberately left out of the source s
 fix: refuse to re-run a period that has an HRK export unless a super user unlocks it; then start
 writing `resolved_by` and skip resolved rows on re-run.
 
-### 15. Follow-ups from the Teramind switch (2026-09-17)
+### 15. Follow-ups from the Teramind switch (2026-09-17, updated 2026-09-18)
 
-- **Keep-fresh sync — done for browsers (2026-09-17 evening):** `TeramindAutoSync`, super users only,
-  visible tab, every `teramind_sync_every_minutes`. **Still open:** a server-side UI Bakery Automation so
-  the copy is fresh when no super user is online (needs Saul; lives outside the repo).
-- **Live Attendance — first slice done:** Attendance → Today (unofficial, viewer-scoped). **Still open:**
-  attach the reason to a day with no records (sick form / PTO / permission / WFH) so the board can say
-  why — then the parked Activity plan (grid, needs-a-look, Avg Activity Time) on the same table.
-  List / Reports still show only captured days.
+- **Keep-fresh sync — done for browsers, and now covers all four Monday boards plus the Teramind
+  roster on one shared setting (2026-09-18):** `MondayAutoSync`, `sync_every_minutes` (15 min),
+  `sync_log` + `claimSyncRun` for a DB-level claim so two tabs can't double-run. Super users only,
+  visible tab only. **Still open, and now bigger than before:** a server-side timer needs a **UI
+  Bakery Automation**, configured in the UIB platform UI outside this repo — and that project
+  belongs to the **VP's** account, which Saul's account cannot see. What used to be "Teramind alone
+  is stale with nobody logged in" is now "Monday Directory/Requests/Attendance/Contracts *and*
+  Teramind are all stale with nobody logged in" — the same missing piece, wider blast radius. Saul
+  needs to ask the VP for access to (or ownership of) that Automations project.
+- **Live Attendance — Activity tab built 2026-09-18:** Why chips on Today, plus a full Activity tab
+  (KPIs, By Employee, By Day, Needs A Look) reading `loadTeramindActivityDays` + `activityDays.ts`.
+  See #16 for what's left in this area.
 - **117 days** where Teramind has punches and payroll has no row (not Timothy Moore) — never examined
   one by one. Comparison screen → All Periods → Teramind Only → Period "—".
 - `loadTeramindLoginSessions` is now only a diagnostic toggle; remove it with the toggle once nobody
   needs the 33% demonstration.
 - `TeramindCompare.tsx` is 13.2 KB — next feature there should split it again.
 - `ProcessPayroll.tsx` grew to 59 KB (#9). Still the largest file; still not split.
+
+### 16. Activity feature follow-ups (2026-09-18)
+
+- **Threshold tuning.** `activity_min_active_minutes` seeded at 390 (6.5 h on an 8 h shift) flags
+  **203 of 523 days** for Q1-Sep as Needs A Look — visibly too sensitive as a first cut. Saul to pick
+  a real number; 360 (6 h) suggested as a starting point to re-check against the same period.
+- **Charts tab** (slice 6 of the plan, `docs/superpowers/plans/2026-09-17-activity-monitoring-v2.md`)
+  — not started. Super-user only per the plan.
+- **Help / methodology copy** (slice 8) explaining Active Time, Needs A Look, and the Why chips in
+  plain language for Saul/Tim — not written.
+- **`MondayAutoSync`'s silent employee creation.** The old manual Directory sync asked "Add unmatched
+  Monday employees?" before creating anyone; the new automatic sync can't pop a dialog, so it creates
+  employees found on Monday with no confirmation. Worth a second look before release — a stray board
+  row or test entry could silently create a phantom employee with no operator ever asked.
+
+### 17. Activity's default range mode doesn't stick to the route (2026-09-18)
+
+**Risk:** low — cosmetic/UX only, no payroll or data impact.
+
+The FilterBar's `Periods | Dates` switch is meant to default to **Dates** on `/attendance/activity`
+and `/attendance/today`, **Periods** on List/Reports (`CONTRACT.md`). But `attendanceMode` is one
+shared piece of context, not per-route state: if a viewer sets it to Periods on, say, List, then
+navigates to Activity, Activity opens in Periods mode too, not its own Dates default. The intended
+per-route default is never enforced after the first manual switch. Low priority — worth fixing
+whenever `FilterBar.tsx` / `AttendanceRangeControls.tsx` is next touched, by keying the default off
+the route rather than off a single shared value.
 
 ## Structural
 
