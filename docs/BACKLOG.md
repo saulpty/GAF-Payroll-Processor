@@ -574,3 +574,14 @@ proves it.
 Runtime logs were clean on 2026-08-11 — 0 errors, 0 warnings, all 10 actions
 succeeding. The wrong-number problems are silent logic errors, not crashes, so
 log-watching will not find them. Tests and export diffs will.
+
+### 23. Stray-record rule — follow-ups (2026-09-18)
+
+**Risk:** low. Shipped in 8.7.0 (see `docs/findings/2026-09-18-arelis-feedback-and-ghost-records.md`).
+(a) The backup file upload does not apply the rule (`teramindParser.ts` is protected) — only matters
+if Tim uploads a file instead of capturing. (b) Consider limiting the rule to records that start before
+the scheduled start, after one period of real use. (c) `AttendanceToday.tsx` is 14.7 KB and
+`TeramindSourceCard.tsx` 14.3 KB — split before the next edit. (d) The comparison screen's
+"login session" source option now returns payroll-only rows, because the view holds Time Records only
+— remove the option. (e) Tanya Bedoya's PTO shows 7 days for two 5-working-day trips — confirm whether
+`total_days_requested` from Monday counts calendar days and what policy says.
