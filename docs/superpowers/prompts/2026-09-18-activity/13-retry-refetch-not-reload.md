@@ -6,8 +6,10 @@
 
 - `src/app/pages/attendance/activity/useActivityData.ts`
 - `src/app/pages/attendance/activity/AttendanceActivity.tsx`
+- `src/app/components/MondayAutoSync.tsx`, `src/app/components/TeramindAutoSync.tsx`,
+  `src/app/components/AccessAutoSync.tsx` — the one-line change in "Startup burst" below
 
-No other file may be touched. Both stay under 15 KB.
+No other file may be touched. All stay under 15 KB.
 
 ## What is wrong
 
@@ -29,6 +31,16 @@ UI Bakery's frame, whose own URL is not routable, so a reload lands on UI Bakery
   the second attempt also fails does `error` surface.
 - In `AttendanceActivity.tsx`: the **Retry** button calls `retry()` from the hook. Text stays
   "Couldn't Load Activity Data. It Usually Works On Retry."
+
+## Startup burst (measured on staging 2026-09-18)
+
+Five in-app visits to Activity: 9 of 9 queries succeed every time. The 500s only appear on a **full
+page load**, when the viewer/access queries, the three background syncs and the page's own loaders
+all hit the database in the same second. In each of the three auto-sync components the effect ends
+with `maybeSync(); const timer = setInterval(maybeSync, 60_000);`. Replace the immediate
+`maybeSync();` with a delayed first run — `const first = setTimeout(maybeSync, 20_000);` — and clear
+it in the cleanup next to `clearInterval(timer)`. Nothing else in those three files changes (same
+gates, same interval, same claim logic).
 
 ## Acceptance (check on /dev)
 
