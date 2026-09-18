@@ -440,13 +440,15 @@ writing `resolved_by` and skip resolved rows on re-run.
   **203 of 523 days** for Q1-Sep as Needs A Look — visibly too sensitive as a first cut. Saul to pick
   a real number; 360 (6 h) suggested as a starting point to re-check against the same period.
 - **Charts tab** (slice 6 of the plan, `docs/superpowers/plans/2026-09-17-activity-monitoring-v2.md`)
-  — not started. Super-user only per the plan.
+  — not started. Super-user only per the plan. **Parked by Saul, 2026-09-18** — not scheduled.
 - **Help / methodology copy** (slice 8) explaining Active Time, Needs A Look, and the Why chips in
   plain language for Saul/Tim — not written.
 - **`MondayAutoSync`'s silent employee creation.** The old manual Directory sync asked "Add unmatched
   Monday employees?" before creating anyone; the new automatic sync can't pop a dialog, so it creates
   employees found on Monday with no confirmation. Worth a second look before release — a stray board
   row or test entry could silently create a phantom employee with no operator ever asked.
+- **Merge List into Activity** — collapsing the separate `/attendance/list` tab into the Activity tab
+  once both have settled. **Parked by Saul, 2026-09-18** — not scheduled.
 
 ### 17. Activity's default range mode doesn't stick to the route (2026-09-18)
 
@@ -459,6 +461,38 @@ navigates to Activity, Activity opens in Periods mode too, not its own Dates def
 per-route default is never enforced after the first manual switch. Low priority — worth fixing
 whenever `FilterBar.tsx` / `AttendanceRangeControls.tsx` is next touched, by keying the default off
 the route rather than off a single shared value.
+
+### 18. `AccessAutoSync` has no super-user gate (2026-09-18)
+
+**Risk:** decision, not a defect. Pre-existing design — any signed-in user's tab keeps access groups
+fresh, unlike `MondayAutoSync` which is `isSuper`-gated. Today's shared-sync change made it poll every
+15 minutes instead of whatever cadence it ran before, raising the load from every open tab, not just
+super users'. Saul to decide whether it should stay open to all signed-in users at this frequency or
+gain the same `isSuper` gate as the other syncs.
+
+### 19. Split `activityDays.ts` before the next edit (2026-09-18)
+
+**Risk:** none yet — a size-limit trap waiting to trigger.
+
+`src/app/lib/activityDays.ts` is 15,002 bytes, 358 bytes under the 15 KB file-size rule. The next
+change that adds even a small amount of logic here will need a split first, not as an afterthought —
+plan the split before writing the prompt.
+
+### 20. Delete two dead Teramind actions (2026-09-18)
+
+**Risk:** none — cleanup only.
+
+`loadTeramindLoginSessions` and `loadTeramindSessions` are unused. `loadTeramindLoginSessions` was
+kept as a diagnostic toggle for the 33% login-session-agreement comparison (see the Teramind-switch
+lesson in `LESSONS.md`); remove both once nobody needs that comparison anymore.
+
+### 21. `claimSyncRun` is not atomic (2026-09-18)
+
+**Risk:** low. `claimSyncRun`'s `INSERT … WHERE NOT EXISTS` claim is not a single atomic operation, so
+two concurrent callers can both pass the `NOT EXISTS` check before either inserts, producing a
+duplicate run within the same interval. Worst case is a duplicate idempotent sync, not incorrect data.
+Fix: a partial unique index on `sync_log(kind, ran_at)` (or similar) so the database itself enforces
+the claim instead of the check-then-insert race.
 
 ## Structural
 

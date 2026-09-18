@@ -617,6 +617,47 @@ literal expected chip — "Navvad and Timothy show No Reports Yet" — is what c
 **Every UIB prompt's acceptance criteria should name a specific visible fact (whose row, what label,
 what color), never a description of the feature working.**
 
+### Never `window.location.reload()` inside the app
+
+**2026-09-18.** Activity's Retry button called `window.location.reload()`. Inside UI Bakery the page
+lives in an iframe on a URL that is not directly routable, so a reload 404s instead of refreshing the
+data. Refetch through the data layer instead. Guarded by `T16` in `tests/lessonGuards.test.ts`: no
+`location.reload/assign/href=` under `src/app/pages`.
+
+### Release to staging first, and do FULL page reloads there — in-app navigation hides a startup burst
+
+**2026-09-18.** 8.1.0 looked clean under normal use, but a full page load fires nine queries at once
+on startup, and under that burst one intermittently failed. In-app navigation never re-fires all nine
+together, so nothing caught it until staging was loaded cold, repeatedly, with full reloads — not
+clicks between tabs. The three background syncs' first run was pushed 20 s after load to spread the
+burst out, verified with four clean full reloads before promoting to prod.
+
+### When "any loader error blanks the page" is introduced, add a retry in the same change
+
+**2026-09-18.** Prompt 12 made a failed activity load show only an error, never a false "No Records"
+for everyone — correct, because the old behavior silently lied. But without a retry, a transient
+500 (the kind the redeploy window and connection-pressure lessons above already describe as routine)
+now blanks the whole page for every viewer until they refresh by hand. Prompt 13 paired the stricter
+error handling with one guarded automatic retry in the same change, so a transient blip stops looking
+like an outage.
+
+### A status judged against the wall clock turns stale data into an accusation
+
+**2026-09-18, on prod.** Today's tiles read "0 Working / 38 Away" — every employee marked absent —
+because the underlying sync copy was 21 minutes old and the status logic compared it to the current
+wall clock instead of to the data's own timestamp. Nothing was wrong with attendance; the number was
+stale, not zero. Prompt 14 judges Today's statuses as of the last data update and adds an amber notice
+when that copy is more than 25 minutes old, so staleness reads as staleness rather than as a business
+fact.
+
+### Batching prompts into one export only works when the file lists are disjoint — and still needs checking
+
+**2026-09-18.** Several of the afternoon's prompts (07–14) were combined into single exports where
+their target files did not overlap. That is fine, but only because each prompt's file list was
+checked against the others before sending, and `git status --short` after export was still compared
+against the *union* of everything allowed. Skipping either check is what makes batching risky — it
+looks identical to a clean single-prompt export until two prompts happen to touch the same file.
+
 ### Accept an unasked-for file split when it's the 15 KB rule doing its job
 
 **2026-09-18, twice.** Two rounds came back having split a file (`FilterBar.tsx` →
