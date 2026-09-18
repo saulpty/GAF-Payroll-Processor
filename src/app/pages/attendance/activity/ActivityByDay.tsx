@@ -5,6 +5,7 @@ import { fmtDayShort } from '@/app/lib/activityDays';
 import { fmtClock, fmtDuration } from '@/app/lib/teramindToday';
 import WhyChipBadge from './WhyChipBadge';
 import SourceBadge from './SourceBadge';
+import GhostMark from './GhostMark';
 import DataTable from '@/app/components/DataTable';
 import type { Col } from '@/app/components/DataTable';
 
@@ -30,13 +31,14 @@ function escape(v: unknown): string {
 }
 
 function exportCsv(days: ActivityDay[], dateFrom: string, dateTo: string) {
-  const header = ['employee', 'date', 'entry', 'exit', 'active_minutes', 'breaks_minutes', 'why', 'source'].join(',');
+  const header = ['employee', 'date', 'entry', 'early_record_ignored', 'exit', 'active_minutes', 'breaks_minutes', 'why', 'source'].join(',');
   const body = days.map(d => {
     const entry = d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '';
+    const earlyIgnored = d.ghostMin !== null ? fmtClock(d.ghostMin) : '';
     const exit  = d.shownLastMin  !== null ? (fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')) : '';
     const why   = d.why ? d.why.label : '';
     const source = !d.official ? 'Live' : d.edited ? 'Official, Edited' : 'Official';
-    return [d.employeeName, d.date, entry, exit, d.activeMin, d.breaksMin, why, source].map(escape).join(',');
+    return [d.employeeName, d.date, entry, earlyIgnored, exit, d.activeMin, d.breaksMin, why, source].map(escape).join(',');
   }).join('\n');
 
   const blob = new Blob([header + '\n' + body], { type: 'text/csv' });
@@ -117,6 +119,7 @@ export default function ActivityByDay({ days, dateFrom, dateTo }: Props) {
               <td className={TD}>{fmtDayShort(d.date)}</td>
               <td className={`${TD} whitespace-nowrap tabular-nums`}>
                 {d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '—'}
+                <GhostMark ghostMin={d.ghostMin} />
               </td>
               <td className={`${TD} whitespace-nowrap tabular-nums`}>
                 {d.shownLastMin !== null

@@ -23,7 +23,7 @@ import type { ReportEmployee } from '@/app/lib/attendanceReportTypes';
 
 type HolidayRow = { date: string; name: string };
 type DstRow = { year: number; us_dst_start: string; us_dst_end: string };
-type PunchRaw = TodayPunch & { synced_at: string | null };
+type PunchRaw = TodayPunch & { synced_at: string | null; ghost_min?: number };
 
 const ON_LEAVE_KINDS = new Set<string>(['pto', 'permission', 'sick', 'form', 'holiday']);
 
@@ -90,7 +90,17 @@ export default function AttendanceToday() {
       active_s: Number(p.active_s ?? 0),
       has_manual: Boolean(p.has_manual),
       synced_at: p.synced_at,
+      ghost_min: p.ghost_min !== undefined ? Number(p.ghost_min) : -1,
     }));
+  }, [rawPunches]);
+
+  const ghostByEmployee = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const p of (rawPunches as PunchRaw[]) ?? []) {
+      const gm = Number(p.ghost_min);
+      if (Number.isFinite(gm) && gm >= 0) m.set(Number(p.employee_id), gm);
+    }
+    return m;
   }, [rawPunches]);
 
   const { dataAsOf, dataAsOfMin } = useMemo(() => {
@@ -262,7 +272,7 @@ export default function AttendanceToday() {
             />
 
             {/* Table */}
-            <TodayTable rows={rows} isToday={isToday} whyById={whyById} whyLoading={whyLoading} onRowClick={setPanelRow} />
+            <TodayTable rows={rows} isToday={isToday} whyById={whyById} whyLoading={whyLoading} ghostByEmployee={ghostByEmployee} onRowClick={setPanelRow} />
           </>
         )}
       </div>
@@ -281,12 +291,13 @@ export default function AttendanceToday() {
 }
 
 function TodayTable({
-  rows, isToday, whyById, whyLoading, onRowClick,
+  rows, isToday, whyById, whyLoading, ghostByEmployee, onRowClick,
 }: {
   rows: TodayRow[];
   isToday: boolean;
   whyById: Map<number, WhyChip | null>;
   whyLoading: boolean;
+  ghostByEmployee: Map<number, number>;
   onRowClick?: (row: TodayRow) => void;
 }) {
   const thCls = 'px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap select-none';
@@ -329,6 +340,7 @@ function TodayTable({
                 row={row}
                 isToday={isToday}
                 why={whyLoading ? undefined : (whyById.get(row.employeeId) ?? null)}
+                ghostMin={ghostByEmployee.has(row.employeeId) ? (ghostByEmployee.get(row.employeeId) ?? null) : null}
                 tdCls={tdCls}
               />
             ))}

@@ -5,6 +5,7 @@ import { fmtDayShort } from '@/app/lib/activityDays';
 import { fmtClock, fmtDuration } from '@/app/lib/teramindToday';
 import WhyChipBadge from './WhyChipBadge';
 import SourceBadge from './SourceBadge';
+import GhostMark from './GhostMark';
 import { AttendancePanel } from '@/app/pages/attendance/AttendancePanel';
 import DataTable from '@/app/components/DataTable';
 import type { Col } from '@/app/components/DataTable';
@@ -54,6 +55,7 @@ function ExpandedDayRow({ d }: { d: ActivityDay }) {
       <td className={SUBTD}>{fmtDayShort(d.date)}</td>
       <td className={`${SUBTD} whitespace-nowrap tabular-nums`}>
         {d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '—'}
+        <GhostMark ghostMin={d.ghostMin} />
       </td>
       <td className={`${SUBTD} whitespace-nowrap tabular-nums`}>
         {d.shownLastMin !== null

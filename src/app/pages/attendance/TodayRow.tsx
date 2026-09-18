@@ -1,6 +1,7 @@
 import { fmtClock, fmtDuration } from '@/app/lib/teramindToday';
 import type { TodayRow, TodayStatus } from '@/app/lib/teramindToday';
 import type { WhyChip } from '@/app/lib/activityDays';
+import GhostMark from '@/app/pages/attendance/activity/GhostMark';
 
 export const STATUS_CHIP: Record<TodayStatus, { label: string; cls: string }> = {
   working:     { label: 'Working',      cls: 'bg-green-100 text-green-700 border-green-200' },
@@ -26,11 +27,12 @@ export function isOnLeave(status: TodayStatus, why: WhyChip | null | undefined):
 }
 
 export function TodayTableRow({
-  row, isToday, why, tdCls,
+  row, isToday, why, ghostMin, tdCls,
 }: {
   row: TodayRow;
   isToday: boolean;
   why: WhyChip | null | undefined;
+  ghostMin?: number | null;
   tdCls: string;
 }) {
   // Status chip: override to "On Leave" when applicable
@@ -117,6 +119,7 @@ export function TodayTableRow({
         ) : (
           <span className="text-slate-400">—</span>
         )}
+        <GhostMark ghostMin={ghostMin ?? null} />
       </td>
       <td className={`${tdCls} tabular-nums`}>{lateStr}</td>
       <td className={`${tdCls} tabular-nums whitespace-nowrap`}>

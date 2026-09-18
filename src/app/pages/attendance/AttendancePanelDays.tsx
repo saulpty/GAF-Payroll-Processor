@@ -5,6 +5,7 @@ import type { AttendanceRow } from '@/app/lib/attendanceStats';
 import { STATUS_COLORS } from './AttendancePanelBody';
 import WhyChipBadge from './activity/WhyChipBadge';
 import SourceBadge from './activity/SourceBadge';
+import GhostMark from './activity/GhostMark';
 
 type Props = {
   days: ActivityDay[];
@@ -72,6 +73,7 @@ export default function AttendancePanelDays({ days, attendanceRows = [] }: Props
                       <td className={TD}>{fmtDayShort(d.date)}</td>
                       <td className={`${TD} whitespace-nowrap tabular-nums`}>
                         {d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '—'}
+                        <GhostMark ghostMin={d.ghostMin} />
                       </td>
                       <td className={`${TD} whitespace-nowrap tabular-nums`}>
                         {d.shownLastMin !== null

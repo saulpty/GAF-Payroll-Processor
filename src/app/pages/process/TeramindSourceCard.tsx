@@ -11,6 +11,8 @@ import { coversRange } from '@/app/lib/teramindPull';
 import { punchDaysToRawRows } from '@/app/lib/teramindPunches';
 import type { PunchDay } from '@/app/lib/teramindPunches';
 import type { TeramindRawRow } from '@/app/lib/teramindTypes';
+import { fmtDayShort } from '@/app/lib/activityDays';
+import { fmtClock } from '@/app/lib/teramindToday';
 
 export type ApiCapture = {
   from: string; to: string;
@@ -18,6 +20,7 @@ export type ApiCapture = {
   employees: number; days: number; records: number;
   fetched: number;
   fresh: boolean;
+  ghostDays: number;
 };
 
 type Props = {
@@ -38,6 +41,8 @@ export function TeramindSourceCard({ startDate, endDate, disabled, capture, onCa
   const [skipped, setSkipped] = useState(0);
   const [manualDays, setManualDays] = useState(0);
   const [manualEmails, setManualEmails] = useState(0);
+  type GhostRow = { name: string; date: string; ghostMin: number; entryMin: number };
+  const [ghostRows, setGhostRows] = useState<GhostRow[]>([]);
 
   const [fetchPunchDays] = useMutateAction(loadTeramindPunchDaysAction);
   const [pullLog] = useLoadAction(loadTeramindPullLogAction, [], {});
@@ -100,6 +105,8 @@ export function TeramindSourceCard({ startDate, endDate, disabled, capture, onCa
         first_min: Number(row.first_min),
         last_ymd:  Number(row.last_ymd),
         last_min:  Number(row.last_min),
+        ghost_min: row.ghost_min !== undefined ? Number(row.ghost_min) : undefined,
+        display_name: row.display_name !== undefined ? String(row.display_name) : undefined,
       };
     });
 
@@ -121,6 +128,25 @@ export function TeramindSourceCard({ startDate, endDate, disabled, capture, onCa
     setManualDays(mDays);
     setManualEmails(mEmailSet.size);
 
+    // Ghost rows: days where the first record was a stray early event
+    const newGhostRows: GhostRow[] = manualRows
+      .filter(r => Number(r.ghost_min) >= 0)
+      .map(r => {
+        const dayYmd = Number(r.day_ymd ?? r.first_ymd ?? 0);
+        const y = Math.floor(dayYmd / 10000);
+        const mo = Math.floor(dayYmd / 100) % 100;
+        const dy = dayYmd % 100;
+        const dateStr = `${y}-${String(mo).padStart(2, '0')}-${String(dy).padStart(2, '0')}`;
+        const name = String(r.display_name || r.teramind_email || '');
+        return {
+          name,
+          date: dateStr,
+          ghostMin: Number(r.ghost_min),
+          entryMin: Number(r.first_min),
+        };
+      });
+    setGhostRows(newGhostRows);
+
     const totalRecords = manualRows.reduce((s, r) => s + (Number(r.records) || 0), 0);
     const distinctEmails = new Set(rows.map(r => r.email)).size;
 
@@ -133,6 +159,7 @@ export function TeramindSourceCard({ startDate, endDate, disabled, capture, onCa
       records: totalRecords,
       fetched,
       fresh,
+      ghostDays: newGhostRows.length,
     };
 
     setPhase('done');
@@ -145,6 +172,7 @@ export function TeramindSourceCard({ startDate, endDate, disabled, capture, onCa
     setSkipped(0);
     setManualDays(0);
     setManualEmails(0);
+    setGhostRows([]);
     try {
       const result = await pullRange(startDate, endDate, 'capture');
       if (result.truncated) {
@@ -169,6 +197,7 @@ export function TeramindSourceCard({ startDate, endDate, disabled, capture, onCa
     setSkipped(0);
     setManualDays(0);
     setManualEmails(0);
+    setGhostRows([]);
     try {
       await readDays(false, 0);
     } catch (e) {
@@ -196,6 +225,8 @@ export function TeramindSourceCard({ startDate, endDate, disabled, capture, onCa
   // ── capture result box ───────────────────────────────────────────────────
 
   if (capture) {
+    const visibleGhosts = ghostRows.slice(0, 15);
+    const hiddenGhosts = ghostRows.length > 15 ? ghostRows.length - 15 : 0;
     return (
       <Card>
         <CardHeader className="pb-2">
@@ -222,6 +253,26 @@ export function TeramindSourceCard({ startDate, endDate, disabled, capture, onCa
               <X className="w-3.5 h-3.5" />
             </Button>
           </div>
+
+          {ghostRows.length > 0 && (
+            <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold">Early Stray Records Ignored — {ghostRows.length}</p>
+                <ul className="mt-1 space-y-0.5">
+                  {visibleGhosts.map((g, i) => (
+                    <li key={i} className="tabular-nums">
+                      {g.name} · {fmtDayShort(g.date)} · Ignored {fmtClock(g.ghostMin)} → Entry {fmtClock(g.entryMin)}
+                    </li>
+                  ))}
+                  {hiddenGhosts > 0 && (
+                    <li className="text-amber-600">And {hiddenGhosts} More</li>
+                  )}
+                </ul>
+                <p className="mt-1.5 text-amber-600">Check These Before Running. The backup file upload does not apply this rule.</p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     );

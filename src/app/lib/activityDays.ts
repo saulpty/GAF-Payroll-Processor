@@ -1,54 +1,13 @@
 // Activity days: Teramind day rows + the attendance report. Pure: no runtime imports, no Date
-// maths ('YYYY-MM-DD' strings, addDays()). Contract 2026-09-18.
+// maths ('YYYY-MM-DD' strings, addDays()). Contract 2026-09-18. Types live in activityTypes.ts.
 
 import type { ReportRow, ReportRequest } from './attendanceReportTypes';
+import type {
+  WhyKind, WhyChip, ActivitySettings, ActivityDayRow, ActivityEmployee, ActivityDay,
+  EmployeeActivitySummary, ActivityTotals,
+} from './activityTypes';
 
-export type WhyKind = 'pto' | 'permission' | 'sick' | 'form' | 'holiday' | 'wfh' | 'day_off' | 'none';
-export type WhyChip = { kind: WhyKind; label: string; tone: 'blue' | 'amber' | 'gray' };
-
-export type ActivitySettings = {
-  minActiveMinutes: number;   // 390 on a 480-min shift
-  breakMinutes: number; breakOverMinutes: number;
-};
-
-export type ActivityDayRow = {
-  employee_id: number; work_date: number;
-  first_min: number; last_ymd: number; last_min: number;
-  active_s: number; records: number; largest_gap_min: number; gap_start_min: number;
-  has_manual: boolean; accounts: number; synced_at: string;
-};
-
-export type ActivityEmployee = {
-  id: number; name: string; role: string; manager: string;
-  work_days: string; schedule_start: string; schedule_end: string;
-};
-
-export type ActivityDay = {
-  employeeId: number; employeeName: string; role: string; manager: string;
-  date: string; scheduled: boolean; shiftMinutes: number;
-  firstMin: number | null; lastMin: number | null; crossesMidnight: boolean;
-  activeMin: number; breaksMin: number; largestGapMin: number; gapStartMin: number;
-  records: number; accounts: number; hasManual: boolean;
-  official: boolean; edited: boolean;
-  officialEntryMin: number | null; officialExitMin: number | null;
-  /** First / Last to display: official punch when captured, else Teramind. */
-  shownFirstMin: number | null; shownLastMin: number | null;
-  why: WhyChip | null;
-  flag: 'low_activity' | 'long_break' | null;
-  needsLook: boolean; isToday: boolean;
-};
-
-export type EmployeeActivitySummary = {
-  employeeId: number; employeeName: string; role: string; manager: string;
-  scheduledDays: number; daysWorked: number;
-  avgActiveMin: number | null; avgFirstMin: number | null; avgLastMin: number | null;
-  needsLook: number; awayDays: number; awayLabel: string;
-  days: ActivityDay[];   // newest first
-};
-
-export type ActivityTotals = {
-  avgActiveMin: number | null; daysWorked: number; needsLook: number; lateArrivals: number;
-};
+export type { WhyKind, WhyChip, ActivitySettings, ActivityDayRow, ActivityEmployee, ActivityDay, EmployeeActivitySummary, ActivityTotals } from './activityTypes';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -255,6 +214,7 @@ export function buildActivityDays(input: {
       // Accounts can overlap: active can exceed the span.
       if (span !== null && span >= 0 && activeMin > span) activeMin = span;
       const breaksMin = span !== null ? Math.max(0, span - activeMin) : 0;
+      const ghostMin = row && Number(row.ghost_min) >= 0 ? Number(row.ghost_min) : null;
 
       const why = whyFor({ reportRow: rr, requests: empRequests, scheduled, hasActivity });
       const excused = awayKind(why, hasActivity, EXCUSED);
@@ -280,6 +240,7 @@ export function buildActivityDays(input: {
         shownLastMin: official && officialExitMin !== null ? officialExitMin : lastMin,
         why, flag,
         needsLook: flag === 'low_activity', isToday: cur === todayYmd,
+        ghostMin,
       });
     }
     if (empDays.length === 0) continue;

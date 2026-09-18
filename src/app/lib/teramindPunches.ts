@@ -66,6 +66,8 @@ export type PunchDay = {
   first_min: number;
   last_ymd: number;
   last_min: number;
+  ghost_min?: number;
+  display_name?: string;
 };
 
 function ymdText(n: unknown): string | null {
