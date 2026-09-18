@@ -56,10 +56,10 @@ const SECTIONS = [
     subHover: 'hover:bg-[#2AA876]/5 text-slate-600',
     paths: ['/attendance'],
     links: [
-      { to: '/attendance/today',   label: 'Today',   icon: Clock },
-      { to: '/attendance',         label: 'List',    icon: Users },
-      { to: '/attendance/reports',   label: 'Reports',  icon: FileText },
-      { to: '/attendance/activity',  label: 'Activity', icon: Activity },
+      { to: '/attendance/today',    label: 'Today',    icon: Clock },
+      { to: '/attendance/activity', label: 'Activity', icon: Activity },
+      { to: '/attendance/list',     label: 'List',     icon: Users },
+      { to: '/attendance/reports',  label: 'Reports',  icon: FileText },
     ],
   },
   {
@@ -272,17 +272,14 @@ export default function TopNav() {
           {activeSectionDef.links.map(l => {
             const isLinkActive =
               location.pathname === l.to ||
-              (l.to !== '/' && location.pathname.startsWith(l.to + '/') && l.to !== '/attendance');
-            // Special case: /attendance should only match exactly or via sub-routes not matched by deeper links
-            const isAttDash = l.to === '/attendance' && location.pathname === '/attendance';
-            const finalActive = l.to === '/attendance' ? isAttDash : isLinkActive;
+              (l.to !== '/' && location.pathname.startsWith(l.to + '/'));
             return (
               <button
                 key={l.to}
                 onClick={() => navigate(l.to)}
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all duration-100 whitespace-nowrap shrink-0',
-                  finalActive
+                  isLinkActive
                     ? activeSectionDef.subActiveBg
                     : `${activeSectionDef.subHover} hover:bg-slate-50`
                 )}

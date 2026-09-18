@@ -82,7 +82,7 @@ export default function FilterBar() {
     hasAny, clearAll,
   } = useGlobalFilters();
 
-  const { viewAs } = useViewer();
+  const { viewAs, isSuper } = useViewer();
 
   const [periodsRaw, , , refetchPeriods] = useLoadAction(loadPeriodsAction, [] as PeriodRow[]);
   const [empsRaw]    = useLoadAction(loadAttendanceEmployeesAction, [] as EmpInfo[], { viewAs });
@@ -150,9 +150,9 @@ export default function FilterBar() {
   // Reset mode to route default on attendance sub-route change
   const prevRouteRef = useRef<string | null>(null);
   useEffect(() => {
-    const matchKey = Object.keys(ATTENDANCE_SWITCH_ROUTES).find(
-      k => location.pathname === k || location.pathname.startsWith(k + '/'),
-    );
+    const matchKey = Object.keys(ATTENDANCE_SWITCH_ROUTES)
+      .filter(k => location.pathname === k || location.pathname.startsWith(k + '/'))
+      .sort((a, b) => b.length - a.length)[0];
     const routeKey = matchKey ?? null;
     if (routeKey !== null && routeKey !== prevRouteRef.current) {
       prevRouteRef.current = routeKey;
@@ -246,7 +246,7 @@ export default function FilterBar() {
         </>
       )}
 
-      {cfg.manager && (
+      {cfg.manager && isSuper && (
         <>
           <label className={labelCls}>Manager</label>
           <select value={manager} onChange={e => setManager(e.target.value)} className={inputCls}>

@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useLoadAction } from '@uibakery/data';
 import { useViewer } from '@/app/context/ViewerContext';
+import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { matchesManager } from '@/app/lib/managerFilter';
 import { toLocalYMD, isScheduledWorkDay, getSchedule, parseTimeToMinutes } from '@/app/lib/classificationEngine';
 import { buildAttendanceReport } from '@/app/lib/attendanceReport';
 import { buildActivityDays } from '@/app/lib/activityDays';
@@ -58,6 +60,7 @@ function parseSettings(rows: ConfigRow[]): { settings: ActivitySettings; fallbac
 
 export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }): ActivityDataResult {
   const { viewAs } = useViewer();
+  const { employee, manager, role } = useGlobalFilters();
 
   const safeFrom = dateFrom || toLocalYMD(new Date());
   const safeTo   = dateTo   || toLocalYMD(new Date());
@@ -79,7 +82,13 @@ export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo
   const error = !!(errTm || errDays);
 
   const result = useMemo<Omit<ActivityDataResult, 'loading' | 'error'>>(() => {
-    const employees = (rawEmps as ReportEmployee[]) ?? [];
+    const allEmployees = (rawEmps as ReportEmployee[]) ?? [];
+    const employees = allEmployees.filter(e =>
+      matchesManager(e, manager) &&
+      (!role || e.role === role) &&
+      (!employee || e.name?.toLowerCase().includes(employee.toLowerCase()) ||
+        e.email?.toLowerCase().includes(employee.toLowerCase()))
+    );
     const tmRows    = (rawTm as ActivityEmployee[]) ?? [];
     const payrollRows = (rawDays as ReportPayrollRow[]) ?? [];
     const forms     = (rawForms as ReportForm[]) ?? [];
@@ -135,7 +144,7 @@ export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo
     });
 
     return { days, byEmployee, totals, configFallbacks };
-  }, [rawEmps, rawTm, rawDays, rawForms, rawReqs, rawHols, rawPeriods, rawDst, rawConfig, safeFrom, safeTo]);
+  }, [rawEmps, rawTm, rawDays, rawForms, rawReqs, rawHols, rawPeriods, rawDst, rawConfig, safeFrom, safeTo, employee, manager, role]);
 
   return { ...result, loading, error };
 }

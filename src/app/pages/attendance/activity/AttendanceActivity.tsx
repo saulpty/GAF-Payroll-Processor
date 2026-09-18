@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Activity, AlertCircle, Info } from 'lucide-react';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { fmtDuration } from '@/app/lib/teramindToday';
@@ -10,7 +10,7 @@ import ActivityByDay from './ActivityByDay';
 
 type ViewMode = 'byEmployee' | 'byDay';
 
-function today() { return toLocalYMD(new Date()); }
+function todayYmd() { return toLocalYMD(new Date()); }
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return toLocalYMD(d); }
 
 function SummaryTile({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
@@ -23,10 +23,23 @@ function SummaryTile({ label, value, accent }: { label: string; value: string | 
 }
 
 export default function AttendanceActivity() {
-  const { dateFrom, dateTo } = useGlobalFilters();
+  const { dateFrom, dateTo, attendanceMode, setAttendanceMode, setDateFrom, setDateTo } = useGlobalFilters();
 
-  const safeFrom = dateFrom || daysAgo(7);
-  const safeTo   = dateTo   || today();
+  // On first mount: ensure we are in Dates mode with last 14 days
+  const initDone = useRef(false);
+  useEffect(() => {
+    if (initDone.current) return;
+    initDone.current = true;
+    if (attendanceMode !== 'dates' || !dateFrom || !dateTo) {
+      setAttendanceMode('dates');
+      setDateTo(todayYmd());
+      setDateFrom(daysAgo(14));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const safeFrom = dateFrom || daysAgo(14);
+  const safeTo   = dateTo   || todayYmd();
 
   // Default view: By Day when exactly 1 day, By Employee otherwise
   const isOneDay = safeFrom === safeTo;
