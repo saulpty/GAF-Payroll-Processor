@@ -102,6 +102,7 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
   const kpis = useMemo(() => computeCompanyKpis(filteredRows), [filteredRows]);
 
   const panelStats = panelEmail ? empStats.find(s => s.email === panelEmail) ?? null : null;
+  const panelEmpId = panelEmail ? Number((empMap.get(panelEmail) as { id?: number } | undefined)?.id) : NaN;
   const loading = loadingRows || loadingEmps;
 
   return (
@@ -142,7 +143,7 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
       </div>
 
       {panelEmail && (
-        <AttendancePanel stats={panelStats} onClose={() => setPanelEmail(null)} />
+        <AttendancePanel stats={panelStats} employeeId={Number.isFinite(panelEmpId) ? panelEmpId : undefined} onClose={() => setPanelEmail(null)} />
       )}
     </div>
   );
