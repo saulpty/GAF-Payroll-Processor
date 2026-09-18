@@ -9,7 +9,8 @@
 > coming from the API the panel can be one day-by-day view from the start). Plan the payroll revamp
 > first; then revise this plan on top of it.
 >
-> **Superseded for now by:** `docs/superpowers/plans/2026-09-17-payroll-via-teramind-api.md`.
+> **Superseded by:** `docs/superpowers/plans/2026-09-17-activity-monitoring-v2.md` (rebuilt on the saved copy after
+> `2026-09-17-payroll-via-teramind-api.md` shipped to the draft). Kept for the record only.
 > Research behind both plans: `docs/findings/2026-09-17-vp-work-pattern-monitor-and-teramind-api.md`
 > and `docs/findings/2026-09-17-payroll-upload-pipeline.md`.
 >
