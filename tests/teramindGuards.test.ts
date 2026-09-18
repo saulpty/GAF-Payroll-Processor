@@ -152,3 +152,27 @@ test('T13: the Today board shows one clock and never calls a person late without
   assert.doesNotMatch(src, /actions\/loadTeramind(TimeRecords|LoginSessions|AgentDirectory)['"]|useTeramindPull/, 'a manager-visible page must never call Teramind');
   assert.match(src, /viewAs/, 'the board must be scoped to the viewer');
 });
+
+// ── Activity monitoring (2026-09-18 CONTRACT) ────────────────────────────────────────────────
+test('T14: loadTeramindActivityDays is scoped, reads only Time Records, and never quotes a param', () => {
+  const p = 'src/actions/loadTeramindActivityDays.ts';
+  if (!existsSync(join(root, p))) return; // lands with prompt 02
+  const src = read(p);
+  assert.match(src, /access_viewer\(/, 'the action must be scoped to the signed-in viewer');
+  assert.match(src, /source = 'time_record'/, 'the action must read only Time Records');
+  assert.doesNotMatch(src, /['"]\{\{params\.[^}]+\}\}['"]/, `${p} has a quoted {{params}}`);
+});
+
+test('T15: no attendance page reaches Teramind directly — the Activity tab reads the saved copy', () => {
+  const dir = 'src/app/pages/attendance';
+  if (!existsSync(join(root, dir))) return;
+  for (const file of walk(dir)) {
+    const src = read(file);
+    assert.doesNotMatch(src, /useTeramindPull/, `${file} imports useTeramindPull`);
+    assert.doesNotMatch(
+      src,
+      /actions\/loadTeramind(TimeRecords|AgentDirectory|LoginSessions)['"]/,
+      `${file} imports a Teramind HTTP action directly`,
+    );
+  }
+});

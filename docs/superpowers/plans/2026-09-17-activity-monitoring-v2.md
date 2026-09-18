@@ -1,5 +1,7 @@
 # Plan v2 — "Activity" inside Attendance, rebuilt on the Teramind saved copy
 
+**Decisions of 2026-09-18 are in `docs/superpowers/prompts/2026-09-18-activity/CONTRACT.md` and override anything below.**
+
 **Status: PLAN ONLY — nothing here is built.** Supersedes
 `2026-09-17-activity-monitoring-PARKED.md` (kept for the record). Written 2026-09-17 evening, after
 the payroll-via-Teramind work (`2026-09-17-payroll-via-teramind-api.md`) shipped to the draft app.
@@ -63,15 +65,21 @@ allowance + 30 min); weekends by `work_days`; the drop list (ECG loader, magnifi
 theme, confetti, fragmentation chart, VP stylesheet); Needs-a-look rules; CSV export; deep link
 "Open in Teramind" from config + `teramind_agents.agent_id`.
 
-## Decisions still open for Saul (small)
+## Decisions made 2026-09-18
 
-1. **True "online now" flag** (Teramind's `online` on `/v1/agents`, super-only HTTP call, whole
-   company response) — add it, or is "Working = activity in the last 20 min" good enough? *Recommend:
-   good enough; revisit only if asked.*
-2. **Where the range view lives:** a fourth Attendance tab **Activity** (recommended) vs. a date
-   range on the Today board. *Recommend a tab: Today is a snapshot, Activity is analysis.*
-3. Charts list (from the parked plan): avg active per employee, daily start/end trend, day-of-week,
-   flag breakdown, break histogram. Keep all five or start with two?
+- Wording: Title Case for all labels, chips, headers, buttons. Dates `Wed Sep 11`, times `8:02 AM`.
+- The live board is called **Live** (not "unofficial").
+- Why chips: `PTO`, `Permission` (with hours when available), `Sick` (any attendance form), form types in Title Case, `Holiday · <name>`, `WFH`, `Day Off` (no schedule + activity), English payroll labels, `No Reports Yet` (amber).
+- Dropped: "Time for Time" chip, "pending" state.
+- No row when not scheduled and no activity.
+- English payroll labels: `Incapacidad`→`Sick`, `Permiso`→`Permission`, `Feriado`→`Holiday`, others in Title Case.
+- Per-employee expandable view as default for multi-day ranges.
+- One shared employee panel opened from Today, List, and Activity.
+- FilterBar: Periods | Dates switch with quick picks (Today, This Week, Last 14 Days, This Period So Far, Last Period).
+- Every sync every 15 minutes with one setting in `teramind` category.
+- Payroll Master opens empty.
+- Charts deferred, mocked up later.
+- "Online flag" question closed as not needed.
 
 ## Revised design (data first)
 
@@ -114,11 +122,11 @@ Cards show as worked time). Breaks total = (last − first) − active. Both cut
 |---|---|---|---|
 | 1 | **Why chips on Today.** Load the four HR loaders the Reports tab uses (forms, requests, holidays, periods) for `day` only; `buildAttendanceReport` for that day; chip next to "No Records" / low active. Status becomes **On Leave / Sick Form / Permission / Holiday / WFH** instead of "No Records" when a reason exists. | No | Someone on PTO today shows the PTO chip, not "No Records". |
 | 2 | **Settings + activity SQL + `activityDays.ts`** (lib verbatim, test-first: thresholds scaled by shift, cross-midnight, holiday/day-off never flagged, WFH only on scheduled days, Avg Activity denominator, today excluded from Needs a look). | No | Tests green; action returns rows for a past period. |
-| 3 | **Activity tab, KPI strip + table (+CSV).** Fourth Attendance tab, default range last 14 days ending yesterday, FilterBar `{dateRange, employee, role, manager}`. KPIs: Avg Activity Time (team), days with work, Needs a look count, late arrivals. Table: one row per employee-day with Why column. **Oracle:** Saul reads Avg Activity Time for 2 people × 1 week off Teramind's Time Cards; ours must match. | No | Numbers match Teramind; View As a manager shows only their people. |
+| 3 | **Activity tab: KPI strip + By Employee (expandable) + By Day (+CSV).** Fourth Attendance tab, default range last 14 days ending yesterday, FilterBar `{dateRange, employee, role, manager}`. KPIs: Avg Activity Time (team), days with work, Needs a look count, late arrivals. By Employee: expandable rows. By Day: one row per employee-day with Why column. **Oracle:** Saul reads Avg Activity Time for 2 people × 1 week off Teramind's Time Cards; ours must match. | No | Numbers match Teramind; View As a manager shows only their people. |
 | 4 | **Needs a look** list on the Activity tab (rules above), each row linking to the day. | No | A sick-form day is *not* in the list; a bare short day is. |
 | 5 | **Team grid** (employees × days, heat by active minutes, chips inline, holidays/days-off dimmed). | No | Weekend worker's Saturday counts as scheduled. |
 | 6 | **Charts** tab, super users only (`SUPER_ONLY_PREFIXES`, explicit route before the splat, G1 list). recharts is already a dependency. | No | Manager: no link, URL redirects. |
-| 7 | **Employee panel, day-by-day** (official punches when captured, Teramind otherwise, active, Why) opened from List, Today, Activity. Refactor `AttendancePanel.tsx` (12.8 KB) into frame + body first, zero visual change. | No | List-tab panel unchanged before/after screenshots. |
+| 7 | **Employee panel Day By Day section** (split panel into frame + body first). Official punches when captured, Teramind otherwise, active, Why. Opened from List, Today, Activity. | No | List-tab panel unchanged before/after screenshots. |
 | 8 | Help/methodology copy; AGENTS.md; handoff/lessons/backlog. | No | — |
 
 Slice 1 alone delivers the thing Saul asked for on day one ("it shows absent but doesn't say why").

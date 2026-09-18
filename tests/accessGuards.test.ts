@@ -27,6 +27,8 @@ const SCOPED_ACTIONS = [
   'loadPtoBalancesInputs', 'loadPtoEmployeeDetail', 'loadPtoReviewCount', 'loadPendingPtoRequests',
   'loadContractMilestones', 'loadContractsExpiringCount',
   'loadTeramindSessions', 'loadTeramindVsPayroll', 'loadTeramindPunchDays', 'loadTeramindDayPunches',
+  // TODO add loadTeramindActivityDays after prompt 02 — G2 below reads the action file with no
+  // existsSync guard, so adding it here before the file lands under src/actions would fail this test.
 ];
 
 test('G2: every scoped action filters through v_employee_access with the signed-in email', () => {
