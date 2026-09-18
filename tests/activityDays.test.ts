@@ -105,14 +105,14 @@ function dayOn(days: ActivityDay[], date: string): ActivityDay | undefined {
 
 // ── Source hygiene ─────────────────────────────────────────────────────────────────────────
 
-test('source has no runtime imports, no Date maths, and stays under 14.5 KB (project cap is 15)', () => {
+test('source has no runtime imports, no Date maths, and stays under the 15 KB cap', () => {
   const src = readFileSync(SRC_PATH, 'utf8');
   const runtimeImports = src.split('\n').filter((l) => /^\s*import\b/.test(l) && !/^\s*import\s+type\b/.test(l));
   assert.deepEqual(runtimeImports, []);
   assert.equal(/new Date\s*\(/.test(src), false);
   assert.equal(/Date\.now/.test(src), false);
   assert.equal(/toISOString/.test(src), false);
-  assert.ok(Buffer.byteLength(src, 'utf8') < 14.5 * 1024, `lib is ${Buffer.byteLength(src, 'utf8')} bytes`);
+  assert.ok(Buffer.byteLength(src, 'utf8') < 15 * 1024, `lib is ${Buffer.byteLength(src, 'utf8')} bytes`);
 });
 
 // ── Small helpers ──────────────────────────────────────────────────────────────────────────
@@ -389,6 +389,27 @@ test('a Tardiness form on a worked day is context: not away, and it does not exc
   assert.equal(dayOn(days2, THU)!.flag, null);
   assert.equal(by2[0]!.awayDays, 1);
   assert.equal(by2[0]!.awayLabel, '1 · Tardiness');
+});
+test('a captured day with hand-typed punches and no Teramind record still counts as worked', () => {
+  const rr = mkReport(THU, { verdict: 'on_time', entryTime: '08:00', exitTime: '11:30' });
+  const { days } = run({ reportRows: [rr], rows: [] });
+  const d = dayOn(days, THU)!;
+  assert.equal(d.why, null, 'not No Reports Yet');
+  assert.equal(d.official, true);
+  assert.equal(d.shownFirstMin, 8 * 60);
+  assert.equal(d.shownLastMin, 11 * 60 + 30);
+  assert.equal(d.firstMin, null, 'Teramind side stays empty');
+});
+
+test('shown First / Last prefer the official punch once captured, else Teramind', () => {
+  const rr = mkReport(THU, { verdict: 'on_time', entryTime: '08:05', exitTime: '17:00' });
+  const { days } = run({ reportRows: [rr], rows: [mkRow(THU, { first_min: 490, last_min: 1030 })] });
+  const d = dayOn(days, THU)!;
+  assert.equal(d.shownFirstMin, 8 * 60 + 5);
+  assert.equal(d.shownLastMin, 17 * 60);
+  const { days: live } = run({ rows: [mkRow(THU, { first_min: 490, last_min: 1030 })] });
+  assert.equal(dayOn(live, THU)!.shownFirstMin, 490);
+  assert.equal(dayOn(live, THU)!.shownLastMin, 1030);
 });
 test('totals.lateArrivals counts days that started after the scheduled start', () => {
   const rows = [

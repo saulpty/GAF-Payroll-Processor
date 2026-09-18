@@ -1,3 +1,28 @@
+# 05c — Activity: captured days show the official punches; hand-typed punches count as worked
+
+**Inside this project the code root *is* `src`, so `src/app/…` means `app/…`. Never create a
+top-level folder named `src`.**
+
+## Files that may change
+
+- `src/app/lib/activityDays.ts` — replace the WHOLE file with the code in edit 1, byte for byte
+- `src/app/pages/attendance/AttendancePanelDays.tsx` — edit 2
+- `src/app/pages/attendance/activity/ActivityByEmployee.tsx` — edit 2
+- `src/app/pages/attendance/activity/ActivityByDay.tsx` — edit 2
+
+No other file may be touched.
+
+## Why
+
+Alanis Chena, Thu Sep 3: payroll has punches 8:00 AM – 11:30 AM (typed in by hand) but Teramind has
+no record. The day showed `— – —`, `0m` and `No Reports Yet` next to an `Official` badge. Two
+rules change in the lib: (a) hand-typed official punches mean the person worked, so no
+`No Reports Yet`; (b) `ActivityDay` gains `shownFirstMin` / `shownLastMin` = the official
+punch when the day is captured, else the Teramind time — that is what the tables display.
+
+## Edit 1 — activityDays.ts (verbatim)
+
+```ts
 // Activity days: Teramind day rows + the attendance report. Pure: no runtime imports, no Date
 // maths ('YYYY-MM-DD' strings, addDays()). Contract 2026-09-18.
 
@@ -318,3 +343,19 @@ export function buildActivityDays(input: {
     },
   };
 }
+```
+
+## Edit 2 — the three tables
+
+Wherever a First / Last (or First – Last) cell reads `d.firstMin` / `d.lastMin`, read
+`d.shownFirstMin` / `d.shownLastMin` instead (same `fmtClock`, same `+1d` suffix logic using
+`d.crossesMidnight`, same `—` fallback). This includes the CSV columns in `ActivityByDay.tsx`.
+The per-employee averages (`avgFirstMin` / `avgLastMin`) are unchanged. Nothing else changes.
+
+## Acceptance (check on /dev)
+
+1. Only the four files changed; `activityDays.ts` under 15 KB, no runtime imports.
+2. Attendance → List, Q1-Sep-2026, Alanis Chena → Day By Day: Thu Sep 3 shows `8:00 AM – 11:30 AM`,
+   Why `—`, Source `Official`.
+3. Activity → By Employee, any captured day with an official punch that differs from Teramind shows
+   the official time (the row keeps its `Official, Edited` source badge).
