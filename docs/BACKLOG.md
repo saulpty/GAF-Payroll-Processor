@@ -494,6 +494,15 @@ duplicate run within the same interval. Worst case is a duplicate idempotent syn
 Fix: a partial unique index on `sync_log(kind, ran_at)` (or similar) so the database itself enforces
 the claim instead of the check-then-insert race.
 
+### 22. Today treats a failed employee query as "No Employees Match These Filters" (2026-09-18)
+
+**Risk:** low (nobody is accused; it reads as an empty filter). Seen once on staging in the minute
+after a release: `loadAttendanceEmployees` failed, `employees.length === 0`, and the board showed the
+empty-filter message with no tiles. The Activity tab already does this properly (prompt 12 + 13:
+error box, one guarded automatic retry, Retry refetches). Fix: give `AttendanceToday.tsx` the same
+treatment — capture the error of every loader it uses, auto-retry once, and show "Couldn't Load
+Today's Records" instead of the empty-filter text. Same for `useTodayWhy`.
+
 ## Structural
 
 ### 9. Six files are too large to edit reliably
