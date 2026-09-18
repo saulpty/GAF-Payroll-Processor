@@ -1,12 +1,14 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Activity, AlertCircle, Info } from 'lucide-react';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { useViewer } from '@/app/context/ViewerContext';
 import { fmtDuration } from '@/app/lib/teramindToday';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { useActivityData } from './useActivityData';
 import ActivityNeedsLook from './ActivityNeedsLook';
 import ActivityByEmployee from './ActivityByEmployee';
 import ActivityByDay from './ActivityByDay';
+import ActivityThresholds from './ActivityThresholds';
 
 type ViewMode = 'byEmployee' | 'byDay';
 
@@ -24,6 +26,7 @@ function SummaryTile({ label, value, accent }: { label: string; value: string | 
 
 export default function AttendanceActivity() {
   const { dateFrom, dateTo, attendanceMode, setAttendanceMode, setDateFrom, setDateTo } = useGlobalFilters();
+  const { isSuper } = useViewer();
 
   // On first mount: ensure we are in Dates mode with last 14 days
   const initDone = useRef(false);
@@ -41,11 +44,22 @@ export default function AttendanceActivity() {
   const safeFrom = dateFrom || daysAgo(14);
   const safeTo   = dateTo   || todayYmd();
 
-  // Default view: By Day when exactly 1 day, By Employee otherwise
   const isOneDay = safeFrom === safeTo;
   const [viewMode, setViewMode] = useState<ViewMode>(isOneDay ? 'byDay' : 'byEmployee');
 
-  const { days, byEmployee, totals, loading, error, configFallbacks } = useActivityData({
+  // Lifted expanded employee state (for Needs A Look → expand row)
+  const [expandedEmployeeId, setExpandedEmployeeId] = useState<number | null>(null);
+
+  function handlePickEmployee(employeeId: number) {
+    setViewMode('byEmployee');
+    setExpandedEmployeeId(employeeId);
+  }
+
+  function handleToggleEmployee(employeeId: number) {
+    setExpandedEmployeeId(prev => prev === employeeId ? null : employeeId);
+  }
+
+  const { days, byEmployee, totals, settings, loading, error, configFallbacks, reloadConfig } = useActivityData({
     dateFrom: safeFrom,
     dateTo: safeTo,
   });
@@ -84,12 +98,17 @@ export default function AttendanceActivity() {
 
         {!loading && (
           <>
-            {/* KPI tiles */}
-            <div className="flex flex-wrap gap-3 mb-4">
-              <SummaryTile label="Avg Active Time"  value={avgActiveLabel}   accent="text-[#2AA876]" />
+            {/* KPI tiles + Thresholds button */}
+            <div className="flex flex-wrap items-start gap-3 mb-4">
+              <SummaryTile label="Avg Active Time"  value={avgActiveLabel}    accent="text-[#2AA876]" />
               <SummaryTile label="Days With Work"   value={totals.daysWorked} />
               <SummaryTile label="Needs A Look"     value={totals.needsLook}  accent={totals.needsLook > 0 ? 'text-amber-600' : undefined} />
               <SummaryTile label="Late Arrivals"    value={totals.lateArrivals} />
+              {isSuper && (
+                <div className="flex items-center self-center ml-auto">
+                  <ActivityThresholds settings={settings} onSaved={reloadConfig} />
+                </div>
+              )}
             </div>
 
             {/* By Employee / By Day switch */}
@@ -117,11 +136,15 @@ export default function AttendanceActivity() {
             </div>
 
             {/* Needs A Look list */}
-            <ActivityNeedsLook days={filteredNeedsLook} />
+            <ActivityNeedsLook days={filteredNeedsLook} onPick={handlePickEmployee} />
 
             {/* Main table */}
             {viewMode === 'byEmployee'
-              ? <ActivityByEmployee byEmployee={byEmployee} />
+              ? <ActivityByEmployee
+                  byEmployee={byEmployee}
+                  expandedId={expandedEmployeeId}
+                  onToggle={handleToggleEmployee}
+                />
               : <ActivityByDay days={days} dateFrom={safeFrom} dateTo={safeTo} />
             }
 

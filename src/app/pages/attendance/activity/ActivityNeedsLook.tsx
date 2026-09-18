@@ -6,9 +6,12 @@ import { fmtDuration } from '@/app/lib/teramindToday';
 
 const INITIAL_LIMIT = 10;
 
-type Props = { days: ActivityDay[] };
+type Props = {
+  days: ActivityDay[];
+  onPick?: (employeeId: number) => void;
+};
 
-export default function ActivityNeedsLook({ days }: Props) {
+export default function ActivityNeedsLook({ days, onPick }: Props) {
   const [showAll, setShowAll] = useState(false);
   const flagged = days.filter(d => d.needsLook);
   if (flagged.length === 0) return null;
@@ -27,7 +30,17 @@ export default function ActivityNeedsLook({ days }: Props) {
       <ul className="space-y-1">
         {visible.map(d => (
           <li key={`${d.employeeId}-${d.date}`} className="flex items-baseline gap-2 text-sm text-amber-800">
-            <span className="font-medium shrink-0">{d.employeeName}</span>
+            {onPick ? (
+              <button
+                type="button"
+                className="font-medium shrink-0 hover:underline underline-offset-2 text-amber-900 transition-colors"
+                onClick={() => onPick(d.employeeId)}
+              >
+                {d.employeeName}
+              </button>
+            ) : (
+              <span className="font-medium shrink-0">{d.employeeName}</span>
+            )}
             <span className="text-amber-600 shrink-0">{fmtDayShort(d.date)}</span>
             <span className="text-amber-700">·</span>
             <span>{buildReason(d)}</span>

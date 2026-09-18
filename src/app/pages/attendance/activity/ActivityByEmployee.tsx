@@ -6,17 +6,37 @@ import { fmtClock, fmtDuration } from '@/app/lib/teramindToday';
 import WhyChipBadge from './WhyChipBadge';
 import SourceBadge from './SourceBadge';
 import { AttendancePanel } from '@/app/pages/attendance/AttendancePanel';
+import DataTable from '@/app/components/DataTable';
+import type { Col } from '@/app/components/DataTable';
 
-type Props = { byEmployee: EmployeeActivitySummary[]; shiftMinutes?: number };
+type SortKey = 'employeeName' | 'daysWorked' | 'avgActiveMin' | 'avgFirstMin' | 'avgLastMin' | 'needsLook' | 'awayDays';
 
-const TH = 'px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap';
+type Props = {
+  byEmployee: EmployeeActivitySummary[];
+  shiftMinutes?: number;
+  expandedId?: number | null;
+  onToggle?: (id: number) => void;
+};
+
 const TD = 'px-3 py-2 text-sm text-slate-700 align-top';
+const SUBTD = 'px-3 py-1.5 text-xs text-slate-600';
+const SUBTH = 'px-3 py-1.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide whitespace-nowrap bg-slate-100';
 
 const MAX_BAR = 480;
 
+const COLUMNS: Col<EmployeeActivitySummary>[] = [
+  { key: 'employeeName', label: 'Employee' },
+  { key: 'daysWorked',   label: 'Days With Work' },
+  { key: 'avgActiveMin', label: 'Avg Active' },
+  { key: 'avgFirstMin',  label: 'Avg Entry' },
+  { key: 'avgLastMin',   label: 'Avg Exit' },
+  { key: 'needsLook',    label: 'Needs A Look' },
+  { key: 'awayDays',     label: 'Away Days' },
+];
+
 function ActiveBar({ activeMin, shiftMin }: { activeMin: number | null; shiftMin: number }) {
   if (activeMin === null) return <span className="text-slate-400">—</span>;
-  const pct = Math.min(100, Math.round(((activeMin) / Math.max(shiftMin, 1)) * 100));
+  const pct = Math.min(100, Math.round((activeMin / Math.max(shiftMin, 1)) * 100));
   return (
     <div className="flex items-center gap-2">
       <span className="tabular-nums text-sm font-medium">{fmtDuration(activeMin)}</span>
@@ -28,29 +48,46 @@ function ActiveBar({ activeMin, shiftMin }: { activeMin: number | null; shiftMin
 }
 
 function ExpandedDayRow({ d }: { d: ActivityDay }) {
-  const SUBTD = 'px-3 py-1.5 text-xs text-slate-600';
+  const rowBg = d.needsLook ? 'bg-amber-50 hover:bg-amber-100/50' : 'bg-slate-50 hover:bg-slate-100/50';
   return (
-    <tr className="bg-slate-50 hover:bg-slate-100/50 transition-colors">
+    <tr className={`${rowBg} transition-colors`}>
       <td className={SUBTD}>{fmtDayShort(d.date)}</td>
-      <td className={SUBTD}>
+      <td className={`${SUBTD} whitespace-nowrap tabular-nums`}>
         {d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '—'}
-        {' – '}
-        {d.shownLastMin !== null ? (fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')) : '—'}
+      </td>
+      <td className={`${SUBTD} whitespace-nowrap tabular-nums`}>
+        {d.shownLastMin !== null
+          ? fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')
+          : '—'}
       </td>
       <td className={SUBTD}>{fmtDuration(d.activeMin)}</td>
       <td className={SUBTD}>{d.records <= 1 ? '—' : fmtDuration(d.breaksMin)}</td>
-      <td className={SUBTD}>{d.why ? <WhyChipBadge chip={d.why} /> : null}</td>
+      <td className={SUBTD}>
+        <div className="flex flex-wrap gap-1">
+          {d.needsLook && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+              Needs A Look
+            </span>
+          )}
+          {d.flag === 'long_break' && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+              Long Break
+            </span>
+          )}
+          {d.why ? <WhyChipBadge chip={d.why} /> : null}
+        </div>
+      </td>
       <td className={SUBTD}><SourceBadge official={d.official} edited={d.edited} /></td>
     </tr>
   );
 }
 
 function ExpandedHeader() {
-  const SUBTH = 'px-3 py-1.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide whitespace-nowrap bg-slate-100';
   return (
     <tr>
       <th className={SUBTH}>Date</th>
-      <th className={SUBTH}>First – Last</th>
+      <th className={SUBTH}>Entry</th>
+      <th className={SUBTH}>Exit</th>
       <th className={SUBTH}>Active</th>
       <th className={SUBTH}>Breaks</th>
       <th className={SUBTH}>Why</th>
@@ -62,10 +99,11 @@ function ExpandedHeader() {
 type EmployeeRowProps = {
   emp: EmployeeActivitySummary;
   onOpenPanel: (emp: EmployeeActivitySummary) => void;
+  expanded: boolean;
+  onToggle: () => void;
 };
 
-function EmployeeRow({ emp, onOpenPanel }: EmployeeRowProps) {
-  const [expanded, setExpanded] = useState(false);
+function EmployeeRow({ emp, onOpenPanel, expanded, onToggle }: EmployeeRowProps) {
   const avgShift = emp.days.length > 0 ? (emp.days[0]?.shiftMinutes ?? MAX_BAR) : MAX_BAR;
 
   return (
@@ -74,14 +112,13 @@ function EmployeeRow({ emp, onOpenPanel }: EmployeeRowProps) {
         <td className={TD}>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setExpanded(e => !e)}
+              onClick={onToggle}
               className="shrink-0 text-slate-400 hover:text-slate-600"
               aria-label={expanded ? 'Collapse' : 'Expand'}
             >
               {expanded
                 ? <ChevronDown className="w-4 h-4" />
-                : <ChevronRight className="w-4 h-4" />
-              }
+                : <ChevronRight className="w-4 h-4" />}
             </button>
             <div>
               <button
@@ -131,8 +168,47 @@ function EmployeeRow({ emp, onOpenPanel }: EmployeeRowProps) {
   );
 }
 
-export default function ActivityByEmployee({ byEmployee }: Props) {
+function sortEmployees(list: EmployeeActivitySummary[], key: SortKey, dir: 'asc' | 'desc'): EmployeeActivitySummary[] {
+  return [...list].sort((a, b) => {
+    let av: number | string | null, bv: number | string | null;
+    if (key === 'employeeName') { av = a.employeeName; bv = b.employeeName; }
+    else if (key === 'daysWorked') { av = a.daysWorked; bv = b.daysWorked; }
+    else if (key === 'avgActiveMin') { av = a.avgActiveMin ?? -1; bv = b.avgActiveMin ?? -1; }
+    else if (key === 'avgFirstMin') { av = a.avgFirstMin ?? -1; bv = b.avgFirstMin ?? -1; }
+    else if (key === 'avgLastMin') { av = a.avgLastMin ?? -1; bv = b.avgLastMin ?? -1; }
+    else if (key === 'needsLook') { av = a.needsLook; bv = b.needsLook; }
+    else { av = a.awayDays; bv = b.awayDays; }
+
+    if (typeof av === 'string' && typeof bv === 'string') {
+      return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    }
+    const an = av as number, bn = bv as number;
+    return dir === 'asc' ? an - bn : bn - an;
+  });
+}
+
+export default function ActivityByEmployee({ byEmployee, expandedId, onToggle }: Props) {
   const [panelEmp, setPanelEmp] = useState<EmployeeActivitySummary | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>('employeeName');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // local expanded state fallback when parent doesn't control it
+  const [localExpandedId, setLocalExpandedId] = useState<number | null>(null);
+  const effectiveExpandedId = expandedId !== undefined ? expandedId : localExpandedId;
+
+  function handleSort(key: string) {
+    const k = key as SortKey;
+    if (k === sortKey) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(k); setSortDir('asc'); }
+  }
+
+  function handleToggle(id: number) {
+    if (onToggle) {
+      onToggle(id);
+    } else {
+      setLocalExpandedId(prev => prev === id ? null : id);
+    }
+  }
 
   if (byEmployee.length === 0) {
     return (
@@ -142,28 +218,26 @@ export default function ActivityByEmployee({ byEmployee }: Props) {
     );
   }
 
+  const sorted = sortEmployees(byEmployee, sortKey, sortDir);
+
   return (
     <>
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-        <table className="w-full text-left divide-y divide-slate-100">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className={TH}>Employee</th>
-              <th className={TH}>Days With Work</th>
-              <th className={TH}>Avg Active</th>
-              <th className={TH}>Avg First</th>
-              <th className={TH}>Avg Last</th>
-              <th className={TH}>Needs A Look</th>
-              <th className={TH}>Away Days</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {byEmployee.map(emp => (
-              <EmployeeRow key={emp.employeeId} emp={emp} onOpenPanel={setPanelEmp} />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={COLUMNS}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSort={handleSort}
+      >
+        {sorted.map(emp => (
+          <EmployeeRow
+            key={emp.employeeId}
+            emp={emp}
+            onOpenPanel={setPanelEmp}
+            expanded={effectiveExpandedId === emp.employeeId}
+            onToggle={() => handleToggle(emp.employeeId)}
+          />
+        ))}
+      </DataTable>
 
       {panelEmp && (
         <AttendancePanel

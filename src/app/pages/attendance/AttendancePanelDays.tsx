@@ -27,32 +27,49 @@ export default function AttendancePanelDays({ days }: Props) {
             <thead>
               <tr className="bg-muted/40 border-b border-border">
                 <th className={TH}>Date</th>
-                <th className={TH}>First – Last</th>
+                <th className={TH}>Entry</th>
+                <th className={TH}>Exit</th>
                 <th className={TH}>Active</th>
                 <th className={TH}>Why</th>
                 <th className={TH}>Source</th>
               </tr>
             </thead>
             <tbody>
-              {days.map(d => (
-                <tr key={d.date} className="border-b border-border/50 hover:bg-muted/20">
-                  <td className={TD}>{fmtDayShort(d.date)}</td>
-                  <td className={`${TD} whitespace-nowrap tabular-nums`}>
-                    {d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '—'}
-                    {' – '}
-                    {d.shownLastMin !== null
-                      ? fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')
-                      : '—'}
-                  </td>
-                  <td className={`${TD} tabular-nums`}>{fmtDuration(d.activeMin)}</td>
-                  <td className={TD}>
-                    {d.why ? <WhyChipBadge chip={d.why} /> : <span className="text-slate-300">—</span>}
-                  </td>
-                  <td className={TD}>
-                    <SourceBadge official={d.official} edited={d.edited} />
-                  </td>
-                </tr>
-              ))}
+              {days.map(d => {
+                const rowBg = d.needsLook ? 'bg-amber-50 hover:bg-amber-100/20' : 'hover:bg-muted/20';
+                return (
+                  <tr key={d.date} className={`border-b border-border/50 ${rowBg}`}>
+                    <td className={TD}>{fmtDayShort(d.date)}</td>
+                    <td className={`${TD} whitespace-nowrap tabular-nums`}>
+                      {d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '—'}
+                    </td>
+                    <td className={`${TD} whitespace-nowrap tabular-nums`}>
+                      {d.shownLastMin !== null
+                        ? fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')
+                        : '—'}
+                    </td>
+                    <td className={`${TD} tabular-nums`}>{fmtDuration(d.activeMin)}</td>
+                    <td className={TD}>
+                      <div className="flex flex-wrap gap-1">
+                        {d.needsLook && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                            Needs A Look
+                          </span>
+                        )}
+                        {d.flag === 'long_break' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                            Long Break
+                          </span>
+                        )}
+                        {d.why ? <WhyChipBadge chip={d.why} /> : <span className="text-slate-300">—</span>}
+                      </div>
+                    </td>
+                    <td className={TD}>
+                      <SourceBadge official={d.official} edited={d.edited} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

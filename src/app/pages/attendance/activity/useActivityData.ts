@@ -19,16 +19,18 @@ import loadPeriodsAction from '@/actions/loadPeriods';
 import loadDstCalendarAction from '@/actions/loadDstCalendar';
 import loadClassificationConfigAction from '@/actions/loadClassificationConfig';
 
-type ConfigRow = { key: string; value: string; category: string };
+type ConfigRow = { key: string; value: string; label: string; description: string; category: string };
 type DstRow = { year: number; us_dst_start: string; us_dst_end: string };
 
 export type ActivityDataResult = {
   days: ActivityDay[];
   byEmployee: EmployeeActivitySummary[];
   totals: ActivityTotals;
+  settings: ActivitySettings;
   loading: boolean;
   error: boolean;
   configFallbacks: string[];
+  reloadConfig: () => Promise<void>;
 };
 
 const FALLBACK_MIN_ACTIVE = 390;
@@ -45,7 +47,7 @@ function parseSettings(rows: ConfigRow[]): { settings: ActivitySettings; fallbac
   const breakOver = Number(pick('activity_break_over_minutes'));
 
   if (!Number.isFinite(minActive) || minActive <= 0) fallbacks.push('activity_min_active_minutes');
-  if (!Number.isFinite(breakMin) || breakMin <= 0) fallbacks.push('activity_break_minutes');
+  if (!Number.isFinite(breakMin)  || breakMin <= 0)  fallbacks.push('activity_break_minutes');
   if (!Number.isFinite(breakOver) || breakOver <= 0) fallbacks.push('activity_break_over_minutes');
 
   return {
@@ -65,15 +67,15 @@ export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo
   const safeFrom = dateFrom || toLocalYMD(new Date());
   const safeTo   = dateTo   || toLocalYMD(new Date());
 
-  const [rawTm,      loadingTm,  errTm]   = useLoadAction(loadTeramindActivityDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, viewAs });
-  const [rawEmps,    loadingEmps]          = useLoadAction(loadAttendanceEmployeesAction,  [],       { viewAs });
-  const [rawDays,    loadingDays, errDays] = useLoadAction(loadAttendanceReportDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
-  const [rawForms,   loadingForms]         = useLoadAction(loadMondayAttendanceFormsRangeAction, [], { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
-  const [rawReqs,    loadingReqs]          = useLoadAction(loadMondayRequestsRangeAction,  [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
-  const [rawHols,    loadingHols]          = useLoadAction(loadHolidaysAction,   [], {});
-  const [rawPeriods, loadingPeriods]       = useLoadAction(loadPeriodsAction,    [], {});
-  const [rawDst,     loadingDst]           = useLoadAction(loadDstCalendarAction, [], {});
-  const [rawConfig,  loadingConfig]        = useLoadAction(loadClassificationConfigAction, [], {});
+  const [rawTm,      loadingTm,  errTm]                     = useLoadAction(loadTeramindActivityDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, viewAs });
+  const [rawEmps,    loadingEmps]                            = useLoadAction(loadAttendanceEmployeesAction,  [],       { viewAs });
+  const [rawDays,    loadingDays, errDays]                   = useLoadAction(loadAttendanceReportDaysAction, [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
+  const [rawForms,   loadingForms]                           = useLoadAction(loadMondayAttendanceFormsRangeAction, [], { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
+  const [rawReqs,    loadingReqs]                            = useLoadAction(loadMondayRequestsRangeAction,  [],       { dateFrom: safeFrom, dateTo: safeTo, manager: '', viewAs });
+  const [rawHols,    loadingHols]                            = useLoadAction(loadHolidaysAction,   [], {});
+  const [rawPeriods, loadingPeriods]                         = useLoadAction(loadPeriodsAction,    [], {});
+  const [rawDst,     loadingDst]                             = useLoadAction(loadDstCalendarAction, [], {});
+  const [rawConfig,  loadingConfig, , reloadConfig]          = useLoadAction(loadClassificationConfigAction, [], {});
 
   const loading =
     loadingTm || loadingEmps || loadingDays || loadingForms ||
@@ -81,7 +83,7 @@ export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo
 
   const error = !!(errTm || errDays);
 
-  const result = useMemo<Omit<ActivityDataResult, 'loading' | 'error'>>(() => {
+  const result = useMemo<Omit<ActivityDataResult, 'loading' | 'error' | 'reloadConfig'>>(() => {
     const allEmployees = (rawEmps as ReportEmployee[]) ?? [];
     const employees = allEmployees.filter(e =>
       matchesManager(e, manager) &&
@@ -89,14 +91,14 @@ export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo
       (!employee || e.name?.toLowerCase().includes(employee.toLowerCase()) ||
         e.email?.toLowerCase().includes(employee.toLowerCase()))
     );
-    const tmRows    = (rawTm as ActivityEmployee[]) ?? [];
+    const tmRows      = (rawTm as ActivityEmployee[]) ?? [];
     const payrollRows = (rawDays as ReportPayrollRow[]) ?? [];
-    const forms     = (rawForms as ReportForm[]) ?? [];
-    const requests  = (rawReqs as ReportRequest[]) ?? [];
-    const holidays  = (rawHols as ReportHoliday[]) ?? [];
-    const periods   = (rawPeriods as ReportPeriod[]) ?? [];
-    const dstWindows = (rawDst as DstRow[]) ?? [];
-    const configRows = (rawConfig as ConfigRow[]) ?? [];
+    const forms       = (rawForms as ReportForm[]) ?? [];
+    const requests    = (rawReqs as ReportRequest[]) ?? [];
+    const holidays    = (rawHols as ReportHoliday[]) ?? [];
+    const periods     = (rawPeriods as ReportPeriod[]) ?? [];
+    const dstWindows  = (rawDst as DstRow[]) ?? [];
+    const configRows  = (rawConfig as ConfigRow[]) ?? [];
 
     const { settings, fallbacks: configFallbacks } = parseSettings(configRows);
 
@@ -143,8 +145,8 @@ export function useActivityData({ dateFrom, dateTo }: { dateFrom: string; dateTo
       isScheduledWorkDay: isScheduledFor,
     });
 
-    return { days, byEmployee, totals, configFallbacks };
+    return { days, byEmployee, totals, settings, configFallbacks };
   }, [rawEmps, rawTm, rawDays, rawForms, rawReqs, rawHols, rawPeriods, rawDst, rawConfig, safeFrom, safeTo, employee, manager, role]);
 
-  return { ...result, loading, error };
+  return { ...result, loading, error, reloadConfig };
 }
