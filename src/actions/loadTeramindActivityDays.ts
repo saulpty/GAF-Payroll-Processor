@@ -7,27 +7,32 @@ import { action } from '@uibakery/data';
 // whole minutes since midnight, US Eastern, as integers — date-looking text is rewritten on its way
 // to the browser. Only employees payroll actually processes (active, not excluded) are returned,
 // scoped to the signed-in viewer. Read-only.
+// Reads public.v_teramind_records: every figure above — entry, exit, active time, record count and
+// the gap maths — counts only NOT is_ghost rows, so a stray early record (a few minutes of activity
+// followed by an hour or more of nothing) never becomes the entry time. ghost_min is the earliest
+// ignored record of that day as minutes since midnight, -1 when none.
 // `manager` is accepted (house rule: every load* takes one); manager filtering happens in React.
 function loadTeramindActivityDays() {
   return action('loadTeramindActivityDays', 'SQL', {
     datasourceName: 'GAF Planilla DB',
     query: `
       WITH filtered AS (
-        SELECT s.employee_id, s.work_date, s.started_et, s.finished_et, s.duration_s,
-               s.agent_id, s.is_manual, s.synced_at
-        FROM public.teramind_sessions s
-        JOIN public.employees e ON e.id = s.employee_id
-        WHERE s.source = 'time_record'
-          AND s.work_date BETWEEN {{params.dateFrom}}::text AND {{params.dateTo}}::text
+        SELECT v.employee_id, v.work_date, v.started_et, v.finished_et, v.duration_s,
+               v.agent_id, v.is_manual, v.is_ghost, v.synced_at
+        FROM public.v_teramind_records v
+        JOIN public.employees e ON e.id = v.employee_id
+        WHERE v.source = 'time_record'
+          AND v.work_date BETWEEN {{params.dateFrom}}::text AND {{params.dateTo}}::text
           AND e.active = TRUE
           AND e.excluded_from_payroll = FALSE
           AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a
                        WHERE a.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
       ),
       gapped AS (
-        SELECT *,
+        SELECT employee_id, work_date, started_et,
                LAG(finished_et) OVER (PARTITION BY employee_id, work_date ORDER BY started_et) AS prev_finished_et
         FROM filtered
+        WHERE NOT is_ghost
       ),
       gaps AS (
         SELECT employee_id, work_date,
@@ -41,23 +46,37 @@ function loadTeramindActivityDays() {
                employee_id, work_date, gap_min AS largest_gap_min, gap_start_min
         FROM gaps
         ORDER BY employee_id, work_date, gap_min DESC
+      ),
+      daily AS (
+        SELECT f.employee_id,
+               f.work_date,
+               MIN(f.started_et)  FILTER (WHERE NOT f.is_ghost)        AS first_start,
+               MAX(f.finished_et) FILTER (WHERE NOT f.is_ghost)        AS last_finish,
+               MIN(f.started_et)  FILTER (WHERE f.is_ghost)            AS ghost_start,
+               (SUM(f.duration_s) FILTER (WHERE NOT f.is_ghost))::int  AS active_s,
+               (COUNT(*)          FILTER (WHERE NOT f.is_ghost))::int  AS records,
+               BOOL_OR(f.is_manual) FILTER (WHERE NOT f.is_ghost)      AS has_manual,
+               (COUNT(DISTINCT f.agent_id) FILTER (WHERE NOT f.is_ghost))::int AS accounts,
+               MAX(f.synced_at)                                        AS synced_at
+        FROM filtered f
+        GROUP BY f.employee_id, f.work_date
       )
-      SELECT f.employee_id,
-             REPLACE(f.work_date, '-', '')::int AS work_date,
-             (EXTRACT(HOUR FROM MIN(f.started_et)::timestamp) * 60 + EXTRACT(MINUTE FROM MIN(f.started_et)::timestamp))::int AS first_min,
-             REPLACE(LEFT(MAX(f.finished_et), 10), '-', '')::int AS last_ymd,
-             (EXTRACT(HOUR FROM MAX(f.finished_et)::timestamp) * 60 + EXTRACT(MINUTE FROM MAX(f.finished_et)::timestamp))::int AS last_min,
-             SUM(f.duration_s)::int AS active_s,
-             COUNT(*)::int AS records,
+      SELECT d.employee_id,
+             REPLACE(d.work_date, '-', '')::int AS work_date,
+             SUBSTR(d.first_start, 12, 2)::int * 60 + SUBSTR(d.first_start, 15, 2)::int AS first_min,
+             REPLACE(LEFT(d.last_finish, 10), '-', '')::int AS last_ymd,
+             SUBSTR(d.last_finish, 12, 2)::int * 60 + SUBSTR(d.last_finish, 15, 2)::int AS last_min,
+             d.active_s,
+             d.records,
              COALESCE(gp.largest_gap_min, 0) AS largest_gap_min,
              COALESCE(gp.gap_start_min, 0) AS gap_start_min,
-             BOOL_OR(f.is_manual) AS has_manual,
-             COUNT(DISTINCT f.agent_id)::int AS accounts,
-             MAX(f.synced_at) AS synced_at
-      FROM filtered f
-      LEFT JOIN gap_pick gp ON gp.employee_id = f.employee_id AND gp.work_date = f.work_date
-      GROUP BY f.employee_id, f.work_date, gp.largest_gap_min, gp.gap_start_min
-      ORDER BY f.employee_id, f.work_date;
+             d.has_manual,
+             d.accounts,
+             COALESCE(SUBSTR(d.ghost_start, 12, 2)::int * 60 + SUBSTR(d.ghost_start, 15, 2)::int, -1) AS ghost_min,
+             d.synced_at
+      FROM daily d
+      LEFT JOIN gap_pick gp ON gp.employee_id = d.employee_id AND gp.work_date = d.work_date
+      ORDER BY d.employee_id, d.work_date;
     `,
   });
 }

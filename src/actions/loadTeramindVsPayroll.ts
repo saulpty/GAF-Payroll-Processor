@@ -3,24 +3,28 @@ import { action } from '@uibakery/data';
 // One row per employee per day: Teramind's earliest session start / latest finish beside what
 // payroll holds for that day. Read-only. Times are returned as whole minutes since midnight
 // (integers) because date-looking text is rewritten on its way to the browser.
+// Reads public.v_teramind_records with NOT is_ghost, so the Teramind side of the comparison shows
+// the same entry as the Activity tab and the payroll capture: a stray early record (a few minutes
+// of activity followed by an hour or more of nothing) is left out of every figure. The view only
+// holds Time Records, so {{params.source}} can only ever match 'time_record' here.
 // `manager` is accepted (house rule: every load* takes one); filtering by manager happens in React.
 function loadTeramindVsPayroll() {
   return action('loadTeramindVsPayroll', 'SQL', {
     datasourceName: 'GAF Planilla DB',
     query: `
       WITH tm AS (
-        SELECT s.employee_id,
-               s.work_date,
-               MIN(s.started_et)  AS first_start,
-               MAX(s.finished_et) AS last_finish,
+        SELECT v.employee_id,
+               v.work_date,
+               MIN(v.started_et)  AS first_start,
+               MAX(v.finished_et) AS last_finish,
                COUNT(*)::int      AS sessions,
-               MAX(s.duration_s)::int AS longest_s,
-               BOOL_OR(s.is_manual)   AS has_manual
-        FROM public.teramind_sessions s
-        WHERE s.employee_id IS NOT NULL
-          AND s.source = {{params.source}}::text
-          AND s.work_date BETWEEN {{params.dateFrom}}::text AND {{params.dateTo}}::text
-        GROUP BY s.employee_id, s.work_date
+               MAX(v.duration_s)::int AS longest_s,
+               BOOL_OR(v.is_manual)   AS has_manual
+        FROM public.v_teramind_records v
+        WHERE NOT v.is_ghost
+          AND v.source = {{params.source}}::text
+          AND v.work_date BETWEEN {{params.dateFrom}}::text AND {{params.dateTo}}::text
+        GROUP BY v.employee_id, v.work_date
       ),
       pe AS (
         SELECT DISTINCT ON (p.employee_id, LEFT(p.work_date, 10))
