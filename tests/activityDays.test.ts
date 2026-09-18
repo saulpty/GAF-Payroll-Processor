@@ -375,6 +375,21 @@ test('away days are counted and labelled', () => {
   assert.equal(e.awayLabel, '2 · PTO, Sick');
 });
 
+test('a Tardiness form on a worked day is context: not away, and it does not excuse low activity', () => {
+  // Worked THU with a Tardiness form but only 3 h active (threshold 6.5 h) -> still flagged.
+  const rr = mkReport(THU, { form: mkForm('Tardiness'), verdict: 'late_reported_on_time', entryTime: null, exitTime: null });
+  const { days, byEmployee } = run({ reportRows: [rr], rows: [mkRow(THU, { active_s: 180 * 60 })] });
+  const d = dayOn(days, THU)!;
+  assert.equal(d.why?.label, 'Tardiness');
+  assert.equal(d.flag, 'low_activity');
+  assert.equal(d.needsLook, true);
+  assert.equal(byEmployee[0]!.awayDays, 0);
+  // The same form on a day with NO activity is an away day and is not flagged.
+  const { days: days2, byEmployee: by2 } = run({ reportRows: [rr], rows: [] });
+  assert.equal(dayOn(days2, THU)!.flag, null);
+  assert.equal(by2[0]!.awayDays, 1);
+  assert.equal(by2[0]!.awayLabel, '1 · Tardiness');
+});
 test('totals.lateArrivals counts days that started after the scheduled start', () => {
   const rows = [
     mkRow(MON, { first_min: 500 }),                        // 20 min late, report row says 08:00

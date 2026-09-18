@@ -1,3 +1,23 @@
+# 04b — Activity: a form on a worked day is context, and Needs A Look stops swallowing the page
+
+**Inside this project the code root *is* `src`, so `src/app/…` means `app/…`. Never create a
+top-level folder named `src`.**
+
+## Files that may change
+
+- `src/app/lib/activityDays.ts` — replace the WHOLE file with the code in edit 1, byte for byte
+- `src/app/pages/attendance/activity/ActivityNeedsLook.tsx` — edit 2
+
+No other file may be touched.
+
+## Edit 1 — activityDays.ts (verbatim)
+
+One rule changes: a plain form chip (kind `form`, e.g. Tardiness) only counts as an *away* day and
+only excuses a low-activity flag when the person has **no activity** that day. On a worked day the
+form is context, like WFH. Sick, PTO, Permission, Holiday and Day Off are unchanged. Replace the
+entire file with exactly this:
+
+```ts
 // Activity days: a pure combinator over Teramind day rows plus the attendance report.
 // Zero runtime imports, no Date maths: dates are 'YYYY-MM-DD' strings, compared as
 // strings and advanced by addDays(). Contract 2026-09-18.
@@ -313,3 +333,23 @@ export function buildActivityDays(input: {
     },
   };
 }
+```
+
+## Edit 2 — ActivityNeedsLook.tsx
+
+The list currently renders every flagged day (152 for one period) above the table, so the table is
+off screen. Change it to:
+
+- Show the first **10** rows, newest date first, then a small text button
+  `Show All (N)` / `Show Less` that toggles the rest (local `useState`; default collapsed).
+- Keep the heading `Needs A Look — N Days` and the existing row format.
+- When N is 0, render nothing (as today, if that is already the case).
+
+Title Case for the button labels. No other visual change.
+
+## Acceptance (check on /dev)
+
+1. Only the two files changed; `activityDays.ts` under 15 KB, no runtime imports.
+2. Attendance → Activity, Q1-Sep-2026: the Needs A Look box shows 10 rows and `Show All (N)`;
+   the By Employee table is visible without scrolling past the list.
+3. A person with a Tardiness form on a worked day no longer shows that day under Away Days.
