@@ -15,24 +15,27 @@ import { AttendanceTable }  from '@/app/pages/attendance/AttendanceTable';
 import { AttendancePanel }  from '@/app/pages/attendance/AttendancePanel';
 import AttendanceReport     from '@/app/pages/attendance/AttendanceReport';
 import AttendanceToday      from '@/app/pages/attendance/AttendanceToday';
+import AttendanceActivity   from '@/app/pages/attendance/activity/AttendanceActivity';
 import { matchesManager }   from '@/app/lib/managerFilter';
 import { useState } from 'react';
 
-type Tab = 'list' | 'reports' | 'today';
+type Tab = 'list' | 'reports' | 'today' | 'activity';
 
 function tabFromPath(pathname: string): Tab {
-  if (pathname.includes('/today')) return 'today';
-  if (pathname.includes('/reports')) return 'reports';
+  if (pathname.includes('/today'))    return 'today';
+  if (pathname.includes('/reports'))  return 'reports';
+  if (pathname.includes('/activity')) return 'activity';
   return 'list';
 }
 
-// Reports/Today tabs have their own data layer — render them without loading the heavy daily view
+// Reports/Today/Activity tabs have their own data layer — render them without loading the heavy daily view
 export default function Attendance() {
   const { pathname } = useLocation();
   const tab: Tab = tabFromPath(pathname);
 
-  if (tab === 'today') return <AttendanceToday />;
-  if (tab === 'reports') return <AttendanceReport />;
+  if (tab === 'today')    return <AttendanceToday />;
+  if (tab === 'reports')  return <AttendanceReport />;
+  if (tab === 'activity') return <AttendanceActivity />;
 
   return <AttendanceInner tab="list" />;
 }

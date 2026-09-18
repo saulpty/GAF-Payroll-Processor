@@ -58,7 +58,8 @@ const SECTIONS = [
     links: [
       { to: '/attendance/today',   label: 'Today',   icon: Clock },
       { to: '/attendance',         label: 'List',    icon: Users },
-      { to: '/attendance/reports', label: 'Reports', icon: FileText },
+      { to: '/attendance/reports',   label: 'Reports',  icon: FileText },
+      { to: '/attendance/activity',  label: 'Activity', icon: Activity },
     ],
   },
   {

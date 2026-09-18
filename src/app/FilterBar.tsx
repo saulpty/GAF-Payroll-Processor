@@ -35,6 +35,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   '/attendance/today':      { employee: true, role: true, manager: true },
   '/attendance':            { periods: true, dateRange: true, employee: true, role: true, manager: true },
   '/attendance/reports':    { periods: true, dateRange: true, employee: true, role: true, manager: true },
+  '/attendance/activity':   { periods: true, dateRange: true, employee: true, role: true, manager: true },
   '/pto':                   { employee: true, role: true, manager: true },
   '/contracts':             { employee: true, role: true, manager: true },
   '/disciplinary':          { employee: true, role: true, manager: true },
