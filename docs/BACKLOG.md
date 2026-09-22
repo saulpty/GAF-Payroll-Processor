@@ -503,6 +503,19 @@ error box, one guarded automatic retry, Retry refetches). Fix: give `AttendanceT
 treatment — capture the error of every loader it uses, auto-retry once, and show "Couldn't Load
 Today's Records" instead of the empty-filter text. Same for `useTodayWhy`.
 
+### 24. Two render-time redirects survive the 2026-09-22 loop fix (2026-09-22)
+
+**Risk:** low, but it is the same trap. `RequireSuper` renders `<Navigate to="/attendance/today">` for
+a non-super user, and `HomeRedirect` renders one for `/`. Both are redirects on a route the app can
+land on, and the workbench overwrites any `replaceState` ~40 ms later (see LESSONS, "Never link the
+nav to a route that redirects"). Neither loops today: `/` is only hit on a fresh load, when the
+workbench has nothing remembered to write back, and a manager has no link to a super-only page. It
+would start looping the day something inside the app navigates a manager to `/process`. Fix when
+convenient: render the allowed page in place instead of redirecting, or redirect once from an effect
+guarded by a ref. Also worth a look: `AdminAccessHub`/`AdminEmployeesHub` call
+`setParams(next, { replace: true })` — harmless while it only runs on a tab click, a loop if it ever
+runs on every render.
+
 ## Structural
 
 ### 9. Six files are too large to edit reliably
