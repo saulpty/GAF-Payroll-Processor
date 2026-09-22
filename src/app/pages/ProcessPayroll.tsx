@@ -837,7 +837,7 @@ export default function ProcessPayroll() {
             </Button>
             {!formReady && (
               <p className="text-xs text-center text-muted-foreground mt-2">
-                Complete Period Name, dates, and upload the Teramind file to continue.
+                Complete Period Name, dates, and Teramind punches (capture them or upload a file) to continue.
               </p>
             )}
           </div>
