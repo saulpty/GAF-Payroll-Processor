@@ -21,7 +21,7 @@ type Props = {
 
 const TD = 'px-3 py-2 text-sm text-slate-700 align-top';
 const SUBTD = 'px-3 py-1.5 text-xs text-slate-600';
-const SUBTH = 'px-3 py-1.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide whitespace-nowrap bg-slate-100';
+const SUBTH = 'sticky top-[33px] z-[9] px-3 py-1.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide whitespace-nowrap bg-slate-100';
 
 const MAX_BAR = 480;
 
@@ -229,6 +229,7 @@ export default function ActivityByEmployee({ byEmployee, expandedId, onToggle }:
         sortKey={sortKey}
         sortDir={sortDir}
         onSort={handleSort}
+        className="max-h-[70vh]"
       >
         {sorted.map(emp => (
           <EmployeeRow

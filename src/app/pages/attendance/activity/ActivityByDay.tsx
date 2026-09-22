@@ -107,6 +107,7 @@ export default function ActivityByDay({ days, dateFrom, dateTo }: Props) {
         sortKey={sortKey}
         sortDir={sortDir}
         onSort={handleSort}
+        className="max-h-[70vh]"
       >
         {sorted.map(d => {
           const rowBg = d.needsLook ? 'bg-amber-50 hover:bg-amber-100/50' : 'hover:bg-slate-50';
