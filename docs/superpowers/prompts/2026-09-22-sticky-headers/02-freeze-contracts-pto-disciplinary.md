@@ -1,3 +1,14 @@
+> **OUTCOME: sent, and correctly refused. Nothing changed (export 72: 0/0/0).**
+>
+> The premise was wrong. All three files already carried
+> `className="mx-6 mb-6 max-h-[calc(100vh-260px)]"` (240px on Disciplinary) next to `stickyHeader`,
+> so their headers already froze. UI Bakery read the files, said so, and edited nothing — the right
+> answer. Verified afterwards on prod: PTO scrolled 1030px, Contracts 1816px, Disciplinary 50px, and
+> the header row stayed flush with the top of the card on all three.
+>
+> The mistake: `grep -A 5 "<DataTable"` showed five prop lines and stopped one line short of the
+> `className`. Activity was the odd one out, not the other way round. Kept here as the record.
+
 # 02 — Freeze the headers on Contracts, PTO Tracker and Disciplinary too
 
 **Only these three files may change. No other file may be touched.**

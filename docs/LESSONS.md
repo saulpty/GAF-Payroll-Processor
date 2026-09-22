@@ -690,3 +690,17 @@ so it only reproduces on an in-app click to a redirecting route.
 and the "view as" button all point at `/attendance/today`. Guarded by L7 in
 `tests/lessonGuards.test.ts`. The same trap applies to any future `<Navigate>` on a landing route —
 and to a `setSearchParams(..., { replace: true })` that runs on every render.
+
+### Read the whole element before claiming a file is missing something
+
+**2026-09-22.** Right after fixing the Activity tables' frozen headers, I told Saul that Contracts,
+PTO Tracker and Disciplinary "have the same flaw", got his approval, wrote a prompt and sent it. All
+three already had `max-h-[calc(100vh-260px)]` on their `<DataTable>` and their headers already froze.
+UI Bakery read the files, refused to change anything and was right; the export came back 0/0/0.
+
+The cause was a truncated look: `grep -n "<DataTable" -A 5` printed `columns`, `sortKey`, `sortDir`,
+`onSort`, `stickyHeader` — and stopped one line before `className`. Five lines looked like the whole
+element. **When the claim is "this file lacks X", read the whole element (or grep for X itself)
+before saying it out loud** — especially before asking Saul to approve work based on it. The cost
+here was small (a wasted round trip and a wrong statement to him), but the same habit is what turns
+into a confident wrong diagnosis on something that moves money.
