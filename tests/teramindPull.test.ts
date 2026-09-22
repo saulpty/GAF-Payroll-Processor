@@ -59,12 +59,27 @@ test('isTruncated is true only once rowCount reaches the limit', () => {
   assert.equal(isTruncated(101, 100), true);
 });
 
-test('keepFreshRange returns yesterday..today', () => {
-  assert.deepEqual(keepFreshRange('2026-03-01'), { from: '2026-02-28', to: '2026-03-01' });
+test('keepFreshRange covers the last week, ending today', () => {
+  assert.deepEqual(keepFreshRange('2026-03-01'), { from: '2026-02-23', to: '2026-03-01' });
 });
 
 test('keepFreshRange crosses a year boundary correctly', () => {
-  assert.deepEqual(keepFreshRange('2026-01-01'), { from: '2025-12-31', to: '2026-01-01' });
+  assert.deepEqual(keepFreshRange('2026-01-01'), { from: '2025-12-26', to: '2026-01-01' });
+});
+
+// 2026-09-22: Sat Sep 19 had zero rows in teramind_sessions. The sync only ran while a super user
+// had the Hub open and only asked for yesterday+today, so Monday's pull fetched Sunday and Monday
+// and Saturday was never in any range again. A week-wide window heals a weekend by itself.
+test('keepFreshRange on the Monday after a quiet weekend reaches back past Saturday', () => {
+  const range = keepFreshRange('2026-09-21');
+  assert.equal(range.from <= '2026-09-19', true, 'Monday must re-pull the Saturday nobody was online for');
+  assert.equal(range.to, '2026-09-21');
+});
+
+test('keepFreshRange takes an explicit span and refuses a nonsense one', () => {
+  assert.deepEqual(keepFreshRange('2026-03-01', 2), { from: '2026-02-28', to: '2026-03-01' });
+  assert.deepEqual(keepFreshRange('2026-03-01', 1), { from: '2026-03-01', to: '2026-03-01' });
+  assert.deepEqual(keepFreshRange('2026-03-01', 0), { from: '2026-02-23', to: '2026-03-01' });
 });
 
 test('coversRange: overlapping successful logs cover the range', () => {
@@ -97,4 +112,29 @@ test('coversRange: failed or truncated logs do not count as coverage', () => {
     { date_from: '2026-01-01', date_to: '2026-01-10', error: null, truncated: true },
   ];
   assert.equal(coversRange(log, '2026-01-01', '2026-01-10'), false);
+});
+
+// 2026-09-22: the log held a capture entered on Sep 17 for 2026-09-11 → 2026-09-25. Eight of those
+// days had not happened yet, but coversRange counted them, so Process Payroll would have offered
+// Tim a "saved copy" of Q2-Sep that was missing Saturday Sep 19 entirely — a worked day would have
+// reached the engine as an absence. A pull only ever saw days up to the day it ran.
+test('coversRange: a pull cannot cover days that had not happened when it ran', () => {
+  const log = [
+    { date_from: '2026-09-11', date_to: '2026-09-25', error: null, truncated: false, pulled_ymd: '2026-09-17' },
+  ];
+  assert.equal(coversRange(log, '2026-09-11', '2026-09-17'), true,  'the days it did see are covered');
+  assert.equal(coversRange(log, '2026-09-11', '2026-09-25'), false, 'the future days it claimed are not');
+  assert.equal(coversRange(log, '2026-09-19', '2026-09-19'), false, 'the Saturday that was actually missing');
+});
+
+test('coversRange: falls back to pulled_at when pulled_ymd is absent, and to the range when neither is', () => {
+  const withTimestamp = [
+    { date_from: '2026-09-11', date_to: '2026-09-25', error: null, truncated: false, pulled_at: '2026-09-17T20:09:00.000Z' },
+  ];
+  assert.equal(coversRange(withTimestamp, '2026-09-19', '2026-09-19'), false);
+
+  const bare = [
+    { date_from: '2026-09-11', date_to: '2026-09-25', error: null, truncated: false },
+  ];
+  assert.equal(coversRange(bare, '2026-09-19', '2026-09-19'), true, 'older callers keep working unchanged');
 });

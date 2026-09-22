@@ -45,13 +45,24 @@ export function isTruncated(rowCount: number, limit: number): boolean {
   return rowCount >= limit;
 }
 
-export function keepFreshRange(todayEastern: string): PullChunk {
+/** Days the keep-fresh sync re-pulls, counting today. A week covers any weekend or holiday
+ *  stretch with nobody signed in; the pull is still a single chunk, so it costs one API call. */
+export const KEEP_FRESH_DAYS = 7;
+
+export function keepFreshRange(todayEastern: string, days: number = KEEP_FRESH_DAYS): PullChunk {
+  const span = Number.isFinite(days) && days >= 1 ? Math.floor(days) : KEEP_FRESH_DAYS;
   const today = toDayNumber(todayEastern);
-  return { from: fromDayNumber(today - 1), to: todayEastern };
+  return { from: fromDayNumber(today - (span - 1)), to: todayEastern };
 }
 
 export function coversRange(
-  log: { date_from: string; date_to: string; error: string | null; truncated: boolean }[],
+  log: {
+    date_from: string; date_to: string; error: string | null; truncated: boolean;
+    /** Eastern date the pull ran, from loadTeramindPullLog. */
+    pulled_ymd?: string | null;
+    /** Timestamp fallback when pulled_ymd is absent; only its first 10 characters are read. */
+    pulled_at?: string | null;
+  }[],
   from: string,
   to: string,
 ): boolean {
@@ -61,7 +72,12 @@ export function coversRange(
   for (const entry of log) {
     if (entry.error || entry.truncated) continue;
     const start = toDayNumber(entry.date_from);
-    const end = toDayNumber(entry.date_to);
+    // A pull only ever saw days up to the day it ran; a range reaching into the future
+    // (a capture entered before the period ended) covers nothing past that day.
+    const ranOn = (entry.pulled_ymd ?? entry.pulled_at ?? '').slice(0, 10);
+    const end = /^\d{4}-\d{2}-\d{2}$/.test(ranOn)
+      ? Math.min(toDayNumber(entry.date_to), toDayNumber(ranOn))
+      : toDayNumber(entry.date_to);
     for (let d = start; d <= end; d++) covered.add(d);
   }
 

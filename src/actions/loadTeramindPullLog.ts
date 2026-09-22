@@ -13,6 +13,7 @@ function loadTeramindPullLog() {
         date_from,
         date_to,
         pulled_at,
+        to_char(pulled_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS pulled_ymd,
         pulled_by,
         trigger,
         agent_count,

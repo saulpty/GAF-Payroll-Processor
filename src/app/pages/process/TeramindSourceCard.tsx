@@ -60,6 +60,7 @@ export function TeramindSourceCard({ startDate, endDate, disabled, capture, onCa
         error:     null as string | null,
         truncated: false,
         pulled_at: String(r.pulled_at ?? ''),
+        pulled_ymd: r.pulled_ymd ? String(r.pulled_ymd) : null,
       }));
   }, [pullLog]);
 
