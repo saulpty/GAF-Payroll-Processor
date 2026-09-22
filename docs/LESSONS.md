@@ -668,3 +668,25 @@ exists to produce. **Don't revert a UIB-initiated split just because it wasn't r
 resulting file sizes and whether behavior held (screenshot before/after), accept it, and say so
 plainly in the commit message** so a later `git log` read doesn't mistake it for scope creep.
 
+
+### Never link the nav to a route that redirects — the workbench fights it and the app loops
+
+**2026-09-22, on prod, reported by Saul as "Today flashes like a redirect issue and then gets messed
+up".** The Attendance section's nav target was `/attendance`, and that route rendered
+`<Navigate to="/attendance/today" replace />`. UI Bakery's workbench mirrors the running app's URL:
+about 40 ms after any `replaceState` it writes its own remembered value back and fires a `popstate`.
+React Router then re-rendered `/attendance`, our redirect fired again, and the two took turns.
+
+Measured in the iframe with patched `history.pushState`/`replaceState`: **448 history operations and
+~250 database requests in roughly two seconds** per click, ending on `/attendance` — which rendered
+the *List* tab with no tab highlighted, while the backlog of queries made every later page crawl
+until a hard refresh. The console showed no error at all; the only visible symptom was a flash and a
+slow, wrong page. Two things made it hard to spot: a **full page load is fine** (the workbench has no
+remembered URL yet to overwrite), and clicking the **Today sub-link is fine** (no redirect involved),
+so it only reproduces on an in-app click to a redirecting route.
+
+**The rule: a route the app navigates to must render its page, not redirect to another route.**
+`/attendance` now renders Today directly, and `TopNav`'s section home, `homeFor()`, `RequireSuper`
+and the "view as" button all point at `/attendance/today`. Guarded by L7 in
+`tests/lessonGuards.test.ts`. The same trap applies to any future `<Navigate>` on a landing route —
+and to a `setSearchParams(..., { replace: true })` that runs on every render.

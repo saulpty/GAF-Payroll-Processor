@@ -5,7 +5,7 @@ import { homeFor } from '@/app/lib/access';
 
 export default function RequireSuper({ children }: { children: ReactNode }) {
   const { isSuper } = useViewer();
-  return isSuper ? <>{children}</> : <Navigate to="/attendance" replace />;
+  return isSuper ? <>{children}</> : <Navigate to="/attendance/today" replace />;
 }
 
 export function HomeRedirect() {

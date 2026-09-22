@@ -47,7 +47,7 @@ const SECTIONS = [
     id: 'attendance',
     label: 'Attendance',
     icon: Activity,
-    home: '/attendance',
+    home: '/attendance/today',
     color: 'from-[#2AA876] to-[#22966a]',
     activeBg: 'bg-[#2AA876]',
     hoverBg: 'hover:bg-[#22966a]',

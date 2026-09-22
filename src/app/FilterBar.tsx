@@ -33,7 +33,8 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   '/hrk-summary':           { period: true },
   '/process':               { dateRange: true },
   '/attendance/today':      { employee: true, role: true, manager: true },
-  '/attendance':            { periods: true, dateRange: true, employee: true, role: true, manager: true },
+  '/attendance/list':       { periods: true, dateRange: true, employee: true, role: true, manager: true },
+  '/attendance':            { employee: true, role: true, manager: true },
   '/attendance/reports':    { periods: true, dateRange: true, employee: true, role: true, manager: true },
   '/attendance/activity':   { periods: true, dateRange: true, employee: true, role: true, manager: true },
   '/pto':                   { employee: true, role: true, manager: true },
@@ -43,7 +44,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
 
 // Routes with a Periods/Dates switch, keyed to their default mode
 const ATTENDANCE_SWITCH_ROUTES: Record<string, 'periods' | 'dates'> = {
-  '/attendance':           'periods',
+  '/attendance/list':      'periods',
   '/attendance/reports':   'periods',
   '/attendance/activity':  'dates',
 };

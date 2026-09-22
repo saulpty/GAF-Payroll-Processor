@@ -33,7 +33,7 @@ export function canSeeSection(isSuper: boolean, sectionId: string): boolean {
 }
 
 export function homeFor(isSuper: boolean): string {
-  return isSuper ? '/payroll-master' : '/attendance';
+  return isSuper ? '/payroll-master' : '/attendance/today';
 }
 
 /** 'ready' only for a known, active user. Anything else is 'blocked'. */

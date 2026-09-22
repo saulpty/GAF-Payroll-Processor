@@ -197,7 +197,7 @@ export default function UsersTab() {
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       {!isMe && row.active && (
-                        <button title="See the app as this person" onClick={() => { setViewAs(row.email); navigate('/attendance'); }} className="p-1 rounded hover:bg-amber-50 text-slate-500 hover:text-amber-700">
+                        <button title="See the app as this person" onClick={() => { setViewAs(row.email); navigate('/attendance/today'); }} className="p-1 rounded hover:bg-amber-50 text-slate-500 hover:text-amber-700">
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                       )}

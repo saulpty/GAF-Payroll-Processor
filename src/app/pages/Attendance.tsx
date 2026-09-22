@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useLoadAction } from '@uibakery/data';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useViewer } from '@/app/context/ViewerContext';
-import { useLocation, Navigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Activity } from 'lucide-react';
 import loadAttendanceDailyAction from '@/actions/loadAttendanceDaily';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
@@ -22,18 +22,15 @@ import { useState } from 'react';
 type Tab = 'list' | 'reports' | 'today' | 'activity';
 
 function tabFromPath(pathname: string): Tab {
-  if (pathname.includes('/today'))    return 'today';
   if (pathname.includes('/reports'))  return 'reports';
   if (pathname.includes('/activity')) return 'activity';
   if (pathname.includes('/list'))     return 'list';
-  return 'list';
+  return 'today';
 }
 
 // Reports/Today/Activity tabs have their own data layer — render them without loading the heavy daily view
 export default function Attendance() {
   const { pathname } = useLocation();
-
-  if (pathname === '/attendance') return <Navigate to="/attendance/today" replace />;
 
   const tab: Tab = tabFromPath(pathname);
 

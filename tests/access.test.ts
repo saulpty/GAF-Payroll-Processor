@@ -37,7 +37,7 @@ test('AX3: sections — managers lose exactly payroll and admin', () => {
 
 test('AX4: home page by role', () => {
   assert.equal(homeFor(true), '/payroll-master');
-  assert.equal(homeFor(false), '/attendance');
+  assert.equal(homeFor(false), '/attendance/today');
 });
 
 test('AX5: viewerStatus is ready only for a known, active user', () => {

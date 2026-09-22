@@ -229,3 +229,34 @@ test('L6: PayrollMaster.handleSave removes edits[row.id] after reload()', () => 
   assert.ok(clear >= 0, 'handleSave never removes edits[row.id]; the Save button would stay visible after a successful save.');
   assert.ok(clear > reload, 'edits[row.id] must be removed AFTER await reload(), not before.');
 });
+
+// L7 (2026-09-22): never point a navigation target at a route that immediately redirects.
+// `/attendance` used to render `<Navigate to="/attendance/today" replace />`. UI Bakery's
+// workbench mirrors the app URL and writes its own remembered value back ~40 ms after any
+// replaceState, firing a popstate; React Router re-rendered `/attendance` and our redirect
+// fired again. Measured on prod: ~450 history operations and ~250 database requests in two
+// seconds, ending on `/attendance` with the wrong tab and needing a hard refresh.
+// The rule: a landing route renders its page, it does not redirect to another route.
+test('L7: Attendance does not redirect, and nothing navigates to the bare /attendance', () => {
+  const page = 'src/app/pages/Attendance.tsx';
+  assert.ok(existsSync(page), `${page} should exist`);
+  const src = readFileSync(page, 'utf8');
+  assert.ok(
+    !/<Navigate\b/.test(src),
+    `${page} renders a <Navigate>. A route the nav links to must render its page, not redirect — ` +
+      `the workbench fights the replaceState and the app loops.`,
+  );
+
+  const nav = readFileSync('src/app/TopNav.tsx', 'utf8');
+  assert.ok(
+    !/home:\s*'\/attendance'\s*,/.test(nav),
+    `TopNav's attendance section still has home: '/attendance'. Point it at '/attendance/today'.`,
+  );
+
+  const access = readFileSync('src/app/lib/access.ts', 'utf8');
+  const homeFn = access.slice(access.indexOf('export function homeFor'));
+  assert.ok(
+    !/'\/attendance'/.test(homeFn.slice(0, 200)),
+    `homeFor() still returns the bare '/attendance'. Return '/attendance/today'.`,
+  );
+});
