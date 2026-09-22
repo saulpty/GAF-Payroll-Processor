@@ -36,6 +36,7 @@ export function TodayTableRow({
   tdCls: string;
 }) {
   // Status chip: override to "On Leave" when applicable
+  const offToday = row.status === 'day_off' && row.records === 0;
   const onLeave = isOnLeave(row.status, why);
   const chip = onLeave
     ? { label: 'On Leave', cls: 'bg-blue-100 text-blue-700 border-blue-200' }
@@ -85,7 +86,7 @@ export function TodayTableRow({
       : null;
 
   return (
-    <tr className="hover:bg-slate-50 transition-colors">
+    <tr className={`hover:bg-slate-50 transition-colors${offToday ? ' opacity-60' : ''}`}>
       <td className={tdCls}>
         <div className="font-medium leading-tight">{row.name}</div>
         <div className="text-xs text-muted-foreground mt-0.5">{row.role}</div>

@@ -31,6 +31,7 @@ interface TodayTilesProps {
   };
   onLeaveCount: number;
   noRecordsCount: number;
+  offTodayCount: number;
 }
 
 export default function TodayTiles({
@@ -39,13 +40,14 @@ export default function TodayTiles({
   summary,
   onLeaveCount,
   noRecordsCount,
+  offTodayCount,
 }: TodayTilesProps) {
   return (
     <div className="flex flex-wrap gap-3 mb-5">
       <SummaryTile
         label="Scheduled"
         value={scheduledCount}
-        tip="Total employees expected to work today (excludes holidays and days off with no activity)."
+        tip="Employees expected to work today. Excludes holidays and anyone whose schedule gives them the day off."
       />
       {isToday && (
         <SummaryTile
@@ -76,6 +78,14 @@ export default function TodayTiles({
         accent={onLeaveCount > 0 ? 'text-blue-600' : undefined}
         tip="A PTO, permission, sick form, other form, or holiday covers today."
       />
+      {offTodayCount > 0 && (
+        <SummaryTile
+          label="Off Today"
+          value={offTodayCount}
+          accent="text-slate-500"
+          tip="Their schedule gives them the day off and no activity was recorded. They are listed, greyed out, at the bottom of the table."
+        />
+      )}
       <SummaryTile
         label="No Records"
         value={noRecordsCount}

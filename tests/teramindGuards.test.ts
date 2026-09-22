@@ -210,3 +210,31 @@ test('T18: the view the actions read has a migration', () => {
   const found = readdirSync(join(root, 'src/migrations')).filter(f => /teramind_ghost_records/.test(f));
   assert.equal(found.length, 1, `expected exactly one teramind_ghost_records migration, found ${found.length}`);
 });
+
+// ── Off today (2026-09-22) ───────────────────────────────────────────────────────────────────
+// Marcela lost two of her nine people from the Today board on a Tuesday: Euclides Gonzalez and
+// Michael Antonio Jones Roye are on "Weekend Schedule Mon-Tue OFF", and a day_off row with no
+// records used to be filtered out of the table entirely. Off is not the same as gone — the row
+// stays, greyed, and the Scheduled tile counts only people actually expected to work.
+test('T19: Today keeps day-off people in the table and out of the Scheduled count', () => {
+  const page = 'src/app/pages/attendance/AttendanceToday.tsx';
+  assert.ok(existsSync(join(root, page)), `${page} should exist`);
+  const src = read(page);
+
+  assert.doesNotMatch(
+    src,
+    /allRows\.filter\(\s*r\s*=>\s*!\(\s*r\.status === 'day_off'/,
+    `${page} filters day-off rows out of the table again. A manager cannot tell "off today" from ` +
+      `"missing" — keep the row and let TodayTableRow mute it.`,
+  );
+
+  const sched = src.slice(src.indexOf('const scheduledCount'));
+  const decl = sched.slice(0, sched.indexOf(';') + 1);
+  assert.ok(decl.length > 0, 'AttendanceToday no longer computes scheduledCount');
+  assert.match(
+    decl,
+    /day_off/,
+    `scheduledCount does not exclude 'day_off'. Someone who worked on their day off would be ` +
+      `counted as scheduled — that is how Marcela's board read 7 Scheduled for 6 scheduled people.`,
+  );
+});

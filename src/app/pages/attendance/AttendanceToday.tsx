@@ -137,10 +137,12 @@ export default function AttendanceToday() {
     });
   }, [day, statusNowMin, isToday, employees, punches, holidays, dstWindows, dataAsOfMin]);
 
-  // Drop day_off rows with zero records from the visible table and tile counts
-  const rows = useMemo(() =>
-    allRows.filter(r => !(r.status === 'day_off' && r.records === 0)),
-    [allRows]
+  // Everyone the viewer manages. People who are off today stay in the table (buildToday
+  // already sorts them to the bottom) and are muted by TodayTableRow.
+  const rows = allRows;
+  const offTodayCount = useMemo(
+    () => allRows.filter(r => r.status === 'day_off' && r.records === 0).length,
+    [allRows],
   );
 
   // Maps for useTodayWhy
@@ -185,8 +187,11 @@ export default function AttendanceToday() {
     [rows, whyById]
   );
 
-  // Tile counts also exclude day_off (rows already filtered)
-  const scheduledCount = rows.filter(r => r.status !== 'holiday').length;
+  // Expected to work today: not a holiday, not a day off, not a future start date.
+  // A day-off row is excluded even when the person worked anyway.
+  const scheduledCount = rows.filter(
+    r => r.status !== 'holiday' && r.status !== 'day_off' && r.status !== 'not_started',
+  ).length;
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -269,6 +274,7 @@ export default function AttendanceToday() {
               summary={summary}
               onLeaveCount={onLeaveCount}
               noRecordsCount={noRecordsCount}
+              offTodayCount={offTodayCount}
             />
 
             {/* Table */}
