@@ -50,3 +50,49 @@ test('P8: a legacy free-text period or a missing end date gives no suggestion', 
   assert.equal(nextPeriod({ period_name: 'Test Period May 25th - Jun 10th', end_date: '2026-06-10' }), null);
   assert.equal(nextPeriod({ period_name: 'Q1-Aug-2026', end_date: null }), null);
 });
+
+// ── 2026-09-23: two different canonical periods are never "typos" of each other ──
+// The typo guard refused Q2-Sep-2026 because Q1-Sep-2026 existed (one character
+// apart). It also refused Jul next to Jun, May next to Mar, and 2027 next to 2026.
+// A name with the canonical shape is its own period; only malformed input can be a typo.
+
+test('P9: Q2 of a month is not a typo of Q1 of the same month', () => {
+  assert.equal(nearMatch('Q2-Sep-2026', ['Q1-Sep-2026']), null);
+  assert.equal(nearMatch('Q1-Sep-2026', ['Q2-Sep-2026']), null);
+});
+
+test('P10: neighbouring months and years are distinct periods, not typos', () => {
+  assert.equal(nearMatch('Q1-Jul-2026', ['Q1-Jun-2026']), null);
+  assert.equal(nearMatch('Q1-May-2026', ['Q1-Mar-2026']), null);
+  assert.equal(nearMatch('Q1-Jan-2027', ['Q1-Jan-2026']), null);
+});
+
+test('P11: malformed input is still caught as a typo of the canonical period', () => {
+  assert.equal(nearMatch('Q1-Aug-20260', ['Q1-Aug-2026', 'Q2-Aug-2026']), 'Q1-Aug-2026');
+  assert.equal(nearMatch('q2-sep-2026', ['Q1-Sep-2026', 'Q2-Sep-2026']), 'Q2-Sep-2026');
+});
+
+// ── 2026-09-23: the period name comes from the end date ──
+// Every period on record ends by the 15th (Q1) or after it (Q2) of the month it is
+// named for; the start date can fall in the previous month (Q1-Apr ran Mar 26 → Apr 10).
+
+test('P12: the name is derived from the end date — day 1-15 is Q1, 16+ is Q2', async () => {
+  const { periodNameFromEndDate } = await import('../src/app/lib/periodName.ts');
+  const history: [string, string][] = [
+    ['2026-03-25', 'Q2-Mar-2026'], ['2026-04-10', 'Q1-Apr-2026'], ['2026-04-23', 'Q2-Apr-2026'],
+    ['2026-05-10', 'Q1-May-2026'], ['2026-05-24', 'Q2-May-2026'], ['2026-08-09', 'Q1-Aug-2026'],
+    ['2026-08-24', 'Q2-Aug-2026'], ['2026-09-08', 'Q1-Sep-2026'], ['2026-09-25', 'Q2-Sep-2026'],
+  ];
+  for (const [end, name] of history) assert.equal(periodNameFromEndDate(end), name, end);
+  assert.equal(periodNameFromEndDate('2026-09-15'), 'Q1-Sep-2026');
+  assert.equal(periodNameFromEndDate('2026-09-16'), 'Q2-Sep-2026');
+  assert.equal(periodNameFromEndDate('2027-01-09'), 'Q1-Jan-2027');
+  assert.equal(periodNameFromEndDate('2026-12-25T00:00:00.000Z'), 'Q2-Dec-2026');
+});
+
+test('P13: no end date, or a malformed one, gives no name', async () => {
+  const { periodNameFromEndDate } = await import('../src/app/lib/periodName.ts');
+  for (const bad of ['', null, undefined, '2026-13-01', '2026-09-32', '09/25/2026', 'soon']) {
+    assert.equal(periodNameFromEndDate(bad as string), null, String(bad));
+  }
+});
