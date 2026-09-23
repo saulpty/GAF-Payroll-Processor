@@ -1,5 +1,7 @@
 # 01 — Let Q2 follow Q1, and add "period name from end date"
 
+**Inside this project the code root *is* `src`, so `src/app/…` means `app/…`.**
+
 **Only this one file may change. No other file may be touched.**
 
 - `src/app/lib/periodName.ts`

@@ -1,5 +1,7 @@
 # 02 — Process Payroll: the period name fills itself in from the end date
 
+**Inside this project the code root *is* `src`, so `src/app/…` means `app/…`.**
+
 **Only this one file may change. No other file may be touched.**
 
 - `src/app/pages/ProcessPayroll.tsx`
