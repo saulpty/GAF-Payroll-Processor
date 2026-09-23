@@ -132,7 +132,7 @@ export default function PayrollMaster() {
   const [params, setParams] = useState({
     periodName: rawPeriod === '__all__' ? '' : rawPeriod,
     employeeName: globalEmployee || '',
-    status: '',
+    status: activeTab === 'ALL' ? '' : activeTab,
     offset: 0,
   });
 
@@ -144,6 +144,12 @@ export default function PayrollMaster() {
     discardAll();
     setSavedIds(new Set());
   }, [globalPeriod, globalEmployee, searchParams]);
+
+  // The tab filters in the database, so GREEN / YELLOW / RED cover the whole period, not just this page.
+  useEffect(() => {
+    setParams(prev => ({ ...prev, status: activeTab === 'ALL' ? '' : activeTab, offset: 0 }));
+    setPage(0);
+  }, [activeTab]);
 
   const [rows, loading, , reload] = useLoadAction(loadPayrollMasterAction, [] as EntryRow[], params, { enabled: periodChosen });
   const { getEdit, update, isDirty, discard, discardAll, markSaved, dirtyCount } = useRowEdits<EntryRow, EditState>(toEditState, rows as EntryRow[]);
@@ -497,6 +503,9 @@ export default function PayrollMaster() {
               disabled={bulkSaving} onClick={handleUndo}>
               <Undo2 className="w-3.5 h-3.5 mr-1.5" />Undo Bulk
             </Button>
+          )}
+          {totalPages > 1 && (
+            <span className="text-xs text-muted-foreground">CSV exports this page only ({page+1} of {totalPages})</span>
           )}
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={loading || filtered.length === 0}>
             <Download className="w-4 h-4 mr-2" />Export CSV

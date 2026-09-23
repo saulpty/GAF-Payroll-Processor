@@ -80,7 +80,14 @@ export async function pullAllItems(
     const nextRaw = await pull({ query: nextQuery, variables: {} });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const nextPage = (nextRaw as any)?.data?.next_items_page as PageResult | undefined;
-    if (!nextPage) break;
+    if (!nextPage) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const msg = (nextRaw as any)?.errors?.[0]?.message;
+      throw new Error(
+        'Monday returned no next_items_page for board ' + boardId +
+        (msg ? ' (' + msg + ')' : ''),
+      );
+    }
     all.push(...(nextPage.items ?? []));
     cursor = nextPage.cursor ?? null;
   }
@@ -138,5 +145,9 @@ export async function batchUpsert(
   for (let i = 0; i < rows.length; i += BATCH) {
     await upsert({ rows: JSON.stringify(rows.slice(i, i + BATCH)) });
   }
+  // No items seen this run — a board that pulled 0 rows almost certainly failed before
+  // producing any, not a board that genuinely emptied out. Never let an empty seenIds
+  // flag every existing row deleted_on_monday = true.
+  if (seenIds.length === 0) return;
   await markDeleted({ seen_ids: JSON.stringify(seenIds) });
 }

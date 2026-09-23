@@ -603,6 +603,10 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
           auto_notes: `Permission: ${fullDayPerm.requestType}${isTftPerm ? ' — TFT on file, operator must review.' : ''}`,
           initial_status: permStatus,
         });
+        // A YELLOW permission is held for the operator even though event and impact are
+        // pre-filled as a suggestion: computeDerivedFields would call it resolved (YES/GREEN)
+        // and Action Required, which loads only payroll_ready = 'NO', would never show it.
+        if (permStatus === 'YELLOW') { entry.payroll_ready = 'NO'; entry.status_current = 'YELLOW'; }
         results.push(entry);
         continue;
       }

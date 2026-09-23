@@ -96,3 +96,16 @@ test('P13: no end date, or a malformed one, gives no name', async () => {
     assert.equal(periodNameFromEndDate(bad as string), null, String(bad));
   }
 });
+
+// ── 2026-09-23: Process Payroll takes the name from the end date; Tim only picks dates ──
+test('P14: Process Payroll derives the period name from the end date and cannot be typed into', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/app/pages/ProcessPayroll.tsx', import.meta.url), 'utf8');
+  assert.match(src, /import \{[^}]*\bperiodNameFromEndDate\b[^}]*\} from '@\/app\/lib\/periodName'/);
+  assert.doesNotMatch(src, /setPeriodName\(e\.target\.value\)/, 'the name box must not accept typing');
+  assert.match(src, /setEndDate\(e\.target\.value\);\s*setPeriodName\(periodNameFromEndDate\(e\.target\.value\)/,
+    'changing the end date must set the name');
+  const nameInput = src.slice(src.indexOf('Period Name (from the end date)'), src.indexOf('Period Name (from the end date)') + 600);
+  assert.match(nameInput, /\breadOnly\b/, 'the name box is read-only');
+  assert.doesNotMatch(src, /are left in place/, 'the re-run warning must not say stale rows are left in place');
+});

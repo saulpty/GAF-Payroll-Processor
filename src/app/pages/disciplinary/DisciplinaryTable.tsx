@@ -73,14 +73,8 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
 
   // ── Data loads ────────────────────────────────────────────────────────────
 
-  const [rawRows, loading, error, reload] = useLoadAction(
-    loadDisciplinaryActionsAction,
-    [] as DisciplinaryRowType[],
-    { manager: null, employeeName: null, includeDeleted: isSuper },
-  );
-
-  const [empsRaw] = useLoadAction(loadAllEmployeesAction, []);
-  const [aliasesRaw] = useLoadAction(loadNameAliasesAction, []);
+  const [empsRaw, loadingEmps] = useLoadAction(loadAllEmployeesAction, []);
+  const [aliasesRaw, loadingAliases] = useLoadAction(loadNameAliasesAction, []);
   const [visibleRaw, loadingVisible] = useLoadAction(
     loadVisibleEmployeeIdsAction,
     [] as { employee_id: number | string }[],
@@ -89,6 +83,29 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
   const visibleIds = useMemo(
     () => new Set((visibleRaw as { employee_id: number | string }[]).map(r => String(r.employee_id))),
     [visibleRaw],
+  );
+
+  // The disciplinary DB cannot join v_employee_access, so we send it every
+  // spelling (display name + aliases) of the people this viewer may see,
+  // normalised exactly like normalizeName. allNames skips it for supers.
+  const scopeNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of empsRaw as { id: number | string; display_name: string | null }[]) {
+      if (e.display_name && visibleIds.has(String(e.id))) set.add(normalizeName(e.display_name));
+    }
+    for (const a of aliasesRaw as { employee_id: number | string; alias_text: string | null }[]) {
+      if (a.alias_text && visibleIds.has(String(a.employee_id))) set.add(normalizeName(a.alias_text));
+    }
+    set.delete('');
+    return JSON.stringify(Array.from(set).sort());
+  }, [empsRaw, aliasesRaw, visibleIds]);
+  const scopeReady = allEmployees || (!loadingVisible && !loadingEmps && !loadingAliases);
+
+  const [rawRows, loading, error, reload] = useLoadAction(
+    loadDisciplinaryActionsAction,
+    [] as DisciplinaryRowType[],
+    { manager: null, employeeName: null, includeDeleted: isSuper, allNames: allEmployees, names: scopeNames },
+    { enabled: scopeReady },
   );
 
   // Each employee's managers from the access groups ("|"-separated, by rank).
@@ -246,7 +263,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (loading || (!allEmployees && loadingVisible)) {
+  if (loading || !scopeReady) {
     return (
       <div className="flex items-center justify-center py-16 text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin mr-2" />

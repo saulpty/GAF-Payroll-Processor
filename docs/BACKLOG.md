@@ -462,7 +462,7 @@ per-route default is never enforced after the first manual switch. Low priority 
 whenever `FilterBar.tsx` / `AttendanceRangeControls.tsx` is next touched, by keying the default off
 the route rather than off a single shared value.
 
-### 18. `AccessAutoSync` has no super-user gate (2026-09-18)
+### 18. `AccessAutoSync` has no super-user gate (2026-09-18) — ✅ FIXED 2026-09-23 (prompt `2026-09-23-review-fixes/03`)
 
 **Risk:** decision, not a defect. Pre-existing design — any signed-in user's tab keeps access groups
 fresh, unlike `MondayAutoSync` which is `isSuper`-gated. Today's shared-sync change made it poll every
@@ -515,6 +515,18 @@ convenient: render the allowed page in place instead of redirecting, or redirect
 guarded by a ref. Also worth a look: `AdminAccessHub`/`AdminEmployeesHub` call
 `setParams(next, { replace: true })` — harmless while it only runs on a tab click, a loop if it ever
 runs on every render.
+
+### 25. HRK Summary — check it works as it should before trusting it further (2026-09-23)
+
+Saul, 2026-09-23: *"fix it and set a note to work on the hrk thing later since we need to see if it works well as it should."*
+The double count was fixed by prompt `2026-09-23-review-fixes/08` (doctor-note and sick-day hours counted once). Still open, found during that work:
+
+- **Negative doctor-note hours.** Ángela Rodgers, 2026-05-20: the time range in her note is written in a way the parser misreads, so her doctor-note hours come out **−8** and 8 hours are *added* to worked time. The note parser needs the end time to be the last thing in the note.
+- **Editing a figure on the HRK page does not recompute worked hours.** Changing Constancia or Incapacidad on the page leaves Total Worked Hours as it was, and the CSV can contradict itself. "Save Edits" stores nothing, and there is no warning when leaving the page.
+- **Doctor-note hours come only from the note now.** A doctor-note day whose note has no readable time range gets 0 hours and a ⚠ flag, but only when the day also has discount minutes; one with no discount (Q2-Apr, employee 40, "4 hours") still gets 0 silently. The ⚠ tooltip says "not tagged" even when the row is tagged.
+- **Two imported rows to check with Tim:** Ángela Rodgers Apr 8 stores 420 discount minutes but her note says dock 4 hours (240); Apr 15 ("4 hours") now shows 4 doctor-note hours as worked, flagged.
+- **Leavers:** base hours run to the period end, not the employee's end date.
+- **7 vs 8 hours for a full missed day (see #1):** Saul, 2026-09-23: *"people work 7 hours and 1hour break thats the minimum expect for everyone."* If the break is unpaid, the engine's 420 may be right and the Aug 11 ruling (480) wrong. Settle with the consultant before changing anything.
 
 ## Structural
 

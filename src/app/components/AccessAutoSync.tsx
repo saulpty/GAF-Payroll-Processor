@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useMutateAction } from '@uibakery/data';
 import { useAccessSync } from '@/app/pages/admin/access/useAccessSync';
+import { useViewer } from '@/app/context/ViewerContext';
 import loadClassificationConfigAction from '@/actions/loadClassificationConfig';
 
 type ConfigRow = { key: string; value: string };
@@ -11,10 +12,12 @@ let lastRunMs = 0;
 /** Keeps access groups in step with the Monday directory.
  *  Runs on mount and then every 60 s; skips when already ran within sync_every_minutes. Renders nothing. */
 export default function AccessAutoSync() {
+  const { isSuper } = useViewer();
   const sync = useAccessSync();
   const [fetchConfig] = useMutateAction(loadClassificationConfigAction);
 
   useEffect(() => {
+    if (!isSuper) return;
     async function maybeSync() {
       if (document.hidden) return;
 
@@ -44,7 +47,7 @@ export default function AccessAutoSync() {
     const timer = setInterval(maybeSync, 60_000);
     return () => { clearTimeout(first); clearInterval(timer); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isSuper]);
 
   return null;
 }

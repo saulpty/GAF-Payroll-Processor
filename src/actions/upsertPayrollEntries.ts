@@ -42,6 +42,8 @@ function upsertPayrollEntries() {
         auto_notes = EXCLUDED.auto_notes,
         initial_status = EXCLUDED.initial_status,
         status_current = EXCLUDED.status_current,
+        deleted_at = NULL,
+        deleted_by = NULL,
         updated_at = NOW();
     `,
   });

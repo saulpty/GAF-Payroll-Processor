@@ -37,7 +37,7 @@ import {
   type MondayAdjustmentRow,
   type MondayPermissionRow,
 } from '@/app/lib/classificationEngine';
-import { normalizePeriodName, isCanonical, nearMatch, nextPeriod } from '@/app/lib/periodName';
+import { normalizePeriodName, isCanonical, nearMatch, nextPeriod, periodNameFromEndDate } from '@/app/lib/periodName';
 
 type Employee = {
   id: number; display_name: string; teramind_email: string;
@@ -162,7 +162,7 @@ export default function ProcessPayroll() {
       .sort((a, b) => String(b.end_date).localeCompare(String(a.end_date)))[0];
     if (!latest) return;
     const nx = nextPeriod({ period_name: latest.period_name, end_date: String(latest.end_date).slice(0, 10) });
-    if (nx) { setPeriodName(nx.name); setStartDate(nx.startDate); setEndDate(nx.endDate); }
+    if (nx) { setPeriodName(periodNameFromEndDate(nx.endDate) ?? nx.name); setStartDate(nx.startDate); setEndDate(nx.endDate); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingPeriods]);
   const unresolvedMap = useMemo(() => {
@@ -593,18 +593,18 @@ export default function ProcessPayroll() {
         <StepCard number={1} icon={<Calendar className="w-4 h-4" />} title="Pay Period" complete={!!(periodName && startDate && endDate)}>
           <div className="grid grid-cols-3 gap-4 mb-3">
             <div className="col-span-1">
-              <label className="text-xs font-medium block mb-1 text-slate-600">Period Name *</label>
+              <label className="text-xs font-medium block mb-1 text-slate-600">Period Name (from the end date)</label>
               <input
-                className={`w-full border rounded-md px-3 py-2 text-sm ${isRerun ? 'border-amber-400 bg-amber-50' : ''}`}
-                placeholder="e.g. Q3-Jun-2026"
+                className={`w-full border rounded-md px-3 py-2 text-sm cursor-default ${isRerun ? 'border-amber-400 bg-amber-50' : 'bg-slate-50'}`}
+                placeholder="Pick the end date"
                 value={periodName}
-                onChange={e => setPeriodName(e.target.value)}
+                readOnly
                 disabled={isRunning}
               />
               {isRerun && (
                 <div className="mt-1 space-y-1.5">
                   <p className="text-[11px] text-amber-600 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> This period already exists — re-run will regenerate and update entries; resolved work will be overwritten, but rows the engine no longer generates are left in place.
+                    <AlertTriangle className="w-3 h-3" /> This period already exists — re-run will regenerate and update entries; resolved work will be overwritten, and rows the engine no longer produces are removed (restore them from Period Log).
                   </p>
                   <label className="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-slate-700">
                     <input
@@ -665,7 +665,7 @@ export default function ProcessPayroll() {
             <div>
               <label className="text-xs font-medium block mb-1 text-slate-600">End Date *</label>
               <input type="date" className="w-full border rounded-md px-3 py-2 text-sm"
-                value={endDate} onChange={e => setEndDate(e.target.value)} disabled={isRunning} />
+                value={endDate} onChange={e => { setEndDate(e.target.value); setPeriodName(periodNameFromEndDate(e.target.value) ?? ''); }} disabled={isRunning} />
             </div>
           </div>
 

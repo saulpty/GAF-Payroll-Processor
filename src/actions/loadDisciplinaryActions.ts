@@ -35,6 +35,13 @@ function loadDisciplinaryActions() {
       WHERE ({{params.manager}} IS NULL OR {{params.manager}} = '' OR manager_name = {{params.manager}})
         AND ({{params.employeeName}} IS NULL OR {{params.employeeName}} = '' OR employee_name = {{params.employeeName}})
         AND (COALESCE({{params.includeDeleted}}::boolean, false) OR deleted_at IS NULL)
+        AND (COALESCE({{params.allNames}}::boolean, false)
+             OR btrim(regexp_replace(
+                  lower(translate(employee_name,
+                    'ÁÀÂÄÃÅÉÈÊËÍÌÎÏÓÒÔÖÕÚÙÛÜÑÇÝáàâäãåéèêëíìîïóòôöõúùûüñçýÿ',
+                    'AAAAAAEEEEIIIIOOOOOUUUUNCYaaaaaaeeeeiiiiooooouuuuncyy')),
+                  '[[:space:]]+', ' ', 'g'))
+                IN (SELECT jsonb_array_elements_text(COALESCE({{params.names}}::jsonb, '[]'::jsonb))))
       ORDER BY employee_name, document_date DESC, id DESC;
     `,
   });

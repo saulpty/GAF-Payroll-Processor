@@ -52,6 +52,9 @@ export function nearMatch(s: string | null | undefined, existing: string[]): str
   for (const e of existing) {
     if (normalizePeriodName(e) === name) return null;
   }
+  // Two names with the canonical shape are two different periods — Q2-Sep is not a
+  // typo of Q1-Sep, nor Jul of Jun, nor 2027 of 2026. Only malformed input can be a typo.
+  const typedIsCanonical = CANON.test(name);
   // Rank every candidate and return the closest, so "q1-aug-2026" resolves to
   // Q1-Aug-2026 (same letters) and not to Q2-Aug-2026 (one edit away).
   let best: { name: string; score: number } | null = null;
@@ -59,6 +62,7 @@ export function nearMatch(s: string | null | undefined, existing: string[]): str
     const en = normalizePeriodName(e);
     const k = key(en);
     if (!k) continue;
+    if (typedIsCanonical && CANON.test(en)) continue;
     let score: number | null = null;
     if (k === t) score = 0;
     else if (Math.abs(k.length - t.length) <= 2 && (t.startsWith(k) || k.startsWith(t))) score = 1;
@@ -95,6 +99,23 @@ function addDays(ymd: string, n: number): string {
  * Q2-Mon → Q1 of the next month. Dates: the day after the latest end, for
  * fifteen days. Null when the latest name is not canonical or has no end date.
  */
+/**
+ * The period name for a pay period, taken from its END date: a period ending on
+ * day 1–15 is Q1 of that month, one ending on day 16 or later is Q2. The start
+ * date can fall in the previous month (Q1-Apr-2026 ran Mar 26 → Apr 10), so it
+ * is not used. Null when the end date is missing or not YYYY-MM-DD.
+ * String arithmetic only — no Date object (timezone invariant).
+ */
+export function periodNameFromEndDate(endDate: string | null | undefined): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(endDate ?? '').trim());
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return `Q${day <= 15 ? 1 : 2}-${MONTHS[month - 1]}-${year}`;
+}
+
 export function nextPeriod(latest: { period_name: string; end_date: string | null }): { name: string; startDate: string; endDate: string } | null {
   const name = normalizePeriodName(latest.period_name);
   const m = /^Q([12])-([A-Z][a-z]{2})-(\d{4})$/.exec(name);

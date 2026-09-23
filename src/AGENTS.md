@@ -426,8 +426,10 @@ Evaluated per employee per date, first match wins:
 2. **Holiday** (`holidays`) → `Feriado`. GREEN with
    `Paid – Sin Compensatorio`, or YELLOW if Teramind shows they worked.
 3. **Full-day permission** (Monday Permissions board) → `PTO` /
-   `Permiso Remunerado` / `Permiso No remunerado`, GREEN — except Time-for-Time,
-   which is YELLOW.
+   `Permiso Remunerado` / `Permiso No remunerado`. Ordinary PTO and paid
+   permissions are GREEN. Time-for-Time, unpaid permissions and Floating
+   Holiday / Birthday days are YELLOW and held at `payroll_ready = 'NO'` so they
+   go to Action Required, with event and pay impact pre-filled as a suggestion.
 4. **Absence form** (Monday Attendance board) → `Ausencia Justificada.`,
    YELLOW; **RED** if Teramind also shows activity that day (a conflict).
 5. **Macbook swap** with no Teramind data → schedule times, GREEN.

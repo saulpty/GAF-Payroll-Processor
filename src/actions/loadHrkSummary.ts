@@ -86,21 +86,18 @@ function loadHrkSummary() {
               >= GREATEST(e.start_date, pb.start_date::date)
       ),
 
-      -- Constancia hours: prefer discount_total_minutes; else parse note time range
+      -- Constancia hours come ONLY from the time range written in the note, never from
+      -- discount_total_minutes. computeDiscount never discounts a 'Constancia Medica' slot,
+      -- so discount minutes on a Constancia row are the UNPAID part of the day and are
+      -- already subtracted once via discount_agg.
       -- Tested patterns: "constancia de 9am - 11am" -> 2h, "Constancia desde 11am a 1:30pm" -> 2.5h
       -- Uses space( *) not \s to avoid template-literal escape issues
       entries_with_constancia AS (
         SELECT
           ef.*,
           CASE
-            -- Has Constancia Medica pay impact AND discount minutes set
+            -- Has Constancia Medica pay impact -> parse time range from note
             WHEN (ef.pay_impact_1 = 'Constancia Medica' OR ef.pay_impact_2 = 'Constancia Medica')
-              AND ef.discount_total_minutes > 0
-            THEN ef.discount_total_minutes::numeric / 60.0
-
-            -- Has Constancia Medica pay impact, no minutes -> parse time range from note
-            WHEN (ef.pay_impact_1 = 'Constancia Medica' OR ef.pay_impact_2 = 'Constancia Medica')
-              AND ef.discount_total_minutes = 0
               AND ef.notes ~ '[0-9]{1,2}(:[0-9]{2})? *[ap]m *[-a] *[0-9]{1,2}(:[0-9]{2})? *[ap]m'
             THEN (
               -- end time (last time token in string)
@@ -136,21 +133,35 @@ function loadHrkSummary() {
             ELSE 0
           END AS constancia_hours_entry,
 
-          -- Flag: note mentions constancia but row is NOT tagged Constancia Medica
+          -- Flag: note mentions constancia but row is NOT tagged Constancia Medica,
+          -- OR row is tagged Constancia Medica and has unpaid minutes but its note has no
+          -- readable time range, so its doctor hours are unknown and shown as 0
           CASE
             WHEN ef.notes ILIKE '%constancia%'
               AND COALESCE(ef.pay_impact_1, '') != 'Constancia Medica'
               AND COALESCE(ef.pay_impact_2, '') != 'Constancia Medica'
+            THEN TRUE
+            WHEN (ef.pay_impact_1 = 'Constancia Medica' OR ef.pay_impact_2 = 'Constancia Medica')
+              AND ef.discount_total_minutes > 0
+              AND NOT COALESCE(ef.notes ~ '[0-9]{1,2}(:[0-9]{2})? *[ap]m *[-a] *[0-9]{1,2}(:[0-9]{2})? *[ap]m', FALSE)
             THEN TRUE
             ELSE FALSE
           END AS needs_constancia_review
         FROM entries_filtered ef
       ),
 
+      -- An Incapacidad row is already taken off as a flat 8h in incapacidad_agg.
+      -- Discount minutes on that same row would take the same day off a second time,
+      -- so they are not counted. computeDiscount never discounts an 'Incapacidad' slot.
       discount_agg AS (
         SELECT
           employee_id,
-          ROUND(SUM(discount_total_minutes)::numeric / 60, 2) AS total_discount_hours
+          ROUND(SUM(
+            CASE
+              WHEN pay_impact_1 = 'Incapacidad' OR pay_impact_2 = 'Incapacidad' THEN 0
+              ELSE discount_total_minutes
+            END
+          )::numeric / 60, 2) AS total_discount_hours
         FROM entries_with_constancia
         GROUP BY employee_id
       ),
