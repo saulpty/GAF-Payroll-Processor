@@ -5,7 +5,8 @@ function saveRunSnapshot() {
     datasourceName: 'GAF Planilla DB',
     query: `
       INSERT INTO run_snapshots (period_name, snapshot_type, raw_data)
-      VALUES ({{params.periodName}}, {{params.snapshotType}}, {{params.rawData}});
+      SELECT {{params.periodName}}, {{params.snapshotType}}, {{params.rawData}}
+      WHERE public.assert_super({{ user.email }}::text);
     `,
   });
 }

@@ -10,7 +10,7 @@ function upsertPayrollEntries() {
         late_minutes, late_after_grace, early_leave_minutes, discount_total_minutes,
         payroll_ready, event_type_1, pay_impact_1, event_type_2, pay_impact_2,
         documentation, notes, auto_notes, initial_status, status_current, updated_at
-      ) VALUES (
+      ) SELECT
         {{params.period_name}}, {{params.employee_id}}, {{params.work_date}},
         {{params.entry_time}}, {{params.exit_time}},
         {{params.scheduled_start}}, {{params.grace_until}}, {{params.scheduled_end}},
@@ -20,7 +20,7 @@ function upsertPayrollEntries() {
         {{params.event_type_2}}, {{params.pay_impact_2}},
         {{params.documentation}}, {{params.notes}}, {{params.auto_notes}},
         {{params.initial_status}}, {{params.status_current}}, NOW()
-      )
+      WHERE public.assert_super({{ user.email }}::text)
       ON CONFLICT (period_name, employee_id, work_date)
       DO UPDATE SET
         entry_time = EXCLUDED.entry_time,

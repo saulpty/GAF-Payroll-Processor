@@ -6,7 +6,8 @@ function softDeletePayrollEntry() {
     query: `
       UPDATE payroll_entries
       SET deleted_at = NOW(), deleted_by = {{params.deletedBy}}
-      WHERE id = {{params.id}}::bigint;
+      WHERE id = {{params.id}}::bigint
+        AND public.assert_super({{ user.email }}::text);
     `,
   });
 }

@@ -8,7 +8,8 @@ function upsertSyncLog() {
       SET created = {{params.created}}::int,
           updated = {{params.updated}}::int,
           error   = {{params.error}}
-      WHERE id = {{params.id}}::bigint;
+      WHERE id = {{params.id}}::bigint
+        AND public.assert_super({{ user.email }}::text);
     `,
   });
 }

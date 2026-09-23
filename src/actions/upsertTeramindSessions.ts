@@ -26,6 +26,7 @@ function upsertTeramindSessions() {
         COALESCE((r->>'is_manual')::boolean, false)
       FROM jsonb_array_elements({{params.rows}}::jsonb) AS r
       LEFT JOIN teramind_agents ta ON ta.agent_id = (r->>'agent_id')::bigint
+      WHERE public.assert_super({{ user.email }}::text)
       ORDER BY (r->>'agent_id')::bigint, r->>'started_raw', COALESCE(r->>'computer', ''),
                COALESCE((r->>'duration_s')::int, 0) DESC
       ON CONFLICT (agent_id, started_raw, computer) DO UPDATE SET

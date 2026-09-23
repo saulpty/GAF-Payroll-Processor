@@ -10,6 +10,7 @@ function updatePtoApprovalStatus() {
         status     = {{params.status}},
         updated_at = NOW()
       WHERE id = {{params.id}}::bigint
+        AND public.assert_super({{ user.email }}::text)
     `,
   });
 }

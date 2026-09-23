@@ -7,7 +7,8 @@ function updateEmployeeRoleManager() {
       UPDATE employees
          SET role    = {{params.role}},
              manager = {{params.manager}}
-       WHERE id = {{params.id}}::bigint;
+       WHERE id = {{params.id}}::bigint
+         AND public.assert_super({{ user.email }}::text);
     `,
   });
 }

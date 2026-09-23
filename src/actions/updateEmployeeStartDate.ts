@@ -6,7 +6,8 @@ function updateEmployeeStartDate() {
     query: `
       UPDATE employees
       SET start_date = {{params.start_date}}::date
-      WHERE display_name = {{params.display_name}};
+      WHERE display_name = {{params.display_name}}
+        AND public.assert_super({{ user.email }}::text);
     `,
   });
 }

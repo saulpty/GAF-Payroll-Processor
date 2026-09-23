@@ -5,7 +5,8 @@ function upsertAccessGroupMember() {
     datasourceName: 'GAF Planilla DB',
     query: `
       INSERT INTO access_group_members (group_id, employee_id)
-      VALUES ({{params.group_id}}::bigint, {{params.employee_id}}::bigint)
+      SELECT {{params.group_id}}::bigint, {{params.employee_id}}::bigint
+      WHERE public.assert_super({{ user.email }}::text)
       ON CONFLICT (group_id, employee_id) DO NOTHING;
     `,
   });

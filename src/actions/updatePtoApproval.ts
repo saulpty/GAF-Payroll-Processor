@@ -16,6 +16,7 @@ function updatePtoApproval() {
           leave_type   = {{params.leave_type}},
           updated_at   = NOW()
       WHERE id = {{params.id}}::bigint
+        AND public.assert_super({{ user.email }}::text)
     `,
   });
 }

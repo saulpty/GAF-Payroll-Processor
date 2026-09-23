@@ -13,6 +13,7 @@ function upsertTeramindAgents() {
         (r->'raw'),
         NOW()
       FROM jsonb_array_elements({{params.rows}}::jsonb) AS r
+      WHERE public.assert_super({{ user.email }}::text)
       ON CONFLICT (agent_id) DO UPDATE SET
         email   = EXCLUDED.email,
         name    = EXCLUDED.name,

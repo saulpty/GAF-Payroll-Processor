@@ -34,6 +34,7 @@ function upsertMondayRequests() {
         false,
         NOW()
       FROM jsonb_array_elements({{params.rows}}::jsonb) AS r
+      WHERE public.assert_super({{ user.email }}::text)
       ON CONFLICT (monday_item_id) DO UPDATE SET
         employee_id          = EXCLUDED.employee_id,
         employee_name_raw    = EXCLUDED.employee_name_raw,

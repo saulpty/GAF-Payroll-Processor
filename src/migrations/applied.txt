@@ -46,3 +46,4 @@ Applied migrations:
 1782010000_activity_settings at 2026-09-18T15:17:56.193Z
 1782011000_sync_every_minutes at 2026-09-18T16:41:41.860Z
 1782012000_teramind_ghost_records at 2026-09-18T21:11:49.057Z
+1782013000_assert_super at 2026-09-23T19:11:28.077Z

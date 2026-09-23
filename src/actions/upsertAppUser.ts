@@ -14,12 +14,14 @@ function upsertAppUser() {
                notes = {{params.notes}}::text,
                updated_at = now()
          WHERE id = {{params.id}}::bigint
+           AND public.assert_super({{ user.email }}::text)
         RETURNING id
       )
       INSERT INTO app_users (email, display_name, role, all_employees, active, notes)
       SELECT lower(btrim({{params.email}}::text)), btrim(COALESCE({{params.display_name}}::text, '')), {{params.role}}::text,
              COALESCE({{params.all_employees}}::boolean, false), COALESCE({{params.active}}::boolean, true), {{params.notes}}::text
        WHERE NOT EXISTS (SELECT 1 FROM upd)
+         AND public.assert_super({{ user.email }}::text)
       ON CONFLICT (email) DO UPDATE
          SET display_name = EXCLUDED.display_name, role = EXCLUDED.role,
              all_employees = EXCLUDED.all_employees, active = EXCLUDED.active,

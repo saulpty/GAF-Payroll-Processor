@@ -8,7 +8,7 @@ function upsertPtoApproval() {
       INSERT INTO pto_approvals
         (employee_id, leave_on, return_on, total_days, status, source,
          gaf_comments, submitted_by, recorded_by, recorded_at, monday_item_id, leave_type)
-      VALUES (
+      SELECT
         {{params.employee_id}}::bigint,
         {{params.leave_on}}::date,
         {{params.return_on}}::date,
@@ -21,7 +21,7 @@ function upsertPtoApproval() {
         NOW(),
         {{params.monday_item_id}}::bigint,
         {{params.leave_type}}
-      )
+      WHERE public.assert_super({{ user.email }}::text)
       ON CONFLICT (monday_item_id) WHERE monday_item_id IS NOT NULL
       DO UPDATE SET
         employee_id  = EXCLUDED.employee_id,

@@ -11,7 +11,7 @@ Ordered by risk to payroll correctness, not by effort.
 
 ### 1. Full-day absence discount differs by 60 minutes depending on code path
 
-> **RESOLVED BY OWNER, 2026-08-11: 480 minutes (8h) is the correct policy.**
+> **RESOLVED BY OWNER, 2026-08-11: 480 minutes (8h) is the correct policy.** Re-confirmed 2026-09-23 for pay and the HRK form.
 >
 > No employee was under-paid. The 480 that has actually been applied is right;
 > the 420 in `full_day_absence_discount_minutes` is the wrong number, and the
@@ -526,7 +526,10 @@ The double count was fixed by prompt `2026-09-23-review-fixes/08` (doctor-note a
 - **Doctor-note hours come only from the note now.** A doctor-note day whose note has no readable time range gets 0 hours and a ⚠ flag, but only when the day also has discount minutes; one with no discount (Q2-Apr, employee 40, "4 hours") still gets 0 silently. The ⚠ tooltip says "not tagged" even when the row is tagged.
 - **Two imported rows to check with Tim:** Ángela Rodgers Apr 8 stores 420 discount minutes but her note says dock 4 hours (240); Apr 15 ("4 hours") now shows 4 doctor-note hours as worked, flagged.
 - **Leavers:** base hours run to the period end, not the employee's end date.
-- **7 vs 8 hours for a full missed day (see #1):** Saul, 2026-09-23: *"people work 7 hours and 1hour break thats the minimum expect for everyone."* If the break is unpaid, the engine's 420 may be right and the Aug 11 ruling (480) wrong. Settle with the consultant before changing anything.
+- **7 vs 8 hours for a full missed day (see #1): settled 2026-09-23.** Saul: *"8 hours is the right calculation for PAY related stuff. for the hrk form."* 480 stands; the engine's first-pass 420 on unresolved no-show rows is the wrong number (fix still pending approval: set `full_day_absence_discount_minutes` to 480).
+
+### 26. Database-side locks on every change — built 2026-09-23, NOT yet released
+Prompts .  raises "Only an active super user can change this" unless the real signed-in person (, filled in by UI Bakery on the server — verified by replaying a request with a fake email, which the server ignored) is an active super user. 59 main-database write actions carry it; / (unused, un-lockable  blocks) were removed. Guarded by . Still open: the 4 disciplinary actions run on the separate disciplinary database, which has no user list (managers are allowed to close/reopen there by design);  sends Monday a query written in the browser — check whether the Monday token can write. Full inventory: .
 
 ## Structural
 

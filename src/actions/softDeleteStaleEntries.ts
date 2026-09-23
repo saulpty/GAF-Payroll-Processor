@@ -13,6 +13,7 @@ function softDeleteStaleEntries() {
         AND pe.employee_id = ANY(string_to_array({{params.employee_ids}}, ',')::bigint[])
         AND (pe.employee_id || ':' || LEFT(pe.work_date, 10))
             <> ALL (string_to_array({{params.kept_keys}}, ','))
+        AND public.assert_super({{ user.email }}::text)
       RETURNING pe.id;
     `,
   });

@@ -5,7 +5,8 @@ function upsertClassificationConfig() {
     datasourceName: 'GAF Planilla DB',
     query: `
       INSERT INTO classification_config (key, value, label, description, value_type, category)
-      VALUES ({{params.key}}, {{params.value}}, {{params.label}}, {{params.description}}, {{params.value_type}}, {{params.category}})
+      SELECT {{params.key}}, {{params.value}}, {{params.label}}, {{params.description}}, {{params.value_type}}, {{params.category}}
+      WHERE public.assert_super({{ user.email }}::text)
       ON CONFLICT (key) DO UPDATE SET
         value      = EXCLUDED.value,
         label      = EXCLUDED.label,

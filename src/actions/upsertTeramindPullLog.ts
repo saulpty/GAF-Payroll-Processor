@@ -8,7 +8,7 @@ function upsertTeramindPullLog() {
         date_from, date_to, pulled_by, trigger, agent_count, row_count, saved_count,
         truncated, error, source
       )
-      VALUES (
+      SELECT
         {{params.date_from}}::text,
         {{params.date_to}}::text,
         {{params.pulled_by}}::text,
@@ -19,7 +19,7 @@ function upsertTeramindPullLog() {
         {{params.truncated}}::boolean,
         NULLIF({{params.error}}::text, ''),
         COALESCE(NULLIF({{params.source}}::text, ''), 'login_session')
-      )
+      WHERE public.assert_super({{ user.email }}::text)
       RETURNING id;
     `,
   });

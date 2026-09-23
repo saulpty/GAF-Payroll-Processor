@@ -5,7 +5,8 @@ function saveHrkExport() {
     datasourceName: 'GAF Planilla DB',
     query: `
       INSERT INTO hrk_exports (period_name, exported_by, summary_json)
-      VALUES ({{params.periodName}}, {{params.exportedBy}}, {{params.summaryJson}});
+      SELECT {{params.periodName}}, {{params.exportedBy}}, {{params.summaryJson}}
+      WHERE public.assert_super({{ user.email }}::text);
     `,
   });
 }

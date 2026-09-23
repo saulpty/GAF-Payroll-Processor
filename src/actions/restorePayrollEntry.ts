@@ -6,7 +6,8 @@ function restorePayrollEntry() {
     query: `
       UPDATE payroll_entries
       SET deleted_at = NULL, deleted_by = NULL
-      WHERE id = {{params.id}}::bigint;
+      WHERE id = {{params.id}}::bigint
+        AND public.assert_super({{ user.email }}::text);
     `,
   });
 }

@@ -15,7 +15,8 @@ function updatePayrollEntry() {
         payroll_ready = {{params.payroll_ready}},
         status_current = {{params.status_current}},
         updated_at = NOW()
-      WHERE id = {{params.id}}::bigint;
+      WHERE id = {{params.id}}::bigint
+        AND public.assert_super({{ user.email }}::text);
     `,
   });
 }

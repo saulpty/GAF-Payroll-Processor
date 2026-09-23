@@ -5,12 +5,12 @@ function upsertEventTypeRule() {
     datasourceName: 'GAF Planilla DB',
     query: `
       INSERT INTO event_type_rules (event_type, default_pay_impact, default_doc_option, notes)
-      VALUES (
+      SELECT
         {{params.event_type}},
         {{params.default_pay_impact}},
         {{params.default_doc_option}},
         {{params.notes}}
-      )
+      WHERE public.assert_super({{ user.email }}::text)
       ON CONFLICT (event_type) DO UPDATE SET
         default_pay_impact  = EXCLUDED.default_pay_impact,
         default_doc_option  = EXCLUDED.default_doc_option,

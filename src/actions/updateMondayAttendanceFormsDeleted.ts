@@ -9,7 +9,8 @@ function updateMondayAttendanceFormsDeleted() {
         monday_item_id IN (
           SELECT (jsonb_array_elements_text({{params.seen_ids}}::jsonb))::bigint
         )
-      );
+      )
+      WHERE public.assert_super({{ user.email }}::text);
     `,
   });
 }

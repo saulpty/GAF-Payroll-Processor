@@ -9,7 +9,8 @@ function updateEmployeeFlag() {
         is_macbook_swap       = {{params.is_macbook_swap}}::boolean,
         excluded_from_payroll = {{params.excluded_from_payroll}}::boolean,
         active                = {{params.active}}::boolean
-      WHERE id = {{params.id}}::bigint;
+      WHERE id = {{params.id}}::bigint
+        AND public.assert_super({{ user.email }}::text);
     `,
   });
 }
