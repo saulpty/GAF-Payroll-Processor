@@ -31,7 +31,7 @@ const MANAGER_SLOTS: [string, string][] = [
 ];
 
 export function useMondayAutofill() {
-  const [employeesResult, employeesLoading] = useLoadAction(getMondayEmployeesAction, [], {});
+  const [employeesResult, employeesLoading, employeesLoadError] = useLoadAction(getMondayEmployeesAction, [], {});
   const [onboardingResult, onboardingLoading] = useLoadAction(getMondayOnboardingAction, [], {});
 
   const directoryItems: MondayItem[] =
@@ -55,6 +55,10 @@ export function useMondayAutofill() {
       byKey.set(key, m);
     }
   }
+
+  // One entry per manager email, BEFORE the merge-by-name below, so two managers who
+  // share a display name never lose an email. Used by filerScope.employeesForFiler.
+  const managerEntries: ManagerInfo[] = [...byKey.values()].filter(m => m.email);
 
   // The form looks managers up by display name: merge entries that share a name
   // (email-keyed entries first, so the email is kept).
@@ -88,5 +92,9 @@ export function useMondayAutofill() {
   const managers: string[] = Array.from(managerMap.keys()).sort();
   const loading = employeesLoading || onboardingLoading;
 
-  return { managerMap, employeePositionMap, employeeBranchMap, allEmployees, managers, loading };
+  // Monday failed: the request errored, or it came back with no Current Employees.
+  const employeesError = !employeesLoading &&
+    (Boolean(employeesLoadError) || currentItems.length === 0);
+
+  return { managerMap, managerEntries, employeePositionMap, employeeBranchMap, allEmployees, managers, loading, employeesError };
 }
