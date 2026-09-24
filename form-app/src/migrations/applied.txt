@@ -10,3 +10,4 @@ Applied migrations:
 1757340000_add_closure_columns_disciplinary_actions at 2026-09-07T15:48:22.873Z
 1757344800_delete_timothy_moore_test_rows at 2026-09-07T17:03:07.801Z
 1758117600_add_deleted_columns_disciplinary_actions at 2026-09-16T19:52:28.367Z
+1758700800_create_disciplinary_admins at 2026-09-24T16:33:19.932Z
