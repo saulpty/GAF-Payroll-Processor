@@ -1,5 +1,5 @@
 // ActionDetail — full detail view for one disciplinary action.
-// Prop-driven, no useLoadAction, no useGlobalFilters. Reusable by Employee 360.
+// Prop-driven; its only load is useDisciplinaryAdmin. Reusable by Employee 360.
 import { useState } from 'react';
 import { CheckCircle2, Loader2, Trash2, RotateCcw } from 'lucide-react';
 import { useMutateAction } from '@uibakery/data';
@@ -12,7 +12,8 @@ import CloseCaseDialog from './CloseCaseDialog';
 import DeleteActionDialog from './DeleteActionDialog';
 import updateDisciplinaryActionReopenedAction from '@/actions/updateDisciplinaryActionReopened';
 import updateDisciplinaryActionRestoredAction from '@/actions/updateDisciplinaryActionRestored';
-import { useViewer } from '@/app/context/ViewerContext';
+import { useDisciplinaryAdmin } from './useDisciplinaryAdmin';
+import ActionPdfBar from './ActionPdfBar';
 
 interface Props {
   action: DisciplinaryRow;
@@ -33,7 +34,7 @@ function Fact({ label, value }: { label: string; value: string | null | undefine
 }
 
 export default function ActionDetail({ action, asOf, onChanged }: Props) {
-  const { isSuper } = useViewer();
+  const { isDisciplinaryAdmin } = useDisciplinaryAdmin();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reopening, setReopening] = useState(false);
@@ -88,7 +89,7 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
               <span className="text-slate-500 ml-1">— {action.deletion_note}</span>
             )}
           </span>
-          {isSuper && (
+          {isDisciplinaryAdmin && (
             <div className="flex items-center gap-2 shrink-0">
               <Button variant="outline" size="sm" onClick={handleRestore} disabled={restoring} className="h-8 text-[12px]">
                 {restoring
@@ -118,7 +119,7 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" />
                 : 'Reopen'}
             </button>
-            {isSuper && (
+            {isDisciplinaryAdmin && (
               <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="h-8 text-[12px] text-red-700 border-red-200 hover:bg-red-50">
                 <Trash2 className="w-3.5 h-3.5 mr-1" />Delete
               </Button>
@@ -136,7 +137,7 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
               <CheckCircle2 className="w-4 h-4 mr-1.5" />
               Close Case
             </Button>
-            {isSuper && (
+            {isDisciplinaryAdmin && (
               <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="h-8 text-[12px] text-red-700 border-red-200 hover:bg-red-50">
                 <Trash2 className="w-3.5 h-3.5 mr-1" />Delete
               </Button>
@@ -144,6 +145,8 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
           </div>
         </div>
       )}
+
+      <ActionPdfBar action={action} />
 
       {/* Facts */}
       <div className="px-4 py-4 space-y-3">

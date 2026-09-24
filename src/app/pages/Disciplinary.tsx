@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Download, ExternalLink } from 'lucide-react';
-import { useViewer } from '@/app/context/ViewerContext';
+import { useDisciplinaryAdmin } from './disciplinary/useDisciplinaryAdmin';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import PageHeader from '@/app/components/PageHeader';
@@ -39,7 +39,7 @@ function stateWord(s: ReturnType<typeof caseState>): string {
 }
 
 export default function Disciplinary() {
-  const { isSuper } = useViewer();
+  const { isDisciplinaryAdmin } = useDisciplinaryAdmin();
   const [asOf] = useState(() => toLocalYMD(new Date()));
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [rows, setRows] = useState<DisciplinaryRowData[]>([]);
@@ -111,7 +111,7 @@ export default function Disciplinary() {
         role="group"
         aria-label="Filter by case status"
       >
-        {STATUS_OPTIONS.concat(isSuper ? [{ value: 'deleted' as StatusFilter, label: 'Deleted' }] : []).map(opt => {
+        {STATUS_OPTIONS.concat(isDisciplinaryAdmin ? [{ value: 'deleted' as StatusFilter, label: 'Deleted' }] : []).map(opt => {
           const isActive = statusFilter === opt.value;
           return (
             <button

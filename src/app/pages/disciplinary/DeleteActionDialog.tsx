@@ -5,11 +5,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { DisciplinaryRow } from '@/app/lib/disciplinary';
-import { useViewer } from '@/app/context/ViewerContext';
 import updateDisciplinaryActionDeletedAction from '@/actions/updateDisciplinaryActionDeleted';
 
 interface Props {
@@ -20,30 +18,27 @@ interface Props {
 
 export default function DeleteActionDialog({ action: da, onClose, onSaved }: Props) {
   const open = da !== null;
-  const { name } = useViewer();
 
-  const [deletedBy, setDeletedBy] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [deleteAction] = useMutateAction(updateDisciplinaryActionDeletedAction);
 
-  useEffect(() => {
-    if (!da) return;
-    setDeletedBy(name ?? '');
-    setNote('');
-    setError(null);
-  }, [da, name]);
+  useEffect(() => { if (!da) return; setNote(''); setError(null); }, [da]);
 
-  const valid = deletedBy.trim() !== '' && note.trim() !== '';
+  const valid = note.trim() !== '';
 
   async function handleSubmit() {
     if (!da || !valid) return;
     setSaving(true);
     setError(null);
     try {
-      await deleteAction({ id: da.id, deletedBy: deletedBy.trim(), note: note.trim() });
+      const res = await deleteAction({ id: da.id, note: note.trim() });
+      if (!Array.isArray(res) || res.length === 0) {
+        setError('Not allowed \u2014 only Tim and Saul can delete.');
+        return;
+      }
       onSaved();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to delete. Please try again.');
@@ -69,19 +64,8 @@ export default function DeleteActionDialog({ action: da, onClose, onSaved }: Pro
         <div className="space-y-4 py-1">
           <p className="text-[12px] text-slate-600">
             The action is hidden from the list and no longer counts as a prior warning.
-            A super user can restore it from the Deleted filter.
+            Tim or Saul can restore it from the Deleted filter. Your login is recorded as who deleted it.
           </p>
-          <div>
-            <Label htmlFor="deletedBy" className="text-xs">Deleted By</Label>
-            <Input
-              id="deletedBy"
-              value={deletedBy}
-              onChange={e => setDeletedBy(e.target.value)}
-              disabled={saving}
-              className="mt-1 h-8 text-sm"
-              placeholder="Your name"
-            />
-          </div>
           <div>
             <Label htmlFor="deletionNote" className="text-xs">
               Reason <span className="text-red-500">*</span>

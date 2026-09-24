@@ -41,6 +41,9 @@ export interface DisciplinaryRow {
   deleted_at?: string | null;
   deleted_by?: string | null;
   deletion_note?: string | null;
+  edited_at?: string | null;
+  edited_by?: string | null;
+  has_original?: boolean | null;
 }
 
 export interface EmployeeCase {

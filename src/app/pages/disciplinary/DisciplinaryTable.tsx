@@ -6,6 +6,7 @@ import EmptyState from '@/app/components/EmptyState';
 import DisciplinaryRow, { DisciplinaryRowData, DISCIPLINARY_COL_COUNT } from './DisciplinaryRow';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useViewer } from '@/app/context/ViewerContext';
+import { useDisciplinaryAdmin } from './useDisciplinaryAdmin';
 import loadDisciplinaryActionsAction from '@/actions/loadDisciplinaryActions';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadAllEmployeesAction from '@/actions/loadAllEmployees';
@@ -65,7 +66,8 @@ interface Props {
 
 export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, onCountsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
-  const { viewAs, allEmployees, isSuper } = useViewer();
+  const { viewAs, allEmployees } = useViewer();
+  const { isDisciplinaryAdmin } = useDisciplinaryAdmin();
 
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
@@ -104,7 +106,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
   const [rawRows, loading, error, reload] = useLoadAction(
     loadDisciplinaryActionsAction,
     [] as DisciplinaryRowType[],
-    { manager: null, employeeName: null, includeDeleted: isSuper, allNames: allEmployees, names: scopeNames },
+    { manager: null, employeeName: null, includeDeleted: isDisciplinaryAdmin, allNames: allEmployees, names: scopeNames },
     { enabled: scopeReady },
   );
 
