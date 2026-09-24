@@ -1,7 +1,7 @@
 // ActionDetail — full detail view for one disciplinary action.
 // Prop-driven; its only load is useDisciplinaryAdmin. Reusable by Employee 360.
 import { useState } from 'react';
-import { CheckCircle2, Loader2, Trash2, RotateCcw } from 'lucide-react';
+import { CheckCircle2, Loader2, Trash2, RotateCcw, Pencil } from 'lucide-react';
 import { useMutateAction } from '@uibakery/data';
 import StatusChip from '@/app/components/StatusChip';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import updateDisciplinaryActionReopenedAction from '@/actions/updateDisciplinary
 import updateDisciplinaryActionRestoredAction from '@/actions/updateDisciplinaryActionRestored';
 import { useDisciplinaryAdmin } from './useDisciplinaryAdmin';
 import ActionPdfBar from './ActionPdfBar';
+import EditActionForm from './EditActionForm';
 
 interface Props {
   action: DisciplinaryRow;
@@ -39,6 +40,7 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reopening, setReopening] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [reopenCase] = useMutateAction(updateDisciplinaryActionReopenedAction);
   const [restoreAction] = useMutateAction(updateDisciplinaryActionRestoredAction);
 
@@ -146,23 +148,39 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
         </div>
       )}
 
-      <ActionPdfBar action={action} />
+      <ActionPdfBar action={action}>
+        {isDisciplinaryAdmin && !action.deleted_at && !editing && (
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="h-8 text-[12px]">
+            <Pencil className="w-3.5 h-3.5 mr-1" />Edit
+          </Button>
+        )}
+      </ActionPdfBar>
 
-      {/* Facts */}
-      <div className="px-4 py-4 space-y-3">
-        <Fact label="What was expected" value={action.q_expected} />
-        <Fact label="What happened"     value={action.q_happened} />
-        <Fact label="When"              value={action.q_when} />
-        <Fact label="Impact"            value={action.q_impact} />
-        <Fact label="Expectations set"  value={action.expectations} />
-        <Fact label="Consequences"      value={action.consequences} />
-      </div>
+      {editing ? (
+        <EditActionForm
+          action={action}
+          onCancel={() => setEditing(false)}
+          onDone={() => { setEditing(false); onChanged(); }}
+        />
+      ) : (
+        <>
+          {/* Facts */}
+          <div className="px-4 py-4 space-y-3">
+            <Fact label="What was expected" value={action.q_expected} />
+            <Fact label="What happened"     value={action.q_happened} />
+            <Fact label="When"              value={action.q_when} />
+            <Fact label="Impact"            value={action.q_impact} />
+            <Fact label="Expectations set"  value={action.expectations} />
+            <Fact label="Consequences"      value={action.consequences} />
+          </div>
 
-      {/* Meta line */}
-      {metaParts.length > 0 && (
-        <div className="px-4 py-2.5 border-t border-dashed border-slate-200 text-[11px] text-slate-400 leading-relaxed">
-          {metaParts.join(' · ')}
-        </div>
+          {/* Meta line */}
+          {metaParts.length > 0 && (
+            <div className="px-4 py-2.5 border-t border-dashed border-slate-200 text-[11px] text-slate-400 leading-relaxed">
+              {metaParts.join(' · ')}
+            </div>
+          )}
+        </>
       )}
 
       <CloseCaseDialog
