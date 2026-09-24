@@ -1,32 +1,23 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutateAction } from '@uibakery/data';
-import { UserCheck, FileText, Target, ClipboardCheck } from 'lucide-react';
+import { useLoadAction, useMutateAction } from '@uibakery/data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import saveSubmissionAction from '@/actions/saveSubmission';
 import sendDisciplinaryEmailENAction from '@/actions/sendDisciplinaryEmailEN';
+import loadCurrentFilerAction from '@/actions/loadCurrentFiler';
 import { DisciplinaryFormData, INITIAL_FORM, EvidenceType, EVIDENCE_OPTIONS, todayLocalYMD } from '@/app/utils/disciplinaryFormData';
+import { buildDisciplinaryEmail } from '@/app/utils/buildDisciplinaryEmail';
 import { PriorAction } from '@/app/components/PriorActionsPanel';
 import { generateDisciplinaryPdfENBase64 } from '@/app/utils/generatePdf';
 import Step1EmployeeWarning from '@/app/pages/wizard/Step1EmployeeWarning';
 import Step2ScenarioIncident from '@/app/pages/wizard/Step2ScenarioIncident';
 import Step3Expectations from '@/app/pages/wizard/Step3Expectations';
 import Step4ReviewSubmit from '@/app/pages/wizard/Step4ReviewSubmit';
+import StepProgress, { STEPS } from '@/app/pages/wizard/StepProgress';
 
 const GAF_RED = '#E52020';
 const GAF_NAVY = '#1C2340';
-
-const STEPS = [
-  { num: 1, label: 'Employee & Warning', Icon: UserCheck },
-  { num: 2, label: 'Scenario & Incident', Icon: FileText },
-  { num: 3, label: 'Expectations', Icon: Target },
-  { num: 4, label: 'Review & Submit', Icon: ClipboardCheck },
-];
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
 
 export default function OfferLetterForm() {
   const navigate = useNavigate();
@@ -35,13 +26,16 @@ export default function OfferLetterForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saveSubmission, isSaving] = useMutateAction(saveSubmissionAction);
   const [sendEmailEN] = useMutateAction(sendDisciplinaryEmailENAction);
-  // Track whether manager has manually typed in priorWarnings (so auto-fill doesn't overwrite)
   const [priorWarningsTouched, setPriorWarningsTouched] = useState(false);
+
+  // The filer is the signed-in user. The email goes to them; the DB takes it from the login.
+  const [filerRows] = useLoadAction(loadCurrentFilerAction, [] as { email: string | null }[], {});
+  const filerEmail = ((filerRows as { email: string | null }[])[0]?.email ?? '').trim().toLowerCase();
+  const [submitError, setSubmitError] = useState('');
 
   const updateForm = useCallback((updates: Partial<DisciplinaryFormData>) => {
     if ('priorWarnings' in updates) setPriorWarningsTouched(true);
     setFormData(prev => ({ ...prev, ...updates }));
-    // clear errors for updated fields
     setErrors(prev => {
       const next = { ...prev };
       Object.keys(updates).forEach(k => delete next[k]);
@@ -49,18 +43,15 @@ export default function OfferLetterForm() {
     });
   }, []);
 
-  // Called by Step1 when prior history is loaded for selected employee
   const handlePriorWarningsSuggestion = useCallback((suggested: string) => {
     if (!priorWarningsTouched) {
       setFormData(prev => ({ ...prev, priorWarnings: suggested }));
     }
   }, [priorWarningsTouched]);
 
-  // Called when manager clicks "Follow up" on a prior action card
   const handleFollowUp = useCallback((prior: PriorAction) => {
     const today = todayLocalYMD();
     const happened = prior.q_happened ?? '';
-    // Format the prior document_date as a clean readable string
     const priorDateDisplay = prior.document_date
       ? new Date(prior.document_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })
       : prior.document_date;
@@ -68,7 +59,6 @@ export default function OfferLetterForm() {
 
     setFormData(prev => ({
       ...prev,
-      // Copy incident details from prior action
       scenario: (prior.scenario as DisciplinaryFormData['scenario']) ?? prev.scenario,
       qExpected: prior.q_expected ?? '',
       qHappened: prior.q_happened ?? '',
@@ -80,30 +70,22 @@ export default function OfferLetterForm() {
       evidenceDescription: prior.evidence_description ?? '',
       expectations: prior.expectations ?? '',
       consequences: prior.consequences ?? '',
-      // Keep employee unchanged
       employeeName: prev.employeeName,
       employeeRole: prev.employeeRole,
       employeeBranch: prev.employeeBranch,
-      // Reset fields that must be re-chosen
       warningLevel: '',
       finalOutcome: '',
       documentDate: today,
       revaluationDate: '',
-      // Prior warnings reference
       priorWarnings: priorWarningsRef,
     }));
-    // Mark priorWarnings as touched so auto-summary doesn't overwrite
     setPriorWarningsTouched(true);
-    // Clear errors
     setErrors({});
   }, []);
 
   const validateStep = (s: number): boolean => {
     const e: Record<string, string> = {};
     if (s === 1) {
-      if (!formData.managerName.trim()) e.managerName = 'Manager name is required';
-      if (!formData.managerEmail.trim()) e.managerEmail = 'Manager email is required';
-      else if (!isValidEmail(formData.managerEmail)) e.managerEmail = 'Enter a valid email';
       if (!formData.documentDate) e.documentDate = 'Document date is required';
       if (!formData.employeeName) e.employeeName = 'Select an employee';
       if (!formData.warningLevel) e.warningLevel = 'Select a warning level';
@@ -143,23 +125,26 @@ export default function OfferLetterForm() {
 
   const handleSubmit = useCallback(async () => {
     if (!validateStep(4)) return;
+    setSubmitError('');
+    if (!filerEmail) {
+      setSubmitError("You're not signed in, so this form can't be filed. Sign in with your work email and reload the page.");
+      return;
+    }
     const ref = `GAF-DA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const pdfData = { ...formData, ref };
 
+    // ── 1. EN PDF (a failed PDF still saves the row, as before) ──
+    let enBase64 = '';
     try {
-      // ── 1. Generate EN PDF before DB save ────────────────────────────────
-      let enBase64 = '';
-      try {
-        enBase64 = await generateDisciplinaryPdfENBase64(pdfData);
-      } catch (err) {
-        console.error('EN PDF generation failed:', err);
-      }
+      enBase64 = await generateDisciplinaryPdfENBase64({ ...formData, ref });
+    } catch (err) {
+      console.error('EN PDF generation failed:', err);
+    }
 
-      // ── 2. Save to DB (with PDF base64) ──────────────────────────────────
-      await saveSubmission({
+    // ── 2. Save. manager_email is written on the server from the login. ──
+    try {
+      const saved = await saveSubmission({
         ref,
         manager_name: formData.managerName,
-        manager_email: formData.managerEmail,
         employee_name: formData.employeeName,
         employee_role: formData.employeeRole,
         employee_branch: formData.employeeBranch,
@@ -181,28 +166,30 @@ export default function OfferLetterForm() {
         pdf_en_base64: enBase64 || null,
         pdf_es_base64: null,
       });
-
-      // Navigate after DB save succeeds
-      navigate('/success', { state: { ref } });
-
-      // ── 3. Send email in background ───────────────────────────────────────
-      const enFilename = `GAF_Disciplinary_Action_EN_${ref}.pdf`;
-
-      const enHtml = `<p>Dear ${formData.managerName},</p><p>A disciplinary action form has been submitted for employee <strong>${formData.employeeName}</strong>.</p><ul><li><strong>Reference:</strong> ${ref}</li><li><strong>Warning Level:</strong> ${formData.warningLevel}</li><li><strong>Document Date:</strong> ${formData.documentDate}</li><li><strong>Re-evaluation Date:</strong> ${formData.revaluationDate}</li></ul><p>Please find the disciplinary action document attached as a PDF.</p><p>GAF Healthcare Services Panama</p>`;
-
-      sendEmailEN({
-        subject: `Disciplinary Action - ${formData.employeeName} - ${formData.documentDate}`,
-        htmlBody: enHtml,
-        managerName: formData.managerName,
-        managerEmail: formData.managerEmail,
-        attachmentEnName: enFilename,
-        attachmentEnBase64: enBase64,
-      }).catch(err => console.error('EN email failed:', err));
-
+      // RETURNING gives the saved row back; an empty result means nothing was written.
+      if (Array.isArray(saved) && saved.length === 0) {
+        throw new Error('The database did not accept the form (are you signed in?).');
+      }
     } catch (err) {
       console.error('Submission failed:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setSubmitError(`The form was NOT saved and nothing was emailed. ${msg} Please try again; if it keeps failing, send a screenshot of this message to Saul.`);
+      return; // stay on the page — never go to /success after a failed save
     }
-  }, [formData, saveSubmission, navigate, sendEmailEN]);
+
+    navigate('/success', { state: { ref } });
+
+    // ── 3. Email in the background: to the signed-in filer; the CC list is in the action ──
+    const mail = buildDisciplinaryEmail(formData, ref);
+    sendEmailEN({
+      subject: mail.subject,
+      htmlBody: mail.html,
+      managerName: formData.managerName,
+      managerEmail: filerEmail,
+      attachmentEnName: mail.attachmentName,
+      attachmentEnBase64: enBase64,
+    }).catch(err => console.error('EN email failed:', err));
+  }, [formData, filerEmail, saveSubmission, navigate, sendEmailEN]);
 
   return (
     <div className="min-h-screen py-0 px-0" style={{ background: '#F5F6FA' }}>
@@ -233,48 +220,7 @@ export default function OfferLetterForm() {
         </div>
 
         {/* Progress Indicator */}
-        <div className="flex items-center justify-between">
-          {STEPS.map((s, i) => {
-            const done = step > s.num;
-            const active = step === s.num;
-            return (
-              <React.Fragment key={s.num}>
-                <div className="flex flex-col items-center gap-1 flex-1">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors ${
-                      done
-                        ? 'text-white'
-                        : active
-                        ? 'bg-white'
-                        : 'border-gray-300 bg-white text-gray-400'
-                    }`}
-                    style={
-                      done
-                        ? { borderColor: GAF_RED, backgroundColor: GAF_RED }
-                        : active
-                        ? { borderColor: GAF_RED, color: GAF_RED }
-                        : {}
-                    }
-                  >
-                    {done ? '✓' : React.createElement(s.Icon, { size: 14 })}
-                  </div>
-                  <span
-                    className={`text-xs text-center hidden sm:block font-sans ${active ? 'font-bold' : done ? 'text-gray-600' : 'text-gray-400'}`}
-                    style={active ? { color: GAF_RED } : {}}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div
-                    className="h-0.5 flex-1 mx-1 transition-colors"
-                    style={{ backgroundColor: done ? GAF_RED : '#E5E7EB' }}
-                  />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
+        <StepProgress step={step} />
 
         {/* Step Card */}
         <Card className="shadow-md border-0">
@@ -293,6 +239,12 @@ export default function OfferLetterForm() {
                 onChange={updateForm}
                 signatureError={errors.signatureDrawn}
               />
+            )}
+
+            {submitError && (
+              <div role="alert" className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {submitError}
+              </div>
             )}
 
             {/* Navigation */}

@@ -15,8 +15,8 @@ function saveSubmission() {
         signature_drawn,
         pdf_en_base64, pdf_es_base64
       )
-      VALUES (
-        {{params.ref}}, {{params.manager_name}}, {{params.manager_email}},
+      SELECT
+        {{params.ref}}, {{params.manager_name}}, lower(btrim({{ user.email }}::text)),
         {{params.employee_name}}, {{params.employee_role}}, {{params.employee_branch}},
         {{params.document_date}}::date, {{params.revaluation_date}}::date,
         {{params.warning_level}}, {{params.final_outcome}}, {{params.scenario}},
@@ -25,8 +25,8 @@ function saveSubmission() {
         {{params.prior_warnings}}, {{params.expectations}}, {{params.consequences}},
         {{params.signature_drawn}},
         {{params.pdf_en_base64}}, {{params.pdf_es_base64}}
-      )
-      RETURNING id, ref, employee_name, submitted_at;
+      WHERE btrim(coalesce({{ user.email }}::text, '')) <> ''
+      RETURNING id, ref, employee_name, manager_name, manager_email, submitted_at;
     `,
   });
 }
