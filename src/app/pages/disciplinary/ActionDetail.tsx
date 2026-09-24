@@ -1,6 +1,6 @@
 // ActionDetail — full detail view for one disciplinary action.
 // Prop-driven; its only load is useDisciplinaryAdmin. Reusable by Employee 360.
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { CheckCircle2, Loader2, Trash2, RotateCcw, Pencil } from 'lucide-react';
 import { useMutateAction } from '@uibakery/data';
 import StatusChip from '@/app/components/StatusChip';
@@ -36,6 +36,10 @@ function Fact({ label, value }: { label: string; value: string | null | undefine
 
 export default function ActionDetail({ action, asOf, onChanged }: Props) {
   const { isDisciplinaryAdmin } = useDisciplinaryAdmin();
+  const savedUnreloaded = useRef(false);
+  const onChangedRef = useRef(onChanged);
+  onChangedRef.current = onChanged;
+  useEffect(() => () => { if (savedUnreloaded.current) onChangedRef.current(); }, []);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reopening, setReopening] = useState(false);
@@ -160,7 +164,8 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
         <EditActionForm
           action={action}
           onCancel={() => setEditing(false)}
-          onDone={() => { setEditing(false); onChanged(); }}
+          onSaved={() => { savedUnreloaded.current = true; }}
+          onDone={() => { savedUnreloaded.current = false; setEditing(false); onChanged(); }}
         />
       ) : (
         <>

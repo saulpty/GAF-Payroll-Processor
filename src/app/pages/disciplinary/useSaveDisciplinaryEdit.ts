@@ -116,7 +116,7 @@ export function useSaveDisciplinaryEdit(action: DisciplinaryRow) {
       });
       const saved = (Array.isArray(res) ? res[0] : null) as Saved | null;
       if (!saved) {
-        setError('Not allowed \u2014 only Tim and Saul can edit.');
+        setError('Not saved \u2014 only Tim and Saul can edit, and a deleted warning cannot be edited. Reload the page and try again.');
         return;
       }
 

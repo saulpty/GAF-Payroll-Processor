@@ -30,7 +30,7 @@ function loadDisciplinaryActions() {
              closed_by,
              closure_note,
              deleted_at::text AS deleted_at, deleted_by, deletion_note,
-             edited_at::text AS edited_at, edited_by, (pdf_en_original_base64 IS NOT NULL) AS has_original,
+             (edited_at AT TIME ZONE 'America/Panama')::text AS edited_at, edited_by, (pdf_en_original_base64 IS NOT NULL) AS has_original,
              submitted_at::text         AS submitted_at
       FROM disciplinary_actions
       WHERE ({{params.manager}} IS NULL OR {{params.manager}} = '' OR manager_name = {{params.manager}})

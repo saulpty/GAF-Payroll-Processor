@@ -2,7 +2,7 @@
 // Employee, manager and ref are shown but cannot change. After a save the
 // form is replaced by EditResultPanel. Dates are 'YYYY-MM-DD' strings,
 // compared as strings; never new Date(str).
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ interface Props {
   action: DisciplinaryRow;
   onCancel: () => void;
   onDone: () => void;   // after a save: close the editor and reload the list
+  onSaved?: () => void;
 }
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
@@ -65,9 +66,13 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export default function EditActionForm({ action, onCancel, onDone }: Props) {
+export default function EditActionForm({ action, onCancel, onDone, onSaved }: Props) {
   const [v, setV] = useState<EditValues>(() => initialValues(action));
   const { save, retryEmail, saving, sending, error, result } = useSaveDisciplinaryEdit(action);
+
+  useEffect(() => {
+    if (result) onSaved?.();
+  }, [result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (result) {
     return <EditResultPanel result={result} sending={sending} onRetry={retryEmail} onDone={onDone} />;

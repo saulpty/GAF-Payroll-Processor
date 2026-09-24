@@ -168,3 +168,20 @@ test('DE12: no useLoadAction(..., { params: {...} }) wrapper anywhere in the dis
       `${f}: params must go flat, never inside a params: {} wrapper`);
   }
 });
+
+// Review fix (prompt 12): the list reloads only on "Done". If the row was closed
+// before Done, a later edit started from the stale values and put them back.
+test('DE13: a saved edit reloads the list on Done and when the action row closes', () => {
+  const form = read('src/app/pages/disciplinary/EditActionForm.tsx');
+  assert.match(form, /onSaved\?:\s*\(\)\s*=>\s*void/, 'EditActionForm takes an onSaved callback');
+  assert.match(form, /if\s*\(\s*result\s*\)\s*onSaved\?\.\(\)/, 'onSaved fires once the update succeeded');
+  const detail = read('src/app/pages/disciplinary/ActionDetail.tsx');
+  assert.match(detail, /onSaved=\{\(\)\s*=>\s*\{\s*savedUnreloaded\.current\s*=\s*true/, 'ActionDetail remembers a save');
+  assert.match(detail, /useEffect\(\(\)\s*=>\s*\(\)\s*=>\s*\{\s*if\s*\(\s*savedUnreloaded\.current\s*\)\s*onChangedRef\.current\(\)/,
+    'closing the row after a save still reloads the list');
+});
+
+test('DE14: "Edited on" is the Panama date, not the UTC date', () => {
+  assert.match(read('src/actions/loadDisciplinaryActions.ts'),
+    /\(edited_at AT TIME ZONE 'America\/Panama'\)::text AS edited_at/);
+});

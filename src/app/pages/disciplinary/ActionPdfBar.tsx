@@ -69,7 +69,7 @@ export default function ActionPdfBar({ action, children }: Props) {
             : <FileDown className="w-3.5 h-3.5 mr-1" />}
           Download PDF
         </Button>
-        {action.has_original && (
+        {action.has_original && !action.deleted_at && (
           <Button
             variant="outline"
             size="sm"
