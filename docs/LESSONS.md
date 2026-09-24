@@ -708,3 +708,12 @@ into a confident wrong diagnosis on something that moves money.
 ### A guard that rejects typos must be tested against the next real input, not only against typos
 
 **2026-09-23.** The period-name guard (Sep 10) caught `Q1-Aug-20260` as a typo of `Q1-Aug-2026`, which was its job. It also caught **Q2-Sep-2026** as a typo of Q1-Sep-2026, because any one-character difference counted, and Q1/Q2, Jun/Jul, Mar/May and 2026/2027 all differ by one character. The Sep 22 session verified that `nextPeriod` pre-filled Q2-Sep correctly and did not run the guard on that pre-filled name. Nobody hit it for two weeks because Q2-Sep was the first Q2 created after its Q1 since the guard went in. **When adding a rejecting check, add a test that the next legitimate value passes** (here: the name `nextPeriod` produces, with only the previous period existing). The fix removed the need to type at all: the name now comes from the end date.
+
+## Release publishes the whole draft, not just today's work (2026-09-24)
+
+Releasing the Hub for the disciplinary edit (8.12.0) also shipped the write-locks from 09-23,
+which were sitting in the draft "not yet released". Before pressing Release, run
+`git log` since the last release note in the newest HANDOFF and list every unreleased change to
+Saul, not only the current one. Also: clicking Release on the Hub freezes the builder tab for
+about a minute while the panel loads; wait, don't click again. And the ⋮ → Export click missed
+twice and opened another app instead; find the ⋮ button with `find` and click it by ref.

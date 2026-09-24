@@ -528,7 +528,7 @@ The double count was fixed by prompt `2026-09-23-review-fixes/08` (doctor-note a
 - **Leavers:** base hours run to the period end, not the employee's end date.
 - **7 vs 8 hours for a full missed day (see #1): settled 2026-09-23.** Saul: *"8 hours is the right calculation for PAY related stuff. for the hrk form."* 480 stands; the engine's first-pass 420 on unresolved no-show rows is the wrong number (fix still pending approval: set `full_day_absence_discount_minutes` to 480).
 
-### 26. Database-side locks on every change — built 2026-09-23, NOT yet released
+### 26. Database-side locks on every change — built 2026-09-23, released 2026-09-24 (Hub 8.12.0)
 Prompts `2026-09-23-write-locks/01-05`. `public.assert_super(email)` raises "Only an active super
 user can change this" unless the real signed-in person (`{{ user.email }}`, filled in by UI Bakery
 on the server — verified by replaying a request with a fake email, which the server ignored) is an
@@ -536,8 +536,8 @@ active super user. 59 main-database write actions carry it; `deleteLookup` / `up
 un-lockable `DO $$` blocks) were removed. Guarded by `tests/writeLocks.test.ts`.
 
 Still open:
-- The 4 disciplinary actions run on the separate disciplinary database, which has no user list
-  (managers are allowed to close and reopen there by design).
+- Disciplinary database: edit, delete and restore are now locked in SQL to `disciplinary_admins`
+  (Tim, Saul) since 2026-09-24. Close and Reopen stay open to managers by design.
 - `pullMondayBoard` sends Monday a query written in the browser — check whether the Monday token
   can write.
 
