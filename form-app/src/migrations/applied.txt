@@ -1,0 +1,12 @@
+Applied migrations:
+1745265405_create_offer_letter_submissions at 2026-04-21T20:01:21.740Z
+1751050705_create_offer_letter_submissions_v2 at 2026-06-26T15:59:35.014Z
+1751050706_create_disciplinary_actions at 2026-06-26T17:44:54.460Z
+1751215850_add_pdf_columns_disciplinary_actions at 2026-06-29T16:27:09.869Z
+1751222000_seed_historical_disciplinary_actions at 2026-06-29T16:51:51.413Z
+1751223400_delete_test_disciplinary_actions at 2026-06-29T16:56:37.433Z
+1751400000_seed_eduardo_disciplinary_action at 2026-07-01T19:46:10.744Z
+1755204000_delete_arelis_test_disciplinary_action at 2026-08-10T19:29:22.887Z
+1757340000_add_closure_columns_disciplinary_actions at 2026-09-07T15:48:22.873Z
+1757344800_delete_timothy_moore_test_rows at 2026-09-07T17:03:07.801Z
+1758117600_add_deleted_columns_disciplinary_actions at 2026-09-16T19:52:28.367Z

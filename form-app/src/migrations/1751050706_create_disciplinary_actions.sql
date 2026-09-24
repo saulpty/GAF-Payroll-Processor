@@ -1,0 +1,26 @@
+-- Migration: create disciplinary_actions table for GAF Disciplinary Action app
+CREATE TABLE IF NOT EXISTS disciplinary_actions (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  ref TEXT,
+  manager_name TEXT,
+  manager_email TEXT,
+  employee_name TEXT,
+  employee_role TEXT,
+  employee_branch TEXT,
+  document_date DATE,
+  revaluation_date DATE,
+  warning_level TEXT,
+  final_outcome TEXT,
+  scenario TEXT,
+  q_expected TEXT,
+  q_happened TEXT,
+  q_when TEXT,
+  q_impact TEXT,
+  evidence_types TEXT[],
+  evidence_description TEXT,
+  prior_warnings TEXT,
+  expectations TEXT,
+  consequences TEXT,
+  signature_drawn BOOLEAN,
+  submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

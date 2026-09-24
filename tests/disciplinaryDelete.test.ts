@@ -11,7 +11,7 @@ test('DD1: the list loader only returns deleted rows when asked (super users)', 
   const q = src('actions/loadDisciplinaryActions.ts');
   assert.match(q, /deleted_at IS NULL/);
   assert.match(q, /params\.includeDeleted/);
-  assert.match(src('app/pages/disciplinary/DisciplinaryTable.tsx'), /includeDeleted:\s*isSuper/);
+  assert.match(src('app/pages/disciplinary/DisciplinaryTable.tsx'), /includeDeleted:\s*isDisciplinaryAdmin/);
 });
 
 test('DD2: the top-bar due badge ignores deleted actions', () => {
@@ -26,11 +26,16 @@ test('DD3: delete is guarded against a second click; restore clears only the del
   assert.doesNotMatch(res, /closed_at/);
 });
 
-test('DD4: the delete dialog requires a reason; Delete and Restore are super-user only', () => {
+// Since 2026-09-24 Delete, Restore and the Deleted filter belong to disciplinary
+// admins (Tim and Saul, the disciplinary_admins table), not every super user.
+// The detailed gate checks are DE9/DE10 in disciplinaryEdit.test.ts.
+test('DD4: the delete dialog requires a reason; Delete and Restore are disciplinary-admin only', () => {
   const dlg = src('app/pages/disciplinary/DeleteActionDialog.tsx');
   assert.match(dlg, /note\.trim\(\) !== ''/);
   assert.match(dlg, /disabled=\{saving \|\| !valid\}/);
   const detail = src('app/pages/disciplinary/ActionDetail.tsx');
-  assert.match(detail, /isSuper/);
-  assert.match(src('app/pages/Disciplinary.tsx'), /isSuper \? \[\{ value: 'deleted'/);
+  assert.match(detail, /useDisciplinaryAdmin\(/);
+  const page = src('app/pages/Disciplinary.tsx');
+  assert.match(page, /useDisciplinaryAdmin\(/);
+  assert.doesNotMatch(page, /isSuper \? \[\{ value: 'deleted'/);
 });

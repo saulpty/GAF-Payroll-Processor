@@ -258,9 +258,10 @@ clicking through. Under **SAUL**:
 
 **The Disciplinary Actions Form is a second app that writes the
 `disciplinary_actions` table the Hub's Disciplinary page reads.** Its builder is
-`https://uib.vitasya.cloud/edit/vitasya/PC3PsXDDa9/builder/summary`. It has no
-git mirror in this repo, so the only way to diff a change to it is to export it
-and compare against a previously extracted zip.
+`https://uib.vitasya.cloud/edit/vitasya/PC3PsXDDa9/builder/summary`. Since
+2026-09-24 it is mirrored read-only in `form-app/`: export it and run
+`node tools/sync-export.mjs "<zip>" --app form`, then `git status --short` shows
+the diff exactly as for the Hub.
 
 **Extracting hrefs:** returning a full `href` string through
 `javascript_tool` gets blocked as "base64 encoded data". Return only the

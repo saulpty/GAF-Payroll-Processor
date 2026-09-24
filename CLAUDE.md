@@ -19,6 +19,11 @@ reaches the live app.
 
 Hand-written files are limited to `tests/`, `tools/`, `docs/`, and this file.
 
+**`form-app/` is the same kind of mirror, for the second UIB app** — GAF
+Disciplinary Actions Form (app id `PC3PsXDDa9`, builder
+https://uib.vitasya.cloud/edit/vitasya/PC3PsXDDa9/builder/summary). Sync it with
+`node tools/sync-export.mjs "<zip>" --app form`. Same rule: never hand-edit it.
+
 ---
 
 ## The change loop — every app change, no exceptions

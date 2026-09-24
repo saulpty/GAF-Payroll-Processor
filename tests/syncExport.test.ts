@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   normalizeNewlines, listFilesRecursive, findExportRoot, mirrorDirectory, syncFile,
+  mirrorExport, checkProjectName, APPS,
 } from '../tools/sync-export.mjs';
 
 function tmp() {
@@ -174,4 +175,57 @@ test('syncFile reports null when the files are already identical', () => {
   assert.equal(syncFile(join(src, 'f.ts'), join(dest, 'f.ts')), null);
   rmSync(src, { recursive: true, force: true });
   rmSync(dest, { recursive: true, force: true });
+});
+
+test('mirrorExport with the form prefix writes under form-app/ and leaves the root src/ alone', () => {
+  const exp = tmp(), repo = tmp();
+  write(exp, 'version.yml', 'projectName: GAF Disciplinary Actions Form\n');
+  write(exp, 'datasources.yml', 'ds: 1\n');
+  write(exp, join('src', 'app.tsx'), 'form app\n');
+  write(repo, join('src', 'app.tsx'), 'hub app\n');
+  write(repo, 'version.yml', 'projectName: GAF Panama HR Hub\n');
+
+  const result = mirrorExport(exp, join(repo, APPS.form.destPrefix));
+
+  assert.deepEqual(result.added.sort(), ['datasources.yml', 'src/app.tsx', 'version.yml']);
+  assert.equal(readFileSync(join(repo, 'form-app', 'src', 'app.tsx'), 'utf8'), 'form app\n');
+  assert.ok(existsSync(join(repo, 'form-app', 'version.yml')));
+  assert.equal(readFileSync(join(repo, 'src', 'app.tsx'), 'utf8'), 'hub app\n',
+    'the Hub mirror must be untouched by a form sync');
+  assert.equal(readFileSync(join(repo, 'version.yml'), 'utf8'), 'projectName: GAF Panama HR Hub\n');
+  rmSync(exp, { recursive: true, force: true });
+  rmSync(repo, { recursive: true, force: true });
+});
+
+test('APPS keeps the Hub at the repo root with its original archive name', () => {
+  assert.deepEqual(APPS.hub, { destPrefix: '', archiveName: 'GAF-HR-Hub' });
+  assert.deepEqual(APPS.form, { destPrefix: 'form-app', archiveName: 'GAF-Disciplinary-Form' });
+});
+
+test('checkProjectName accepts the Form export with --app form', () => {
+  const d = tmp();
+  write(d, 'version.yml', 'internalType: vibe_project\nprojectName: GAF Disciplinary Actions Form\n');
+  assert.equal(checkProjectName(d, 'form'), 'GAF Disciplinary Actions Form');
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('checkProjectName refuses a Hub export with --app form', () => {
+  const d = tmp();
+  write(d, 'version.yml', 'projectName: GAF Panama HR Hub\n');
+  assert.throws(() => checkProjectName(d, 'form'), /expects projectName/);
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('checkProjectName refuses a Form export synced as the Hub (would wipe src/)', () => {
+  const d = tmp();
+  write(d, 'version.yml', 'projectName: GAF Disciplinary Actions Form\r\n');
+  assert.throws(() => checkProjectName(d, 'hub'), /--app form/);
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('checkProjectName accepts a Hub export by default', () => {
+  const d = tmp();
+  write(d, 'version.yml', 'projectName: GAF Panama HR Hub\n');
+  assert.equal(checkProjectName(d, 'hub'), 'GAF Panama HR Hub');
+  rmSync(d, { recursive: true, force: true });
 });

@@ -23,6 +23,9 @@ the next sync destroys hand-edits. All application changes go through UIB.
    git status --short
    ```
    Run this from PowerShell — under Git Bash, `tar` fails with EPERM.
+   For the second app, the GAF Disciplinary Actions Form, add `--app form`:
+   it mirrors into `form-app/` instead of `src/`, and the tool refuses a zip
+   whose `projectName` doesn't match the app you named.
 5. **Review.** Every file listed must be one you expected. Anything else is
    collateral damage — send it back to UIB as a correction naming the exact
    files to revert.
