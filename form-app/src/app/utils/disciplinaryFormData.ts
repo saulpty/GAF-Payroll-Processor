@@ -37,10 +37,19 @@ export interface DisciplinaryFormData {
   signatureDrawn: boolean;
 }
 
+// Today as YYYY-MM-DD in the browser's LOCAL time (Panama). Never toISOString():
+// that is UTC, and after 7 pm in Panama it is already tomorrow.
+export function todayLocalYMD(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 export const INITIAL_FORM: DisciplinaryFormData = {
   managerName: '',
   managerEmail: '',
-  documentDate: new Date().toISOString().split('T')[0],
+  documentDate: '', // set to todayLocalYMD() when the form is created
   employeeName: '',
   employeeRole: '',
   employeeBranch: '',
@@ -59,55 +68,6 @@ export const INITIAL_FORM: DisciplinaryFormData = {
   revaluationDate: '',
   signatureDrawn: false,
 };
-
-export interface EmployeeInfo {
-  name: string;
-  role: string;
-  branch: string;
-}
-
-export const EMPLOYEES: EmployeeInfo[] = [
-  { name: 'Alanis Chena', role: 'Hello Assistant', branch: 'Vitasya' },
-  { name: 'Aleka Papatsoris', role: 'EVV Specialist', branch: 'IN' },
-  { name: 'Alisha Dua', role: 'Automations Specialist', branch: 'Vitasya' },
-  { name: 'Arelis Acosta', role: 'EVV Team Lead', branch: 'Vitasya' },
-  { name: 'Carlos Aloma', role: 'Intake 1', branch: 'GA' },
-  { name: 'Charis Dixon', role: 'EVV Specialist', branch: 'GA East' },
-  { name: 'Charles Bush', role: 'Billing Specialist', branch: 'Vitasya' },
-  { name: 'Daniel Escruceria', role: 'EVV Specialist', branch: 'PA' },
-  { name: 'Diana Rodriguez', role: 'Intake 1', branch: 'MI' },
-  { name: 'Domingo Cruz', role: 'Lead Web Engineer', branch: 'Vitasya' },
-  { name: 'Eddy Cedeno', role: 'Full Stack Developer', branch: 'Vitasya' },
-  { name: 'Eduardo Herrera', role: 'EVV Specialist', branch: 'GA West' },
-  { name: 'Elizabeth Mootoo', role: 'Billing Specialist', branch: 'Vitasya' },
-  { name: 'Favian Fortune', role: 'Intake 1', branch: 'AZ' },
-  { name: 'Gabriel Chu', role: 'QA Assistant', branch: 'Vitasya' },
-  { name: 'Gabriela Jaen', role: 'EVV Specialist', branch: 'GA West' },
-  { name: 'Gisselle Vanessa Ramos Perez de Brown', role: 'Financial Assistant', branch: 'Vitasya' },
-  { name: 'Jeanine Puyol', role: 'Intake 1', branch: 'PA' },
-  { name: 'Jennette Torrano', role: 'Intake 1', branch: 'GA' },
-  { name: 'Jose De Hermoso', role: 'Onboarding Specialist', branch: 'PA' },
-  { name: 'Jose Navarro', role: 'EVV Specialist', branch: 'GA East' },
-  { name: 'Juan Fonseca', role: 'Full Stack Developer', branch: 'Vitasya' },
-  { name: 'Juan Lezcano', role: 'Automations Engineer', branch: 'Vitasya' },
-  { name: 'Juan Molina', role: 'Intake 1', branch: 'Vitasya' },
-  { name: 'Karhid Arevalo', role: 'Hello Assistant', branch: 'GA' },
-  { name: 'Lilian Barria', role: 'Hello Assistant', branch: 'GA' },
-  { name: 'Luis Abad', role: 'Digital Marketing Manager', branch: 'Vitasya' },
-  { name: 'Monique Luque', role: 'EVV Specialist', branch: 'GA West' },
-  { name: 'Natalia Esquivel', role: 'Intake 1', branch: 'GA' },
-  { name: 'Navvad Owusu', role: 'EVV Specialist', branch: 'GA West' },
-  { name: 'Osvaldo Medina', role: 'EVV Specialist', branch: 'PA' },
-  { name: 'Reggina Sandoval', role: 'Audit Specialist', branch: 'Vitasya' },
-  { name: 'Samuel Duarte', role: 'IT Specialist', branch: 'Vitasya' },
-  { name: 'Sarah Mora', role: 'EVV Specialist', branch: 'IN' },
-  { name: 'Tanya Bedoya', role: 'EVV Specialist', branch: 'IN' },
-  { name: 'Timothy Moore', role: 'Jr Operations Manager', branch: 'GAF' },
-  { name: 'Ulla Hees', role: 'DevOps Engineer', branch: 'Vitasya' },
-  { name: 'Veronica Vasquez', role: 'EVV Specialist', branch: 'GA East' },
-  { name: 'Yessenia Moran', role: 'Billing Specialist', branch: 'Vitasya' },
-  { name: 'Angela Rodgers', role: 'EVV Specialist', branch: 'GA East' },
-];
 
 export const SCENARIO_DESCRIPTIONS: Record<Exclude<ScenarioType, ''>, string> = {
   'Operational Instructions': 'Employee did not follow a direct instruction or assigned function',

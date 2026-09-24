@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import saveSubmissionAction from '@/actions/saveSubmission';
 import sendDisciplinaryEmailENAction from '@/actions/sendDisciplinaryEmailEN';
-import { DisciplinaryFormData, INITIAL_FORM, EvidenceType, EVIDENCE_OPTIONS } from '@/app/utils/disciplinaryFormData';
+import { DisciplinaryFormData, INITIAL_FORM, EvidenceType, EVIDENCE_OPTIONS, todayLocalYMD } from '@/app/utils/disciplinaryFormData';
 import { PriorAction } from '@/app/components/PriorActionsPanel';
 import { generateDisciplinaryPdfENBase64 } from '@/app/utils/generatePdf';
 import Step1EmployeeWarning from '@/app/pages/wizard/Step1EmployeeWarning';
@@ -31,7 +31,7 @@ function isValidEmail(email: string): boolean {
 export default function OfferLetterForm() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState<DisciplinaryFormData>(INITIAL_FORM);
+  const [formData, setFormData] = useState<DisciplinaryFormData>(() => ({ ...INITIAL_FORM, documentDate: todayLocalYMD() }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saveSubmission, isSaving] = useMutateAction(saveSubmissionAction);
   const [sendEmailEN] = useMutateAction(sendDisciplinaryEmailENAction);
@@ -58,7 +58,7 @@ export default function OfferLetterForm() {
 
   // Called when manager clicks "Follow up" on a prior action card
   const handleFollowUp = useCallback((prior: PriorAction) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayLocalYMD();
     const happened = prior.q_happened ?? '';
     // Format the prior document_date as a clean readable string
     const priorDateDisplay = prior.document_date
@@ -80,9 +80,6 @@ export default function OfferLetterForm() {
       evidenceDescription: prior.evidence_description ?? '',
       expectations: prior.expectations ?? '',
       consequences: prior.consequences ?? '',
-      // Copy manager from prior action (so Step 1 is fully pre-filled)
-      managerName: prior.manager_name ?? prev.managerName,
-      managerEmail: prior.manager_email ?? prev.managerEmail,
       // Keep employee unchanged
       employeeName: prev.employeeName,
       employeeRole: prev.employeeRole,

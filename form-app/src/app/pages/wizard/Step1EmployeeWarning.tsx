@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLoadAction } from '@uibakery/data';
-import { X, UserCheck, Calendar, Users, AlertTriangle, ShieldAlert, Info } from 'lucide-react';
+import { X, Calendar, Users, AlertTriangle, ShieldAlert, Info } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import {
   DisciplinaryFormData,
-  EMPLOYEES,
   WARNING_LEVELS,
   WarnLevel,
 } from '@/app/utils/disciplinaryFormData';
-import { useMondayAutofill } from '@/app/hooks/useMondayAutofill';
+import { useFilerScope } from '@/app/hooks/useFilerScope';
+import FilerBanner from '@/app/pages/wizard/FilerBanner';
+import EmployeePicker from '@/app/pages/wizard/EmployeePicker';
 import PriorActionsPanel, { PriorAction } from '@/app/components/PriorActionsPanel';
 import getPriorActionsAction from '@/actions/getPriorActions';
 
@@ -42,8 +43,6 @@ function hoverOut(e: React.MouseEvent<Btn>, active: boolean) {
 function press(e: React.MouseEvent<Btn>) { (e.currentTarget as Btn).style.transform = 'scale(0.97)'; }
 function release(e: React.MouseEvent<Btn>) { (e.currentTarget as Btn).style.transform = 'scale(1.02)'; }
 
-const FALLBACK_EMPLOYEES = EMPLOYEES.map(e => e.name).sort();
-
 function buildPriorWarningsSummary(rows: PriorAction[]): string {
   if (!rows.length) return 'No prior disciplinary actions on file.';
   return rows.map(r => {
@@ -56,13 +55,7 @@ function buildPriorWarningsSummary(rows: PriorAction[]): string {
 }
 
 export default function Step1EmployeeWarning({ data, onChange, errors, onPriorWarningsSuggestion, onFollowUp }: Props) {
-  const { managerMap, employeePositionMap, employeeBranchMap, allEmployees, managers, loading: mondayLoading } = useMondayAutofill();
-
-  const [managerInput, setManagerInput] = useState(data.managerName);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [highlightIdx, setHighlightIdx] = useState(-1);
-  const suggestRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const filer = useFilerScope();
 
   const [priorActionsParams, setPriorActionsParams] = useState({ employeeName: data.employeeName });
   const [priorActionsRaw, priorActionsLoading, , reloadPriorActions] = useLoadAction(
@@ -74,7 +67,6 @@ export default function Step1EmployeeWarning({ data, onChange, errors, onPriorWa
   const priorActions: PriorAction[] = (priorActionsRaw as PriorAction[] | null) ?? [];
 
   const lastQueriedEmployee = useRef('');
-
   const [followUpBanner, setFollowUpBanner] = useState<PriorAction | null>(null);
   const [activeFollowUpId, setActiveFollowUpId] = useState<number | null>(null);
 
@@ -90,9 +82,22 @@ export default function Step1EmployeeWarning({ data, onChange, errors, onPriorWa
     setActiveFollowUpId(null);
   };
 
+  // The filer is the signed-in user. Fill the form's manager fields from the login —
+  // never from typing. The PDF "Supervisor" line and the email use them.
   useEffect(() => {
-    setManagerInput(data.managerName);
-  }, [data.managerName]);
+    if (filer.status === 'loading' || !filer.email) return;
+    if (data.managerName !== filer.filerName || data.managerEmail !== filer.email) {
+      onChange({ managerName: filer.filerName, managerEmail: filer.email });
+    }
+  }, [filer.status, filer.filerName, filer.email, data.managerName, data.managerEmail]);
+
+  // A chosen employee who is not in this filer's list is cleared.
+  const allowedKey = filer.employees.join('|');
+  useEffect(() => {
+    if (filer.status === 'ready' && data.employeeName && !filer.employees.includes(data.employeeName)) {
+      onChange({ employeeName: '', employeeRole: '', employeeBranch: '' });
+    }
+  }, [filer.status, allowedKey, data.employeeName]);
 
   useEffect(() => {
     if (data.employeeName && data.employeeName !== lastQueriedEmployee.current) {
@@ -113,160 +118,19 @@ export default function Step1EmployeeWarning({ data, onChange, errors, onPriorWa
     }
   }, [priorActionsLoading, priorActions]);
 
-  const filteredManagers = managerInput.trim().length > 0
-    ? managers.filter(m => m.toLowerCase().includes(managerInput.toLowerCase()))
-    : managers;
-
-  const matchedManager = managerMap.get(data.managerName);
-
-  const baseEmployeeList: string[] = matchedManager
-    ? matchedManager.reports.slice().sort()
-    : (allEmployees.length > 0 ? allEmployees : FALLBACK_EMPLOYEES);
-
-  const employeeList: string[] =
-    data.employeeName && !baseEmployeeList.includes(data.employeeName)
-      ? [data.employeeName, ...baseEmployeeList]
-      : baseEmployeeList;
-
-  // Manager must be typed before employee can be selected
-  const managerEntered = data.managerName.trim().length > 0;
-
-  const handleManagerInput = (value: string) => {
-    setManagerInput(value);
-    setHighlightIdx(-1);
-    setShowSuggestions(true);
-    if (!value.trim()) {
-      onChange({ managerName: '', managerEmail: '' });
-      return;
-    }
-    const exact = managerMap.get(value);
-    if (exact) {
-      onChange({ managerName: value, managerEmail: exact.email });
-    } else {
-      onChange({ managerName: value });
-    }
-  };
-
-  const selectManager = (name: string) => {
-    const info = managerMap.get(name);
-    setManagerInput(name);
-    setShowSuggestions(false);
-    onChange({
-      managerName: name,
-      managerEmail: info?.email ?? data.managerEmail,
-      ...(matchedManager && !info?.reports.includes(data.employeeName)
-        ? { employeeName: '', employeeRole: '', employeeBranch: '' }
-        : {}),
-    });
-  };
-
-  const handleManagerKeyDown = (e: React.KeyboardEvent) => {
-    if (!showSuggestions || filteredManagers.length === 0) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightIdx(i => Math.min(i + 1, filteredManagers.length - 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightIdx(i => Math.max(i - 1, 0)); }
-    else if (e.key === 'Enter' && highlightIdx >= 0) { e.preventDefault(); selectManager(filteredManagers[highlightIdx]); }
-    else if (e.key === 'Escape') { setShowSuggestions(false); }
-  };
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (suggestRef.current && !suggestRef.current.contains(e.target as Node) &&
-          inputRef.current && !inputRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
   const handleEmployeeChange = (name: string) => {
-    const mondayPos = employeePositionMap.get(name);
-    const mondayBranch = employeeBranchMap.get(name);
-    const fallbackEmp = EMPLOYEES.find(e => e.name === name);
     onChange({
       employeeName: name,
-      employeeRole: mondayPos ?? fallbackEmp?.role ?? '',
-      employeeBranch: mondayBranch ?? fallbackEmp?.branch ?? '',
+      employeeRole: filer.employeePositionMap.get(name) ?? '',
+      employeeBranch: filer.employeeBranchMap.get(name) ?? '',
     });
   };
 
   return (
     <div className="space-y-6">
 
-      {/* ── Manager Section ── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-1 border-b border-gray-100">
-          <UserCheck size={15} style={{ color: GAF_RED }} />
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Manager Information</span>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {/* Manager Name */}
-          <div className="space-y-1.5 relative">
-            <Label htmlFor="managerName">
-              Manager Name <span style={{ color: GAF_RED }}>*</span>
-              {mondayLoading && <span className="ml-2 text-[10px] text-muted-foreground">loading…</span>}
-            </Label>
-            <Input
-              id="managerName"
-              ref={inputRef}
-              value={managerInput}
-              autoComplete="off"
-              onChange={e => handleManagerInput(e.target.value)}
-              onFocus={() => setShowSuggestions(true)}
-              onKeyDown={handleManagerKeyDown}
-              placeholder="Type manager name…"
-              className={errors.managerName ? 'border-red-500' : ''}
-            />
-            {showSuggestions && filteredManagers.length > 0 && (
-              <div
-                ref={suggestRef}
-                className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
-              >
-                {filteredManagers.map((m, i) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onMouseDown={e => { e.preventDefault(); selectManager(m); }}
-                    className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-gray-50"
-                    style={i === highlightIdx ? { backgroundColor: '#FEF2F2', color: GAF_RED } : {}}
-                  >
-                    <span className="font-medium">{m}</span>
-                    {managerMap.get(m)?.email && (
-                      <span className="ml-2 text-xs text-muted-foreground">{managerMap.get(m)?.email}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-            {errors.managerName && <p className="text-xs text-red-500">{errors.managerName}</p>}
-          </div>
-
-          {/* Manager Email */}
-          <div className="space-y-1.5">
-            <Label htmlFor="managerEmail">
-              Manager Email <span style={{ color: GAF_RED }}>*</span>
-            </Label>
-            <Input
-              id="managerEmail"
-              type="email"
-              value={data.managerEmail}
-              onChange={e => onChange({ managerEmail: e.target.value })}
-              placeholder="manager@gafhealthcare.com"
-              className={errors.managerEmail ? 'border-red-500' : ''}
-            />
-            {errors.managerEmail && <p className="text-xs text-red-500">{errors.managerEmail}</p>}
-          </div>
-        </div>
-      </div>
-
-      {/* Manager match badge */}
-      {matchedManager && (
-        <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-          <UserCheck size={13} className="text-green-600 shrink-0" />
-          <span className="text-green-700 font-semibold">Manager matched from Monday.com</span>
-          <span className="text-green-600">· Showing {matchedManager.reports.length} employee{matchedManager.reports.length !== 1 ? 's' : ''} you manage</span>
-        </div>
+      {filer.email && filer.status !== 'loading' && filer.status !== 'filerError' && (
+        <FilerBanner name={filer.filerName} email={filer.email} isAdmin={filer.isAdmin} count={filer.employees.length} />
       )}
 
       {/* ── Document Date ── */}
@@ -295,39 +159,13 @@ export default function Step1EmployeeWarning({ data, onChange, errors, onPriorWa
           <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Employee</span>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="employeeName">
-            Employee <span style={{ color: GAF_RED }}>*</span>
-            {matchedManager && (
-              <span className="ml-2 text-[10px] text-muted-foreground font-normal">
-                (filtered to {matchedManager.name}'s employees)
-              </span>
-            )}
-          </Label>
-
-          {!managerEntered && (
-            <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700">
-              <Info size={13} className="shrink-0" />
-              <span>Please enter the manager's name first to enable employee selection.</span>
-            </div>
-          )}
-
-          <select
-            id="employeeName"
-            value={data.employeeName}
-            onChange={e => handleEmployeeChange(e.target.value)}
-            disabled={!managerEntered}
-            className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-opacity ${
-              !managerEntered ? 'opacity-40 cursor-not-allowed bg-gray-50' : ''
-            } ${errors.employeeName ? 'border-red-500' : 'border-input'}`}
-          >
-            <option value="">— Select employee —</option>
-            {employeeList.map(name => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-          {errors.employeeName && <p className="text-xs text-red-500">{errors.employeeName}</p>}
-        </div>
+        <EmployeePicker
+          value={data.employeeName}
+          employees={filer.employees}
+          status={filer.status}
+          error={errors.employeeName}
+          onSelect={handleEmployeeChange}
+        />
 
         {data.employeeName && (
           <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4">
