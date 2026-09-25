@@ -83,6 +83,7 @@ module.exports = {
         'status-green':  { fill: 'var(--status-green-fill)',  ink: 'var(--status-green-ink)',  tint: 'var(--status-green-tint)' },
         'status-yellow': { fill: 'var(--status-yellow-fill)', ink: 'var(--status-yellow-ink)', tint: 'var(--status-yellow-tint)' },
         'status-red':    { fill: 'var(--status-red-fill)',    ink: 'var(--status-red-ink)',    tint: 'var(--status-red-tint)' },
+        warm: { DEFAULT: 'var(--warm)', ink: 'var(--warm-ink)', text: 'var(--warm-text)', tint: 'var(--warm-tint)', ring: 'var(--warm-ring)' },
       },
       borderRadius: {
         sm: 'calc(var(--radius) - 6px)',
@@ -129,12 +130,22 @@ module.exports = {
             transform: 'translateX(-100%)',
           },
         },
+        'flash-required': {
+          '0%, 50%, 100%': { boxShadow: '0 0 0 0 rgb(220 38 38 / 0)', borderColor: 'rgb(203 213 225)' },
+          '25%, 75%': { boxShadow: '0 0 0 3px rgb(220 38 38 / 0.35)', borderColor: 'rgb(220 38 38)' },
+        },
+        'saved-fade': {
+          from: { backgroundColor: 'var(--status-green-tint)' },
+          to: { backgroundColor: 'transparent' },
+        },
       },
       animation: {
         'slide-from-left': 'slide-from-left 0.3s cubic-bezier(0.82, 0.085, 0.395, 0.895)',
         'slide-to-left': 'slide-to-left 0.25s cubic-bezier(0.82, 0.085, 0.395, 0.895)',
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'flash-required': 'flash-required 600ms ease-in-out',
+        'saved-fade': 'saved-fade 1200ms ease-out',
       },
     },
   },

@@ -124,3 +124,17 @@ summary:focus-visible,
 @layer utilities {
   .shadow-card { box-shadow: var(--shadow-card); }
 }
+
+/* Warm variant tokens (design system, 2026-09-25). Used ONLY by redesigned pages.
+   Orange fills carry --warm-ink text: white on #F37021 fails contrast. */
+:root {
+  --warm: #F37021;
+  --warm-ink: #08193E;
+  --warm-text: #C2410C;
+  --warm-tint: #FFF4EC;
+  --warm-ring: rgb(243 112 33 / 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-flash-required, .animate-saved-fade { animation: none !important; }
+}

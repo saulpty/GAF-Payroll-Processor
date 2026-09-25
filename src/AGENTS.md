@@ -21,6 +21,9 @@ derived from the code and migrations in this project, not from assumption.
 6. **One coherent change per prompt.** Touch only the files named in the
    request. Six files in this project are large enough that unrelated code
    breaks when they are edited — see [Hard constraints](#hard-constraints).
+7. **Read `DESIGN.md` before building or changing any screen's look.**
+   Warm variant, Title Case, page-by-page rollout: only redesigned pages use
+   the Warm tokens; never restyle other pages or edit `src/components/ui/*`.
 
 ---
 

@@ -52,7 +52,7 @@ Full version in `docs/CHANGE-LOOP.md`. The short form:
    the export never happened, not that the prompt changed nothing.
 6. **`git status --short`** must show only the files the prompt allowed.
    Anything else is collateral: revert in UIB, re-export, re-prompt.
-7. **`node --test "tests/*.test.ts"`** — all pass. Baseline is 551 (2026-09-24).
+7. **`node --test "tests/*.test.ts"`** — all pass. Baseline is 569 (2026-09-25).
 8. **Load the page in the browser and look at it.** Mandatory for any change
    touching `src/actions/` or a page. TypeScript-clean is not the same as runs.
 9. **Commit**, with a message that says what changed and what was verified.
@@ -146,6 +146,10 @@ deletes, so existing rows survive with their discount minutes. Guarded by
 
 - He'll often be right when he pushes back. Check the data before defending a
   conclusion, and say plainly when you were wrong.
+- **Exports are pre-authorized (Saul, 2026-09-25).** Export from UIB whenever the
+  change loop needs it — never ask him first. Same for pasting and sending prompts
+  he has approved, and step 10's merge + push. Still ask before Release and
+  before any migration that deletes data.
 - Verify before asserting. Don't say "fixed" or "it's set" without running the
   query or loading the page — and beware the UIB query runner showing a *stale*
   result from the previous run.
