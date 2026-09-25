@@ -83,8 +83,8 @@ export function ArRow({
         <TimeInput className={timeBox} value={edit.exit_time} placeholder="5:00 PM" onChange={v => onEdit(row.id, 'exit_time', v, row)} />
       </td>
       <td className={`${td} whitespace-nowrap text-[12px] text-slate-500`} style={{ width: 150 }}>{fmtShift(row.work_days, row.scheduled_start, row.scheduled_end)}</td>
-      <td className={`${td} text-right tabular-nums whitespace-nowrap ${late > 0 ? 'font-semibold text-status-red-ink' : 'text-slate-300'}`} style={{ width: 70 }}>{fmtMinutes(late) || '—'}</td>
-      <td className={`${td} text-right tabular-nums whitespace-nowrap ${early > 0 ? 'font-semibold text-status-yellow-ink' : 'text-slate-300'}`} style={{ width: 70 }}>{fmtMinutes(early) || '—'}</td>
+      <td className={`${td} text-right tabular-nums whitespace-nowrap ${late > 0 ? 'text-slate-800' : 'text-slate-300'}`} style={{ width: 70 }}>{fmtMinutes(late) || '—'}</td>
+      <td className={`${td} text-right tabular-nums whitespace-nowrap ${early > 0 ? 'text-slate-800' : 'text-slate-300'}`} style={{ width: 70 }}>{fmtMinutes(early) || '—'}</td>
       <td className={`${td} text-right`} style={{ width: 104 }}>
         {discount.tone === 'deduct' && <span className="inline-block whitespace-nowrap rounded-full bg-status-red-tint px-2 py-0.5 text-[12px] font-semibold tabular-nums text-status-red-ink ring-1 ring-status-red-fill">{discount.text}</span>}
         {discount.tone === 'paid' && <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-status-green-fill px-2 py-0.5 text-[12px] font-semibold text-status-green-ink"><Check className="w-3 h-3" />Paid</span>}
