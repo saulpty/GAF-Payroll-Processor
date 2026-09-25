@@ -28,10 +28,11 @@ export function ArRow({
   onCommitOne: (row: EntryRow) => void;
 }) {
   const needsEvent = missingEvent(edit);
-  const live = dirty ? computePunchMinutes({
+  // Always recompute from the punches, exactly as the save does (stored minutes can be stale).
+  const live = computePunchMinutes({
     entry_time: edit.entry_time, exit_time: edit.exit_time,
     scheduled_start: row.scheduled_start, scheduled_end: row.scheduled_end, grace_until: row.grace_until,
-  }) : null;
+  });
   const late = live ? live.late_minutes : row.late_minutes;
   const early = live ? live.early_leave_minutes : row.early_leave_minutes;
   // What a commit would deduct right now: the same computeDiscount the save uses.
@@ -40,7 +41,8 @@ export function ArRow({
     event_type_2: edit.event_type_2, pay_impact_2: edit.pay_impact_2,
     late_minutes: late, late_after_grace: live ? live.late_after_grace : row.late_after_grace,
     early_leave_minutes: early,
-  }), !!(edit.event_type_1 || edit.event_type_2));
+  // "Paid" only once every chosen event also has its impact (the pay decision is made).
+  }), !!(edit.event_type_1 || edit.event_type_2) && (!edit.event_type_1 || !!edit.pay_impact_1) && (!edit.event_type_2 || !!edit.pay_impact_2));
   const broadcasting = isSelected && selectedSize > 1;
   const tint = isSelected ? 'bg-warm-tint' : row.initial_status === 'RED' ? 'bg-status-red-tint' : 'bg-status-yellow-tint';
   const bar = isSelected ? 'shadow-[inset_3px_0_0_var(--warm)]' : '';

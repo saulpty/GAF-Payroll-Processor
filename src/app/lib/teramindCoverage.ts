@@ -4,7 +4,7 @@
 // permission and no holiday explains it. Warning-only: pay is decided by the engine.
 // No imports (the page passes normalizeName and fmtDay) so node tests can load it.
 
-type Emp = { teramind_email: string; display_name: string };
+type Emp = { id?: number; teramind_email: string; display_name: string };
 type Attendance = { employeeName: string; employeeEmail?: string; date: string; type: string };
 type Permission = { employeeName: string; employeeEmail?: string; startDate: string; endDate: string };
 
@@ -17,13 +17,21 @@ export function unexplainedWorkdays(
   attendance: Attendance[],
   permissions: Permission[],
   normalize: (s: string) => string,
+  /** Normalised name or alias → employee id (ProcessPayroll's buildNameMap), as the engine uses. */
+  nameMap?: Map<string, number>,
+  /** Every roster teramind_email, lower-cased: an email that belongs to someone else never matches. */
+  rosterEmails?: Set<string>,
 ): string[] {
   const empEmail = emp.teramind_email.trim().toLowerCase();
   const empName = normalize(emp.display_name);
-  // Email first; a missing or unknown email falls back to the normalised name.
+  // Same order as the engine: this employee's email matches; someone else's email never
+  // does; otherwise the name, through aliases too.
   const mine = (r: { employeeName: string; employeeEmail?: string }) => {
     const email = (r.employeeEmail ?? '').trim().toLowerCase();
-    return (!!email && email === empEmail) || normalize(r.employeeName ?? '') === empName;
+    if (email && email === empEmail) return true;
+    if (email && rosterEmails?.has(email)) return false;
+    const n = normalize(r.employeeName ?? '');
+    return (emp.id !== undefined && nameMap?.get(n) === emp.id) || n === empName;
   };
   const absent = new Set(attendance.filter(r => r.type === 'Absence' && mine(r)).map(r => r.date.slice(0, 10)));
   const perms = permissions.filter(mine);

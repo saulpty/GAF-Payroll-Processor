@@ -72,12 +72,9 @@ export function useArSave(getEdit: (row: EntryRow) => EditState) {
   // Undo from the toast (AR-7): put the row back exactly as it was loaded before the
   // commit — punch times and minutes, events, impacts, doc, notes, discount, readiness
   // and status. Values are written as loaded (a NULL stays NULL).
+  // The entry is written first: if the second write fails, the row is already back in
+  // Action Required (payroll_ready NO) and its next commit recomputes the minutes.
   const restoreRow = async (o: EntryRow): Promise<void> => {
-    await updateTimes({
-      id: o.id,
-      entry_time: o.entry_time, exit_time: o.exit_time,
-      late_minutes: o.late_minutes, late_after_grace: o.late_after_grace, early_leave_minutes: o.early_leave_minutes,
-    });
     await updateEntry({
       id: o.id,
       event_type_1: o.event_type_1, pay_impact_1: o.pay_impact_1,
@@ -85,6 +82,11 @@ export function useArSave(getEdit: (row: EntryRow) => EditState) {
       documentation: o.documentation, notes: o.notes,
       discount_total_minutes: o.discount_total_minutes,
       payroll_ready: o.payroll_ready, status_current: o.status_current,
+    });
+    await updateTimes({
+      id: o.id,
+      entry_time: o.entry_time, exit_time: o.exit_time,
+      late_minutes: o.late_minutes, late_after_grace: o.late_after_grace, early_leave_minutes: o.early_leave_minutes,
     });
   };
 

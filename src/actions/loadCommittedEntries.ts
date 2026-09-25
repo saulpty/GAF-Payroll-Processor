@@ -8,7 +8,7 @@ function loadCommittedEntries() {
              pe.event_type_1, pe.pay_impact_1, pe.event_type_2, pe.pay_impact_2,
              pe.documentation, pe.notes, pe.auto_notes,
              pe.initial_status, pe.status_current, pe.discount_total_minutes,
-             pe.updated_at
+             (pe.updated_at AT TIME ZONE 'America/Panama')::text AS updated_at
       FROM payroll_entries pe
       JOIN employees e ON e.id = pe.employee_id
       WHERE (COALESCE({{params.periodName}}, '') = '' OR pe.period_name = {{params.periodName}})

@@ -393,13 +393,15 @@ export default function ProcessPayroll() {
       // A workday is a Teramind gap only when no Monday absence form, permission or holiday
       // explains it (Saul, 2026-09-25: sick days were being reported as missing Teramind data).
       const holidayDates = new Set((holidays as { date: string }[]).map(h => String(h.date).slice(0, 10)));
+      const coverageNames = buildNameMap();
+      const rosterEmails = new Set((employees as Employee[]).map(e => (e.teramind_email || '').trim().toLowerCase()).filter(Boolean));
       for (const emp of activeEmps) {
         if (!emp.teramind_email) continue;
         const dayMap = tmMap.get(emp.teramind_email.toLowerCase());
         if (!dayMap) continue;
         const expectedWorkdays = periodDates.filter(d => isScheduledWorkDay(d, emp.work_days)).map(d => toLocalYMD(d));
         if (expectedWorkdays.length === 0) continue;
-        const gaps = unexplainedWorkdays(emp, expectedWorkdays, dayMap, holidayDates, attendance, permissions, normalizeName);
+        const gaps = unexplainedWorkdays(emp, expectedWorkdays, dayMap, holidayDates, attendance, permissions, normalizeName, coverageNames, rosterEmails);
         if (gaps.length > 0 && gaps.length / expectedWorkdays.length > 0.3) warnings.push({ level: 'warn', message: `${emp.display_name}: no Teramind data and no form on ${gaps.length} of ${expectedWorkdays.length} workdays: ${gaps.map(d => fmtDay(d, d.slice(0, 4))).join(', ')}.` });
       }
       if (attendanceItems.length === 0) warnings.push({ level: 'warn', message: 'Attendance board returned 0 items — no tardiness/absence data.' });

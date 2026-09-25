@@ -186,7 +186,7 @@ function ActionRequiredPage() {
       {!firstLoad && allRows.length > 0 && (
         <div className="flex flex-col flex-1 min-h-0 gap-3 overflow-hidden">
 
-          <ArCommitBar someSelected={bulk} selectedCount={selectedCount} selectedSize={selected.size}
+          <ArCommitBar someSelected={bulk} selectedCount={selectedCount} selectedSize={selectedCount}
             bulkSaving={bulkSaving} dirtyCount={dirtyCount}
             onDeselectAll={() => setSelected(new Set())}
             onCommit={() => setConfirmIds(filtered.filter(r => selected.has(r.id)).map(r => r.id))}
@@ -213,7 +213,7 @@ function ActionRequiredPage() {
                   return (
                     <ArRow key={row.id} row={row} rowIndex={rowIndex}
                       edit={getEdit(row)} dirty={dirty}
-                      isSelected={isSelected} selectedSize={selected.size}
+                      isSelected={isSelected} selectedSize={selectedCount}
                       showPeriod={!selectedPeriod}
                       eventOpts={eventOpts} impactOptions={impactOptions} docOpts={docOpts}
                       visibleRows={filtered} onToggle={toggleRow} onEdit={setEditField}
