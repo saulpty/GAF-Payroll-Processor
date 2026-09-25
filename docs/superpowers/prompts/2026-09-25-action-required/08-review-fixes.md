@@ -19,37 +19,8 @@ uses the same inputs the save uses.
 - **"Paid" showed before an impact was chosen**: now only when every chosen event has its impact.
 - **Undo wrote times before the entry**: a half-failed Undo could leave a row green with old
   minutes. The entry is now written first.
-- **Committed "Updated" was UTC**: now Panama wall-clock (The AT command has been deprecated. Please use schtasks.exe instead.
-
-Invalid command.
-
-The AT command schedules commands and programs to run on a computer at      
-a specified time and date. The Schedule service must be running to use      
-the AT command.
-                                                           
-AT [\\computername] [ [id] [/DELETE] | /DELETE [/YES]]                    
-AT [\\computername] time [/INTERACTIVE]
-    [ /EVERY:date[,...] | /NEXT:date[,...]] "command"
-
-\\computername     Specifies a remote computer. Commands are scheduled on the
-                   local computer if this parameter is omitted.             
-id                 Is an identification number assigned to a scheduled      
-                   command.                                                 
-/delete            Cancels a scheduled command. If id is omitted, all the
-                   scheduled commands on the computer are canceled.
-/yes               Used with cancel all jobs command when no further
-                   confirmation is desired.
-time               Specifies the time when command is to run.
-/interactive       Allows the job to interact with the desktop of the user   
-                   who is logged on at the time the job runs.
-/every:date[,...]  Runs the command on each specified day(s) of the week or
-                   month. If date is omitted, the current day of the month
-                   is assumed.                                              
-/next:date[,...]   Runs the specified command on the next occurrence of the
-                   day (for example, next Thursday).  If date is omitted, the
-                   current day of the month is assumed.
-"command"          Is the Windows NT command, or batch program to be run., as the
-  Disciplinary loader already does).  is ; ordering is unchanged.
+- **Committed "Updated" was UTC**: now Panama wall-clock (`AT TIME ZONE 'America/Panama'`, as the
+  Disciplinary loader already does). `updated_at` is `timestamptz`; ordering is unchanged.
 - **Teramind warning ignored aliases** (and matched by name when the email was someone else's):
   now the same order as the engine: own email, never another roster email, then name or alias.
 - **Bulk hint over-counted** selected rows hidden by a filter: now the visible selected count.
