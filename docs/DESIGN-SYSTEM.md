@@ -105,7 +105,13 @@ This app is a spreadsheet, not a marketing site. HR staff spend hours a day scan
 
 Light mode only. Desktop-first (this is a back-office tool used on a workstation), but never so cramped that a 13px number is unreadable.
 
-Two accent variants are defined below as token sets, "Warm" and "Classic." They differ only in `primary`/`secondary`/frame color usage. Everything else — spacing, type, tables, status colors, motion — is identical. The app owner will pick one by eye; until then, build every new screen so it only reads from the `--primary` / `--secondary` tokens, never a hardcoded hex, so switching variants is a one-line change.
+**Decision (Saul, 2026-09-25): the Warm variant is the app's look.** Orange `#F37021` for primary actions (with ink-navy `#08193E` text), GAF navy `#1B3A6B` as the frame (top bar, headings). The Classic token set stays below for reference only; do not build with it. Every screen still reads colors from the `--primary` / `--secondary` tokens, never a hardcoded hex. Approved preview: https://claude.ai/artifact/2PwGWuCuVqL3C6LZaYHi54
+
+**Decision (Saul, 2026-09-25): Title Case where applicable.**
+- **Title Case**: page titles, section and card headings, buttons, tabs, nav items, column headers, filter chips, field labels, dialog titles. Minor words stay lowercase unless first or last: a, an, the, and, or, but, of, to, in, on, at, for, by, with. Examples: `Action Required`, `Commit 2 to Green`, `Needs an Event`, `Set Impact`, `Add Employee`.
+- **Sentence case**: anything that reads as a sentence: helper text, error and validation messages, toasts, empty states, tooltips, placeholders, notes. Examples: `Pick an event first`, `That email already belongs to …`, `No employees match your filter.`
+- Data values are shown as stored (event and impact names, notes).
+- Never ALL CAPS for labels or headers.
 
 ## Colors
 
@@ -149,7 +155,7 @@ Inter, the font already loaded (`--font-sans` in `src/index.css`). Dense UI need
 | Token | Size / Line height | Weight | Use |
 |---|---|---|---|
 | `table-cell` | 13px / 18px | 400 | Every data-table cell body. |
-| `table-header` | 12px / 16px | 600, +0.02em tracking | Column headers, uppercase optional but not required. |
+| `table-header` | 12px / 16px | 600, +0.02em tracking | Column headers, in Title Case (never uppercase). |
 | `micro` | 11px / 14px | 500 | Row timestamps, chip counts, footnotes. |
 | `label` | 13px / 16px | 500 | Form field labels, filter labels. |
 | `body` | 14px / 20px | 400 | Paragraph text, dialog copy, helper text. |
