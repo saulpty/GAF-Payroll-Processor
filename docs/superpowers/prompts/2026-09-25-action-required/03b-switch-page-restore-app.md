@@ -2,9 +2,9 @@
 
 **Copy every code block exactly, character for character. Do not rewrite, merge, "improve" or re-derive any of it from the description. If your context is compacted mid-task, re-read this prompt before writing any file.**
 
-**Only these three files may change:**
+**Only these four files may change:**
 
-## 1. `src/app/app.tsx`: undo the previous prompt's edit (it was not allowed)
+## 1. `src/app/app.tsx`: undo the AR-2 prompt's edit (it was not allowed)
 
 Remove exactly these three lines and change nothing else in the file:
 - `import { ToastProvider } from '@/app/components/ds/Toast';`
@@ -12,7 +12,7 @@ Remove exactly these three lines and change nothing else in the file:
 - `</ToastProvider>` (the line directly before `</GlobalFilterProvider>`)
 
 The Action Required page mounts its own `ToastProvider` (page-by-page rollout); app.tsx must be
-byte-identical to how it was before the AR-2 prompt.
+exactly as it was before the AR-2 prompt.
 
 ## 2. `src/app/pages/action-required/useArSave.ts` (whole file)
 
@@ -95,7 +95,127 @@ export function useArSave(getEdit: (row: EntryRow) => EditState) {
 }
 ```
 
-## 3. `src/app/pages/ActionRequired.tsx` (whole file)
+## 3. `src/app/pages/action-required/useArCommit.ts` (whole file, replaces AR-3a's version)
+
+Code-review fixes: each row saves in its own `try` (one failure is reported and never stops or
+silences the rest); Undo and Revert report failures; loaders are read through a ref so a late
+Undo uses the current period; the `hiddenIds` reset keeps the same Set when already empty.
+
+```ts
+import { useEffect, useRef, useState } from 'react';
+import { isValidTimeInput } from '@/app/lib/parseTimeInput';
+import { refusalReason } from './arLogic';
+import type { CommittedRow, EditState, EntryRow } from './arTypes';
+
+type SaveResult = { status: string; saved: CommittedRow } | null;
+type Fn = () => unknown;
+const plural = (n: number) => `${n} ${n === 1 ? 'row' : 'rows'}`;
+
+/**
+ * Commit, Undo and Revert for Action Required (AR-3; moved out of the page).
+ * Rows committed to GREEN leave the table at once; drafts are dropped only after
+ * the reload lands; counts refresh through bumpArVersion; results go to the toast.
+ * Each row is saved on its own: one failure is reported and never stops the rest.
+ */
+export function useArCommit({ rows, getEdit, saveRow, revertRow, reload, reloadCommitted, markSaved, bumpArVersion, toast }: {
+  rows: unknown;
+  getEdit: (row: EntryRow) => EditState;
+  saveRow: (row: EntryRow) => Promise<SaveResult>;
+  revertRow: (r: CommittedRow) => Promise<void>;
+  reload: Fn;
+  reloadCommitted: Fn;
+  markSaved: (id: number) => void;
+  bumpArVersion: () => void;
+  toast: { show: (o: { message: string; tone?: 'success' | 'error'; onUndo?: () => void }) => void };
+}) {
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [sessionCommitted, setSessionCommitted] = useState<Set<number>>(new Set());
+  const [revertingIds, setRevertingIds] = useState<Set<number>>(new Set());
+  const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
+  // Fresh rows arrived: nothing needs hiding any more. Keeps the same Set when already empty.
+  useEffect(() => { setHiddenIds(prev => (prev.size ? new Set() : prev)); }, [rows]);
+
+  // Undo can fire seconds later, after a period change: always call the current loaders.
+  const live = useRef({ reload, reloadCommitted, bumpArVersion });
+  live.current = { reload, reloadCommitted, bumpArVersion };
+  const refresh = async () => {
+    live.current.bumpArVersion();
+    await live.current.reload();
+    await live.current.reloadCommitted();
+  };
+
+  const reasonFor = (row: EntryRow) => refusalReason(getEdit(row), isValidTimeInput);
+
+  const undoCommit = async (done: CommittedRow[]) => {
+    const failed: string[] = [];
+    let moved = 0;
+    for (const r of done) {
+      try { await revertRow(r); moved++; } catch { failed.push(`${r.employee_name} ${r.work_date.slice(0, 10)}`); }
+    }
+    setSessionCommitted(prev => { const s = new Set(prev); done.forEach(r => s.delete(r.id)); return s; });
+    await refresh();
+    if (moved) toast.show({ message: `Moved ${plural(moved)} back to Action Required` });
+    if (failed.length) toast.show({ tone: 'error', message: `Could not undo: ${failed.join(', ')}` });
+  };
+
+  const commitRows = async (toSave: EntryRow[]) => {
+    if (!toSave.length) return;
+    setBulkSaving(true);
+    const refused: string[] = [];
+    const failed: string[] = [];
+    const savedIds: number[] = [];
+    const green: CommittedRow[] = [];
+    for (const row of toSave) {
+      const label = `${row.employee_name} ${row.work_date.slice(0, 10)}`;
+      const reason = reasonFor(row);
+      if (reason) { refused.push(`${label} (${reason})`); continue; }
+      try {
+        const res = await saveRow(row);
+        if (res === null) { refused.push(`${label} (Entry and Exit must look like 9:05 AM)`); continue; }
+        savedIds.push(row.id);
+        setSessionCommitted(prev => new Set(prev).add(row.id));
+        if (res.status === 'GREEN') {
+          green.push(res.saved);
+          setHiddenIds(prev => new Set(prev).add(row.id));
+        }
+      } catch {
+        failed.push(label);
+      }
+    }
+    setBulkSaving(false);
+    if (refused.length) toast.show({ tone: 'error', message: `Not committed: ${refused.join(', ')}` });
+    if (failed.length) toast.show({ tone: 'error', message: `Save failed, please try again: ${failed.join(', ')}` });
+    if (green.length) {
+      toast.show({ message: `Committed ${plural(green.length)} to green`, onUndo: () => { void undoCommit(green); } });
+    }
+    const notGreen = savedIds.length - green.length;
+    if (notGreen > 0) toast.show({ message: `Saved ${plural(notGreen)}; still not green` });
+    try {
+      await refresh();
+    } finally {
+      // Drop the drafts only once fresh rows are in, so no row flashes its old values.
+      savedIds.forEach(id => markSaved(id));
+    }
+  };
+
+  const handleRevert = async (r: CommittedRow) => {
+    setRevertingIds(prev => new Set(prev).add(r.id));
+    try {
+      await revertRow(r);
+      setSessionCommitted(prev => { const s = new Set(prev); s.delete(r.id); return s; });
+      await refresh();
+    } catch {
+      toast.show({ tone: 'error', message: `Could not revert ${r.employee_name} ${r.work_date.slice(0, 10)}` });
+    } finally {
+      setRevertingIds(prev => { const s = new Set(prev); s.delete(r.id); return s; });
+    }
+  };
+
+  return { commitRows, handleRevert, reasonFor, bulkSaving, sessionCommitted, setSessionCommitted, revertingIds, hiddenIds };
+}
+```
+
+## 4. `src/app/pages/ActionRequired.tsx` (whole file)
 
 ```tsx
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -173,15 +293,18 @@ function ActionRequiredPage() {
   }, [selectedPeriod]);
 
   // Editing a row no longer selects it (AR-3): selection is the checkbox only, so an
-  // edit never silently broadcasts to rows touched earlier. Broadcast still applies
-  // when the edited row is part of a deliberate 2+ selection.
-  const setEditField = useCallback((id: number, field: keyof EditState, value: string, row: EntryRow, allRows?: EntryRow[]) => {
+  // edit never silently broadcasts to rows touched earlier. Broadcast applies only to a
+  // deliberate 2+ selection, only to rows currently visible, and each target's draft is
+  // built from that row's own data (never from the edited row's times or notes).
+  const setEditField = useCallback((id: number, field: keyof EditState, value: string, row: EntryRow, visibleRows?: EntryRow[]) => {
     const isBroadcast = BROADCAST_FIELDS.includes(field) && selected.has(id) && selected.size > 1;
-    const targetIds = isBroadcast ? Array.from(selected) : [id];
-    const rowMap = new Map((allRows ?? []).map(r => [r.id, r]));
+    const visibleIds = new Set((visibleRows ?? []).map(r => r.id));
+    const targetIds = isBroadcast ? Array.from(selected).filter(t => t === id || visibleIds.has(t)) : [id];
+    const rowMap = new Map((rows as EntryRow[]).map(r => [r.id, r]));
 
     for (const tid of targetIds) {
-      const trow = rowMap.get(tid) ?? row;
+      const trow = tid === id ? row : rowMap.get(tid);
+      if (!trow) continue;
       update(tid, trow, current => {
         const updated = { ...current, [field]: value };
         if (field === 'event_type_1' && value && rulesMap.has(value)) {
@@ -196,7 +319,7 @@ function ActionRequiredPage() {
         return updated;
       });
     }
-  }, [update, rulesMap, selected]);
+  }, [update, rulesMap, selected, rows]);
 
   const allRows = useMemo(() => (rows as EntryRow[]).filter(r => !hiddenIds.has(r.id)), [rows, hiddenIds]);
   // Only the very first load replaces the page with a spinner; later reloads are silent.
@@ -211,6 +334,7 @@ function ActionRequiredPage() {
     setConfirmIds(null);
     const toSave = filtered.filter(r => ids.has(r.id));
     setSelected(prev => { const s = new Set(prev); ids.forEach(id => s.delete(id)); return s; });
+    setLastSelectedIndex(null);
     await commitRows(toSave);
   };
 
@@ -260,7 +384,7 @@ function ActionRequiredPage() {
       {firstLoad && (
         <div className="flex items-center gap-2 text-muted-foreground text-sm mt-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading entries…</div>
       )}
-      {!loading && allRows.length === 0 && (
+      {!firstLoad && allRows.length === 0 && (
         <Card className="border-green-300 bg-green-50 flex-1">
           <CardContent className="pt-12 text-center">
             <CheckCircle className="w-10 h-10 text-green-600 mx-auto mb-3" />
@@ -281,7 +405,10 @@ function ActionRequiredPage() {
             onDiscardAll={discardAll} />
 
           {/* ── Work table ─────────────────────────────────────── */}
-          <div className="flex-1 min-h-0 rounded-lg border shadow-sm overflow-auto">
+          {/* While data refreshes the table stays put but dims and ignores clicks, so the
+              previous period's rows can never be edited or committed by mistake. */}
+          <div className={`flex-1 min-h-0 rounded-lg border shadow-sm overflow-auto transition-opacity ${loading ? 'opacity-60 pointer-events-none' : ''}`}
+            aria-busy={loading || undefined}>
             <table className="w-full text-xs border-collapse tabular-nums" style={{ minWidth: 1120 }}>
               <ArHead allFilteredSelected={allFilteredSelected} someSelected={someSelected} showPeriod={!selectedPeriod}
                 sortKey={sortKey} sortDir={sortDir} onSort={handleSort} onToggleAll={toggleSelectAll} />
@@ -327,19 +454,25 @@ function ActionRequiredPage() {
 ```
 
 **No other file may be touched**: not `GlobalFilterContext.tsx`, `FilterBar.tsx`, `TopNav.tsx`
-(their `arVersion` edits from the previous prompt are correct and stay), not the AR-3a files,
-not `classificationEngine.ts`, `punchMinutes.ts`, any action, or `src/components/ui/*`.
+(their `arVersion` edits stay as they are), not the other `action-required/*` files, not
+`parseTimeInput.ts`, `TimeInput.tsx`, `PayrollMaster.tsx` (AR-3c), `classificationEngine.ts`,
+`punchMinutes.ts`, any action, or `src/components/ui/*`.
 
 ## What this delivers
 - Only the first load shows a spinner; commits no longer flash the table or reset the scroll.
+  While data refreshes, the table dims and ignores clicks (no editing stale rows).
 - Rows committed to GREEN leave at once; drafts are dropped only after fresh rows arrive.
-- Toast `Committed N rows to green · Undo`; refused rows go to an error toast (no `alert`).
-- Counts and the nav badge refresh after commit, revert and undo (`bumpArVersion`).
-- Guards from AR-3a: bad times and event-less impacts are skipped with a reason.
+- Toasts: `Committed N rows to green · Undo`; `Saved N rows; still not green`; refused and
+  failed rows in an error toast (no browser `alert`).
+- Counts and the nav badge refresh after commit, revert and undo.
+- Refused rows: impossible Entry/Exit, or an impact without its event (red Event box, pulse,
+  `Pick an event first`).
 - The bulk bar needs 2+ selected rows; one row commits from its own `Commit` button.
-- Editing a row no longer selects it, so edits never broadcast to rows touched earlier.
+- Editing a row no longer selects it. Bulk edits reach only **visible** selected rows, and each
+  row's draft is built from that row's own data (fixes a bug where a hidden selected row got
+  another employee's punch times).
 
 ## Report
 - The three removed app.tsx lines, and confirmation app.tsx has no other change.
-- Byte size of `useArSave.ts` and `ActionRequired.tsx`.
+- Byte size of `useArSave.ts`, `useArCommit.ts` and `ActionRequired.tsx`.
 - Confirm no other file changed and `/action-required` renders with no console errors.

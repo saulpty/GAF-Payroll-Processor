@@ -34,11 +34,21 @@ test('TI3: blank and unrecognisable text pass through unchanged', () => {
 // With am/pm the hour must be 1–12; without, 0–23. Impossible text stays as
 // typed and isValidTimeInput reports it so the box can turn red.
 test('TI4: impossible times are refused and flagged', () => {
-  for (const s of ['55:00 PM', '13:00 PM', '0:30 AM', '9:75', '25', '2500', '13p', '0a']) {
+  for (const s of ['55:00 PM', '13:00 PM', '0:30 PM', '9:75', '25', '2500', '13p']) {
     assert.equal(parseTimeInput(s), s, s);
     assert.equal(isValidTimeInput(s), false, s);
   }
-  for (const s of ['', '9', '930p', '12:35am', '14:30', '1230a', '0']) {
+  for (const s of ['', '9', '930p', '12:35am', '14:30', '1230a', '0', '0:30 AM', '0a']) {
     assert.equal(isValidTimeInput(s), true, s);
   }
+});
+
+// TI5 (2026-09-25, code review): rows edited before the fix can hold "0:30 AM"
+// (the old parser's output for "1230a"). It is 12:30 AM — the same 30 minutes to
+// the engine — and must not be refused as "not a real time".
+test('TI5: a stored "0:30 AM" reads as 12:30 AM', () => {
+  assert.equal(parseTimeInput('0:30 AM'), '12:30 AM');
+  assert.equal(parseTimeInput('0a'), '12:00 AM');
+  assert.equal(parseTimeInput('030a'), '12:30 AM');
+  assert.equal(isValidTimeInput('0:30 AM'), true);
 });
