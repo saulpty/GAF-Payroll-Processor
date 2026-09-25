@@ -739,3 +739,10 @@ Payroll Master swapped its whole table for "Loading…" on each `reload()`: 444 
 28,458 options rebuilt, tab frozen for over a minute. Tim reported it as "Save crashes". Keep
 tables mounted while reloading (`useLoadAction` keeps the previous data); show a full spinner only
 on the first load, and dim + block clicks during later reloads.
+
+## Never build prompt files with an unquoted heredoc (2026-09-25)
+
+`cat <<EOF` (unquoted, used to interpolate a variable) runs every backtick span as a command.
+A prompt line with `` `AT TIME ZONE 'America/Panama'` `` executed Windows' `AT` scheduler (it only
+printed "Invalid command"; nothing was scheduled) and pasted its help text into the prompt. Use
+`<<'EOF'` for prose and append variables separately, and grep the generated prompt before sending.
