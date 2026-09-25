@@ -520,13 +520,18 @@ export default function PayrollMaster() {
         />
       )}
 
-      {periodChosen && loading && (
+      {periodChosen && loading && allRows.length === 0 && (
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <Loader2 className="w-4 h-4 animate-spin" />Loading…
         </div>
       )}
+      {periodChosen && loading && allRows.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-md border bg-white px-3 py-1.5 text-xs text-muted-foreground shadow">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />Refreshing…
+        </div>
+      )}
 
-      {periodChosen && !loading && (
+      {periodChosen && !(loading && allRows.length === 0) && (
         <div className="flex flex-col flex-1 min-h-0 gap-3">
 
           {/* Bulk edit toolbar */}

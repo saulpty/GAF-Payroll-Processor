@@ -36,13 +36,17 @@ test('PW2: PayrollMaster saves through computePunchMinutes + updatePunchTimes, n
 
 const AR = 'src/app/pages/ActionRequired.tsx';
 
+// Since the AR-1 split (2026-09-25) the commit lives in action-required/useArSave.ts.
+const AR_SAVE = 'src/app/pages/action-required/useArSave.ts';
+
 test('PW3: ActionRequired commits through computePunchMinutes + updatePunchTimes', () => {
-  const src = readFileSync(AR, 'utf8');
-  assert.ok(src.includes("from '@/app/lib/punchMinutes'"), 'ActionRequired must import computePunchMinutes');
-  assert.ok(src.includes("from '@/actions/updatePunchTimes'"), 'ActionRequired must import updatePunchTimes');
-  assert.ok(!src.includes('updateEntryExit'), 'ActionRequired must no longer reference updateEntryExit');
+  const src = readFileSync(AR_SAVE, 'utf8');
+  assert.ok(readFileSync(AR, 'utf8').includes("from './action-required/useArSave'"), 'ActionRequired must commit through useArSave');
+  assert.ok(src.includes("from '@/app/lib/punchMinutes'"), 'useArSave must import computePunchMinutes');
+  assert.ok(src.includes("from '@/actions/updatePunchTimes'"), 'useArSave must import updatePunchTimes');
+  assert.ok(!src.includes('updateEntryExit') && !readFileSync(AR, 'utf8').includes('updateEntryExit'), 'Action Required must no longer reference updateEntryExit');
   const start = src.indexOf('const saveRow');
-  const body = src.slice(start, src.indexOf('const handleBulkCommit', start));
+  const body = src.slice(start, src.indexOf('const revertRow', start));
   assert.ok(body.includes('computePunchMinutes('), 'saveRow must recompute minutes');
   assert.ok(/late_minutes:\s*mins\.late_minutes/.test(body), 'computeDerivedFields must receive the recomputed late_minutes');
   assert.ok(!/late_minutes:\s*row\.late_minutes/.test(body), 'saveRow must not feed the stale row.late_minutes into the derived fields');
