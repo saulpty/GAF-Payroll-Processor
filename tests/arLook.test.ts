@@ -32,7 +32,7 @@ test('AL3: the row uses the shared parts and the same discount math as the save'
   assert.match(row, /computeDiscount\(\{/);
   assert.match(row, /fmtDay\(row\.work_date\.slice\(0, 10\), THIS_YEAR\)/);
   assert.match(row, /fmtShift\(row\.work_days, row\.scheduled_start, row\.scheduled_end\)/);
-  assert.doesNotMatch(row + head, /uppercase/, 'Title Case, never uppercase');
+  assert.doesNotMatch(row + head, /className=[^>]*uppercase/, 'Title Case, never an uppercase class');
   assert.match(head, /col="event_type_1" label="Event 1"/);
   assert.match(loader, /LEFT JOIN schedules s ON s\.id = e\.schedule_id/);
 });

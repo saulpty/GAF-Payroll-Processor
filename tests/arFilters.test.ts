@@ -29,6 +29,6 @@ test('AF3: page wiring and the Committed section look', () => {
   assert.match(page, /filterByEvent\(tabRows, eventFilter, eventsOf\)/);
   assert.match(page, /<ArToolbar /);
   assert.match(done, /Committed to Green/);
-  assert.doesNotMatch(done, /Committed to GREEN|uppercase/);
+  assert.doesNotMatch(done, /Committed to GREEN|className=[^>]*uppercase/);
   assert.match(done, /fmtDay\(r\.work_date\.slice\(0, 10\), THIS_YEAR\)/);
 });

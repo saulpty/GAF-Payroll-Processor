@@ -10,6 +10,8 @@ export type EntryRow = {
   event_type_2: string; pay_impact_2: string;
   documentation: string; notes: string; auto_notes: string;
   initial_status: string; status_current: string;
+  /** The employee's schedule work days, e.g. "Mon,Tue,Wed,Thu,Fri" (AR-4, for the Shift column). */
+  work_days?: string | null;
 };
 
 export type CommittedRow = {

@@ -1,11 +1,18 @@
-import { CheckSquare, Send, Square } from 'lucide-react';
+import { Check, Send } from 'lucide-react';
 import { TimeInput } from '@/app/components/TimeInput';
+import { Combobox } from '@/app/components/ds/Combobox';
 import { computePunchMinutes } from '@/app/lib/punchMinutes';
-import { BroadcastSelect } from './ArBits';
-import { missingEvent } from './arLogic';
+import { computeDiscount, toLocalYMD } from '@/app/lib/classificationEngine';
+import { fmtDay } from '@/app/lib/fmtDay';
+import { fmtShift } from '@/app/lib/fmtTime';
+import { discountLabel, fmtMinutes, missingEvent } from './arLogic';
 import type { EditState, EntryRow } from './arTypes';
 
-/** One editable row of the work table. Split out of ActionRequired.tsx, AR-1. */
+const THIS_YEAR = toLocalYMD(new Date()).slice(0, 4);
+const td = 'px-2 py-1.5 border-b border-slate-100';
+const timeBox = 'w-full h-7 rounded-md border border-slate-300 bg-white px-1.5 text-[12px] tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring';
+
+/** One editable row of the work table (AR-4: Warm look, per src/DESIGN.md). */
 export function ArRow({
   row, rowIndex, edit, dirty, isSelected, selectedSize, showPeriod,
   eventOpts, impactOptions, docOpts, visibleRows, onToggle, onEdit, canCommitOne, onCommitOne,
@@ -25,102 +32,78 @@ export function ArRow({
     entry_time: edit.entry_time, exit_time: edit.exit_time,
     scheduled_start: row.scheduled_start, scheduled_end: row.scheduled_end, grace_until: row.grace_until,
   }) : null;
-  const lateShown = live ? live.late_minutes : row.late_minutes;
-  const earlyShown = live ? live.early_leave_minutes : row.early_leave_minutes;
+  const late = live ? live.late_minutes : row.late_minutes;
+  const early = live ? live.early_leave_minutes : row.early_leave_minutes;
+  // What a commit would deduct right now: the same computeDiscount the save uses.
+  const discount = discountLabel(computeDiscount({
+    event_type_1: edit.event_type_1, pay_impact_1: edit.pay_impact_1,
+    event_type_2: edit.event_type_2, pay_impact_2: edit.pay_impact_2,
+    late_minutes: late, late_after_grace: live ? live.late_after_grace : row.late_after_grace,
+    early_leave_minutes: early,
+  }), !!(edit.event_type_1 || edit.event_type_2));
   const broadcasting = isSelected && selectedSize > 1;
-  const rowBg = isSelected
-    ? 'bg-blue-50'
-    : dirty
-      ? row.initial_status === 'RED' ? 'bg-red-50' : 'bg-amber-50/70'
-      : row.initial_status === 'RED' ? 'bg-[#FFF0F0]' : 'bg-[#FFFBEB]';
+  const tint = isSelected ? 'bg-warm-tint' : row.initial_status === 'RED' ? 'bg-status-red-tint' : 'bg-status-yellow-tint';
+  const bar = isSelected ? 'shadow-[inset_3px_0_0_var(--warm)]' : '';
+  const pick = (field: keyof EditState) => (v: string) => onEdit(row.id, field, v, row, visibleRows);
+  const combo = (field: keyof EditState, value: string, options: string[], label: string, invalid = false) => (
+    <div className={broadcasting ? 'rounded-md ring-1 ring-warm-ring' : ''} title={broadcasting ? `Applies to all ${selectedSize} selected rows` : undefined}>
+      <Combobox value={value} options={options} onChange={pick(field)} ariaLabel={`${label}, ${row.employee_name} ${row.work_date.slice(0, 10)}`}
+        invalid={invalid} flashKey={invalid ? 1 : 0} className="w-full" />
+    </div>
+  );
 
   return (
-    <tr className={`${rowBg} border-b hover:brightness-[0.97] transition-colors ${isSelected ? 'ring-1 ring-inset ring-blue-300' : ''}`}>
-      {/* Checkbox */}
-      <td className={`px-2 py-2 w-8 border-r sticky left-0 z-10 ${rowBg}`}>
-        <button onClick={e => onToggle(row.id, rowIndex, e.shiftKey)} className="flex items-center justify-center w-full">
-          {isSelected
-            ? <CheckSquare className="w-3.5 h-3.5 text-blue-600" />
-            : <Square className="w-3.5 h-3.5 text-slate-300 hover:text-slate-500" />}
-        </button>
+    <tr className={`${tint} hover:brightness-[0.98] text-[13px] text-slate-800`}>
+      <td className={`${td} sticky left-0 z-10 w-10 ${tint} ${bar}`}>
+        <input type="checkbox" checked={isSelected} aria-label={`Select ${row.employee_name} ${row.work_date.slice(0, 10)}`}
+          onChange={() => {}} onClick={e => onToggle(row.id, rowIndex, e.shiftKey)}
+          className="h-4 w-4 rounded border-slate-400 accent-[var(--warm)] cursor-pointer" />
       </td>
-      {/* Frozen employee */}
-      <td className={`px-3 py-2 font-medium whitespace-nowrap border-r sticky left-8 z-10 ${rowBg}`}>
-        <span
-          role="button"
-          tabIndex={0}
-          aria-pressed={isSelected}
-          onClick={e => onToggle(row.id, rowIndex, e.shiftKey)}
-          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { if (e.key === ' ') e.preventDefault(); onToggle(row.id, rowIndex, e.shiftKey); } }}
-          className="cursor-pointer hover:text-blue-700 transition-colors"
-        >{row.employee_name}</span>
-        {canCommitOne && (
-          <button type="button" onClick={() => onCommitOne(row)} title="Commit this row to GREEN"
-            className="ml-2 inline-flex items-center gap-1 rounded bg-blue-700 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-blue-800">
-            <Send className="w-3 h-3" />Commit
-          </button>
-        )}
+      <td className={`${td} sticky left-10 z-10 ${tint}`} style={{ width: 176, minWidth: 176, maxWidth: 176 }}>
+        <div className="flex items-center gap-1.5">
+          <span className="truncate font-medium" title={row.employee_name}>{row.employee_name}</span>
+          {dirty && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warm" title="Unsaved changes" />}
+          {canCommitOne && (
+            <button type="button" onClick={() => onCommitOne(row)} title="Commit this row to Green"
+              className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-warm px-2 py-0.5 text-[11px] font-semibold text-warm-ink hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring">
+              <Send className="w-3 h-3" />Commit
+            </button>
+          )}
+        </div>
       </td>
-      {showPeriod && <td className="px-3 py-1.5 border-r whitespace-nowrap text-slate-600">{row.period_name}</td>}
-      <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0, 10)}</td>
-      {/* Entry/Exit */}
-      <td className="px-1 py-1.5 border-r w-24 bg-blue-50/40" style={{ width: 112, minWidth: 112 }}>
-        <TimeInput className="w-full border rounded px-1 py-1 text-xs bg-white font-mono"
-          value={edit.entry_time} placeholder="9:00 AM"
-          onChange={v => onEdit(row.id, 'entry_time', v, row)} />
+      {showPeriod && <td className={`${td} whitespace-nowrap text-slate-600`} style={{ width: 110 }}>{row.period_name}</td>}
+      <td className={`${td} whitespace-nowrap text-slate-700`} style={{ width: 96 }}>{fmtDay(row.work_date.slice(0, 10), THIS_YEAR)}</td>
+      <td className={td} style={{ width: 88, minWidth: 88 }}>
+        <TimeInput className={timeBox} value={edit.entry_time} placeholder="9:00 AM" onChange={v => onEdit(row.id, 'entry_time', v, row)} />
       </td>
-      <td className="px-1 py-1.5 border-r w-24 bg-blue-50/40" style={{ width: 112, minWidth: 112 }}>
-        <TimeInput className="w-full border rounded px-1 py-1 text-xs bg-white font-mono"
-          value={edit.exit_time} placeholder="5:00 PM"
-          onChange={v => onEdit(row.id, 'exit_time', v, row)} />
+      <td className={td} style={{ width: 88, minWidth: 88 }}>
+        <TimeInput className={timeBox} value={edit.exit_time} placeholder="5:00 PM" onChange={v => onEdit(row.id, 'exit_time', v, row)} />
       </td>
-      <td className="px-3 py-2 whitespace-nowrap border-r text-slate-500 text-[11px]">{row.scheduled_start}–{row.scheduled_end}</td>
-      <td className="px-3 py-2 text-center border-r">
-        {lateShown > 0 ? <span className={`font-semibold ${live && lateShown !== row.late_minutes ? 'text-amber-600' : 'text-red-700'}`}>{lateShown}</span> : <span className="text-slate-300">—</span>}
+      <td className={`${td} whitespace-nowrap text-[12px] text-slate-500`} style={{ width: 150 }}>{fmtShift(row.work_days, row.scheduled_start, row.scheduled_end)}</td>
+      <td className={`${td} text-right tabular-nums whitespace-nowrap ${late > 0 ? 'font-semibold text-status-red-ink' : 'text-slate-300'}`} style={{ width: 70 }}>{fmtMinutes(late) || '—'}</td>
+      <td className={`${td} text-right tabular-nums whitespace-nowrap ${early > 0 ? 'font-semibold text-status-yellow-ink' : 'text-slate-300'}`} style={{ width: 70 }}>{fmtMinutes(early) || '—'}</td>
+      <td className={`${td} text-right`} style={{ width: 104 }}>
+        {discount.tone === 'deduct' && <span className="inline-block whitespace-nowrap rounded-full bg-status-red-tint px-2 py-0.5 text-[12px] font-semibold tabular-nums text-status-red-ink ring-1 ring-status-red-fill">{discount.text}</span>}
+        {discount.tone === 'paid' && <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-status-green-fill px-2 py-0.5 text-[12px] font-semibold text-status-green-ink"><Check className="w-3 h-3" />Paid</span>}
+        {discount.tone === 'none' && <span className="text-slate-300">—</span>}
       </td>
-      <td className="px-3 py-2 text-center border-r">
-        {earlyShown > 0 ? <span className={`font-semibold ${live && earlyShown !== row.early_leave_minutes ? 'text-amber-600' : 'text-orange-600'}`}>{earlyShown}</span> : <span className="text-slate-300">—</span>}
+      <td className={td} style={{ width: 160, minWidth: 160 }}>
+        {combo('event_type_1', edit.event_type_1, eventOpts, 'Event 1', needsEvent === 1)}
+        {needsEvent === 1 && <div className="mt-0.5 text-[11px] font-medium text-red-700">Pick an event first</div>}
       </td>
-      {/* Event 1 */}
-      <td className="px-2 py-1.5 border-r min-w-36">
-        <BroadcastSelect value={edit.event_type_1} broadcasting={broadcasting} invalid={needsEvent === 1}
-          onChange={v => onEdit(row.id, 'event_type_1', v, row, visibleRows)}
-          placeholder="— none —" options={eventOpts} />
-        {needsEvent === 1 && <div className="mt-0.5 text-[10px] font-medium text-red-700">Pick an event first</div>}
+      <td className={td} style={{ width: 176, minWidth: 176 }}>{combo('pay_impact_1', edit.pay_impact_1, impactOptions, 'Impact 1')}</td>
+      <td className={td} style={{ width: 160, minWidth: 160 }}>
+        {combo('event_type_2', edit.event_type_2, eventOpts, 'Event 2', needsEvent === 2)}
+        {needsEvent === 2 && <div className="mt-0.5 text-[11px] font-medium text-red-700">Pick an event first</div>}
       </td>
-      {/* Impact 1 */}
-      <td className="px-2 py-1.5 border-r min-w-36">
-        <BroadcastSelect value={edit.pay_impact_1} broadcasting={broadcasting}
-          onChange={v => onEdit(row.id, 'pay_impact_1', v, row, visibleRows)}
-          placeholder="— pick —" options={impactOptions} />
-      </td>
-      {/* Event 2 */}
-      <td className="px-2 py-1.5 border-r min-w-36">
-        <BroadcastSelect value={edit.event_type_2} broadcasting={broadcasting} invalid={needsEvent === 2}
-          onChange={v => onEdit(row.id, 'event_type_2', v, row, visibleRows)}
-          placeholder="— none —" options={eventOpts} />
-        {needsEvent === 2 && <div className="mt-0.5 text-[10px] font-medium text-red-700">Pick an event first</div>}
-      </td>
-      {/* Impact 2 */}
-      <td className="px-2 py-1.5 border-r min-w-36">
-        <BroadcastSelect value={edit.pay_impact_2} broadcasting={broadcasting}
-          onChange={v => onEdit(row.id, 'pay_impact_2', v, row, visibleRows)}
-          placeholder="— pick —" options={impactOptions} />
-      </td>
-      {/* Doc */}
-      <td className="px-2 py-1.5 border-r min-w-28">
-        <BroadcastSelect value={edit.documentation} broadcasting={broadcasting}
-          onChange={v => onEdit(row.id, 'documentation', v, row, visibleRows)}
-          placeholder="—" options={docOpts} />
-      </td>
-      {/* Auto-notes */}
-      <td className="px-3 py-2 border-r text-slate-500 max-w-52 text-[11px]">
+      <td className={td} style={{ width: 176, minWidth: 176 }}>{combo('pay_impact_2', edit.pay_impact_2, impactOptions, 'Impact 2')}</td>
+      <td className={td} style={{ width: 140, minWidth: 140 }}>{combo('documentation', edit.documentation, docOpts, 'Doc')}</td>
+      <td className={`${td} text-[12px] text-slate-500`} style={{ maxWidth: 220 }}>
         <span title={row.auto_notes} className="block truncate">{row.auto_notes || <span className="text-slate-300">—</span>}</span>
       </td>
-      {/* Notes */}
-      <td className="px-2 py-1.5 border-r min-w-36">
-        <input className="w-full border rounded px-1.5 py-1 text-xs bg-white" value={edit.notes}
-          placeholder="add note…" onChange={e => onEdit(row.id, 'notes', e.target.value, row)} />
+      <td className={td} style={{ minWidth: 180 }}>
+        <input className="w-full h-7 rounded-md border border-slate-300 bg-white px-2 text-[12px] focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring"
+          value={edit.notes} placeholder="Add a note" onChange={e => onEdit(row.id, 'notes', e.target.value, row)} />
       </td>
     </tr>
   );

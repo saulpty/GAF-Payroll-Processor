@@ -53,6 +53,34 @@ export function showBulkBar(selectedCount: number): boolean {
   return selectedCount >= 2;
 }
 
+/** Minutes for people: 45 → "45 min", 60 → "1h", 75 → "1h 15m". 0 or less → "". */
+export function fmtMinutes(n: number | null | undefined): string {
+  const m = Math.round(Number(n) || 0);
+  if (m <= 0) return '';
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? `${h}h ${r}m` : `${h}h`;
+}
+
+/**
+ * The Discount column (AR-4): what a commit would deduct, from computeDiscount.
+ * Nothing deducted with an event chosen → "Paid"; nothing and no event → blank.
+ */
+export function discountLabel(discount: number, hasEvent: boolean): { text: string; tone: 'deduct' | 'paid' | 'none' } {
+  if (discount > 0) return { text: fmtMinutes(discount), tone: 'deduct' };
+  return hasEvent ? { text: 'Paid', tone: 'paid' } : { text: '', tone: 'none' };
+}
+
+/** Event filter value meaning "rows with no Event 1 yet" (AR-5). */
+export const NEEDS_EVENT = '__needs_event__';
+
+/** AR-5 event filter: '' = all rows; NEEDS_EVENT = no Event 1; otherwise Event 1 or Event 2 equals it. */
+export function filterByEvent<T>(rows: T[], filter: string, eventsOf: (r: T) => [string, string]): T[] {
+  if (!filter) return rows;
+  if (filter === NEEDS_EVENT) return rows.filter(r => !eventsOf(r)[0]);
+  return rows.filter(r => eventsOf(r).includes(filter));
+}
+
 /** Ids between two visible indexes, inclusive, in visible order (shift-click range). */
 export function rangeIds(visible: { id: number }[], a: number, b: number): number[] {
   const lo = Math.min(a, b), hi = Math.max(a, b);

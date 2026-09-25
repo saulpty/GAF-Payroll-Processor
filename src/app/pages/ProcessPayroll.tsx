@@ -38,6 +38,8 @@ import {
   type MondayPermissionRow,
 } from '@/app/lib/classificationEngine';
 import { normalizePeriodName, isCanonical, nearMatch, nextPeriod, periodNameFromEndDate } from '@/app/lib/periodName';
+import { fmtDay } from '@/app/lib/fmtDay';
+import { unexplainedWorkdays } from '@/app/lib/teramindCoverage';
 
 type Employee = {
   id: number; display_name: string; teramind_email: string;
@@ -388,15 +390,17 @@ export default function ProcessPayroll() {
       const tmEmailsSet = new Set(tmMap.keys());
       const missingTm = activeEmps.filter(e => e.teramind_email && !tmEmailsSet.has(e.teramind_email.toLowerCase()));
       if (missingTm.length > 0) warnings.push({ level: 'warn', message: `${missingTm.length} active employee(s) have no Teramind data: ${missingTm.map(e => e.display_name).join(', ')}` });
+      // A workday is a Teramind gap only when no Monday absence form, permission or holiday
+      // explains it (Saul, 2026-09-25: sick days were being reported as missing Teramind data).
+      const holidayDates = new Set((holidays as { date: string }[]).map(h => String(h.date).slice(0, 10)));
       for (const emp of activeEmps) {
         if (!emp.teramind_email) continue;
         const dayMap = tmMap.get(emp.teramind_email.toLowerCase());
         if (!dayMap) continue;
         const expectedWorkdays = periodDates.filter(d => isScheduledWorkDay(d, emp.work_days)).map(d => toLocalYMD(d));
         if (expectedWorkdays.length === 0) continue;
-        const covered = expectedWorkdays.filter(d => dayMap.has(d)).length;
-        const gap = expectedWorkdays.length - covered;
-        if (gap > 0 && gap / expectedWorkdays.length > 0.3) warnings.push({ level: 'warn', message: `${emp.display_name}: Teramind covers only ${covered}/${expectedWorkdays.length} workdays.` });
+        const gaps = unexplainedWorkdays(emp, expectedWorkdays, dayMap, holidayDates, attendance, permissions, normalizeName);
+        if (gaps.length > 0 && gaps.length / expectedWorkdays.length > 0.3) warnings.push({ level: 'warn', message: `${emp.display_name}: no Teramind data and no form on ${gaps.length} of ${expectedWorkdays.length} workdays: ${gaps.map(d => fmtDay(d, d.slice(0, 4))).join(', ')}.` });
       }
       if (attendanceItems.length === 0) warnings.push({ level: 'warn', message: 'Attendance board returned 0 items — no tardiness/absence data.' });
       if (adjustmentsItems.length === 0) warnings.push({ level: 'warn', message: 'Time Adjustments board returned 0 items.' });

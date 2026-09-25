@@ -1,10 +1,6 @@
 import { useState } from 'react';
 import { useLoadAction, useMutateAction } from '@uibakery/data';
-import {
-  Users, Plus, Loader2, Save, Search, X,
-  Clock, Laptop, Ban, CheckCircle2, LucideIcon,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import loadAllEmployeesAction from '@/actions/loadAllEmployees';
@@ -12,29 +8,8 @@ import loadSchedulesAction from '@/actions/loadSchedules';
 import upsertEmployeeAction from '@/actions/upsertEmployee';
 import updateEmployeeAction from '@/actions/updateEmployee';
 import updateEmployeeFlagAction from '@/actions/updateEmployeeFlag';
-
-type EmpRow = {
-  id: number; display_name: string; teramind_email: string; company_domain: string;
-  is_grace_list: boolean; is_macbook_swap: boolean; excluded_from_payroll: boolean;
-  active: boolean; start_date: string; end_date: string; notes: string;
-  schedule_name: string; schedule_id: number;
-};
-type Schedule = { id: number; schedule_name: string };
-
-const EMPTY_EMP: Partial<EmpRow> = {
-  display_name: '', teramind_email: '', company_domain: '',
-  schedule_id: 0, is_grace_list: false, is_macbook_swap: false,
-  excluded_from_payroll: false, active: true, notes: '',
-};
-
-type FlagKey = 'is_grace_list' | 'is_macbook_swap' | 'excluded_from_payroll' | 'active';
-
-const FLAG_META: { key: FlagKey; label: string; icon: LucideIcon; tip: string; danger?: boolean }[] = [
-  { key: 'is_grace_list',         label: 'Grace',    icon: Clock,        tip: 'Gets 10-min tardiness grace period before flagging' },
-  { key: 'is_macbook_swap',       label: 'Macbook',  icon: Laptop,       tip: 'Missing Teramind data defaults to GREEN (not flagged absent)' },
-  { key: 'excluded_from_payroll', label: 'Excluded', icon: Ban,          tip: 'Skipped entirely during payroll processing runs', danger: true },
-  { key: 'active',                label: 'Active',   icon: CheckCircle2, tip: 'Inactive employees are excluded from payroll runs', danger: true },
-];
+import { EMPTY_EMP, FLAG_META, type EmpRow, type FlagKey, type Schedule } from './rosterTypes';
+import { RosterForm } from './RosterForm';
 
 export default function RosterTab() {
   const [employees, , , reload] = useLoadAction(loadAllEmployeesAction, [] as EmpRow[]);
@@ -132,79 +107,9 @@ export default function RosterTab() {
 
       {/* Edit / Add form */}
       {showForm && editing && (
-        <Card className="mb-5 border-blue-300 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">
-              {editing.id ? `Editing: ${editing.display_name}` : 'New Employee'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {([
-                ['display_name',   'Display Name'],
-                ['teramind_email', 'Teramind Email'],
-                ['company_domain', 'Company Domain'],
-                ['notes',          'Notes'],
-              ] as [keyof EmpRow, string][]).map(([field, label]) => (
-                <div key={field}>
-                  <label className="text-xs font-medium block mb-1 text-slate-600">{label}</label>
-                  <input
-                    className="w-full border rounded px-2 py-1.5 text-sm"
-                    value={(editing[field] as string) || ''}
-                    onChange={e => setEditing(prev => ({ ...prev!, [field]: e.target.value }))}
-                  />
-                  {field === 'teramind_email' && typeof editing.id === 'number' &&
-                    (editing.teramind_email ?? '').trim().toLowerCase() !==
-                    (emps.find(e => e.id === editing.id)?.teramind_email ?? '').trim().toLowerCase() && (
-                    <p className="text-xs text-slate-400 mt-0.5">Changing the email keeps all history with this person.</p>
-                  )}
-                </div>
-              ))}
-              <div>
-                <label className="text-xs font-medium block mb-1 text-slate-600">Schedule</label>
-                <select
-                  className="w-full border rounded px-2 py-1.5 text-sm"
-                  value={editing.schedule_id || ''}
-                  onChange={e => setEditing(prev => ({ ...prev!, schedule_id: Number(e.target.value) }))}>
-                  <option value="">— Select schedule —</option>
-                  {(schedules as Schedule[]).map(s => (
-                    <option key={s.id} value={s.id}>{s.schedule_name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Flags */}
-            <div className="flex flex-wrap gap-4 mb-4 p-3 bg-slate-50 rounded-lg border">
-              {FLAG_META.map(f => (
-                <label key={f.key} title={f.tip} className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    className="w-3.5 h-3.5"
-                    checked={!!editing[f.key]}
-                    onChange={e => setEditing(prev => ({ ...prev!, [f.key]: e.target.checked }))}
-                  />
-                  <f.icon className={`w-3.5 h-3.5 ${f.danger ? 'text-red-500' : 'text-slate-500'}`} />
-                  <span className={`text-sm ${f.danger ? 'text-red-700 font-medium' : 'text-slate-700'}`}>{f.label}</span>
-                </label>
-              ))}
-            </div>
-
-            {saveError && <p className="text-red-700 text-xs mb-2">{saveError}</p>}
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleSave} disabled={saving || updating}>
-                {(saving || updating)
-                  ? <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                  : <Save    className="w-4 h-4 mr-1" />}
-                Save
-              </Button>
-              <Button size="sm" variant="outline"
-                onClick={() => { setShowForm(false); setEditing(null); }}>
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <RosterForm editing={editing} setEditing={setEditing} emps={emps} schedules={schedules as Schedule[]}
+          saveError={saveError} busy={saving || updating} onSave={handleSave}
+          onCancel={() => { setShowForm(false); setEditing(null); }} />
       )}
 
       {/* Search + filter bar */}

@@ -12,7 +12,8 @@ import loadEventTypesAction from '@/actions/loadEventTypes';
 import { useRowEdits } from '@/app/lib/useRowEdits';
 import { ToastProvider, useToast } from '@/app/components/ds/Toast';
 import { BROADCAST_FIELDS, toEditState, type CommittedRow, type EditState, type EntryRow, type SortDir, type SortKey } from './action-required/arTypes';
-import { filterRows, nextSort, rangeIds, showBulkBar } from './action-required/arLogic';
+import { filterRows, filterByEvent, nextSort, rangeIds, showBulkBar, NEEDS_EVENT } from './action-required/arLogic';
+import { ArToolbar } from './action-required/ArToolbar';
 import { ArHead } from './action-required/ArHead';
 import { ArCommitBar } from './action-required/ArCommitBar';
 import { ArRow } from './action-required/ArRow';
@@ -38,9 +39,9 @@ function ActionRequiredPage() {
   const [rows, loading, , reload] = useLoadAction(loadActionRequiredAction, [] as EntryRow[], params);
   const { getEdit, update, isDirty, discardAll, markSaved, dirtyCount } = useRowEdits<EntryRow, EditState>(toEditState, rows as EntryRow[]);
   const [committedRows, , , reloadCommitted] = useLoadAction(loadCommittedEntriesAction, [] as CommittedRow[], params);
-  const { saveRow, revertRow } = useArSave(getEdit);
+  const { saveRow, revertRow, restoreRow } = useArSave(getEdit);
   const { commitRows, handleRevert, reasonFor, bulkSaving, sessionCommitted, setSessionCommitted, revertingIds, hiddenIds } =
-    useArCommit({ rows, getEdit, saveRow, revertRow, reload, reloadCommitted, markSaved, bumpArVersion, toast });
+    useArCommit({ rows, getEdit, saveRow, revertRow, restoreRow, reload, reloadCommitted, markSaved, bumpArVersion, toast });
 
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
@@ -49,6 +50,9 @@ function ActionRequiredPage() {
   const [sortDir, setSortDir] = useState<SortDir>(null);
   // Rows waiting in the confirm dialog: the bulk selection, or one row's own Commit button.
   const [confirmIds, setConfirmIds] = useState<number[] | null>(null);
+  // AR-5: '' (all), NEEDS_EVENT, or an event name. Filters on the loaded (saved) values,
+  // so a row stays in view while it is being edited and leaves only once committed.
+  const [eventFilter, setEventFilter] = useState('');
 
   const impactOptions = (payImpacts as { name: string }[]).map(p => p.name);
   const docOpts = (docOptions as { name: string }[]).map(d => d.name);
@@ -70,6 +74,7 @@ function ActionRequiredPage() {
     setSessionCommitted(new Set());
     setSortKey(null);
     setSortDir(null);
+    setEventFilter('');
   }, [selectedPeriod]);
 
   // Editing a row no longer selects it (AR-3): selection is the checkbox only, so an
@@ -104,10 +109,13 @@ function ActionRequiredPage() {
   const allRows = useMemo(() => (rows as EntryRow[]).filter(r => !hiddenIds.has(r.id)), [rows, hiddenIds]);
   // Only the very first load replaces the page with a spinner; later reloads are silent.
   const firstLoad = loading && (rows as EntryRow[]).length === 0;
-  const filtered = useMemo(
+  const eventsOf = useCallback((r: EntryRow): [string, string] => [r.event_type_1 || '', r.event_type_2 || ''], []);
+  const tabRows = useMemo(
     () => filterRows(allRows, activeTab, globalEmployee, sortKey, sortDir),
     [allRows, activeTab, globalEmployee, sortKey, sortDir],
   );
+  const filtered = useMemo(() => filterByEvent(tabRows, eventFilter, eventsOf), [tabRows, eventFilter, eventsOf]);
+  const needsEventCount = useMemo(() => filterByEvent(tabRows, NEEDS_EVENT, eventsOf).length, [tabRows, eventsOf]);
 
   const handleConfirm = async () => {
     const ids = new Set(confirmIds ?? []);
@@ -158,7 +166,7 @@ function ActionRequiredPage() {
   const bulk = showBulkBar(selectedCount);
 
   return (
-    <div className="flex flex-col h-full p-5 gap-4 overflow-hidden">
+    <div className={`flex flex-col h-full p-5 gap-4 overflow-hidden ${bulk ? 'pb-20' : ''}`}>
 
       {/* ── Empty states ────────────────────────────────────────── */}
       {firstLoad && (
@@ -185,16 +193,19 @@ function ActionRequiredPage() {
             onDiscardAll={discardAll} />
 
           {/* ── Work table ─────────────────────────────────────── */}
+          <ArToolbar eventOpts={eventOpts} eventFilter={eventFilter} setEventFilter={setEventFilter}
+            needsEventCount={needsEventCount} shown={filtered.length} total={tabRows.length} />
+
           {/* While data refreshes the table stays put but dims and ignores clicks, so the
               previous period's rows can never be edited or committed by mistake. */}
-          <div className={`flex-1 min-h-0 rounded-lg border shadow-sm overflow-auto transition-opacity ${loading ? 'opacity-60 pointer-events-none' : ''}`}
+          <div className={`flex-1 min-h-0 rounded-xl border border-slate-200 bg-white shadow-card overflow-auto transition-opacity ${loading ? 'opacity-60 pointer-events-none' : ''}`}
             aria-busy={loading || undefined}>
-            <table className="w-full text-xs border-collapse tabular-nums" style={{ minWidth: 1120 }}>
+            <table className="w-full border-separate border-spacing-0 tabular-nums" style={{ minWidth: 1880 }}>
               <ArHead allFilteredSelected={allFilteredSelected} someSelected={someSelected} showPeriod={!selectedPeriod}
                 sortKey={sortKey} sortDir={sortDir} onSort={handleSort} onToggleAll={toggleSelectAll} />
               <tbody>
                 {filtered.length === 0 && (
-                  <tr><td colSpan={15} className="px-4 py-8 text-center text-muted-foreground text-sm">No results match your filter.</td></tr>
+                  <tr><td colSpan={17} className="px-4 py-8 text-center text-muted-foreground text-sm">No results match your filter.</td></tr>
                 )}
                 {filtered.map((row, rowIndex) => {
                   const isSelected = selected.has(row.id);

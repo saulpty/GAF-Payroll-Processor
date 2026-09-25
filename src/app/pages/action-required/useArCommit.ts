@@ -13,11 +13,13 @@ const plural = (n: number) => `${n} ${n === 1 ? 'row' : 'rows'}`;
  * the reload lands; counts refresh through bumpArVersion; results go to the toast.
  * Each row is saved on its own: one failure is reported and never stops the rest.
  */
-export function useArCommit({ rows, getEdit, saveRow, revertRow, reload, reloadCommitted, markSaved, bumpArVersion, toast }: {
+export function useArCommit({ rows, getEdit, saveRow, revertRow, restoreRow, reload, reloadCommitted, markSaved, bumpArVersion, toast }: {
   rows: unknown;
   getEdit: (row: EntryRow) => EditState;
   saveRow: (row: EntryRow) => Promise<SaveResult>;
   revertRow: (r: CommittedRow) => Promise<void>;
+  /** Undo (AR-7): writes the row back exactly as it was before the commit. */
+  restoreRow: (original: EntryRow) => Promise<void>;
   reload: Fn;
   reloadCommitted: Fn;
   markSaved: (id: number) => void;
@@ -42,11 +44,12 @@ export function useArCommit({ rows, getEdit, saveRow, revertRow, reload, reloadC
 
   const reasonFor = (row: EntryRow) => refusalReason(getEdit(row), isValidTimeInput);
 
-  const undoCommit = async (done: CommittedRow[]) => {
+  // Undo restores the rows as they were loaded before the commit (times included).
+  const undoCommit = async (done: EntryRow[]) => {
     const failed: string[] = [];
     let moved = 0;
     for (const r of done) {
-      try { await revertRow(r); moved++; } catch { failed.push(`${r.employee_name} ${r.work_date.slice(0, 10)}`); }
+      try { await restoreRow(r); moved++; } catch { failed.push(`${r.employee_name} ${r.work_date.slice(0, 10)}`); }
     }
     setSessionCommitted(prev => { const s = new Set(prev); done.forEach(r => s.delete(r.id)); return s; });
     await refresh();
@@ -60,7 +63,7 @@ export function useArCommit({ rows, getEdit, saveRow, revertRow, reload, reloadC
     const refused: string[] = [];
     const failed: string[] = [];
     const savedIds: number[] = [];
-    const green: CommittedRow[] = [];
+    const green: EntryRow[] = [];
     for (const row of toSave) {
       const label = `${row.employee_name} ${row.work_date.slice(0, 10)}`;
       const reason = reasonFor(row);
@@ -71,7 +74,7 @@ export function useArCommit({ rows, getEdit, saveRow, revertRow, reload, reloadC
         savedIds.push(row.id);
         setSessionCommitted(prev => new Set(prev).add(row.id));
         if (res.status === 'GREEN') {
-          green.push(res.saved);
+          green.push(row);
           setHiddenIds(prev => new Set(prev).add(row.id));
         }
       } catch {
