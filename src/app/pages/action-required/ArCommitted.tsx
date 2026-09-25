@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CheckCircle2, ChevronRight, Loader2, RotateCcw } from 'lucide-react';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { fmtDay } from '@/app/lib/fmtDay';
@@ -33,6 +34,9 @@ export function ArCommitted({ committed, sessionCommitted, revertingIds, showPer
   setCommittedOpen: (f: (o: boolean) => boolean) => void;
   onRevert: (r: CommittedRow) => void;
 }) {
+  // AR-10: draw the latest 100 rows only (All periods has 1,300+, ~16k elements); "Show All" on request.
+  const [showAll, setShowAll] = useState(false);
+  const shown = showAll ? committed : committed.slice(0, 100);
   return (
     <div className="shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
       <button type="button" onClick={() => setCommittedOpen(o => !o)} aria-expanded={committedOpen}
@@ -69,7 +73,7 @@ export function ArCommitted({ committed, sessionCommitted, revertingIds, showPer
                 </tr>
               </thead>
               <tbody>
-                {committed.map(r => {
+                {shown.map(r => {
                   const isNew = sessionCommitted.has(r.id);
                   const reverting = revertingIds.has(r.id);
                   return (
@@ -102,6 +106,15 @@ export function ArCommitted({ committed, sessionCommitted, revertingIds, showPer
                 })}
               </tbody>
             </table>
+            {committed.length > shown.length && (
+              <div className="flex items-center justify-center gap-3 border-t border-slate-100 px-3 py-2 text-[12px] text-slate-500">
+                Showing the latest {shown.length} of {committed.length}
+                <button type="button" onClick={() => setShowAll(true)}
+                  className="rounded-full border border-slate-300 bg-white px-3 py-0.5 font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring">
+                  Show All
+                </button>
+              </div>
+            )}
           </div>
         )
       )}

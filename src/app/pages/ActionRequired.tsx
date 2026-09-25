@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useLoadAction } from '@uibakery/data';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { CheckCircle, Loader2 } from 'lucide-react';
@@ -116,6 +116,19 @@ function ActionRequiredPage() {
   );
   const filtered = useMemo(() => filterByEvent(tabRows, eventFilter, eventsOf), [tabRows, eventFilter, eventsOf]);
   const needsEventCount = useMemo(() => filterByEvent(tabRows, NEEDS_EVENT, eventsOf).length, [tabRows, eventsOf]);
+  // AR-10: when the rows in a filtered view are all handled (e.g. the last "Needs an Event"
+  // row committed), drop the filter instead of leaving an empty table. Picking a filter
+  // that simply has no matches does not clear it (the filter must have had rows first).
+  const lastView = useRef({ filter: '', count: 0 });
+  useEffect(() => {
+    const was = lastView.current;
+    if (eventFilter && eventFilter === was.filter && was.count > 0 && filtered.length === 0 && !loading) {
+      setEventFilter('');
+      toast.show({ message: 'All done in that filter. Showing every row.' });
+    }
+    lastView.current = { filter: eventFilter, count: filtered.length };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventFilter, filtered.length, loading]);
 
   const handleConfirm = async () => {
     const ids = new Set(confirmIds ?? []);
