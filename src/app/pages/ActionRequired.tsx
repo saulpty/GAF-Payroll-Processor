@@ -69,6 +69,7 @@ function ActionRequiredPage() {
   // Sync params when global period changes
   useEffect(() => {
     setParams({ periodName: selectedPeriod });
+    if (dirtyCount > 0) toast.show({ message: `Discarded ${dirtyCount} unsaved ${dirtyCount === 1 ? 'row' : 'rows'} when the period changed.` });
     discardAll();
     setSelected(new Set());
     setSessionCommitted(new Set());
@@ -212,7 +213,7 @@ function ActionRequiredPage() {
           {/* While data refreshes the table stays put but dims and ignores clicks, so the
               previous period's rows can never be edited or committed by mistake. */}
           <div className={`flex-1 min-h-0 rounded-xl border border-slate-200 bg-white shadow-card overflow-auto transition-opacity ${loading ? 'opacity-60 pointer-events-none' : ''}`}
-            aria-busy={loading || undefined}>
+            aria-busy={loading || undefined} inert={loading || undefined}>
             <table className="w-full border-separate border-spacing-0 tabular-nums" style={{ minWidth: 1880 }}>
               <ArHead allFilteredSelected={allFilteredSelected} someSelected={someSelected} showPeriod={!selectedPeriod}
                 sortKey={sortKey} sortDir={sortDir} onSort={handleSort} onToggleAll={toggleSelectAll} />

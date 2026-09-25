@@ -138,7 +138,7 @@ export function Combobox({
         onKeyDown={onKeyDown}
         className={`flex h-7 w-full items-center justify-between gap-1 rounded-md border bg-white pl-2 text-[12px] focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring ${
           value ? 'pr-9' : 'pr-2'
-        } ${invalid ? 'border-red-500' : 'border-slate-300'} ${value ? 'text-slate-700' : 'text-slate-400'} ${
+        } ${invalid ? 'border-red-500' : 'border-slate-300'} ${value ? 'text-slate-700' : 'text-slate-500'} ${
           flashing ? 'animate-flash-required' : ''
         }`}
       >

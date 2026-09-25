@@ -103,6 +103,7 @@ export function useArCommit({ rows, getEdit, saveRow, revertRow, restoreRow, rel
       await revertRow(r);
       setSessionCommitted(prev => { const s = new Set(prev); s.delete(r.id); return s; });
       await refresh();
+      toast.show({ message: `Moved ${r.employee_name} back to Action Required` });
     } catch {
       toast.show({ tone: 'error', message: `Could not revert ${r.employee_name} ${r.work_date.slice(0, 10)}` });
     } finally {
