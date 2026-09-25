@@ -237,7 +237,7 @@ When field B depends on field A being filled first (e.g. "Impact" requires "Even
 
 ## Formats
 
-- **Dates in tables**: `Wed 7 Sep` — weekday abbreviation, day (no leading zero), month abbreviation. Add the year only when it isn't the current year: `Wed 7 Sep 2025`.
+- **Dates in tables**: `Wed Sep 7` — weekday, month, day (no leading zero), from the existing `fmtDay(ymd, thisYear)` in `src/app/lib/fmtDay.ts`, which PTO and Attendance already use. Add the year only when it isn't the current year: `Wed Sep 7, 2025`. (Saul asked for "Wed 7 Sept or something"; month-first was chosen 2026-09-25 to match the pages already live.)
 - **Times**: `9AM` when on the hour, `9:30AM` otherwise — no leading zero, no space before AM/PM, uppercase AM/PM.
 - **Schedules**: `Mon–Fri · 9AM–5PM` — en dash for day ranges, middle dot separator, en dash for time ranges.
 - **Minutes**: under 60, show as `45 min`. 60 and over, show as hours+minutes: `1h 15m` (never `75 min` once it crosses an hour — always convert).
