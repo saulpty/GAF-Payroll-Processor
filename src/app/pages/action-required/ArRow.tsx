@@ -5,11 +5,12 @@ import { computePunchMinutes } from '@/app/lib/punchMinutes';
 import { computeDiscount, toLocalYMD } from '@/app/lib/classificationEngine';
 import { fmtDay } from '@/app/lib/fmtDay';
 import { fmtShift } from '@/app/lib/fmtTime';
-import { discountLabel, fmtMinutes, missingEvent } from './arLogic';
+import { discountLabel, fmtMinutes, IMPACT_DOT, impactTone, missingEvent } from './arLogic';
 import type { EditState, EntryRow } from './arTypes';
 
 const THIS_YEAR = toLocalYMD(new Date()).slice(0, 4);
 const td = 'px-2 py-1.5 border-b border-slate-100';
+const impactDot = (v: string) => IMPACT_DOT[impactTone(v)];
 const timeBox = 'w-full h-7 rounded-md border border-slate-300 bg-white px-1.5 text-[12px] tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring';
 
 /** One editable row of the work table (AR-4: Warm look, per src/DESIGN.md). */
@@ -47,10 +48,10 @@ export function ArRow({
   const tint = isSelected ? 'bg-warm-tint' : row.initial_status === 'RED' ? 'bg-status-red-tint' : 'bg-status-yellow-tint';
   const bar = isSelected ? 'shadow-[inset_3px_0_0_var(--warm)]' : '';
   const pick = (field: keyof EditState) => (v: string) => onEdit(row.id, field, v, row, visibleRows);
-  const combo = (field: keyof EditState, value: string, options: string[], label: string, invalid = false) => (
+  const combo = (field: keyof EditState, value: string, options: string[], label: string, invalid = false, toneOf?: (v: string) => string) => (
     <div className={broadcasting ? 'rounded-md ring-1 ring-warm-ring' : ''} title={broadcasting ? `Applies to all ${selectedSize} selected rows` : undefined}>
       <Combobox value={value} options={options} onChange={pick(field)} ariaLabel={`${label}, ${row.employee_name} ${row.work_date.slice(0, 10)}`}
-        invalid={invalid} flashKey={invalid ? 1 : 0} className="w-full" />
+        invalid={invalid} flashKey={invalid ? 1 : 0} className="w-full" toneOf={toneOf} />
     </div>
   );
 
@@ -93,12 +94,12 @@ export function ArRow({
         {combo('event_type_1', edit.event_type_1, eventOpts, 'Event 1', needsEvent === 1)}
         {needsEvent === 1 && <div className="mt-0.5 text-[11px] font-medium text-red-700">Pick an event first</div>}
       </td>
-      <td className={td} style={{ width: 176, minWidth: 176 }}>{combo('pay_impact_1', edit.pay_impact_1, impactOptions, 'Impact 1')}</td>
+      <td className={td} style={{ width: 176, minWidth: 176 }}>{combo('pay_impact_1', edit.pay_impact_1, impactOptions, 'Impact 1', false, impactDot)}</td>
       <td className={td} style={{ width: 160, minWidth: 160 }}>
         {combo('event_type_2', edit.event_type_2, eventOpts, 'Event 2', needsEvent === 2)}
         {needsEvent === 2 && <div className="mt-0.5 text-[11px] font-medium text-red-700">Pick an event first</div>}
       </td>
-      <td className={td} style={{ width: 176, minWidth: 176 }}>{combo('pay_impact_2', edit.pay_impact_2, impactOptions, 'Impact 2')}</td>
+      <td className={td} style={{ width: 176, minWidth: 176 }}>{combo('pay_impact_2', edit.pay_impact_2, impactOptions, 'Impact 2', false, impactDot)}</td>
       <td className={td} style={{ width: 140, minWidth: 140 }}>{combo('documentation', edit.documentation, docOpts, 'Doc')}</td>
       <td className={`${td} text-[12px] text-slate-500`} style={{ maxWidth: 220 }}>
         <span title={row.auto_notes} className="block truncate">{row.auto_notes || <span className="text-slate-300">—</span>}</span>

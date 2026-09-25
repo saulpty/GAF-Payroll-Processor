@@ -1,9 +1,13 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, X } from 'lucide-react';
 import { filterOptions, nextIndex } from '@/app/components/ds/comboboxFilter';
 
 // Dropdowns rule (docs/uib/DESIGN.md): searchable when > 7 options, empty
 // shows "—", a × clears back to empty, no "None" / "— pick —" option.
+// The open list is portalled to <body> with fixed positioning (AR-9): inside a
+// scrolling table it was clipped and hidden behind other cells. It opens upward
+// when there is no room below, and closes when the page or table scrolls.
 export function Combobox({
   value,
   options,
@@ -13,6 +17,7 @@ export function Combobox({
   invalid = false,
   flashKey,
   className = '',
+  toneOf,
 }: {
   value: string;
   options: string[];
@@ -22,11 +27,16 @@ export function Combobox({
   invalid?: boolean;
   flashKey?: number;
   className?: string;
+  /** Optional colour dot per option (a Tailwind bg class), e.g. green for paid impacts. */
+  toneOf?: (v: string) => string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [pos, setPos] = useState<CSSProperties | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const fieldRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
   const searchable = options.length > 7;
@@ -36,17 +46,39 @@ export function Combobox({
     [options, query, searchable, open],
   );
 
-  useEffect(() => {
-    if (!open) return;
-    const onDocPointer = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDocPointer);
-    return () => document.removeEventListener('mousedown', onDocPointer);
+  // Place the list under the field (or above it when the space below is short).
+  useLayoutEffect(() => {
+    if (!open || !fieldRef.current) return;
+    const r = fieldRef.current.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom - 8;
+    const above = r.top - 8;
+    const up = below < 240 && above > below;
+    const room = Math.max(120, Math.min(280, up ? above : below));
+    setPos({
+      position: 'fixed', left: r.left, width: Math.max(r.width, 180), zIndex: 60, maxHeight: room,
+      ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
+    });
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
+    const inside = (t: EventTarget | null) =>
+      !!t && ((rootRef.current?.contains(t as Node) ?? false) || (popRef.current?.contains(t as Node) ?? false));
+    const onDocPointer = (e: MouseEvent) => { if (!inside(e.target)) setOpen(false); };
+    const onScroll = (e: Event) => { if (!inside(e.target)) setOpen(false); };
+    const onResize = () => setOpen(false);
+    document.addEventListener('mousedown', onDocPointer);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
+    return () => {
+      document.removeEventListener('mousedown', onDocPointer);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) { setPos(null); return; }
     setQuery('');
     setActiveIdx(options.findIndex(o => o === value));
     if (searchable) requestAnimationFrame(() => inputRef.current?.focus());
@@ -56,6 +88,7 @@ export function Combobox({
   function commit(v: string) {
     onChange(v);
     setOpen(false);
+    fieldRef.current?.focus();
   }
 
   function onKeyDown(e: KeyboardEvent) {
@@ -69,6 +102,7 @@ export function Combobox({
     if (e.key === 'Escape') {
       e.preventDefault();
       setOpen(false);
+      fieldRef.current?.focus();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActiveIdx(i => nextIndex(i, 1, filtered.length));
@@ -82,6 +116,7 @@ export function Combobox({
   }
 
   const activeId = activeIdx >= 0 && activeIdx < filtered.length ? `${listId}-opt-${activeIdx}` : undefined;
+  const dot = (v: string) => (toneOf && v ? <span className={`h-2 w-2 shrink-0 rounded-full ${toneOf(v)}`} aria-hidden="true" /> : null);
 
   // flashKey > 0 and changed → remount the field so the red pulse replays.
   const flashing = (flashKey ?? 0) > 0;
@@ -89,6 +124,7 @@ export function Combobox({
   return (
     <div ref={rootRef} className={`relative inline-block ${className}`}>
       <button
+        ref={fieldRef}
         key={flashing ? flashKey : 'field'}
         type="button"
         role="combobox"
@@ -106,7 +142,7 @@ export function Combobox({
           flashing ? 'animate-flash-required' : ''
         }`}
       >
-        <span className="truncate">{value || placeholder}</span>
+        <span className="flex min-w-0 items-center gap-1.5">{dot(value)}<span className="truncate">{value || placeholder}</span></span>
         {!value && <ChevronDown className="h-3 w-3 shrink-0 text-slate-400" aria-hidden="true" />}
       </button>
       {value && (
@@ -122,8 +158,8 @@ export function Combobox({
           <ChevronDown className="pointer-events-none h-3 w-3 text-slate-400" aria-hidden="true" />
         </span>
       )}
-      {open && (
-        <div className="absolute z-20 mt-1 w-full min-w-[160px] rounded-md border border-slate-200 bg-white shadow-lg">
+      {open && pos && createPortal(
+        <div ref={popRef} style={pos} className="flex flex-col rounded-md border border-slate-200 bg-white shadow-lg">
           {searchable && (
             <input
               ref={inputRef}
@@ -136,10 +172,10 @@ export function Combobox({
               onKeyDown={onKeyDown}
               placeholder="Search"
               aria-label={`Search ${ariaLabel}`}
-              className="w-full border-b border-slate-200 px-2 py-1 text-[12px] focus:outline-none"
+              className="w-full shrink-0 border-b border-slate-200 px-2 py-1 text-[12px] focus:outline-none"
             />
           )}
-          <ul id={listId} role="listbox" aria-label={ariaLabel} className="max-h-56 overflow-auto py-1">
+          <ul id={listId} role="listbox" aria-label={ariaLabel} className="min-h-0 flex-1 overflow-auto py-1">
             {filtered.length === 0 && <li className="px-2 py-1 text-[12px] text-slate-400">No matches</li>}
             {filtered.map((opt, i) => (
               <li
@@ -148,16 +184,18 @@ export function Combobox({
                 role="option"
                 aria-selected={opt === value}
                 onMouseEnter={() => setActiveIdx(i)}
+                onMouseDown={e => e.preventDefault()}
                 onClick={() => commit(opt)}
-                className={`cursor-pointer px-2 py-1 text-[12px] ${
+                className={`flex cursor-pointer items-center gap-1.5 px-2 py-1 text-[12px] ${
                   i === activeIdx ? 'bg-warm-tint text-slate-900' : 'text-slate-700'
                 } ${opt === value ? 'font-medium' : ''}`}
               >
-                {opt}
+                {dot(opt)}{opt}
               </li>
             ))}
           </ul>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

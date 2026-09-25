@@ -3,6 +3,7 @@ import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { fmtDay } from '@/app/lib/fmtDay';
 import { fmtTime } from '@/app/lib/fmtTime';
 import type { CommittedRow } from './arTypes';
+import { IMPACT_DOT, impactTone } from './arLogic';
 
 const THIS_YEAR = toLocalYMD(new Date()).slice(0, 4);
 const th = 'px-3 py-2 text-left text-[12px] font-semibold text-slate-600 whitespace-nowrap bg-slate-50 border-b border-slate-200';
@@ -14,6 +15,10 @@ const WAS: Record<string, string> = {
 };
 const cap = (s: string) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : s);
 const dash = <span className="text-slate-300">—</span>;
+/** An impact with its colour dot (AR-9): green paid, amber with grace, red unpaid. */
+const impact = (v: string | null | undefined) => v
+  ? <span className="inline-flex items-center gap-1.5"><span className={`h-2 w-2 shrink-0 rounded-full ${IMPACT_DOT[impactTone(v)]}`} aria-hidden="true" />{v}</span>
+  : dash;
 /** "Fri Sep 25 · 6:58PM" from the stored updated_at text (no timezone conversion, as before). */
 const fmtUpdated = (u: string | null | undefined) =>
   u ? `${fmtDay(u.slice(0, 10), THIS_YEAR)} · ${fmtTime(u.slice(11, 16))}` : '';
@@ -79,9 +84,9 @@ export function ArCommitted({ committed, sessionCommitted, revertingIds, showPer
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${WAS[r.initial_status] || ''}`}>{cap(r.initial_status)}</span>
                       </td>
                       <td className={`${td} text-slate-700`}>{r.event_type_1 || dash}</td>
-                      <td className={`${td} text-slate-700`}>{r.pay_impact_1 || dash}</td>
+                      <td className={`${td} text-slate-700`}>{impact(r.pay_impact_1)}</td>
                       <td className={`${td} text-slate-700`}>{r.event_type_2 || dash}</td>
-                      <td className={`${td} text-slate-700`}>{r.pay_impact_2 || dash}</td>
+                      <td className={`${td} text-slate-700`}>{impact(r.pay_impact_2)}</td>
                       <td className={`${td} text-slate-600`}>{r.documentation || dash}</td>
                       <td className={`${td} max-w-40 truncate text-slate-500`} title={r.notes || undefined}>{r.notes || dash}</td>
                       <td className={`${td} whitespace-nowrap text-[12px] text-slate-500`}>{fmtUpdated(r.updated_at)}</td>

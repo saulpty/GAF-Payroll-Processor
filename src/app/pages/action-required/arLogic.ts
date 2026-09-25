@@ -81,6 +81,24 @@ export function filterByEvent<T>(rows: T[], filter: string, eventsOf: (r: T) => 
   return rows.filter(r => eventsOf(r).includes(filter));
 }
 
+/**
+ * Pay impact colour (AR-9), mirroring computeDiscount: only the Unpaid impacts deduct.
+ * 'unpaid' = Unpaid / Unpaid (without Grace); 'partial' = Unpaid (with Grace), which
+ * deducts only past the grace; 'paid' = every other impact; 'none' = blank.
+ */
+export function impactTone(impact: string | null | undefined): 'paid' | 'partial' | 'unpaid' | 'none' {
+  const v = (impact ?? '').trim();
+  if (!v) return 'none';
+  if (v === 'Unpaid' || v === 'Unpaid (without Grace)') return 'unpaid';
+  if (v === 'Unpaid (with Grace)') return 'partial';
+  return 'paid';
+}
+
+/** Dot colour class per impact tone (Excel status inks). */
+export const IMPACT_DOT: Record<string, string> = {
+  paid: 'bg-status-green-ink', partial: 'bg-status-yellow-ink', unpaid: 'bg-status-red-ink', none: '',
+};
+
 /** Ids between two visible indexes, inclusive, in visible order (shift-click range). */
 export function rangeIds(visible: { id: number }[], a: number, b: number): number[] {
   const lo = Math.min(a, b), hi = Math.max(a, b);
