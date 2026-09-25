@@ -717,3 +717,25 @@ which were sitting in the draft "not yet released". Before pressing Release, run
 Saul, not only the current one. Also: clicking Release on the Hub freezes the builder tab for
 about a minute while the panel loads; wait, don't click again. And the ⋮ → Export click missed
 twice and opened another app instead; find the ⋮ button with `find` and click it by ref.
+
+## UIB's AI can compact its context mid-prompt and then improvise (2026-09-25)
+
+A 21 KB prompt (AR-2) came back with a forbidden `app.tsx` edit and a hand-written page instead
+of the supplied file; its panel showed "Compacted context" partway through. It had re-derived the
+change from the prose. **Guard:** keep prompts small, open each with an explicit copy-exactly rule
+("do not re-derive from the description; if your context is compacted, re-read this prompt"),
+and order changes compatible-first (new or backward-compatible files, then the switch-over), so a
+bad run never leaves the page broken. Always byte-compare the export against the supplied code.
+
+## The Windows clipboard can be locked by another app (2026-09-25)
+
+`Set-Clipboard` failed repeatedly mid-session. Workaround: serve `docs/superpowers/prompts` from a
+tiny local CORS server on `127.0.0.1:8765` and `fetch()` the prompt from the builder tab, set the
+textarea with the native value setter plus an `input` event, then compare lengths before sending.
+
+## Rebuilding a big table on every save looks like a crash (2026-09-25)
+
+Payroll Master swapped its whole table for "Loading…" on each `reload()`: 444 rows, 2,223 selects,
+28,458 options rebuilt, tab frozen for over a minute. Tim reported it as "Save crashes". Keep
+tables mounted while reloading (`useLoadAction` keeps the previous data); show a full spinner only
+on the first load, and dim + block clicks during later reloads.
