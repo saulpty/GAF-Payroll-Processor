@@ -2,10 +2,12 @@
 
 **Copy every code block exactly, character for character. Do not rewrite, merge, "improve" or re-derive any of it from the description. If your context is compacted mid-task, re-read this prompt before writing any file.**
 
-**Only these three files may change:**
+**Only these five files may change:**
 - `src/app/pages/action-required/arLogic.ts` (whole file; adds `NEEDS_EVENT` and `filterByEvent`)
 - **New** `src/app/pages/action-required/ArToolbar.tsx`
 - `src/app/pages/ActionRequired.tsx` (whole file)
+- `src/app/pages/action-required/ArRow.tsx` and `ArHead.tsx`: only the four exact replacements in
+  the last section (the Discount pill was wrapping onto two lines).
 
 No other file may be touched.
 
@@ -395,6 +397,27 @@ function ActionRequiredPage() {
 }
 ```
 
+## `ArRow.tsx` and `ArHead.tsx`: four exact replacements, nothing else
+
+The Discount column gets 104px and its pills never wrap.
+
+1. In `ArRow.tsx` replace
+   ``<td className={`${td} text-right`} style={{ width: 90 }}>``
+   with
+   ``<td className={`${td} text-right`} style={{ width: 104 }}>``
+2. In `ArRow.tsx` replace
+   `<span className="inline-block rounded-full bg-status-red-tint`
+   with
+   `<span className="inline-block whitespace-nowrap rounded-full bg-status-red-tint`
+3. In `ArRow.tsx` replace
+   `<span className="inline-flex items-center gap-1 rounded-full bg-status-green-fill`
+   with
+   `<span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-status-green-fill`
+4. In `ArHead.tsx` replace
+   ``<th className={`${th} text-right`} style={{ width: 90 }}>Discount</th>``
+   with
+   ``<th className={`${th} text-right`} style={{ width: 104 }}>Discount</th>``
+
 ## Report
-- Byte size of the three files (each under 15 KB); confirm no other file changed and
+- Byte size of the five files (each under 15 KB); confirm no other file changed and
   `/action-required` renders with no console errors.
