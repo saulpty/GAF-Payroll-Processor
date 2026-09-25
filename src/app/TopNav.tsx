@@ -145,11 +145,11 @@ function getActiveSection(pathname: string): SectionId | null {
 export default function TopNav() {
   const location  = useLocation();
   const navigate  = useNavigate();
-  const { ptoVersion } = useGlobalFilters();
+  const { ptoVersion, arVersion } = useGlobalFilters();
   const { isSuper, isViewingAs, name, email, setViewAs, viewAs } = useViewer();
   const visibleSections = SECTIONS.filter(s => canSeeSection(isSuper, s.id));
 
-  const [unresolvedData]  = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
+  const [unresolvedData, , , reloadUnresolved]  = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
   const unresolvedCount   = (unresolvedData as { count: number }[])[0]?.count ?? 0;
   const [expiringData]    = useLoadAction(loadContractsExpiringCountAction, [] as { count: number }[], { viewAs });
   const expiringCount     = (expiringData as { count: number }[])[0]?.count ?? 0;
@@ -167,6 +167,15 @@ export default function TopNav() {
       reloadReview();
     }
   }, [ptoVersion, reloadReview]);
+
+  // Reload AR nav badge whenever entries are committed or reverted
+  const arVersionRef = useRef(arVersion);
+  useEffect(() => {
+    if (arVersionRef.current !== arVersion) {
+      arVersionRef.current = arVersion;
+      reloadUnresolved();
+    }
+  }, [arVersion, reloadUnresolved]);
 
   function sectionBadge(id: string): { count: number; label: string } | null {
     if (!isSuper && id === 'disciplinary') return null;

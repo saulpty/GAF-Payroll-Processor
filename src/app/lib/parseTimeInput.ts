@@ -4,6 +4,7 @@
  *   "14:30" → "2:30 PM"   "12:35am" → "12:35 AM"   "9:00 AM" → "9:00 AM"
  * Unrecognisable or impossible text ("55:00 PM", "9:75") is returned unchanged;
  * isValidTimeInput tells the UI whether to show it as an error.
+ * "0:30 AM" (what this parser wrote for "1230a" before 2026-09-25) reads as "12:30 AM".
  */
 export function parseTimeInput(raw: string): string {
   const s = raw.trim();
@@ -12,9 +13,11 @@ export function parseTimeInput(raw: string): string {
   // Already "H:MM AM" shaped, with or without the space, any case.
   const formed = s.match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
   if (formed) {
-    const h = Number(formed[1]), m = Number(formed[2]);
+    let h = Number(formed[1]);
+    const m = Number(formed[2]), ap = formed[3].toUpperCase();
+    if (h === 0 && ap === 'AM') h = 12;
     if (h < 1 || h > 12 || m > 59) return s;
-    return `${h}:${formed[2]} ${formed[3].toUpperCase()}`;
+    return `${h}:${formed[2]} ${ap}`;
   }
 
   const meridiemMatch = s.match(/([AaPp][Mm]?)$/);
@@ -38,6 +41,7 @@ export function parseTimeInput(raw: string): string {
   }
 
   if (isNaN(h) || isNaN(m) || m > 59) return s;
+  if (isExplicitAm && h === 0) h = 12;
   // With am/pm the hour must be 1–12; without, it is 24-hour (0–23).
   if ((isExplicitAm || isExplicitPm) ? (h < 1 || h > 12) : h > 23) return s;
 

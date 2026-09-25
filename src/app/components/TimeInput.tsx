@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { parseTimeInput, isValidTimeInput } from '@/app/lib/parseTimeInput';
 
 type Props = {
@@ -12,6 +12,8 @@ type Props = {
 
 export function TimeInput({ value, onChange, className = '', placeholder, onValidityChange }: Props) {
   const [bad, setBad] = useState(false);
+  // Discard all, a bulk edit or a reload can replace the text from outside: clear the red then.
+  useEffect(() => { if (bad && isValidTimeInput(value)) setBad(false); }, [value]);
 
   const handleBlur = () => {
     const ok = isValidTimeInput(value);

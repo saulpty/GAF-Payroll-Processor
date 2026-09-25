@@ -28,6 +28,31 @@ export function nextSort<K>(current: K | null, dir: 'asc' | 'desc' | null, click
   return [clicked, 'asc'];
 }
 
+/** The event box a row needs before it can commit: an impact was picked with no event. */
+export function missingEvent(edit: { event_type_1: string; pay_impact_1: string; event_type_2: string; pay_impact_2: string }): 1 | 2 | null {
+  if (edit.pay_impact_1 && !edit.event_type_1) return 1;
+  if (edit.pay_impact_2 && !edit.event_type_2) return 2;
+  return null;
+}
+
+/**
+ * Why a row cannot be committed, or null when it can. isRealTime is
+ * parseTimeInput's isValidTimeInput (passed in so this file stays import-free).
+ */
+export function refusalReason(
+  edit: { entry_time: string; exit_time: string; event_type_1: string; pay_impact_1: string; event_type_2: string; pay_impact_2: string },
+  isRealTime: (t: string) => boolean,
+): string | null {
+  if (!isRealTime(edit.entry_time) || !isRealTime(edit.exit_time)) return 'Entry or Exit is not a real time';
+  if (missingEvent(edit)) return 'Pick an event first';
+  return null;
+}
+
+/** The bulk bar is for bulk: two or more selected rows. One row commits from its own button. */
+export function showBulkBar(selectedCount: number): boolean {
+  return selectedCount >= 2;
+}
+
 /** Ids between two visible indexes, inclusive, in visible order (shift-click range). */
 export function rangeIds(visible: { id: number }[], a: number, b: number): number[] {
   const lo = Math.min(a, b), hi = Math.max(a, b);

@@ -10,17 +10,25 @@ import loadPayImpactsAction from '@/actions/loadPayImpacts';
 import loadDocumentationOptionsAction from '@/actions/loadDocumentationOptions';
 import loadEventTypesAction from '@/actions/loadEventTypes';
 import { useRowEdits } from '@/app/lib/useRowEdits';
+import { ToastProvider, useToast } from '@/app/components/ds/Toast';
 import { BROADCAST_FIELDS, toEditState, type CommittedRow, type EditState, type EntryRow, type SortDir, type SortKey } from './action-required/arTypes';
-import { filterRows, nextSort, rangeIds } from './action-required/arLogic';
+import { filterRows, nextSort, rangeIds, showBulkBar } from './action-required/arLogic';
 import { ArHead } from './action-required/ArHead';
 import { ArCommitBar } from './action-required/ArCommitBar';
 import { ArRow } from './action-required/ArRow';
 import { ArCommitted } from './action-required/ArCommitted';
 import { ArConfirm } from './action-required/ArConfirm';
 import { useArSave } from './action-required/useArSave';
+import { useArCommit } from './action-required/useArCommit';
 
+// The page owns its toasts (page-by-page rollout: app.tsx is untouched).
 export default function ActionRequired() {
-  const { period: selectedPeriod, employee: globalEmployee, statusTab: activeTab } = useGlobalFilters();
+  return <ToastProvider><ActionRequiredPage /></ToastProvider>;
+}
+
+function ActionRequiredPage() {
+  const { period: selectedPeriod, employee: globalEmployee, statusTab: activeTab, bumpArVersion } = useGlobalFilters();
+  const toast = useToast();
   const [payImpacts] = useLoadAction(loadPayImpactsAction, [] as { name: string }[]);
   const [docOptions] = useLoadAction(loadDocumentationOptionsAction, [] as { name: string }[]);
   const [eventTypes] = useLoadAction(loadEventTypesAction, [] as { id: number; name: string }[]);
@@ -31,17 +39,16 @@ export default function ActionRequired() {
   const { getEdit, update, isDirty, discardAll, markSaved, dirtyCount } = useRowEdits<EntryRow, EditState>(toEditState, rows as EntryRow[]);
   const [committedRows, , , reloadCommitted] = useLoadAction(loadCommittedEntriesAction, [] as CommittedRow[], params);
   const { saveRow, revertRow } = useArSave(getEdit);
+  const { commitRows, handleRevert, reasonFor, bulkSaving, sessionCommitted, setSessionCommitted, revertingIds, hiddenIds } =
+    useArCommit({ rows, getEdit, saveRow, revertRow, reload, reloadCommitted, markSaved, bumpArVersion, toast });
 
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
-  const [bulkSaving, setBulkSaving] = useState(false);
   const [committedOpen, setCommittedOpen] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
-  // Track IDs committed this session for highlighting
-  const [sessionCommitted, setSessionCommitted] = useState<Set<number>>(new Set());
-  const [revertingIds, setRevertingIds] = useState<Set<number>>(new Set());
-  const [showCommitConfirm, setShowCommitConfirm] = useState(false);
+  // Rows waiting in the confirm dialog: the bulk selection, or one row's own Commit button.
+  const [confirmIds, setConfirmIds] = useState<number[] | null>(null);
 
   const impactOptions = (payImpacts as { name: string }[]).map(p => p.name);
   const docOpts = (docOptions as { name: string }[]).map(d => d.name);
@@ -65,13 +72,19 @@ export default function ActionRequired() {
     setSortDir(null);
   }, [selectedPeriod]);
 
-  const setEditField = useCallback((id: number, field: keyof EditState, value: string, row: EntryRow, allRows?: EntryRow[]) => {
+  // Editing a row no longer selects it (AR-3): selection is the checkbox only, so an
+  // edit never silently broadcasts to rows touched earlier. Broadcast applies only to a
+  // deliberate 2+ selection, only to rows currently visible, and each target's draft is
+  // built from that row's own data (never from the edited row's times or notes).
+  const setEditField = useCallback((id: number, field: keyof EditState, value: string, row: EntryRow, visibleRows?: EntryRow[]) => {
     const isBroadcast = BROADCAST_FIELDS.includes(field) && selected.has(id) && selected.size > 1;
-    const targetIds = isBroadcast ? Array.from(selected) : [id];
-    const rowMap = new Map((allRows ?? []).map(r => [r.id, r]));
+    const visibleIds = new Set((visibleRows ?? []).map(r => r.id));
+    const targetIds = isBroadcast ? Array.from(selected).filter(t => t === id || visibleIds.has(t)) : [id];
+    const rowMap = new Map((rows as EntryRow[]).map(r => [r.id, r]));
 
     for (const tid of targetIds) {
-      const trow = rowMap.get(tid) ?? row;
+      const trow = tid === id ? row : rowMap.get(tid);
+      if (!trow) continue;
       update(tid, trow, current => {
         const updated = { ...current, [field]: value };
         if (field === 'event_type_1' && value && rulesMap.has(value)) {
@@ -86,48 +99,23 @@ export default function ActionRequired() {
         return updated;
       });
     }
-    // auto-select the touched row
-    setSelected(prev => new Set(prev).add(id));
-  }, [update, rulesMap, selected]);
+  }, [update, rulesMap, selected, rows]);
 
-  const allRows = rows as EntryRow[];
+  const allRows = useMemo(() => (rows as EntryRow[]).filter(r => !hiddenIds.has(r.id)), [rows, hiddenIds]);
+  // Only the very first load replaces the page with a spinner; later reloads are silent.
+  const firstLoad = loading && (rows as EntryRow[]).length === 0;
   const filtered = useMemo(
     () => filterRows(allRows, activeTab, globalEmployee, sortKey, sortDir),
     [allRows, activeTab, globalEmployee, sortKey, sortDir],
   );
 
-  // Bulk commit selected rows
-  const handleBulkCommit = async () => {
-    setShowCommitConfirm(false);
-    const toSave = filtered.filter(r => selected.has(r.id));
-    if (!toSave.length) return;
-    setBulkSaving(true);
-    const newCommitted = new Set(sessionCommitted);
-    const refused: string[] = [];
-    for (const row of toSave) {
-      const status = await saveRow(row);
-      if (status === null) { refused.push(`${row.employee_name} ${row.work_date.slice(0, 10)}`); continue; }
-      newCommitted.add(row.id);
-      markSaved(row.id);
-    }
-    setSessionCommitted(newCommitted);
-    setSelected(new Set());
-    setBulkSaving(false);
-    if (refused.length) window.alert(`Not committed — Entry and Exit must look like 9:05 AM:\n${refused.join('\n')}`);
-    await reload();
-    await reloadCommitted();
-  };
-
-  const handleRevert = async (r: CommittedRow) => {
-    setRevertingIds(prev => new Set(prev).add(r.id));
-    try {
-      await revertRow(r);
-      setSessionCommitted(prev => { const s = new Set(prev); s.delete(r.id); return s; });
-      await reload();
-      await reloadCommitted();
-    } finally {
-      setRevertingIds(prev => { const s = new Set(prev); s.delete(r.id); return s; });
-    }
+  const handleConfirm = async () => {
+    const ids = new Set(confirmIds ?? []);
+    setConfirmIds(null);
+    const toSave = filtered.filter(r => ids.has(r.id));
+    setSelected(prev => { const s = new Set(prev); ids.forEach(id => s.delete(id)); return s; });
+    setLastSelectedIndex(null);
+    await commitRows(toSave);
   };
 
   const handleSort = (key: SortKey) => {
@@ -167,15 +155,16 @@ export default function ActionRequired() {
 
   const committed = committedRows as CommittedRow[];
   const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+  const bulk = showBulkBar(selectedCount);
 
   return (
     <div className="flex flex-col h-full p-5 gap-4 overflow-hidden">
 
       {/* ── Empty states ────────────────────────────────────────── */}
-      {loading && (
+      {firstLoad && (
         <div className="flex items-center gap-2 text-muted-foreground text-sm mt-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading entries…</div>
       )}
-      {!loading && allRows.length === 0 && (
+      {!firstLoad && allRows.length === 0 && (
         <Card className="border-green-300 bg-green-50 flex-1">
           <CardContent className="pt-12 text-center">
             <CheckCircle className="w-10 h-10 text-green-600 mx-auto mb-3" />
@@ -186,15 +175,20 @@ export default function ActionRequired() {
       )}
 
       {/* ── Main content ─────────────────────────────────────────── */}
-      {!loading && allRows.length > 0 && (
+      {!firstLoad && allRows.length > 0 && (
         <div className="flex flex-col flex-1 min-h-0 gap-3 overflow-hidden">
 
-          <ArCommitBar someSelected={someSelected} selectedCount={selectedCount} selectedSize={selected.size}
+          <ArCommitBar someSelected={bulk} selectedCount={selectedCount} selectedSize={selected.size}
             bulkSaving={bulkSaving} dirtyCount={dirtyCount}
-            onDeselectAll={() => setSelected(new Set())} onCommit={() => setShowCommitConfirm(true)} onDiscardAll={discardAll} />
+            onDeselectAll={() => setSelected(new Set())}
+            onCommit={() => setConfirmIds(filtered.filter(r => selected.has(r.id)).map(r => r.id))}
+            onDiscardAll={discardAll} />
 
           {/* ── Work table ─────────────────────────────────────── */}
-          <div className="flex-1 min-h-0 rounded-lg border shadow-sm overflow-auto">
+          {/* While data refreshes the table stays put but dims and ignores clicks, so the
+              previous period's rows can never be edited or committed by mistake. */}
+          <div className={`flex-1 min-h-0 rounded-lg border shadow-sm overflow-auto transition-opacity ${loading ? 'opacity-60 pointer-events-none' : ''}`}
+            aria-busy={loading || undefined}>
             <table className="w-full text-xs border-collapse tabular-nums" style={{ minWidth: 1120 }}>
               <ArHead allFilteredSelected={allFilteredSelected} someSelected={someSelected} showPeriod={!selectedPeriod}
                 sortKey={sortKey} sortDir={sortDir} onSort={handleSort} onToggleAll={toggleSelectAll} />
@@ -202,14 +196,20 @@ export default function ActionRequired() {
                 {filtered.length === 0 && (
                   <tr><td colSpan={15} className="px-4 py-8 text-center text-muted-foreground text-sm">No results match your filter.</td></tr>
                 )}
-                {filtered.map((row, rowIndex) => (
-                  <ArRow key={row.id} row={row} rowIndex={rowIndex}
-                    edit={getEdit(row)} dirty={isDirty(row)}
-                    isSelected={selected.has(row.id)} selectedSize={selected.size}
-                    showPeriod={!selectedPeriod}
-                    eventOpts={eventOpts} impactOptions={impactOptions} docOpts={docOpts}
-                    visibleRows={filtered} onToggle={toggleRow} onEdit={setEditField} />
-                ))}
+                {filtered.map((row, rowIndex) => {
+                  const isSelected = selected.has(row.id);
+                  const dirty = isDirty(row);
+                  return (
+                    <ArRow key={row.id} row={row} rowIndex={rowIndex}
+                      edit={getEdit(row)} dirty={dirty}
+                      isSelected={isSelected} selectedSize={selected.size}
+                      showPeriod={!selectedPeriod}
+                      eventOpts={eventOpts} impactOptions={impactOptions} docOpts={docOpts}
+                      visibleRows={filtered} onToggle={toggleRow} onEdit={setEditField}
+                      canCommitOne={!bulk && !bulkSaving && (dirty || isSelected)}
+                      onCommitOne={r => setConfirmIds([r.id])} />
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -217,16 +217,16 @@ export default function ActionRequired() {
       )}
 
       {/* ── Committed section ──────────────────────────────────── */}
-      {!loading && (
+      {!firstLoad && (
         <ArCommitted committed={committed} sessionCommitted={sessionCommitted} revertingIds={revertingIds}
           showPeriod={!selectedPeriod} committedOpen={committedOpen} setCommittedOpen={setCommittedOpen}
           onRevert={handleRevert} />
       )}
 
       {/* ── Commit confirmation modal ─────────────────────────── */}
-      {showCommitConfirm && (
-        <ArConfirm toConfirm={filtered.filter(r => selected.has(r.id))} getEdit={getEdit} bulkSaving={bulkSaving}
-          onCancel={() => setShowCommitConfirm(false)} onConfirm={handleBulkCommit} />
+      {confirmIds && (
+        <ArConfirm toConfirm={filtered.filter(r => confirmIds.includes(r.id))} getEdit={getEdit} reasonFor={reasonFor}
+          bulkSaving={bulkSaving} onCancel={() => setConfirmIds(null)} onConfirm={handleConfirm} />
       )}
     </div>
   );

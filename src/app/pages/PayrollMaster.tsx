@@ -620,7 +620,7 @@ export default function PayrollMaster() {
           )}
 
           {/* Table */}
-          <div className="flex-1 min-h-0 rounded-lg border shadow-sm overflow-auto">
+          <div className={`flex-1 min-h-0 rounded-lg border shadow-sm overflow-auto transition-opacity ${loading ? 'opacity-60 pointer-events-none' : ''}`} aria-busy={loading || undefined}>
             <table className="w-full text-xs border-collapse tabular-nums" style={{ minWidth: 1400 }}>
               <thead className="sticky top-0 z-20">
                 <tr className="bg-slate-100 border-b-2 border-slate-300">

@@ -10,8 +10,9 @@ export function useArSave(getEdit: (row: EntryRow) => EditState) {
   const [updateEntry] = useMutateAction(updatePayrollEntryAction);
   const [updateTimes] = useMutateAction(updatePunchTimesAction);
 
-  // Save a single row, returns derived status; null when the row was refused
-  const saveRow = async (row: EntryRow): Promise<string | null> => {
+  // Save a single row. Returns the derived status plus the row as saved (what a
+  // revert/Undo needs); null when the row was refused.
+  const saveRow = async (row: EntryRow): Promise<{ status: string; saved: CommittedRow } | null> => {
     const edit = getEdit(row);
     // Minutes are recomputed from the row's punches on every commit, so a row
     // whose stored minutes are stale is corrected by any commit.
@@ -39,7 +40,17 @@ export function useArSave(getEdit: (row: EntryRow) => EditState) {
       discount_total_minutes: derived.discount_total_minutes,
       payroll_ready: derived.payroll_ready, status_current: derived.status_current,
     });
-    return derived.status_current;
+    return {
+      status: derived.status_current,
+      saved: {
+        id: row.id, period_name: row.period_name, employee_name: row.employee_name, work_date: row.work_date,
+        event_type_1: edit.event_type_1, pay_impact_1: edit.pay_impact_1,
+        event_type_2: edit.event_type_2, pay_impact_2: edit.pay_impact_2,
+        documentation: edit.documentation, notes: edit.notes, auto_notes: row.auto_notes,
+        initial_status: row.initial_status, status_current: derived.status_current,
+        discount_total_minutes: derived.discount_total_minutes, updated_at: '',
+      },
+    };
   };
 
   // Put a committed row back to its initial status (payroll_ready NO)

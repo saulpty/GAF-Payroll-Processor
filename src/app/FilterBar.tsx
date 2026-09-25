@@ -70,6 +70,7 @@ export default function FilterBar() {
 
   const {
     periodsVersion,
+    arVersion,
     attendanceMode, setAttendanceMode,
     period, setPeriod,
     dateFrom, setDateFrom,
@@ -89,12 +90,20 @@ export default function FilterBar() {
   const [empsRaw]    = useLoadAction(loadAttendanceEmployeesAction, [] as EmpInfo[], { viewAs });
 
   type CountsRow = { red_count: number; yellow_count: number };
-  const [countsRaw] = useLoadAction(
+  const [countsRaw, , , reloadCounts] = useLoadAction(
     loadActionRequiredCountsAction,
     [] as CountsRow[],
     { periodName: period },
   );
   const counts = (countsRaw as CountsRow[])[0] ?? { red_count: 0, yellow_count: 0 };
+
+  const arVersionRef = useRef(arVersion);
+  useEffect(() => {
+    if (arVersionRef.current !== arVersion) {
+      arVersionRef.current = arVersion;
+      reloadCounts();
+    }
+  }, [arVersion, reloadCounts]);
 
   const versionRef = useRef(periodsVersion);
   useEffect(() => {

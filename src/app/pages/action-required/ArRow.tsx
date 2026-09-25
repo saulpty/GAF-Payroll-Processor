@@ -1,13 +1,14 @@
-import { CheckSquare, Square } from 'lucide-react';
+import { CheckSquare, Send, Square } from 'lucide-react';
 import { TimeInput } from '@/app/components/TimeInput';
 import { computePunchMinutes } from '@/app/lib/punchMinutes';
 import { BroadcastSelect } from './ArBits';
+import { missingEvent } from './arLogic';
 import type { EditState, EntryRow } from './arTypes';
 
 /** One editable row of the work table. Split out of ActionRequired.tsx, AR-1. */
 export function ArRow({
   row, rowIndex, edit, dirty, isSelected, selectedSize, showPeriod,
-  eventOpts, impactOptions, docOpts, visibleRows, onToggle, onEdit,
+  eventOpts, impactOptions, docOpts, visibleRows, onToggle, onEdit, canCommitOne, onCommitOne,
 }: {
   row: EntryRow; rowIndex: number; edit: EditState; dirty: boolean;
   isSelected: boolean; selectedSize: number; showPeriod: boolean;
@@ -15,7 +16,11 @@ export function ArRow({
   visibleRows: EntryRow[];
   onToggle: (id: number, index: number, shiftKey: boolean) => void;
   onEdit: (id: number, field: keyof EditState, value: string, row: EntryRow, allRows?: EntryRow[]) => void;
+  /** Show this row's own Commit button (one-offs; the bulk bar is for 2+ rows). */
+  canCommitOne: boolean;
+  onCommitOne: (row: EntryRow) => void;
 }) {
+  const needsEvent = missingEvent(edit);
   const live = dirty ? computePunchMinutes({
     entry_time: edit.entry_time, exit_time: edit.exit_time,
     scheduled_start: row.scheduled_start, scheduled_end: row.scheduled_end, grace_until: row.grace_until,
@@ -49,6 +54,12 @@ export function ArRow({
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { if (e.key === ' ') e.preventDefault(); onToggle(row.id, rowIndex, e.shiftKey); } }}
           className="cursor-pointer hover:text-blue-700 transition-colors"
         >{row.employee_name}</span>
+        {canCommitOne && (
+          <button type="button" onClick={() => onCommitOne(row)} title="Commit this row to GREEN"
+            className="ml-2 inline-flex items-center gap-1 rounded bg-blue-700 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-blue-800">
+            <Send className="w-3 h-3" />Commit
+          </button>
+        )}
       </td>
       {showPeriod && <td className="px-3 py-1.5 border-r whitespace-nowrap text-slate-600">{row.period_name}</td>}
       <td className="px-3 py-2 whitespace-nowrap border-r font-mono text-slate-700">{row.work_date.slice(0, 10)}</td>
@@ -72,9 +83,10 @@ export function ArRow({
       </td>
       {/* Event 1 */}
       <td className="px-2 py-1.5 border-r min-w-36">
-        <BroadcastSelect value={edit.event_type_1} broadcasting={broadcasting}
+        <BroadcastSelect value={edit.event_type_1} broadcasting={broadcasting} invalid={needsEvent === 1}
           onChange={v => onEdit(row.id, 'event_type_1', v, row, visibleRows)}
           placeholder="— none —" options={eventOpts} />
+        {needsEvent === 1 && <div className="mt-0.5 text-[10px] font-medium text-red-700">Pick an event first</div>}
       </td>
       {/* Impact 1 */}
       <td className="px-2 py-1.5 border-r min-w-36">
@@ -84,9 +96,10 @@ export function ArRow({
       </td>
       {/* Event 2 */}
       <td className="px-2 py-1.5 border-r min-w-36">
-        <BroadcastSelect value={edit.event_type_2} broadcasting={broadcasting}
+        <BroadcastSelect value={edit.event_type_2} broadcasting={broadcasting} invalid={needsEvent === 2}
           onChange={v => onEdit(row.id, 'event_type_2', v, row, visibleRows)}
           placeholder="— none —" options={eventOpts} />
+        {needsEvent === 2 && <div className="mt-0.5 text-[10px] font-medium text-red-700">Pick an event first</div>}
       </td>
       {/* Impact 2 */}
       <td className="px-2 py-1.5 border-r min-w-36">

@@ -23,20 +23,25 @@ export function Th({ col, label, className = '', sortKey, sortDir, onSort }: {
 }
 
 // Visual select that glows when it will broadcast to multiple rows
-export function BroadcastSelect({ value, options, placeholder, broadcasting, onChange }: {
+export function BroadcastSelect({ value, options, placeholder, broadcasting, onChange, invalid = false }: {
   value: string;
   options: string[];
   placeholder: string;
   broadcasting: boolean;
   onChange: (v: string) => void;
+  /** Required but empty (an impact was picked first): red, pulses twice when it turns on. */
+  invalid?: boolean;
 }) {
   return (
     <div className="relative">
       <select
+        aria-invalid={invalid || undefined}
         className={`w-full border rounded px-1.5 py-1 text-xs bg-white transition-colors ${
-          broadcasting
-            ? 'border-blue-400 ring-1 ring-blue-300 bg-blue-50'
-            : ''
+          invalid
+            ? 'border-red-600 bg-red-50 animate-flash-required'
+            : broadcasting
+              ? 'border-blue-400 ring-1 ring-blue-300 bg-blue-50'
+              : ''
         }`}
         value={value}
         onChange={e => onChange(e.target.value)}
