@@ -1,11 +1,11 @@
 import { Check, Send } from 'lucide-react';
 import { TimeInput } from '@/app/components/TimeInput';
 import { Combobox } from '@/app/components/ds/Combobox';
-import { computePunchMinutes } from '@/app/lib/punchMinutes';
-import { computeDiscount, toLocalYMD } from '@/app/lib/classificationEngine';
+import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { fmtDay } from '@/app/lib/fmtDay';
 import { fmtShift } from '@/app/lib/fmtTime';
-import { discountLabel, fmtMinutes, IMPACT_DOT, impactTone, missingEvent } from './arLogic';
+import { fmtMinutes, IMPACT_DOT, impactTone, missingEvent } from './arLogic';
+import { rowDiscount } from './arDiscount';
 import type { EditState, EntryRow } from './arTypes';
 
 const THIS_YEAR = toLocalYMD(new Date()).slice(0, 4);
@@ -29,28 +29,17 @@ export function ArRow({
   onCommitOne: (row: EntryRow) => void;
 }) {
   const needsEvent = missingEvent(edit);
-  // Always recompute from the punches, exactly as the save does (stored minutes can be stale).
-  const live = computePunchMinutes({
-    entry_time: edit.entry_time, exit_time: edit.exit_time,
-    scheduled_start: row.scheduled_start, scheduled_end: row.scheduled_end, grace_until: row.grace_until,
-  });
-  const late = live ? live.late_minutes : row.late_minutes;
-  const early = live ? live.early_leave_minutes : row.early_leave_minutes;
-  // What a commit would deduct right now: the same computeDiscount the save uses.
-  const discount = discountLabel(computeDiscount({
-    event_type_1: edit.event_type_1, pay_impact_1: edit.pay_impact_1,
-    event_type_2: edit.event_type_2, pay_impact_2: edit.pay_impact_2,
-    late_minutes: late, late_after_grace: live ? live.late_after_grace : row.late_after_grace,
-    early_leave_minutes: early,
-  // "Paid" only once every chosen event also has its impact (the pay decision is made).
-  }), !!(edit.event_type_1 || edit.event_type_2) && (!edit.event_type_1 || !!edit.pay_impact_1) && (!edit.event_type_2 || !!edit.pay_impact_2));
+  // Live Late/Early and what a commit would deduct: the save's own maths (shared with ArConfirm).
+  const { late, early, discount } = rowDiscount(row, edit);
+  const day = fmtDay(row.work_date.slice(0, 10), THIS_YEAR);
+  const who = `${row.employee_name} ${row.work_date.slice(0, 10)}`;
   const broadcasting = isSelected && selectedSize > 1;
   const tint = isSelected ? 'bg-warm-tint' : row.initial_status === 'RED' ? 'bg-status-red-tint' : 'bg-status-yellow-tint';
   const bar = isSelected ? 'shadow-[inset_3px_0_0_var(--warm)]' : '';
   const pick = (field: keyof EditState) => (v: string) => onEdit(row.id, field, v, row, visibleRows);
   const combo = (field: keyof EditState, value: string, options: string[], label: string, invalid = false, toneOf?: (v: string) => string) => (
     <div className={broadcasting ? 'rounded-md ring-1 ring-warm-ring' : ''} title={broadcasting ? `Applies to all ${selectedSize} selected rows` : undefined}>
-      <Combobox value={value} options={options} onChange={pick(field)} ariaLabel={`${label}, ${row.employee_name} ${row.work_date.slice(0, 10)}`}
+      <Combobox value={value} options={options} onChange={pick(field)} ariaLabel={`${label}, ${who}`}
         invalid={invalid} flashKey={invalid ? 1 : 0} className="w-full" toneOf={toneOf} />
     </div>
   );
@@ -58,14 +47,18 @@ export function ArRow({
   return (
     <tr className={`${tint} hover:brightness-[0.98] text-[13px] text-slate-800`}>
       <td className={`${td} sticky left-0 z-10 w-10 ${tint} ${bar}`}>
-        <input type="checkbox" checked={isSelected} aria-label={`Select ${row.employee_name} ${row.work_date.slice(0, 10)}`}
+        <input type="checkbox" checked={isSelected} aria-label={`Select ${who}`}
           onChange={() => {}} onClick={e => onToggle(row.id, rowIndex, e.shiftKey)}
           className="h-4 w-4 rounded border-slate-400 accent-[var(--warm)] cursor-pointer" />
       </td>
       <td className={`${td} sticky left-10 z-10 ${tint}`} style={{ width: 176, minWidth: 176, maxWidth: 176 }}>
         <div className="flex items-center gap-1.5">
-          <span className="truncate font-medium" title={row.employee_name}>{row.employee_name}</span>
-          {dirty && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warm" title="Unsaved changes" />}
+          <span className="min-w-0 leading-tight">
+            <span className="block truncate font-medium" title={row.employee_name}>{row.employee_name}</span>
+            {/* The day stays in view while scrolling right to Event / Impact (AR-13). */}
+            <span className="block text-[11px] text-slate-500" aria-hidden="true">{day}</span>
+          </span>
+          {dirty && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warm" title="Unsaved changes"><span className="sr-only">Unsaved changes</span></span>}
           {canCommitOne && (
             <button type="button" onClick={() => onCommitOne(row)} title="Commit this row to Green"
               className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-warm px-2 py-0.5 text-[11px] font-semibold text-warm-ink hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring">
@@ -75,12 +68,12 @@ export function ArRow({
         </div>
       </td>
       {showPeriod && <td className={`${td} whitespace-nowrap text-slate-600`} style={{ width: 110 }}>{row.period_name}</td>}
-      <td className={`${td} whitespace-nowrap text-slate-700`} style={{ width: 96 }}>{fmtDay(row.work_date.slice(0, 10), THIS_YEAR)}</td>
+      <td className={`${td} whitespace-nowrap text-slate-700`} style={{ width: 96 }}>{day}</td>
       <td className={td} style={{ width: 88, minWidth: 88 }}>
-        <TimeInput className={timeBox} value={edit.entry_time} placeholder="9:00 AM" onChange={v => onEdit(row.id, 'entry_time', v, row)} />
+        <TimeInput className={timeBox} value={edit.entry_time} placeholder="9:00 AM" ariaLabel={`In, ${who}`} onChange={v => onEdit(row.id, 'entry_time', v, row)} />
       </td>
       <td className={td} style={{ width: 88, minWidth: 88 }}>
-        <TimeInput className={timeBox} value={edit.exit_time} placeholder="5:00 PM" onChange={v => onEdit(row.id, 'exit_time', v, row)} />
+        <TimeInput className={timeBox} value={edit.exit_time} placeholder="5:00 PM" ariaLabel={`Out, ${who}`} onChange={v => onEdit(row.id, 'exit_time', v, row)} />
       </td>
       <td className={`${td} whitespace-nowrap text-[12px] text-slate-500`} style={{ width: 150 }}>{fmtShift(row.work_days, row.scheduled_start, row.scheduled_end)}</td>
       <td className={`${td} text-right tabular-nums whitespace-nowrap ${late > 0 ? 'text-slate-800' : 'text-slate-300'}`} style={{ width: 70 }}>{fmtMinutes(late) || '—'}</td>
@@ -106,7 +99,7 @@ export function ArRow({
       </td>
       <td className={td} style={{ minWidth: 180 }}>
         <input className="w-full h-7 rounded-md border border-slate-300 bg-white px-2 text-[12px] focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring"
-          value={edit.notes} placeholder="Add a note" onChange={e => onEdit(row.id, 'notes', e.target.value, row)} />
+          value={edit.notes} placeholder="Add a note" aria-label={`Notes, ${who}`} onChange={e => onEdit(row.id, 'notes', e.target.value, row)} />
       </td>
     </tr>
   );
