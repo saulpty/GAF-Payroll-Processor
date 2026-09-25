@@ -31,7 +31,21 @@ test('TC2: with nothing on Monday every missing workday is a gap', () => {
 
 test('TC3: Process Payroll uses it for the coverage warning and names the days', () => {
   const src = readFileSync('src/app/pages/ProcessPayroll.tsx', 'utf8');
-  assert.match(src, /unexplainedWorkdays\(emp, expectedWorkdays, dayMap, holidayDates, attendance, permissions, normalizeName\)/);
+  assert.match(src, /unexplainedWorkdays\(emp, expectedWorkdays, dayMap, holidayDates, attendance, permissions, normalizeName, coverageNames, rosterEmails\)/);
   assert.match(src, /gaps\.map\(d => fmtDay\(d, d\.slice\(0, 4\)\)\)\.join\(', '\)/);
   assert.doesNotMatch(src, /Teramind covers only/);
+});
+
+// TC4 (code review #3): match like the engine — aliases count, and an email that
+// belongs to another employee never matches by name.
+test('TC4: aliases explain days; someone else\'s email does not', () => {
+  const gisselle = { id: 22, teramind_email: 'gisselle.r@vitasyahc.com', display_name: 'Gisselle Ramos' };
+  const days = ['2026-09-14', '2026-09-15'];
+  const nameMap = new Map([[normalizeName('Gisselle Ramos'), 22], [normalizeName('Gisselle Vanessa Ramos Pérez de Brown'), 22]]);
+  const roster = new Set(['gisselle.r@vitasyahc.com', 'other@x.com']);
+  const att = [
+    { employeeName: 'Gisselle Vanessa Ramos Pérez de Brown', employeeEmail: '', date: '2026-09-14', type: 'Absence' },
+    { employeeName: 'Gisselle Ramos', employeeEmail: 'other@x.com', date: '2026-09-15', type: 'Absence' },
+  ];
+  assert.deepEqual(unexplainedWorkdays(gisselle, days, new Set(), new Set(), att, [], normalizeName, nameMap, roster), ['2026-09-15']);
 });

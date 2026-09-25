@@ -21,3 +21,10 @@ test('UN2: the toast Undo uses restoreRow with the pre-commit rows', () => {
   assert.match(page, /const \{ saveRow, revertRow, restoreRow \} = useArSave\(getEdit\);/);
   assert.match(page, /useArCommit\(\{ rows, getEdit, saveRow, revertRow, restoreRow,/);
 });
+
+// UN3 (code review #4): the entry is restored before the times, so a half-failed Undo
+// leaves the row back in Action Required rather than green with old minutes.
+test('UN3: restoreRow writes the entry first, then the times', () => {
+  const body = save.slice(save.indexOf('const restoreRow'), save.indexOf('return { saveRow'));
+  assert.ok(body.indexOf('await updateEntry(') < body.indexOf('await updateTimes('));
+});

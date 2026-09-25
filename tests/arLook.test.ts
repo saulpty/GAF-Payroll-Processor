@@ -36,3 +36,14 @@ test('AL3: the row uses the shared parts and the same discount math as the save'
   assert.match(head, /col="event_type_1" label="Event 1"/);
   assert.match(loader, /LEFT JOIN schedules s ON s\.id = e\.schedule_id/);
 });
+
+// AL4 (code review #1, #2, #5): the Discount column must match what a commit writes,
+// and the Committed list's Updated time is Panama wall-clock.
+test('AL4: minutes always recomputed like the save; Paid only once impacts are chosen', () => {
+  const row = readFileSync('src/app/pages/action-required/ArRow.tsx', 'utf8');
+  const committed = readFileSync('src/actions/loadCommittedEntries.ts', 'utf8');
+  assert.match(row, /const live = computePunchMinutes\(\{/);
+  assert.doesNotMatch(row, /const live = dirty \?/);
+  assert.ok(row.includes('(!edit.event_type_1 || !!edit.pay_impact_1) && (!edit.event_type_2 || !!edit.pay_impact_2)'));
+  assert.ok(committed.includes("(pe.updated_at AT TIME ZONE 'America/Panama')::text AS updated_at"));
+});
