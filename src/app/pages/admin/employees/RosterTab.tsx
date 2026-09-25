@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import loadAllEmployeesAction from '@/actions/loadAllEmployees';
 import loadSchedulesAction from '@/actions/loadSchedules';
 import upsertEmployeeAction from '@/actions/upsertEmployee';
+import updateEmployeeAction from '@/actions/updateEmployee';
 import updateEmployeeFlagAction from '@/actions/updateEmployeeFlag';
 
 type EmpRow = {
@@ -39,22 +40,52 @@ export default function RosterTab() {
   const [employees, , , reload] = useLoadAction(loadAllEmployeesAction, [] as EmpRow[]);
   const [schedules] = useLoadAction(loadSchedulesAction, [] as Schedule[]);
   const [upsertEmp, saving] = useMutateAction(upsertEmployeeAction);
+  const [updateEmp, updating] = useMutateAction(updateEmployeeAction);
   const [updateFlag] = useMutateAction(updateEmployeeFlagAction);
 
   const [editing, setEditing] = useState<Partial<EmpRow> | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('active');
 
-  const handleNew  = () => { setEditing({ ...EMPTY_EMP }); setShowForm(true); };
-  const handleEdit = (emp: EmpRow) => { setEditing({ ...emp }); setShowForm(true); };
+  const handleNew  = () => { setSaveError(null); setEditing({ ...EMPTY_EMP }); setShowForm(true); };
+  const handleEdit = (emp: EmpRow) => { setSaveError(null); setEditing({ ...emp }); setShowForm(true); };
 
   const handleSave = async () => {
     if (!editing) return;
-    await upsertEmp({ ...editing, excluded_from_payroll: editing.excluded_from_payroll ?? false });
-    setShowForm(false);
-    setEditing(null);
-    await reload();
+    setSaveError(null);
+    const email = (editing.teramind_email ?? '').trim().toLowerCase();
+    const duplicate = emps.find(
+      e => e.teramind_email.trim().toLowerCase() === email && e.id !== editing.id,
+    );
+    if (duplicate) {
+      setSaveError(`That email already belongs to ${duplicate.display_name}. Nothing was saved.`);
+      return;
+    }
+    try {
+      if (typeof editing.id === 'number') {
+        await updateEmp({
+          id: editing.id,
+          display_name: editing.display_name ?? '',
+          teramind_email: email,
+          company_domain: editing.company_domain ?? '',
+          schedule_id: editing.schedule_id ?? 0,
+          is_grace_list: editing.is_grace_list ?? false,
+          is_macbook_swap: editing.is_macbook_swap ?? false,
+          excluded_from_payroll: editing.excluded_from_payroll ?? false,
+          active: editing.active ?? true,
+          notes: editing.notes ?? '',
+        });
+      } else {
+        await upsertEmp({ ...editing, teramind_email: email, excluded_from_payroll: editing.excluded_from_payroll ?? false });
+      }
+      setShowForm(false);
+      setEditing(null);
+      await reload();
+    } catch (e: unknown) {
+      setSaveError(`Save failed: ${e instanceof Error ? e.message : 'unknown error'}`);
+    }
   };
 
   const handleToggle = async (emp: EmpRow, key: FlagKey) => {
@@ -122,6 +153,11 @@ export default function RosterTab() {
                     value={(editing[field] as string) || ''}
                     onChange={e => setEditing(prev => ({ ...prev!, [field]: e.target.value }))}
                   />
+                  {field === 'teramind_email' && typeof editing.id === 'number' &&
+                    (editing.teramind_email ?? '').trim().toLowerCase() !==
+                    (emps.find(e => e.id === editing.id)?.teramind_email ?? '').trim().toLowerCase() && (
+                    <p className="text-xs text-slate-400 mt-0.5">Changing the email keeps all history with this person.</p>
+                  )}
                 </div>
               ))}
               <div>
@@ -154,9 +190,10 @@ export default function RosterTab() {
               ))}
             </div>
 
+            {saveError && <p className="text-red-700 text-xs mb-2">{saveError}</p>}
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleSave} disabled={saving}>
-                {saving
+              <Button size="sm" onClick={handleSave} disabled={saving || updating}>
+                {(saving || updating)
                   ? <Loader2 className="w-4 h-4 animate-spin mr-1" />
                   : <Save    className="w-4 h-4 mr-1" />}
                 Save
