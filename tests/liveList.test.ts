@@ -198,3 +198,12 @@ test('LP6: List live rows wait for the window\'s own data (no flash of "No recor
   assert.match(hook, /if \(loading \|\| error \|\| !win \|\| dataFor !== winKey\) return \[\] as AttendanceRow\[\];/);
   assert.match(hook, /else if \(wasBusy\.current\) \{ wasBusy\.current = false; setDataFor\(winKey\); \}/);
 });
+
+test('LP7: List keeps its column headers and % On-Time stays sortable (UIB once renamed them)', () => {
+  const t = readFileSync(new URL('../src/app/pages/attendance/AttendanceTable.tsx', import.meta.url), 'utf8');
+  assert.match(t, /<Th label="% On-Time"\s+col="pctOnTime"/);
+  for (const label of ['Reported', 'Unreported', 'Avg Min (Worked)', '1–10m', '11–30m', '31+m']) {
+    assert.ok(t.includes(`<Th label="${label}"`), `header ${label}`);
+  }
+  assert.doesNotMatch(t, /On-Time %/);
+});
