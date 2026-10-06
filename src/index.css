@@ -138,3 +138,12 @@ summary:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   .animate-flash-required, .animate-saved-fade { animation: none !important; }
 }
+
+/* Navy top bar (2026-10-06): the global focus outline is navy (--primary), which
+   disappears on the navy bar. Inside the bar it is white. More specific than the
+   global rule above, so it wins between the two !important rules. */
+.topnav-dark button:focus-visible,
+.topnav-dark a[href]:focus-visible,
+.topnav-dark [role="button"]:focus-visible {
+  outline-color: #FFFFFF !important;
+}

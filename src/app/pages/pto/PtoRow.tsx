@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { fmtDay } from '@/app/lib/fmtDay';
-import StatusChip from '@/app/components/StatusChip';
 
 export interface PtoRowData {
   employee_id: number;
@@ -138,7 +137,7 @@ export default function PtoRow({ row, expanded, onToggle, thisYear, showReview, 
               : (
                 <div className="flex items-center justify-center gap-1 flex-wrap">
                   {row.review > 0
-                    ? <StatusChip tone="amber">{row.review}</StatusChip>
+                    ? <span className="inline-flex items-center rounded-full bg-status-yellow-fill px-2 py-0.5 text-[11px] font-medium text-status-yellow-ink">{row.review}</span>
                     : muted}
                   {row.waiting > 0 && (
                     <span className="ml-1 text-[11px] text-slate-400 whitespace-nowrap">{row.waiting} not yet</span>

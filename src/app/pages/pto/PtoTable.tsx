@@ -50,7 +50,7 @@ const COLUMNS: Col<PtoRowData>[] = [
   { key: 'taken_days',   label: 'Taken',    align: 'right', tip: 'Sum of recorded PTO days. Withdrawn rows don\'t count.' },
   { key: 'available',    label: 'Available', align: 'right', tip: 'Accrued − Taken. Red when negative.' },
   { key: 'paid_pto_days',label: 'Paid PTO', align: 'right', tip: 'Days already paid in advance (CSS two-week blocks). Manual.' },
-  { key: 'fh_left',      label: 'FH left',  align: 'right', tip: '2 per calendar year, non-stacking, eligible 90 days after hire. Counts days, not records. Hover a value for the breakdown.' },
+  { key: 'fh_left',      label: 'FH Left',  align: 'right', tip: '2 per calendar year, non-stacking, eligible 90 days after hire. Counts days, not records. Hover a value for the breakdown.' },
   { key: 'wfh_days',     label: 'WFH',      align: 'right', tip: 'Approved Work-From-Home requests on Monday this year.' },
   { key: 'birthday_days',label: 'Birthday', align: 'right', tip: 'Birthday day-off requests on Monday this year.' },
   { key: 'review',       label: 'Review',   align: 'center', tip: 'Requests you can record now — the return date has passed and payroll for those days is processed. "N not yet" are future or not yet in payroll.' },
@@ -108,7 +108,8 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
   }, [rawRows, asOf]);
 
   // Local controls
-  const [onlyPending, setOnlyPending] = useState(false);
+  // Superuser filter chips (replace the old Only With Review checkbox): click to filter, click again to clear.
+  const [chip, setChip] = useState<'review' | 'waiting' | null>(null);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -137,16 +138,26 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
     reload();
   };
 
-  // Filter
-  const filtered = useMemo(() => {
+  // Filter: search + title first (the chip counts come from these), then the chip.
+  const base = useMemo(() => {
     let rows = derived;
     if (employee) rows = rows.filter(r =>
       String(r.employee_id) === employee || r.display_name.toLowerCase().includes(employee.toLowerCase())
     );
     if (role) rows = rows.filter(r => (r.role ?? '').toLowerCase().includes(role.toLowerCase()));
-    if (isSuper && onlyPending) rows = rows.filter(r => r.review > 0 || r.waiting > 0);
     return rows;
-  }, [derived, employee, role, onlyPending, isSuper]);
+  }, [derived, employee, role]);
+
+  const filtered = useMemo(() => {
+    if (isSuper && chip === 'review') return base.filter(r => r.review > 0);
+    if (isSuper && chip === 'waiting') return base.filter(r => r.waiting > 0);
+    return base;
+  }, [base, chip, isSuper]);
+
+  const reviewTotal = base.reduce((s, r) => s + r.review, 0);
+  const waitingTotal = base.reduce((s, r) => s + r.waiting, 0);
+  const chipCls = (on: boolean) =>
+    `inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[12px] font-medium transition-colors ${on ? 'border-warm bg-warm-tint text-warm-text' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`;
 
   const sorted = useMemo(
     () => sortRows(filtered, sortKey as keyof PtoRowData | null, sortDir, 'display_name'),
@@ -165,17 +176,31 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Controls strip */}
-      <div className="flex flex-wrap items-center gap-3 px-6 pb-3">
+      <div className="flex flex-wrap items-center gap-2 px-6 pb-3">
+        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[12px] font-medium text-primary">
+          {sorted.length} {sorted.length === 1 ? 'Employee' : 'Employees'}
+        </span>
         {isSuper && (
-          <label className="flex items-center gap-1.5 text-[13px] text-slate-600 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={onlyPending}
-              onChange={e => setOnlyPending(e.target.checked)}
-              className="rounded"
-            />
-            Only With Review
-          </label>
+          <>
+            <button
+              type="button"
+              aria-pressed={chip === 'review'}
+              onClick={() => setChip(c => (c === 'review' ? null : 'review'))}
+              className={chipCls(chip === 'review')}
+              title="Requests you can record now: the return date has passed and payroll for those days is processed"
+            >
+              To Review <strong className="font-semibold">{reviewTotal}</strong>
+            </button>
+            <button
+              type="button"
+              aria-pressed={chip === 'waiting'}
+              onClick={() => setChip(c => (c === 'waiting' ? null : 'waiting'))}
+              className={chipCls(chip === 'waiting')}
+              title="Requests still in the future or not yet in a processed payroll"
+            >
+              Not Yet <strong className="font-semibold">{waitingTotal}</strong>
+            </button>
+          </>
         )}
         {loading && (rawRows as RawRow[]).length > 0 && (
           <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
@@ -199,6 +224,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
           sortDir={sortDir}
           onSort={handleSort}
           stickyHeader
+          titleCase
           className="mx-6 mb-6 max-h-[calc(100vh-260px)]"
         >
           {sorted.length === 0 ? (

@@ -178,7 +178,7 @@ export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, 
               {cols.map(([h], i) => (
                 <th
                   key={`${h}-${i}`}
-                  className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-200 bg-transparent whitespace-nowrap"
+                  className="px-3 py-1.5 text-[12px] font-semibold tracking-[0.02em] text-slate-600 border-b border-slate-200 bg-transparent whitespace-nowrap"
                 >
                   {h}
                   {i === cols.length - 1 && loading && (

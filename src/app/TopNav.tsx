@@ -21,6 +21,8 @@ import { useViewer } from '@/app/context/ViewerContext';
 import { canSeeSection, homeFor } from '@/app/lib/access';
 
 // ── Section definitions ────────────────────────────────────────────────────────
+// Warm design system (2026-10-06): one navy bar for every section; the active
+// section is white with an orange underline instead of its own colour pill.
 
 const SECTIONS = [
   {
@@ -28,12 +30,6 @@ const SECTIONS = [
     label: 'Payroll',
     icon: TableIcon,
     home: '/payroll-master',
-    color: 'from-[#1B3A6B] to-[#254d8e]',
-    activeBg: 'bg-[#1B3A6B]',
-    hoverBg: 'hover:bg-[#152d54]',
-    ring: 'ring-[#1B3A6B]/30',
-    subActiveBg: 'bg-[#1B3A6B]/10 text-[#1B3A6B] font-semibold',
-    subHover: 'hover:bg-[#1B3A6B]/5 text-slate-600',
     paths: ['/process', '/action-required', '/payroll-master', '/hrk-summary', '/period-log'],
     links: [
       { to: '/payroll-master',  label: 'Payroll Master',  icon: TableIcon },
@@ -48,12 +44,6 @@ const SECTIONS = [
     label: 'Attendance',
     icon: Activity,
     home: '/attendance/today',
-    color: 'from-[#2AA876] to-[#22966a]',
-    activeBg: 'bg-[#2AA876]',
-    hoverBg: 'hover:bg-[#22966a]',
-    ring: 'ring-[#2AA876]/30',
-    subActiveBg: 'bg-[#2AA876]/10 text-[#1e7a56] font-semibold',
-    subHover: 'hover:bg-[#2AA876]/5 text-slate-600',
     paths: ['/attendance'],
     links: [
       { to: '/attendance/today',    label: 'Today',    icon: Clock },
@@ -67,12 +57,6 @@ const SECTIONS = [
     label: 'Disciplinary',
     icon: ShieldAlert,
     home: '/disciplinary',
-    color: 'from-[#BE123C] to-[#9F1239]',
-    activeBg: 'bg-[#BE123C]',
-    hoverBg: 'hover:bg-[#9F1239]',
-    ring: 'ring-[#BE123C]/30',
-    subActiveBg: 'bg-[#BE123C]/10 text-[#9F1239] font-semibold',
-    subHover: 'hover:bg-[#BE123C]/5 text-slate-600',
     paths: ['/disciplinary'],
     links: [],
     badge: true,
@@ -82,12 +66,6 @@ const SECTIONS = [
     label: 'Contracts',
     icon: FileSignature,
     home: '/contracts',
-    color: 'from-[#B45309] to-[#92400E]',
-    activeBg: 'bg-[#B45309]',
-    hoverBg: 'hover:bg-[#92400E]',
-    ring: 'ring-[#B45309]/30',
-    subActiveBg: 'bg-[#B45309]/10 text-[#92400E] font-semibold',
-    subHover: 'hover:bg-[#B45309]/5 text-slate-600',
     paths: ['/contracts'],
     links: [],
     badge: true,
@@ -97,12 +75,6 @@ const SECTIONS = [
     label: 'PTO Tracker',
     icon: Palmtree,
     home: '/pto',
-    color: 'from-[#7C3AED] to-[#6D28D9]',
-    activeBg: 'bg-[#7C3AED]',
-    hoverBg: 'hover:bg-[#6D28D9]',
-    ring: 'ring-[#7C3AED]/30',
-    subActiveBg: 'bg-[#7C3AED]/10 text-[#6D28D9] font-semibold',
-    subHover: 'hover:bg-[#7C3AED]/5 text-slate-600',
     paths: ['/pto'],
     links: [],
     badge: true,
@@ -112,12 +84,6 @@ const SECTIONS = [
     label: 'Admin',
     icon: Settings,
     home: '/admin/employees',
-    color: 'from-[#1B3A6B] to-[#2AA876]',
-    activeBg: 'bg-slate-700',
-    hoverBg: 'hover:bg-slate-800',
-    ring: 'ring-slate-300',
-    subActiveBg: 'bg-slate-700/10 text-slate-800 font-semibold',
-    subHover: 'hover:bg-slate-100 text-slate-600',
     paths: ['/admin'],
     links: [
       { to: '/admin/employees',      label: 'Employees',           icon: Users },
@@ -139,6 +105,9 @@ function getActiveSection(pathname: string): SectionId | null {
   }
   return null;
 }
+
+// Orange badge with navy ink: white on orange fails contrast.
+const BADGE = 'bg-warm text-warm-ink text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none';
 
 // ── TopNav ─────────────────────────────────────────────────────────────────────
 
@@ -215,7 +184,7 @@ export default function TopNav() {
   }, [activeSection]);
 
   return (
-    <header className="shrink-0 h-14 bg-white border-b border-slate-200 shadow-sm flex items-center px-4 gap-0 z-40 overflow-hidden" style={{ borderBottomColor: '#e8edf5' }}>
+    <header className="topnav-dark shrink-0 h-14 bg-[var(--topnav)] text-[var(--topnav-foreground)] shadow-sm flex items-center px-4 gap-0 z-40 overflow-hidden">
       {/* Brand */}
       <div
         className="flex items-center gap-2.5 mr-4 cursor-pointer select-none shrink-0"
@@ -223,29 +192,27 @@ export default function TopNav() {
       >
         <BrandLogo />
         <div className="leading-tight hidden sm:block">
-          <div className="flex items-baseline gap-1">
-            <span className="text-[#1B3A6B] font-bold text-[14px] tracking-tight">GAF</span>
-            <span className="text-[#E5262B] font-bold text-[14px] tracking-tight">Panama</span>
-          </div>
-          <div className="text-slate-400 text-[10px] tracking-wide">HR Hub</div>
+          <div className="text-white font-bold text-[14px] tracking-tight">GAF Panama</div>
+          <div className="text-slate-300 text-[10px] tracking-wide">HR Hub</div>
         </div>
       </div>
 
-      <div className="w-px h-6 bg-slate-200 mr-3 shrink-0" />
+      <div className="w-px h-6 bg-white/20 mr-2 shrink-0" />
 
       {/* Section buttons */}
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-1 shrink-0 h-14">
         {visibleSections.map(s => {
           const isActive = activeSection === s.id;
           return (
             <button
               key={s.id}
               onClick={() => navigate(s.home)}
+              aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'flex items-center gap-2 px-3 h-8 rounded-full text-[13px] font-medium transition-colors duration-150 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                'flex items-center gap-2 px-3 h-14 border-b-2 text-[13px] font-medium transition-colors duration-150 select-none focus:outline-none',
                 isActive
-                  ? `${s.activeBg} text-white shadow-sm`
-                  : `text-slate-600 hover:bg-slate-100`
+                  ? 'border-warm text-white'
+                  : 'border-transparent text-slate-300 hover:text-white'
               )}
             >
               <s.icon className="w-4 h-4" />
@@ -253,10 +220,7 @@ export default function TopNav() {
               {(() => {
                 const b = 'badge' in s && s.badge ? sectionBadge(s.id) : null;
                 return b && (
-                  <span
-                    className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none"
-                    aria-label={b.label}
-                  >
+                  <span className={BADGE} aria-label={b.label}>
                     {b.count > 99 ? '99+' : b.count}
                   </span>
                 );
@@ -268,7 +232,7 @@ export default function TopNav() {
 
       {/* Divider between sections and sub-links */}
       {activeSectionDef && activeSectionDef.links.length > 0 && (
-        <div className="w-px h-6 bg-slate-200 mx-3 shrink-0" />
+        <div className="w-px h-6 bg-white/20 mx-3 shrink-0" />
       )}
 
       {/* Sub-links – animated slide-in */}
@@ -286,17 +250,18 @@ export default function TopNav() {
               <button
                 key={l.to}
                 onClick={() => navigate(l.to)}
+                aria-current={isLinkActive ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all duration-100 whitespace-nowrap shrink-0',
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] transition-colors duration-100 whitespace-nowrap shrink-0',
                   isLinkActive
-                    ? activeSectionDef.subActiveBg
-                    : `${activeSectionDef.subHover} hover:bg-slate-50`
+                    ? 'bg-white/15 text-white font-semibold'
+                    : 'text-slate-300 hover:bg-white/10 hover:text-white'
                 )}
               >
-                <l.icon className="w-3.5 h-3.5 opacity-70 shrink-0" />
+                <l.icon className="w-3.5 h-3.5 opacity-80 shrink-0" />
                 <span>{l.label}</span>
                 {'badge' in l && l.badge && unresolvedCount > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none">
+                  <span className={BADGE}>
                     {unresolvedCount > 99 ? '99+' : unresolvedCount}
                   </span>
                 )}
@@ -318,11 +283,11 @@ export default function TopNav() {
       ) : (
         <div
           title={email}
-          className="ml-auto shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
+          className="ml-auto shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-white/10 text-white border border-white/20"
         >
           <UserCircle className="w-3.5 h-3.5" />
           {name || email}
-          <span className="text-slate-400">· {isSuper ? 'Super User' : 'Manager'}</span>
+          <span className="text-slate-300">· {isSuper ? 'Super User' : 'Manager'}</span>
         </div>
       )}
     </header>

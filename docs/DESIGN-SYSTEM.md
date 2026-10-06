@@ -107,6 +107,17 @@ Light mode only. Desktop-first (this is a back-office tool used on a workstation
 
 **Decision (Saul, 2026-09-25): the Warm variant is the app's look.** Orange `#F37021` for primary actions (with ink-navy `#08193E` text), GAF navy `#1B3A6B` as the frame (top bar, headings). The Classic token set stays below for reference only; do not build with it. Every screen still reads colors from the `--primary` / `--secondary` tokens, never a hardcoded hex. Approved preview: https://claude.ai/artifact/2PwGWuCuVqL3C6LZaYHi54
 
+**Rollout status** (page by page):
+| Date | What | Prompts |
+|---|---|---|
+| 2026-09-25 | Action Required | AR-4..14 |
+| 2026-10-06 | **Top bar, whole app**: navy, orange underline on the active section, orange badges with navy ink | `prompts/2026-10-06-pto-columns/04` |
+| 2026-10-06 | PTO Tracker: orange primary, filter chips, Coming Up card (🌴 / ⭐ kept, Saul), Title Case headers, Excel status chips. Mockup: https://claude.ai/artifact/KwG7zjaQowhh22A2w1Bdkh | `…/05`, `…/06` |
+
+`DataTable` takes `titleCase` (off by default): turn it on per page as each page is redesigned.
+Not yet redesigned: Payroll Master, Process, HRK Summary, Period Log, Attendance, Contracts,
+Disciplinary, Admin. `PageHeader` titles are still slate, not navy (shared by every page).
+
 **Decision (Saul, 2026-09-25): Title Case where applicable.**
 - **Title Case**: page titles, section and card headings, buttons, tabs, nav items, column headers, filter chips, field labels, dialog titles. Minor words stay lowercase unless first or last: a, an, the, and, or, but, of, to, in, on, at, for, by, with. Examples: `Action Required`, `Commit 2 to Green`, `Needs an Event`, `Set Impact`, `Add Employee`.
 - **Sentence case**: anything that reads as a sentence: helper text, error and validation messages, toasts, empty states, tooltips, placeholders, notes. Examples: `Pick an event first`, `That email already belongs to …`, `No employees match your filter.`

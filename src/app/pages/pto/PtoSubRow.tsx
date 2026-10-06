@@ -2,6 +2,9 @@ import { Plus, Pencil, Trash2, RotateCcw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useViewer } from '@/app/context/ViewerContext';
 import StatusChip from '@/app/components/StatusChip';
+
+// Excel status colours (design system): the same yellow / green / red HR reads on Action Required.
+const CHIP = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-[12px] font-medium whitespace-nowrap';
 import { fmtDay, fmtLeaveDates } from '@/app/lib/fmtDay';
 import { defaultTotalDays } from '@/app/lib/ptoAccrual';
 import { recordability } from '@/app/lib/ptoPayrollMatch';
@@ -53,8 +56,9 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
     <tr className="border-t border-slate-100">
       {/* Type */}
       <td className={`px-3 py-2 align-top ${dimmed}`}>
-        <span className="text-[12px] text-slate-600 whitespace-nowrap">
-          {item.leave_type === 'floating_holiday' ? 'Floating holiday' : 'PTO'}
+        <span className="flex items-center gap-1.5 text-[13px] text-slate-700 whitespace-nowrap">
+          <span aria-hidden="true">{item.leave_type === 'floating_holiday' ? '⭐' : '🌴'}</span>
+          {item.leave_type === 'floating_holiday' ? 'Floating Holiday' : 'PTO'}
         </span>
       </td>
 
@@ -63,7 +67,7 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
         className={`px-3 py-2 align-top ${dimmed}`}
         title={item.comments ?? undefined}
       >
-        <div className="text-[13px] text-slate-800 tabular-nums whitespace-nowrap">
+        <div className="text-[13px] font-medium text-slate-900 tabular-nums whitespace-nowrap">
           {fmtLeaveDates(item.leave_on, item.return_on, thisYear)}
         </div>
         {item.match.invalidDates && (
@@ -112,11 +116,11 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
       {/* Status */}
       <td className="px-3 py-2 align-top">
         {item.kind === 'pending'
-          ? <StatusChip tone="amber">Pending</StatusChip>
+          ? <span className={`${CHIP} bg-status-yellow-fill text-status-yellow-ink`}>Pending</span>
           : withdrawn
             ? (
               <div>
-                <StatusChip tone="red" strike>Withdrawn</StatusChip>
+                <span className={`${CHIP} bg-status-red-fill text-status-red-ink line-through opacity-80`}>Withdrawn</span>
                 {item.withdrawnAt && (
                   <div className="text-[11px] text-slate-400 mt-0.5">
                     withdrawn {fmtDay(item.withdrawnAt, thisYear)}
@@ -124,7 +128,7 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
                 )}
               </div>
             )
-            : <StatusChip tone="green">Recorded</StatusChip>}
+            : <span className={`${CHIP} bg-status-green-fill text-status-green-ink`}>Recorded</span>}
       </td>
 
       {/* Actions: superusers only */}
@@ -144,6 +148,7 @@ export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRes
             <div>
               <Button
                 size="sm"
+                className="bg-warm text-warm-ink hover:bg-warm hover:brightness-95 font-semibold"
                 onClick={() => onOpenDialog({ kind: 'record', request: item.request, match: item.match })}
                 disabled={!rec.ok}
                 title={

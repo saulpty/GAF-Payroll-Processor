@@ -4,15 +4,20 @@ import InfoTip from './InfoTip';
 
 export type Col<T> = { key: keyof T | string; label: string; align?: 'left' | 'right' | 'center'; tip?: string; sortable?: boolean; width?: string };
 
-export default function DataTable<T>({ columns, sortKey, sortDir, onSort, children, stickyHeader = true, dense = false, className = '' }: {
+// titleCase: the Warm design system's header (Title Case labels, 12px semibold, never ALL CAPS).
+// Off by default so pages that are not redesigned yet keep their current look.
+export default function DataTable<T>({ columns, sortKey, sortDir, onSort, children, stickyHeader = true, dense = false, className = '', titleCase = false }: {
   columns: Col<T>[]; sortKey: string | null; sortDir: 'asc' | 'desc' | null; onSort: (key: string) => void;
-  children: ReactNode; stickyHeader?: boolean; dense?: boolean; className?: string;
+  children: ReactNode; stickyHeader?: boolean; dense?: boolean; className?: string; titleCase?: boolean;
 }) {
   const pad = dense ? 'px-3 py-1.5' : 'px-3 py-2';
+  const headLook = titleCase
+    ? 'bg-white text-[12px] tracking-[0.02em] text-slate-600'
+    : 'bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500';
   return (
     <div className={`overflow-auto rounded-xl border border-slate-200 bg-white shadow-card ${className}`}>
       <table className="w-full text-[13px] text-slate-700">
-        <thead className={`${stickyHeader ? 'sticky top-0 z-10' : ''} bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500`}>
+        <thead className={`${stickyHeader ? 'sticky top-0 z-10' : ''} ${headLook}`}>
           <tr className="border-b border-slate-200">
             {columns.map(c => {
               const k = String(c.key);

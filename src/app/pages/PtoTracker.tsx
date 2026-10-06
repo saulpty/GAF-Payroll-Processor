@@ -19,11 +19,10 @@ export default function PtoTracker() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [rows, setRows] = useState<PtoRowData[]>([]);
-  const [counts, setCounts] = useState<{ employees: number; review: number } | null>(null);
 
   const handleExport = () => {
     const wsData = [
-      ['Employee', 'Title', 'Start Date', 'Accrued', 'Taken', 'Available', 'Paid PTO', 'FH left', 'WFH', 'Birthday',
+      ['Employee', 'Title', 'Start Date', 'Accrued', 'Taken', 'Available', 'Paid PTO', 'FH Left', 'WFH', 'Birthday',
         ...(isSuper ? ['Review'] : [])],
       ...rows.map(r => [
         r.display_name,
@@ -45,32 +44,19 @@ export default function PtoTracker() {
     XLSX.writeFile(wb, `pto-tracker-${asOf}.xlsx`);
   };
 
+  // Warm design system (2026-10-06): the primary action is orange with navy ink;
+  // the employee and review counts moved to chips above the table.
   const actions = (
     <>
-      {counts !== null && (
-        <span className="text-[12px] text-slate-400 mr-1">
-          {counts.employees} {counts.employees === 1 ? 'employee' : 'employees'}{isSuper && ` · ${counts.review} to review`}
-        </span>
-      )}
-      <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-        As of
+      <label className="flex items-center gap-2 text-[12px] font-medium text-slate-500">
+        As Of
         <input
           type="date"
           value={asOf}
           onChange={e => setAsOf(e.target.value)}
-          className="h-8 px-2.5 text-[13px] font-normal normal-case tracking-normal border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="h-8 px-2.5 text-[13px] font-normal text-slate-900 border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-warm-ring"
         />
       </label>
-      {isSuper && (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setDialogMode({ kind: 'manual' })}
-        >
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          Add Manually
-        </Button>
-      )}
       <Button
         size="sm"
         variant="outline"
@@ -80,6 +66,16 @@ export default function PtoTracker() {
         <Download className="w-3.5 h-3.5 mr-1" />
         Export
       </Button>
+      {isSuper && (
+        <Button
+          size="sm"
+          className="bg-warm text-warm-ink hover:bg-warm hover:brightness-95 font-semibold"
+          onClick={() => setDialogMode({ kind: 'manual' })}
+        >
+          <Plus className="w-3.5 h-3.5 mr-1" />
+          Add Manually
+        </Button>
+      )}
     </>
   );
 
@@ -89,7 +85,7 @@ export default function PtoTracker() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="PTO Tracker"
-        subtitle="Accrual, approvals and floating holidays — one row per employee"
+        subtitle="Accrual, requests and floating holidays, one row per employee."
         actions={actions}
       />
       <PtoComingUp today={today} refreshKey={refreshKey} />
@@ -100,7 +96,6 @@ export default function PtoTracker() {
           refreshKey={refreshKey}
           onOpenDialog={setDialogMode}
           onRowsChange={setRows}
-          onCountsChange={setCounts}
         />
       </div>
       {isSuper && (
