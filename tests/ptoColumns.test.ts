@@ -45,7 +45,10 @@ test('PC4: main table — Start Date; Review column, checkbox, count and export 
   const t = read('src/app/pages/pto/PtoTable.tsx');
   assert.match(t, /label: 'Start Date'/);
   assert.match(t, /isSuper \? COLUMNS : COLUMNS\.filter\(c => c\.key !== 'review'\)/);
-  assert.match(t, /\{isSuper && \(\s*<label[\s\S]{0,400}Only With Review/);
+  // PTO-W1 (2026-10-06) replaced the Only With Review checkbox with superuser-only chips.
+  assert.match(t, /\{isSuper && \(\s*<>[\s\S]{0,400}To Review[\s\S]{0,600}Not Yet/);
+  assert.doesNotMatch(t, /type="checkbox"/);
+  assert.match(t, /if \(isSuper && chip === 'review'\)/);
   assert.match(t, /colSpan=\{columns\.length\}/);
   assert.match(t, /showReview=\{isSuper\}/);
 
@@ -56,7 +59,7 @@ test('PC4: main table — Start Date; Review column, checkbox, count and export 
   const p = read('src/app/pages/PtoTracker.tsx');
   assert.match(p, /'Start Date'/);
   assert.match(p, /isSuper \? \['Review'\] : \[\]/);
-  assert.match(p, /\{isSuper && ` · \$\{counts\.review\} to review`\}/);
+  assert.doesNotMatch(p, /to review/, 'the review count lives in the superuser chips now, not the header');
 });
 
 test('PC5: Coming Up — scoped loader, pending + recorded, flat params, mounted on the page', () => {

@@ -1,0 +1,241 @@
+# PTO Tracker: Warm look for the opened-employee rows
+
+**Copy every code block exactly, character for character. Do not rewrite or re-derive anything.
+If your context is compacted mid-task, re-read this prompt before writing.**
+
+Second half of Saul's approved PTO mockup (2026-10-06), for the rows shown when an employee is
+opened:
+- Column headers in Title Case (no ALL CAPS), 12px semibold.
+- Type shows 🌴 PTO or ⭐ Floating Holiday.
+- Dates Requested in medium weight.
+- Status chips in the Excel colours: Pending yellow, Recorded green, Withdrawn red (struck through).
+- The Record button is the orange primary (`bg-warm text-warm-ink`).
+
+**Only these two files may change:**
+- `src/app/pages/pto/PtoBreakdown.tsx`: one edit (below). Nothing else in it changes.
+- `src/app/pages/pto/PtoSubRow.tsx`: whole file below.
+
+No other file may be touched (not `PtoTable.tsx`, `PtoRow.tsx`, `PtoVerdictCell.tsx`,
+`PtoPayrollCell.tsx`, `StatusChip.tsx`, any action, or `src/components/ui/*`).
+
+## `src/app/pages/pto/PtoBreakdown.tsx`: one edit
+
+In the `<th>` inside the `<thead>`, replace exactly
+
+```tsx
+className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-200 bg-transparent whitespace-nowrap"
+```
+
+with exactly
+
+```tsx
+className="px-3 py-1.5 text-[12px] font-semibold tracking-[0.02em] text-slate-600 border-b border-slate-200 bg-transparent whitespace-nowrap"
+```
+
+## `src/app/pages/pto/PtoSubRow.tsx` (whole file)
+
+```tsx
+import { Plus, Pencil, Trash2, RotateCcw, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useViewer } from '@/app/context/ViewerContext';
+import StatusChip from '@/app/components/StatusChip';
+
+// Excel status colours (design system): the same yellow / green / red HR reads on Action Required.
+const CHIP = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-[12px] font-medium whitespace-nowrap';
+import { fmtDay, fmtLeaveDates } from '@/app/lib/fmtDay';
+import { defaultTotalDays } from '@/app/lib/ptoAccrual';
+import { recordability } from '@/app/lib/ptoPayrollMatch';
+import type { DialogMode } from './RecordApprovalDialog';
+import type { PayrollMatch } from '@/app/lib/ptoPayrollMatch';
+import PtoPayrollCell from './PtoPayrollCell';
+import PtoVerdictCell from './PtoVerdictCell';
+
+export interface SubItem {
+  kind: 'pending' | 'recorded';
+  leave_type: 'pto' | 'floating_holiday';
+  leave_on: string;
+  return_on: string;
+  days: number;
+  status?: string;
+  source?: string;
+  comments?: string | null;
+  id?: number;
+  withdrawnAt?: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  request?: any;
+}
+
+interface Props {
+  item: SubItem & { match: PayrollMatch };
+  today: string;
+  onOpenDialog: (m: DialogMode) => void;
+  onWithdraw: (id: number, days: number) => void;
+  onRestore: (id: number) => void;
+}
+
+const muted = <span className="text-slate-300">—</span>;
+
+export default function PtoSubRow({ item, today, onOpenDialog, onWithdraw, onRestore }: Props) {
+  const { isSuper } = useViewer();
+  const withdrawn = item.kind === 'recorded' && item.status === 'withdrawn';
+  const thisYear = today.slice(0, 4);
+
+  const dimmed = withdrawn ? 'opacity-60' : '';
+
+  const rec = recordability(item.match, item.return_on, today, defaultTotalDays);
+
+  const sourceNote = item.kind === 'pending' ? 'from Monday board'
+    : item.source === 'excel_import' ? 'from Excel'
+    : item.source === 'manual' ? 'added manually'
+    : '';
+
+  return (
+    <tr className="border-t border-slate-100">
+      {/* Type */}
+      <td className={`px-3 py-2 align-top ${dimmed}`}>
+        <span className="flex items-center gap-1.5 text-[13px] text-slate-700 whitespace-nowrap">
+          <span aria-hidden="true">{item.leave_type === 'floating_holiday' ? '⭐' : '🌴'}</span>
+          {item.leave_type === 'floating_holiday' ? 'Floating Holiday' : 'PTO'}
+        </span>
+      </td>
+
+      {/* Dates Requested: first day off → day before return */}
+      <td
+        className={`px-3 py-2 align-top ${dimmed}`}
+        title={item.comments ?? undefined}
+      >
+        <div className="text-[13px] font-medium text-slate-900 tabular-nums whitespace-nowrap">
+          {fmtLeaveDates(item.leave_on, item.return_on, thisYear)}
+        </div>
+        {item.match.invalidDates && (
+          <div className="mt-1">
+            <StatusChip tone="red" icon={<AlertCircle className="w-3 h-3" />}>Return is before leave — fix on Monday</StatusChip>
+          </div>
+        )}
+      </td>
+
+      {/* Total Days Off */}
+      <td className={`px-3 py-2 align-top ${dimmed}`}>
+        <div className="text-[13px] text-slate-800 tabular-nums whitespace-nowrap">
+          {item.days} {item.days === 1 ? 'day' : 'days'}
+        </div>
+        {isSuper && sourceNote && (
+          <div className="text-[11px] text-slate-400 whitespace-nowrap">{sourceNote}</div>
+        )}
+      </td>
+
+      {/* Returning On */}
+      <td className={`px-3 py-2 align-top ${dimmed}`}>
+        <span className="text-[13px] text-slate-800 tabular-nums whitespace-nowrap">
+          {item.return_on ? fmtDay(item.return_on, thisYear) : muted}
+        </span>
+      </td>
+
+      {/* What Payroll Says + Evidence: superusers only */}
+      {isSuper && (
+        <>
+          <td className="px-3 py-2 align-top">
+            <PtoVerdictCell
+              match={item.match}
+              leaveType={item.leave_type}
+              requestDays={item.days}
+              leaveOn={item.leave_on}
+              thisYear={thisYear}
+              today={today}
+            />
+          </td>
+          <td className="px-3 py-2 align-top text-[12px]">
+            <PtoPayrollCell match={item.match} thisYear={thisYear} />
+          </td>
+        </>
+      )}
+
+      {/* Status */}
+      <td className="px-3 py-2 align-top">
+        {item.kind === 'pending'
+          ? <span className={`${CHIP} bg-status-yellow-fill text-status-yellow-ink`}>Pending</span>
+          : withdrawn
+            ? (
+              <div>
+                <span className={`${CHIP} bg-status-red-fill text-status-red-ink line-through opacity-80`}>Withdrawn</span>
+                {item.withdrawnAt && (
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    withdrawn {fmtDay(item.withdrawnAt, thisYear)}
+                  </div>
+                )}
+              </div>
+            )
+            : <span className={`${CHIP} bg-status-green-fill text-status-green-ink`}>Recorded</span>}
+      </td>
+
+      {/* Actions: superusers only */}
+      {isSuper && (
+        <td className="px-3 py-2 align-top text-right whitespace-nowrap">
+          {withdrawn && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onRestore(item.id!)}
+            >
+              <RotateCcw className="w-3.5 h-3.5 mr-1" />
+              Restore
+            </Button>
+          )}
+          {item.kind === 'pending' && (
+            <div>
+              <Button
+                size="sm"
+                className="bg-warm text-warm-ink hover:bg-warm hover:brightness-95 font-semibold"
+                onClick={() => onOpenDialog({ kind: 'record', request: item.request, match: item.match })}
+                disabled={!rec.ok}
+                title={
+                  rec.reason === 'future' ? 'Record after the return date has passed'
+                  : rec.reason === 'not_processed' ? 'Payroll for these dates has not been processed yet'
+                  : rec.reason === 'invalid' ? "Return date is before the leave date — fix the Monday request"
+                  : undefined
+                }
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Record
+              </Button>
+              {rec.reason === 'not_processed' && (
+                <div className="text-[11px] text-slate-400 mt-0.5">after payroll runs</div>
+              )}
+              {rec.reason === 'invalid' && (
+                <div className="text-[11px] text-slate-400 mt-0.5">dates don&apos;t make sense</div>
+              )}
+            </div>
+          )}
+          {item.kind === 'recorded' && !withdrawn && (
+            <div className="flex items-center justify-end gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onOpenDialog({ kind: 'edit', row: item.request, match: item.match })}
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1" />
+                Edit
+              </Button>
+              {item.status === 'recorded' && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-slate-500 hover:text-red-600 hover:bg-red-50"
+                  onClick={() => onWithdraw(item.id!, item.days)}
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  Withdraw
+                </Button>
+              )}
+            </div>
+          )}
+        </td>
+      )}
+    </tr>
+  );
+}
+```
+
+## Report
+- Byte size of the two files; confirm no other file changed and that opening an employee on the
+  PTO Tracker shows no console errors.
