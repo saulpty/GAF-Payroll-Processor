@@ -6,6 +6,8 @@ type Period = {
   period_name: string;
   start_date: string;
   end_date: string;
+  /** false = Process Payroll has not run it yet; its days show live Teramind data. */
+  processed?: boolean;
 };
 
 type Props = {
@@ -52,7 +54,7 @@ export default function PeriodMultiSelect({ periods, selected, onChange }: Props
       : `${selected.length} periods`;
 
   const btnCls =
-    'h-8 px-2.5 text-[13px] border border-slate-200 rounded-lg bg-white flex items-center gap-1.5 cursor-pointer hover:bg-slate-50 transition-colors min-w-[140px]';
+    'h-8 px-2.5 text-[13px] border border-slate-300 rounded-md bg-white flex items-center gap-1.5 cursor-pointer hover:bg-slate-50 transition-colors min-w-[140px]';
 
   return (
     <div ref={containerRef} className="relative">
@@ -69,7 +71,7 @@ export default function PeriodMultiSelect({ periods, selected, onChange }: Props
       {open && (
         <div className="absolute left-0 top-full mt-1 z-40 bg-white border border-slate-200 rounded-lg shadow-lg max-h-72 overflow-auto min-w-[260px]">
           {periods.length === 0 && (
-            <div className="px-3 py-2 text-[13px] text-slate-400">No processed periods</div>
+            <div className="px-3 py-2 text-[13px] text-slate-400">No periods</div>
           )}
           {periods.map(p => {
             const checked = selected.includes(p.period_name);
@@ -82,9 +84,14 @@ export default function PeriodMultiSelect({ periods, selected, onChange }: Props
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggle(p.period_name)}
-                  className="w-3.5 h-3.5 rounded accent-emerald-600 cursor-pointer shrink-0"
+                  className="w-3.5 h-3.5 rounded accent-[#1B3A6B] cursor-pointer shrink-0"
                 />
                 <span className="font-medium text-[13px] text-slate-800 flex-1">{p.period_name}</span>
+                {p.processed === false && (
+                  <span className="rounded-full bg-status-yellow-fill px-2 py-0.5 text-[11px] font-medium text-status-yellow-ink whitespace-nowrap">
+                    Not processed
+                  </span>
+                )}
                 <span className="text-[11px] text-slate-400 whitespace-nowrap">
                   {fmtDate(p.start_date)} → {fmtDate(p.end_date)}
                 </span>
@@ -99,9 +106,9 @@ export default function PeriodMultiSelect({ periods, selected, onChange }: Props
                   if (periods[0]) onChange([periods[0].period_name]);
                   setOpen(false);
                 }}
-                className="text-[12px] text-slate-500 hover:text-emerald-700 transition-colors"
+                className="text-[12px] text-slate-500 hover:text-warm-text transition-colors"
               >
-                Newest only
+                Newest Only
               </button>
             </div>
           )}

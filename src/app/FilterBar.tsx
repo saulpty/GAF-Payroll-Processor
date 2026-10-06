@@ -14,6 +14,9 @@ import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadActionRequiredCountsAction from '@/actions/loadActionRequiredCounts';
 import type { EmpInfo } from '@/app/lib/attendanceStats';
 import { getConfig, ATTENDANCE_SWITCH_ROUTES, hasVisibleFilter } from '@/app/lib/filterRoutes';
+import { attendancePeriodOptions } from '@/app/lib/attendancePeriods';
+import { nextPeriod } from '@/app/lib/periodName';
+import { toLocalYMD } from '@/app/lib/classificationEngine';
 
 type PeriodRow = {
   period_name: string;
@@ -95,32 +98,27 @@ export default function FilterBar() {
       .sort((a, b) => b.start_date.localeCompare(a.start_date));
   }, [periodsRaw]);
 
-  // Processed periods for attendance multi-select, newest first
-  const processedPeriods = useMemo(() => {
-    return allNamedPeriods
-      .filter(p => !!p.processed_at)
-      .map(p => ({ period_name: p.period_name, start_date: p.start_date, end_date: p.end_date }));
-  }, [allNamedPeriods]);
+  // Attendance Periods picker: every named period plus not-yet-processed ones up to today
+  // (live attendance, 2026-10-06); default = the period containing today.
+  const periodPick = useMemo(
+    () => attendancePeriodOptions(periodsRaw as PeriodRow[], toLocalYMD(new Date()), nextPeriod),
+    [periodsRaw],
+  );
+  const periodOptions = periodPick.options;
 
   // All periods for single-period select (action-required, payroll-master, hrk)
   const periods = (periodsRaw as PeriodRow[]).filter(p => !!p.period_name?.trim());
 
-  const rangeOf = (names: string[]) => {
-    const selected = processedPeriods.filter(p => names.includes(p.period_name));
-    if (!selected.length) return null;
-    const from = selected.map(p => p.start_date).sort()[0]!;
-    const to   = selected.map(p => p.end_date).sort().reverse()[0]!;
-    return { from, to };
-  };
+  const rangeOf = periodPick.rangeOf;
 
-  // Auto-select newest processed period when in Periods mode and nothing is selected
+  // Auto-select the default period (the one containing today) in Periods mode when none is chosen
   useEffect(() => {
-    if (cfg?.periods && attendanceMode === 'periods' && attendancePeriods.length === 0 && processedPeriods.length > 0) {
-      const newest = processedPeriods[0]!;
-      setAttendancePeriods([newest.period_name], rangeOf([newest.period_name]));
+    const def = periodPick.defaultName;
+    if (cfg?.periods && attendanceMode === 'periods' && attendancePeriods.length === 0 && def) {
+      setAttendancePeriods([def], rangeOf([def]));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cfg?.periods, attendanceMode, processedPeriods.length, attendancePeriods.length]);
+  }, [cfg?.periods, attendanceMode, periodPick.defaultName, attendancePeriods.length]);
 
   // Reset mode to route default on attendance sub-route change
   const prevRouteRef = useRef<string | null>(null);
@@ -175,7 +173,8 @@ export default function FilterBar() {
       {/* Periods | Dates switch (attendance routes only) */}
       {hasBothModes && (
         <AttendanceRangeControls
-          processedPeriods={processedPeriods}
+          periods={periodOptions}
+          rangeOf={rangeOf}
           allNamedPeriods={allNamedPeriods}
           showDivider={!!(cfg.employee || cfg.role || cfg.manager)}
           inputCls={inputCls}
@@ -189,7 +188,7 @@ export default function FilterBar() {
         <>
           <label className={labelCls}>Periods</label>
           <PeriodMultiSelect
-            periods={processedPeriods}
+            periods={periodOptions}
             selected={attendancePeriods}
             onChange={names => setAttendancePeriods(names, names.length ? rangeOf(names) : null)}
           />
@@ -296,7 +295,7 @@ export default function FilterBar() {
 
       {hasVisibleFilter(cfg, {
         period, employee, role, manager, isSuper, attendanceMode, attendancePeriods,
-        defaultPeriod: processedPeriods[0]?.period_name ?? null,
+        defaultPeriod: periodPick.defaultName,
       }) && (
         <button onClick={clearAll}
           className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded px-1">

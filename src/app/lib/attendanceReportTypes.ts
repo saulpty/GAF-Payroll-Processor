@@ -1,6 +1,8 @@
-// Pure type declarations — no imports needed.
+// Pure type declarations. The one import is type-only (erased before Node runs it).
 // Callers who need both types and runtime exports should import from attendanceReport.ts,
 // which re-exports everything from here.
+
+import type { WhyChip } from './activityTypes';
 
 export type ReportEmployee = {
   id: number; name: string; email: string; role: string; manager: string;
@@ -51,6 +53,19 @@ export type ReportFormView = {
   mondayItemId: string;
 };
 
+/** A day Process Payroll has not written yet, filled from Teramind (liveAttendance.ts).
+ *  Never an official verdict: the row keeps not_processed / pto / permission / holiday. */
+export type LiveInfo = {
+  kind: 'worked' | 'reason' | 'no_records';
+  entryMin: number | null; exitMin: number | null;
+  crossesMidnight: boolean;
+  inProgress: boolean;          // today, with punches so far
+  minutesLate: number;          // entry - scheduled start, as Process Payroll computes it
+  lateAfterGrace: number;       // tooltip only
+  label: string;
+  why: WhyChip | null;
+};
+
 export type ReportRow = {
   employeeId: number; employeeName: string; email: string;
   role: string; manager: string;
@@ -70,6 +85,8 @@ export type ReportRow = {
     /** payroll labelled the day time off / permission, but no Monday request covers it */
     excusedInPayrollNoRequest: boolean;
   };
+  /** Set only on live days (no payroll row yet, filled from Teramind). */
+  live?: LiveInfo;
 };
 
 export type ReportSummary = {

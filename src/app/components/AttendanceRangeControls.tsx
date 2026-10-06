@@ -40,7 +40,10 @@ const IN_LABEL = 'text-[12px] font-medium text-slate-500 whitespace-nowrap';
 const BARE = 'h-full bg-transparent text-[13px] text-slate-900 focus:outline-none';
 
 interface Props {
-  processedPeriods: NormalizedPeriod[];
+  /** Every period the picker offers (processed or not), newest first. */
+  periods: (NormalizedPeriod & { processed?: boolean })[];
+  /** Selected period names → the date range (clamped to today), from FilterBar. */
+  rangeOf: (names: string[]) => { from: string; to: string } | null;
   allNamedPeriods: AllNamedPeriod[];
   /** Show a divider after the range block when employee/manager/role follow */
   showDivider: boolean;
@@ -51,7 +54,7 @@ interface Props {
 }
 
 export default function AttendanceRangeControls({
-  processedPeriods, allNamedPeriods, showDivider, divider,
+  periods, rangeOf, allNamedPeriods, showDivider, divider,
 }: Props) {
   const {
     attendanceMode, setAttendanceMode,
@@ -60,13 +63,6 @@ export default function AttendanceRangeControls({
     dateTo, setDateTo,
   } = useGlobalFilters();
 
-  const rangeOf = (names: string[]) => {
-    const selected = processedPeriods.filter(p => names.includes(p.period_name));
-    if (!selected.length) return null;
-    const from = selected.map(p => p.start_date).sort()[0]!;
-    const to   = selected.map(p => p.end_date).sort().reverse()[0]!;
-    return { from, to };
-  };
 
   const today = toLocalYMD(new Date());
 
@@ -104,7 +100,7 @@ export default function AttendanceRangeControls({
       {attendanceMode === 'periods' ? (
         <>
           <PeriodMultiSelect
-            periods={processedPeriods}
+            periods={periods}
             selected={attendancePeriods}
             onChange={names => setAttendancePeriods(names, names.length ? rangeOf(names) : null)}
           />
