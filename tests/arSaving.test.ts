@@ -13,7 +13,8 @@ const hook = existsSync(HOOK) ? readFileSync(HOOK, 'utf8') : '';
 const commitSrc = page + hook;
 const ctx = readFileSync('src/app/context/GlobalFilterContext.tsx', 'utf8');
 const bar = readFileSync('src/app/FilterBar.tsx', 'utf8');
-const nav = readFileSync('src/app/TopNav.tsx', 'utf8');
+// The Action Required tab badge moved to the second nav row (SectionBar) on 2026-10-06.
+const nav = readFileSync('src/app/SectionBar.tsx', 'utf8');
 const app = readFileSync('src/app/app.tsx', 'utf8');
 
 test('AS1: only the very first load replaces the page with a spinner', () => {
