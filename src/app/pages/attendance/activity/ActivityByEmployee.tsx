@@ -21,7 +21,7 @@ type Props = {
 
 const TD = 'px-3 py-2 text-sm text-slate-700 align-top';
 const SUBTD = 'px-3 py-1.5 text-xs text-slate-600';
-const SUBTH = 'sticky top-[33px] z-[9] px-3 py-1.5 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide whitespace-nowrap bg-slate-100';
+const SUBTH = 'sticky top-[33px] z-[9] px-3 py-1.5 text-left text-[12px] font-semibold text-slate-500 whitespace-nowrap bg-slate-50';
 
 const MAX_BAR = 480;
 
@@ -42,7 +42,7 @@ function ActiveBar({ activeMin, shiftMin }: { activeMin: number | null; shiftMin
     <div className="flex items-center gap-2">
       <span className="tabular-nums text-sm font-medium">{fmtDuration(activeMin)}</span>
       <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <div className="h-full bg-[#2AA876] rounded-full" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -124,7 +124,7 @@ function EmployeeRow({ emp, onOpenPanel, expanded, onToggle }: EmployeeRowProps)
             </button>
             <div>
               <button
-                className="font-medium text-slate-800 hover:text-[#2AA876] hover:underline underline-offset-2 text-left transition-colors"
+                className="font-medium text-slate-800 hover:text-warm-text hover:underline underline-offset-2 text-left transition-colors"
                 onClick={() => onOpenPanel(emp)}
               >
                 {emp.employeeName}
@@ -229,6 +229,7 @@ export default function ActivityByEmployee({ byEmployee, expandedId, onToggle }:
         sortKey={sortKey}
         sortDir={sortDir}
         onSort={handleSort}
+        titleCase
         className="max-h-[70vh]"
       >
         {sorted.map(emp => (

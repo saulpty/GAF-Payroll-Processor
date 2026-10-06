@@ -107,6 +107,7 @@ export default function ActivityByDay({ days, dateFrom, dateTo }: Props) {
         sortKey={sortKey}
         sortDir={sortDir}
         onSort={handleSort}
+        titleCase
         className="max-h-[70vh]"
       >
         {sorted.map(d => {

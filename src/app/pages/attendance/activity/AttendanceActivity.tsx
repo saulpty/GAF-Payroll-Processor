@@ -15,11 +15,15 @@ type ViewMode = 'byEmployee' | 'byDay';
 function todayYmd() { return toLocalYMD(new Date()); }
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return toLocalYMD(d); }
 
-function SummaryTile({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
+// Warm look (2026-10-06): same tile as Attendance → Today — Title Case label with a dot.
+function SummaryTile({ label, value, accent, dot }: { label: string; value: string | number; accent?: string; dot?: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex flex-col gap-1 min-w-[110px]">
-      <span className={`text-2xl font-bold tabular-nums ${accent ?? 'text-slate-800'}`}>{value}</span>
-      <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-semibold">{label}</span>
+    <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 flex flex-col gap-0.5 min-w-[110px] shadow-card">
+      <span className={`text-[22px] leading-7 font-bold tabular-nums ${accent ?? 'text-slate-900'}`}>{value}</span>
+      <span className="text-[12px] text-slate-600 font-medium flex items-center gap-1.5 whitespace-nowrap">
+        <span className={`w-2 h-2 rounded-full ${dot ?? 'bg-slate-300'}`} aria-hidden="true" />
+        {label}
+      </span>
     </div>
   );
 }
@@ -85,7 +89,7 @@ export default function AttendanceActivity() {
           <div className="flex flex-col items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-4 text-sm text-red-700 mb-4">
             <div className="flex items-start gap-2">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>Couldn't Load Activity Data. It Usually Works On Retry.</span>
+              <span>Couldn't load activity data. It usually works on retry.</span>
             </div>
             <button
               onClick={retry}
@@ -108,10 +112,10 @@ export default function AttendanceActivity() {
           <>
             {/* KPI tiles + Thresholds button */}
             <div className="flex flex-wrap items-start gap-3 mb-4">
-              <SummaryTile label="Avg Active Time"  value={avgActiveLabel}    accent="text-[#2AA876]" />
+              <SummaryTile label="Avg Active Time"  value={avgActiveLabel}    accent="text-status-green-ink" dot="bg-green-600" />
               <SummaryTile label="Days With Work"   value={totals.daysWorked} />
-              <SummaryTile label="Needs A Look"     value={totals.needsLook}  accent={totals.needsLook > 0 ? 'text-amber-600' : undefined} />
-              <SummaryTile label="Late Arrivals"    value={totals.lateArrivals} />
+              <SummaryTile label="Needs a Look"     value={totals.needsLook}  accent={totals.needsLook > 0 ? 'text-status-yellow-ink' : undefined} dot="bg-yellow-500" />
+              <SummaryTile label="Late Arrivals"    value={totals.lateArrivals} accent={totals.lateArrivals > 0 ? 'text-status-red-ink' : undefined} dot="bg-red-600" />
               {isSuper && (
                 <div className="flex items-center self-center ml-auto">
                   <ActivityThresholds settings={settings} onSaved={reloadConfig} />
@@ -121,12 +125,12 @@ export default function AttendanceActivity() {
 
             {/* By Employee / By Day switch */}
             <div className="flex items-center justify-between mb-4">
-              <div className="flex rounded-lg border border-border overflow-hidden shadow-sm">
+              <div className="flex rounded-md border border-slate-300 overflow-hidden">
                 <button
                   onClick={() => setViewMode('byEmployee')}
                   className={[
                     'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors',
-                    viewMode === 'byEmployee' ? 'bg-[#2AA876] text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
+                    viewMode === 'byEmployee' ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
                   ].join(' ')}
                 >
                   By Employee
@@ -135,7 +139,7 @@ export default function AttendanceActivity() {
                   onClick={() => setViewMode('byDay')}
                   className={[
                     'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors border-l',
-                    viewMode === 'byDay' ? 'bg-[#2AA876] text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
+                    viewMode === 'byDay' ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
                   ].join(' ')}
                 >
                   By Day

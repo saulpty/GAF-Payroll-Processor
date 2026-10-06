@@ -13,6 +13,7 @@ import { managerOptions } from '@/app/lib/managerFilter';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadActionRequiredCountsAction from '@/actions/loadActionRequiredCounts';
 import type { EmpInfo } from '@/app/lib/attendanceStats';
+import { getConfig, ATTENDANCE_SWITCH_ROUTES, hasVisibleFilter } from '@/app/lib/filterRoutes';
 
 type PeriodRow = {
   period_name: string;
@@ -20,42 +21,6 @@ type PeriodRow = {
   end_date: string;
   processed_at: string | null;
 };
-
-type RouteConfig = {
-  period?: boolean; dateRange?: boolean; employee?: boolean;
-  role?: boolean; manager?: boolean; statusTab?: boolean; pmTab?: boolean;
-  periods?: boolean;
-};
-
-const ROUTE_CONFIG: Record<string, RouteConfig> = {
-  '/action-required':       { period: true, employee: true, statusTab: true },
-  '/payroll-master':        { period: true, employee: true, pmTab: true },
-  '/hrk-summary':           { period: true },
-  '/process':               { dateRange: true },
-  '/attendance/today':      { employee: true, role: true, manager: true },
-  '/attendance/list':       { periods: true, dateRange: true, employee: true, role: true, manager: true },
-  '/attendance':            { employee: true, role: true, manager: true },
-  '/attendance/reports':    { periods: true, dateRange: true, employee: true, role: true, manager: true },
-  '/attendance/activity':   { periods: true, dateRange: true, employee: true, role: true, manager: true },
-  '/pto':                   { employee: true, role: true, manager: true },
-  '/contracts':             { employee: true, role: true, manager: true },
-  '/disciplinary':          { employee: true, role: true, manager: true },
-};
-
-// Routes with a Periods/Dates switch, keyed to their default mode
-const ATTENDANCE_SWITCH_ROUTES: Record<string, 'periods' | 'dates'> = {
-  '/attendance/list':      'periods',
-  '/attendance/reports':   'periods',
-  '/attendance/activity':  'dates',
-};
-
-function getConfig(pathname: string): RouteConfig | null {
-  if (ROUTE_CONFIG[pathname]) return ROUTE_CONFIG[pathname];
-  for (const key of Object.keys(ROUTE_CONFIG)) {
-    if (key !== '/' && pathname.startsWith(key + '/')) return ROUTE_CONFIG[key];
-  }
-  return null;
-}
 
 const PM_TAB_STYLES: Record<string, { active: string; idle: string; dot?: string }> = {
   ALL:    { active: 'bg-slate-700 text-white', idle: 'bg-white text-slate-600 hover:bg-slate-50' },
@@ -81,7 +46,7 @@ export default function FilterBar() {
     manager, setManager,
     statusTab, setStatusTab,
     pmTab, setPmTab,
-    hasAny, clearAll,
+    clearAll,
   } = useGlobalFilters();
 
   const { viewAs, isSuper } = useViewer();
@@ -329,7 +294,10 @@ export default function FilterBar() {
         </div>
       )}
 
-      {hasAny && (
+      {hasVisibleFilter(cfg, {
+        period, employee, role, manager, isSuper, attendanceMode, attendancePeriods,
+        defaultPeriod: processedPeriods[0]?.period_name ?? null,
+      }) && (
         <button onClick={clearAll}
           className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded px-1">
           <X className="w-3 h-3" />

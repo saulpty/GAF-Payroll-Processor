@@ -13,6 +13,8 @@ import { fmtDay, fmtLeaveDates } from '@/app/lib/fmtDay';
 export interface UpcomingRow {
   employee_id: number;
   display_name: string;
+  role: string | null;
+  src_id: string;
   leave_type: 'pto' | 'floating_holiday';
   leave_on: string;
   return_on: string;
@@ -63,10 +65,11 @@ function GroupHeading({ label, count, warm }: { label: string; count?: number; w
 }
 
 export default function PtoComingUp({ today, refreshKey }: { today: string; refreshKey: number }) {
-  const { manager } = useGlobalFilters();
+  const { manager, employee, role, ptoVersion } = useGlobalFilters();
   const { viewAs } = useViewer();
   const thisYear = today.slice(0, 4);
-  const until = `${thisYear}-12-31`;
+  // Rest of the year; in December also show January so the strip is not empty before the holidays.
+  const until = today.slice(5, 7) === '12' ? `${Number(thisYear) + 1}-01-31` : `${thisYear}-12-31`;
 
   const [raw, loading, error, reload] = useLoadAction(
     loadPtoUpcomingAction,
@@ -74,19 +77,26 @@ export default function PtoComingUp({ today, refreshKey }: { today: string; refr
     { today, until, manager: manager || null, viewAs },
   );
 
-  const refreshRef = useRef(refreshKey);
+  // Reload after the dialog saves (refreshKey) and after Withdraw / Restore (ptoVersion).
+  const refreshRef = useRef(`${refreshKey}|${ptoVersion}`);
   useEffect(() => {
-    if (refreshRef.current !== refreshKey) {
-      refreshRef.current = refreshKey;
+    const k = `${refreshKey}|${ptoVersion}`;
+    if (refreshRef.current !== k) {
+      refreshRef.current = k;
       reload();
     }
-  }, [refreshKey, reload]);
+  }, [refreshKey, ptoVersion, reload]);
 
-  const rows = ((raw as UpcomingRow[]) ?? []).map(r => ({
-    ...r,
-    leave_on: String(r.leave_on ?? '').slice(0, 10),
-    return_on: String(r.return_on ?? '').slice(0, 10),
-  }));
+  // Same Employee / Title filters as the table below (Manager is applied in the loader).
+  const rows = ((raw as UpcomingRow[]) ?? [])
+    .filter(r =>
+      (!employee || String(r.employee_id) === employee || r.display_name.toLowerCase().includes(employee.toLowerCase())) &&
+      (!role || (r.role ?? '').toLowerCase().includes(role.toLowerCase())))
+    .map(r => ({
+      ...r,
+      leave_on: String(r.leave_on ?? '').slice(0, 10),
+      return_on: String(r.return_on ?? '').slice(0, 10),
+    }));
   // The loader only returns leave whose return is after today, so starting on/before today = out now.
   const outNow = rows.filter(r => r.leave_on <= today);
   const later = rows.filter(r => r.leave_on > today);
@@ -130,7 +140,7 @@ export default function PtoComingUp({ today, refreshKey }: { today: string; refr
               <GroupHeading label="Out Now" warm />
               <div className="flex gap-2">
                 {outNow.map(r => (
-                  <LeaveCard key={`n-${r.status}-${r.employee_id}-${r.leave_on}`} r={r} out thisYear={thisYear} />
+                  <LeaveCard key={r.src_id} r={r} out thisYear={thisYear} />
                 ))}
               </div>
             </div>
@@ -141,7 +151,7 @@ export default function PtoComingUp({ today, refreshKey }: { today: string; refr
               <GroupHeading label={g.label} count={g.rows.length} />
               <div className="flex gap-2">
                 {g.rows.map(r => (
-                  <LeaveCard key={`l-${r.status}-${r.employee_id}-${r.leave_on}`} r={r} out={false} thisYear={thisYear} />
+                  <LeaveCard key={r.src_id} r={r} out={false} thisYear={thisYear} />
                 ))}
               </div>
             </div>

@@ -151,7 +151,7 @@ export default function ActivityThresholds({ settings, onSaved }: Props) {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 rounded-lg bg-[#2AA876] text-white text-sm font-medium hover:bg-[#25976a] disabled:opacity-60 transition-colors"
+              className="px-4 py-2 rounded-md bg-warm text-warm-ink text-sm font-semibold hover:brightness-95 disabled:opacity-60 transition"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>

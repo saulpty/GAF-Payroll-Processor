@@ -12,7 +12,7 @@ type Props = {
   onPick?: (employeeId: number) => void;
 };
 
-const TH = 'px-2 py-1 text-left text-[10px] font-semibold text-amber-700 uppercase tracking-wide whitespace-nowrap';
+const TH = 'px-2 py-1 text-left text-[12px] font-semibold text-status-yellow-ink whitespace-nowrap';
 const TD = 'px-2 py-1.5 text-xs text-amber-900 align-middle';
 
 /** True when `date` falls in the last 7 calendar days of the range (inclusive). */
@@ -71,13 +71,13 @@ export default function ActivityNeedsLook({ days, dateTo, settings, onPick }: Pr
   const headingEnd   = fmtDayShort(dateTo);
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
+    <div className="bg-status-yellow-tint border border-amber-200 rounded-lg px-4 py-3 mb-4">
       {/* Header row */}
       <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
         <div className="flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
           <span className="text-sm font-semibold text-amber-800">
-            Needs A Look — Worst 10, {headingStart} – {headingEnd}
+            Needs a Look — Worst 10, {headingStart} – {headingEnd}
           </span>
         </div>
         <span className="text-xs text-amber-600 whitespace-nowrap">
@@ -86,7 +86,7 @@ export default function ActivityNeedsLook({ days, dateTo, settings, onPick }: Pr
       </div>
 
       {windowRows.length === 0 ? (
-        <p className="text-xs text-amber-700/70 italic py-1">Nothing To Look At In The Last 7 Days</p>
+        <p className="text-xs text-amber-700/70 italic py-1">Nothing to look at in the last 7 days</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -124,7 +124,7 @@ export default function ActivityNeedsLook({ days, dateTo, settings, onPick }: Pr
                     </td>
                     <td className={`${TD} whitespace-nowrap`}>{fmtDayShort(d.date)}</td>
                     <td className={`${TD} tabular-nums whitespace-nowrap`}>
-                      {d.records === 0 ? 'No Records' : fmtDuration(d.activeMin)}
+                      {d.records === 0 ? 'No records' : fmtDuration(d.activeMin)}
                     </td>
                     <td className={`${TD} tabular-nums whitespace-nowrap`}>
                       {shortBy > 0 ? fmtDuration(shortBy) : '—'}

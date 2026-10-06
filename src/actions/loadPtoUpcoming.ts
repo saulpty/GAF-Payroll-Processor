@@ -3,12 +3,14 @@ import { action } from '@uibakery/data';
 // PTO + Floating Holiday that is happening now or starts on/before {{params.until}}.
 // Pending = on Monday with no pto_approvals row (same test as loadPtoEmployeeDetail);
 // recorded = pto_approvals.status 'recorded' (withdrawn left out). Scoped to the viewer.
+// A pending request whose exact dates are already recorded (e.g. added manually) is skipped, so
+// the same leave never shows twice (code review 2026-10-06). src_id keeps card keys unique.
 function loadPtoUpcoming() {
   return action('loadPtoUpcoming', 'SQL', {
     datasourceName: 'GAF Planilla DB',
     query: `
       SELECT u.* FROM (
-        SELECT e.id AS employee_id, e.display_name,
+        SELECT e.id AS employee_id, e.display_name, e.role, 'm' || r.monday_item_id::text AS src_id,
                CASE WHEN r.request_type = 'Floating Holiday' THEN 'floating_holiday' ELSE 'pto' END AS leave_type,
                r.start_date::text AS leave_on, r.return_date::text AS return_on,
                NULLIF(r.total_days_requested, 'NaN'::numeric)::numeric AS total_days,
@@ -18,6 +20,9 @@ function loadPtoUpcoming() {
         LEFT JOIN pto_approvals a ON a.monday_item_id = r.monday_item_id
         WHERE r.request_type IN ('PTO / Vacation','Floating Holiday')
           AND r.deleted_on_monday = false AND a.id IS NULL
+          AND NOT EXISTS (SELECT 1 FROM pto_approvals x
+                          WHERE x.employee_id = r.employee_id AND x.status = 'recorded'
+                            AND x.leave_on = r.start_date AND x.return_on = r.return_date)
           AND r.return_date > {{params.today}}::date
           AND r.start_date <= {{params.until}}::date
           AND r.return_date >= r.start_date
@@ -26,7 +31,7 @@ function loadPtoUpcoming() {
           AND e.id IN (SELECT va.employee_id FROM public.v_employee_access va
                         WHERE va.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
         UNION ALL
-        SELECT e.id AS employee_id, e.display_name,
+        SELECT e.id AS employee_id, e.display_name, e.role, 'a' || a.id::text AS src_id,
                a.leave_type::text AS leave_type,
                a.leave_on::text AS leave_on, a.return_on::text AS return_on,
                a.total_days::numeric AS total_days,

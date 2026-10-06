@@ -102,6 +102,7 @@ export function dayBefore(ymd: string | null | undefined): string {
 export function fmtLeaveDates(leaveOn: string | null | undefined, returnOn: string | null | undefined, thisYear?: string): string {
   const a = String(leaveOn ?? '').slice(0, 10);
   const b = String(returnOn ?? '').slice(0, 10);
+  if (!a) return '';
   if (!b || b <= a) return fmtDay(a, thisYear);
   return fmtRange(a, dayBefore(b), thisYear);
 }

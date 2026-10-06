@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import loadUnresolvedCountAction from '@/actions/loadUnresolvedCount';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import FilterBar from '@/app/FilterBar';
+import { getConfig } from '@/app/lib/filterRoutes';
 import { SECTIONS, getActiveSection, BADGE } from '@/app/TopNav';
 
 // Navigation option A, row 2 (Saul, 2026-10-06): the active section's name and its
@@ -30,6 +31,8 @@ export default function SectionBar() {
 
   const activeId = getActiveSection(location.pathname);
   const sec = SECTIONS.find(s => s.id === activeId) ?? null;
+  // Nothing to show (e.g. '/' while it redirects): no empty white strip.
+  if (!sec && !getConfig(location.pathname)) return null;
 
   return (
     <div className="shrink-0 bg-white border-b border-slate-200 px-5 min-h-[48px] flex flex-wrap items-center gap-x-3 z-30">
