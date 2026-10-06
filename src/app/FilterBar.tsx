@@ -2,7 +2,7 @@ import { useLocation } from 'react-router-dom';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useViewer } from '@/app/context/ViewerContext';
 import { useLoadAction } from '@uibakery/data';
-import { X, SlidersHorizontal } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useMemo, useEffect, useRef } from 'react';
 import { fmtDate } from '@/app/lib/fmtDate';
 import EmployeeSearchInput from '@/app/components/EmployeeSearchInput';
@@ -177,26 +177,32 @@ export default function FilterBar() {
 
   if (!cfg) return null;
 
-  const inputCls = 'h-8 px-2.5 text-[13px] border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30';
-  const labelCls = 'text-[11px] font-semibold uppercase tracking-wide text-slate-400';
-  const divider  = <div className="w-px h-5 bg-slate-200" />;
+  // Compact filters (navigation option A, 2026-10-06): they sit in SectionBar's white row,
+  // to the right of the tabs. A select carries its name inside its box ("Manager All").
+  const inputCls = 'h-8 px-2.5 text-[13px] border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-warm-ring';
+  const labelCls = 'text-[12px] font-medium text-slate-500';
+  const boxCls   = 'h-8 flex items-center gap-1.5 pl-2.5 pr-1 border border-slate-300 rounded-md bg-white focus-within:ring-2 focus-within:ring-warm-ring';
+  const inLabel  = 'text-[12px] font-medium text-slate-500 whitespace-nowrap';
+  const bareSel  = 'h-full max-w-[200px] bg-transparent text-[13px] text-slate-900 focus:outline-none';
+  const divider  = null;
 
   const hasBothModes = !!(cfg.periods && cfg.dateRange);
 
   return (
-    <div className="shrink-0 bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-x-3 gap-y-2 flex-wrap z-30 min-h-[48px]">
-      <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+    <div className="flex items-center justify-end gap-2 flex-wrap py-2 min-w-0">
 
       {cfg.period && (
         <>
-          <label className={labelCls}>Period</label>
-          <select value={period} onChange={e => setPeriod(e.target.value)} className={inputCls + ' min-w-40'}>
-            <option value="">{location.pathname === '/payroll-master' ? 'Choose A Period' : 'All periods'}</option>
-            {location.pathname === '/payroll-master' && <option value="__all__">All Periods</option>}
-            {periods.map(p => (
-              <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
-            ))}
-          </select>
+          <label className={boxCls}>
+            <span className={inLabel}>Period</span>
+            <select value={period} onChange={e => setPeriod(e.target.value)} className={bareSel}>
+              <option value="">{location.pathname === '/payroll-master' ? 'Choose A Period' : 'All periods'}</option>
+              {location.pathname === '/payroll-master' && <option value="__all__">All Periods</option>}
+              {periods.map(p => (
+                <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
+              ))}
+            </select>
+          </label>
           {(cfg.dateRange || cfg.employee || cfg.role || cfg.manager || cfg.statusTab || cfg.pmTab) && divider}
         </>
       )}
@@ -244,12 +250,11 @@ export default function FilterBar() {
 
       {cfg.employee && (
         <>
-          <label className={labelCls}>Employee</label>
           <EmployeeSearchInput
             value={employee}
             onChange={setEmployee}
             options={emps}
-            placeholder="Search…"
+            placeholder="Search employee…"
             className={inputCls + ' w-44'}
           />
           {(cfg.role || cfg.manager || cfg.statusTab || cfg.pmTab) && divider}
@@ -258,22 +263,26 @@ export default function FilterBar() {
 
       {cfg.manager && isSuper && (
         <>
-          <label className={labelCls}>Manager</label>
-          <select value={manager} onChange={e => setManager(e.target.value)} className={inputCls}>
-            <option value="">All</option>
-            {managers.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
+          <label className={boxCls}>
+            <span className={inLabel}>Manager</span>
+            <select value={manager} onChange={e => setManager(e.target.value)} className={bareSel}>
+              <option value="">All</option>
+              {managers.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
           {cfg.role && divider}
         </>
       )}
 
       {cfg.role && (
         <>
-          <label className={labelCls}>Role</label>
-          <select value={role} onChange={e => setRole(e.target.value)} className={inputCls}>
-            <option value="">All</option>
-            {roles.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+          <label className={boxCls}>
+            <span className={inLabel}>Title</span>
+            <select value={role} onChange={e => setRole(e.target.value)} className={bareSel}>
+              <option value="">All</option>
+              {roles.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </label>
         </>
       )}
 
@@ -322,7 +331,7 @@ export default function FilterBar() {
 
       {hasAny && (
         <button onClick={clearAll}
-          className="ml-auto flex items-center gap-1 text-[12px] text-slate-400 hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded px-1">
+          className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded px-1">
           <X className="w-3 h-3" />
           Clear Filters
         </button>

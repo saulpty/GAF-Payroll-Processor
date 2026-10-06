@@ -8,9 +8,8 @@ import {
   Palmtree, FileSignature, ShieldAlert, FileText,
   Eye, X, KeyRound, UserCircle,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLoadAction } from '@uibakery/data';
-import loadUnresolvedCountAction from '@/actions/loadUnresolvedCount';
 import loadContractsExpiringCountAction from '@/actions/loadContractsExpiringCount';
 import loadDisciplinaryDueCountAction from '@/actions/loadDisciplinaryDueCount';
 import loadPtoReviewCountAction from '@/actions/loadPtoReviewCount';
@@ -21,15 +20,19 @@ import { useViewer } from '@/app/context/ViewerContext';
 import { canSeeSection, homeFor } from '@/app/lib/access';
 
 // ── Section definitions ────────────────────────────────────────────────────────
-// Warm design system (2026-10-06): one navy bar for every section; the active
-// section is white with an orange underline instead of its own colour pill.
+// Navigation option A (Saul, 2026-10-06): row 1 = the six sections, each with its
+// own colour; row 2 (SectionBar.tsx) = the active section's pages + the filters.
+// color.icon: icon + underline on the navy bar (light tint, readable on navy).
+// color.accent: the active tab's underline and the section mark on the white row.
+// color.ink: the section name on the white row (≥ 4.5:1 on white).
 
-const SECTIONS = [
+export const SECTIONS = [
   {
     id: 'payroll',
     label: 'Payroll',
     icon: TableIcon,
     home: '/payroll-master',
+    color: { icon: '#7DD3FC', accent: '#2563EB', ink: '#1D4ED8' },
     paths: ['/process', '/action-required', '/payroll-master', '/hrk-summary', '/period-log'],
     links: [
       { to: '/payroll-master',  label: 'Payroll Master',  icon: TableIcon },
@@ -44,6 +47,7 @@ const SECTIONS = [
     label: 'Attendance',
     icon: Activity,
     home: '/attendance/today',
+    color: { icon: '#6EE7B7', accent: '#059669', ink: '#047857' },
     paths: ['/attendance'],
     links: [
       { to: '/attendance/today',    label: 'Today',    icon: Clock },
@@ -57,6 +61,7 @@ const SECTIONS = [
     label: 'Disciplinary',
     icon: ShieldAlert,
     home: '/disciplinary',
+    color: { icon: '#FDA4AF', accent: '#E11D48', ink: '#BE123C' },
     paths: ['/disciplinary'],
     links: [],
     badge: true,
@@ -66,6 +71,7 @@ const SECTIONS = [
     label: 'Contracts',
     icon: FileSignature,
     home: '/contracts',
+    color: { icon: '#FCD34D', accent: '#D97706', ink: '#B45309' },
     paths: ['/contracts'],
     links: [],
     badge: true,
@@ -75,6 +81,7 @@ const SECTIONS = [
     label: 'PTO Tracker',
     icon: Palmtree,
     home: '/pto',
+    color: { icon: '#C4B5FD', accent: '#7C3AED', ink: '#6D28D9' },
     paths: ['/pto'],
     links: [],
     badge: true,
@@ -84,6 +91,7 @@ const SECTIONS = [
     label: 'Admin',
     icon: Settings,
     home: '/admin/employees',
+    color: { icon: '#CBD5E1', accent: '#64748B', ink: '#475569' },
     paths: ['/admin'],
     links: [
       { to: '/admin/employees',      label: 'Employees',           icon: Users },
@@ -97,9 +105,9 @@ const SECTIONS = [
   },
 ] as const;
 
-type SectionId = 'payroll' | 'attendance' | 'disciplinary' | 'contracts' | 'pto' | 'admin';
+export type SectionId = 'payroll' | 'attendance' | 'disciplinary' | 'contracts' | 'pto' | 'admin';
 
-function getActiveSection(pathname: string): SectionId | null {
+export function getActiveSection(pathname: string): SectionId | null {
   for (const s of SECTIONS) {
     if (s.paths.some(p => pathname === p || pathname.startsWith(p + '/'))) return s.id;
   }
@@ -107,19 +115,17 @@ function getActiveSection(pathname: string): SectionId | null {
 }
 
 // Orange badge with navy ink: white on orange fails contrast.
-const BADGE = 'bg-warm text-warm-ink text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none';
+export const BADGE = 'bg-warm text-warm-ink text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 leading-none';
 
 // ── TopNav ─────────────────────────────────────────────────────────────────────
 
 export default function TopNav() {
   const location  = useLocation();
   const navigate  = useNavigate();
-  const { ptoVersion, arVersion } = useGlobalFilters();
+  const { ptoVersion } = useGlobalFilters();
   const { isSuper, isViewingAs, name, email, setViewAs, viewAs } = useViewer();
   const visibleSections = SECTIONS.filter(s => canSeeSection(isSuper, s.id));
 
-  const [unresolvedData, , , reloadUnresolved]  = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
-  const unresolvedCount   = (unresolvedData as { count: number }[])[0]?.count ?? 0;
   const [expiringData]    = useLoadAction(loadContractsExpiringCountAction, [] as { count: number }[], { viewAs });
   const expiringCount     = (expiringData as { count: number }[])[0]?.count ?? 0;
   const asOf              = toLocalYMD(new Date());
@@ -136,15 +142,6 @@ export default function TopNav() {
       reloadReview();
     }
   }, [ptoVersion, reloadReview]);
-
-  // Reload AR nav badge whenever entries are committed or reverted
-  const arVersionRef = useRef(arVersion);
-  useEffect(() => {
-    if (arVersionRef.current !== arVersion) {
-      arVersionRef.current = arVersion;
-      reloadUnresolved();
-    }
-  }, [arVersion, reloadUnresolved]);
 
   function sectionBadge(id: string): { count: number; label: string } | null {
     if (!isSuper && id === 'disciplinary') return null;
@@ -170,24 +167,12 @@ export default function TopNav() {
   }
 
   const activeSection = getActiveSection(location.pathname);
-  const activeSectionDef = SECTIONS.find(s => s.id === activeSection) ?? null;
-
-  // Animate sub-links: track previous section to detect change
-  const prevSection = useRef<SectionId | null>(null);
-  const [animKey, setAnimKey] = useState(0);
-
-  useEffect(() => {
-    if (prevSection.current !== activeSection) {
-      setAnimKey(k => k + 1);
-      prevSection.current = activeSection;
-    }
-  }, [activeSection]);
 
   return (
     <header className="topnav-dark shrink-0 h-14 bg-[var(--topnav)] text-[var(--topnav-foreground)] shadow-sm flex items-center px-4 gap-0 z-40 overflow-hidden">
       {/* Brand */}
       <div
-        className="flex items-center gap-2.5 mr-4 cursor-pointer select-none shrink-0"
+        className="flex items-center gap-2.5 mr-3 pr-4 border-r border-white/20 cursor-pointer select-none shrink-0"
         onClick={() => navigate(homeFor(isSuper))}
       >
         <BrandLogo />
@@ -197,10 +182,8 @@ export default function TopNav() {
         </div>
       </div>
 
-      <div className="w-px h-6 bg-white/20 mr-2 shrink-0" />
-
-      {/* Section buttons */}
-      <div className="flex items-center gap-1 shrink-0 h-14">
+      {/* Sections: each keeps its colour; the active one is lit with an underline in its colour */}
+      <nav aria-label="Sections" className="flex items-center h-14 flex-1 min-w-0 overflow-x-auto no-scrollbar">
         {visibleSections.map(s => {
           const isActive = activeSection === s.id;
           return (
@@ -208,14 +191,15 @@ export default function TopNav() {
               key={s.id}
               onClick={() => navigate(s.home)}
               aria-current={isActive ? 'page' : undefined}
+              style={isActive ? { borderBottomColor: s.color.icon } : undefined}
               className={cn(
-                'flex items-center gap-2 px-3 h-14 border-b-2 text-[13px] font-medium transition-colors duration-150 select-none focus:outline-none',
+                'flex items-center gap-2 px-3 h-14 border-b-[3px] text-[13px] font-medium whitespace-nowrap shrink-0 transition-colors duration-150 select-none focus:outline-none',
                 isActive
-                  ? 'border-warm text-white'
-                  : 'border-transparent text-slate-300 hover:text-white'
+                  ? 'bg-white/10 text-white'
+                  : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'
               )}
             >
-              <s.icon className="w-4 h-4" />
+              <s.icon className="w-4 h-4" style={{ color: s.color.icon }} />
               <span>{s.label}</span>
               {(() => {
                 const b = 'badge' in s && s.badge ? sectionBadge(s.id) : null;
@@ -228,53 +212,13 @@ export default function TopNav() {
             </button>
           );
         })}
-      </div>
+      </nav>
 
-      {/* Divider between sections and sub-links */}
-      {activeSectionDef && activeSectionDef.links.length > 0 && (
-        <div className="w-px h-6 bg-white/20 mx-3 shrink-0" />
-      )}
-
-      {/* Sub-links – animated slide-in */}
-      {activeSectionDef && activeSectionDef.links.length > 0 && (
-        <nav
-          key={animKey}
-          className="flex items-center gap-0.5 flex-1 overflow-x-auto no-scrollbar"
-          style={{ animation: 'slideInLeft 220ms cubic-bezier(.22,.68,0,1.2) both' }}
-        >
-          {activeSectionDef.links.map(l => {
-            const isLinkActive =
-              location.pathname === l.to ||
-              (l.to !== '/' && location.pathname.startsWith(l.to + '/'));
-            return (
-              <button
-                key={l.to}
-                onClick={() => navigate(l.to)}
-                aria-current={isLinkActive ? 'page' : undefined}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] transition-colors duration-100 whitespace-nowrap shrink-0',
-                  isLinkActive
-                    ? 'bg-white/15 text-white font-semibold'
-                    : 'text-slate-300 hover:bg-white/10 hover:text-white'
-                )}
-              >
-                <l.icon className="w-3.5 h-3.5 opacity-80 shrink-0" />
-                <span>{l.label}</span>
-                {'badge' in l && l.badge && unresolvedCount > 0 && (
-                  <span className={BADGE}>
-                    {unresolvedCount > 99 ? '99+' : unresolvedCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-      )}
       {isViewingAs ? (
         <button
           onClick={() => setViewAs('')}
           title="Stop viewing as this person"
-          className="ml-auto shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
+          className="ml-3 shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
         >
           <Eye className="w-3.5 h-3.5" />
           Viewing As {name || email}
@@ -283,7 +227,7 @@ export default function TopNav() {
       ) : (
         <div
           title={email}
-          className="ml-auto shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-white/10 text-white border border-white/20"
+          className="ml-3 shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-white/10 text-white border border-white/20"
         >
           <UserCircle className="w-3.5 h-3.5" />
           {name || email}

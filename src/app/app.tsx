@@ -3,7 +3,7 @@
 import '@/index.css';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import TopNav from '@/app/TopNav';
-import FilterBar from '@/app/FilterBar';
+import SectionBar from '@/app/SectionBar';
 import { GlobalFilterProvider } from '@/app/context/GlobalFilterContext';
 import { ViewerProvider } from '@/app/context/ViewerContext';
 import AccessGate from '@/app/components/AccessGate';
@@ -40,7 +40,7 @@ function App() {
             <MondayAutoSync />
             <div className="flex flex-col h-screen overflow-hidden bg-background">
               <TopNav />
-              <FilterBar />
+              <SectionBar />
               <main className="flex-1 overflow-auto">
                 <Routes>
                   <Route path="/" element={<HomeRedirect />} />
