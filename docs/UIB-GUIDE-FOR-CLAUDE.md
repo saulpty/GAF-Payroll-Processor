@@ -254,6 +254,15 @@ These were never written down and had to be rediscovered. They are stable.
   loops times out the Chrome tool (45 s); check with one short query instead.
 - Downloads: the zip name restarts at `GAF Panama HR Hub.zip` when no older copy is in
   Downloads, then `(1)`, `(2)`… Take the newest by time, not by number.
+- **Best: no clipboard at all (2026-10-06).** The Windows clipboard can be locked by another
+  app (`Set-Clipboard` and even `clip.exe` fail with "Access is denied"). Serve the prompts
+  folder locally — `node tools/serve-prompts.mjs "<abs path to docs/superpowers/prompts/<dir>>"` (run in background)
+  (listens on 127.0.0.1:47813, sends `Access-Control-Allow-Origin: https://uib.vitasya.cloud`
+  and `Access-Control-Allow-Private-Network: true`) — then in the builder tab:
+  `window.__p = await (await fetch('http://127.0.0.1:47813/NN-name.md')).text()`, set it with the
+  native setter `Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(t, window.__p)`,
+  dispatch `new Event('input',{bubbles:true})`, check `t.value === window.__p`, then click
+  `button.submit-message`. Exact text, no coordinates, no clipboard.
 - **Paste without clicking:** `document.querySelector('textarea').focus()` via JS, then `ctrl+v`.
   Clicking by coordinate is fragile: the panel's height changes with the window, a click can land
   on the model switch at the box's bottom-left (opens a "High power / Fast changes" menu), and
