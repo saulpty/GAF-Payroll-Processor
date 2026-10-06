@@ -22,7 +22,8 @@ export default function PtoTracker() {
 
   const handleExport = () => {
     const wsData = [
-      ['Employee', 'Title', 'Start', 'Accrued', 'Taken', 'Available', 'Paid PTO', 'FH left', 'WFH', 'Birthday', 'Review'],
+      ['Employee', 'Title', 'Start Date', 'Accrued', 'Taken', 'Available', 'Paid PTO', 'FH left', 'WFH', 'Birthday',
+        ...(isSuper ? ['Review'] : [])],
       ...rows.map(r => [
         r.display_name,
         r.role ?? '',
@@ -34,7 +35,7 @@ export default function PtoTracker() {
         r.fh_left !== null ? r.fh_left : '',
         Number(r.wfh_days) || 0,
         Number(r.birthday_days) || 0,
-        r.review,
+        ...(isSuper ? [r.review] : []),
       ]),
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -47,7 +48,7 @@ export default function PtoTracker() {
     <>
       {counts !== null && (
         <span className="text-[12px] text-slate-400 mr-1">
-          {counts.employees} {counts.employees === 1 ? 'employee' : 'employees'} · {counts.review} to review
+          {counts.employees} {counts.employees === 1 ? 'employee' : 'employees'}{isSuper && ` · ${counts.review} to review`}
         </span>
       )}
       <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">

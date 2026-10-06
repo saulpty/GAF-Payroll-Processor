@@ -31,6 +31,8 @@ interface Props {
   expanded: boolean;
   onToggle: () => void;
   thisYear: string;
+  /** Review column: superusers only (Saul, 2026-10-06). */
+  showReview: boolean;
   children?: ReactNode;
 }
 
@@ -48,7 +50,7 @@ function fmtInt(v: number | string | null | undefined): ReactNode {
   return String(n);
 }
 
-export default function PtoRow({ row, expanded, onToggle, thisYear, children }: Props) {
+export default function PtoRow({ row, expanded, onToggle, thisYear, showReview, children }: Props) {
   const available = row.available;
   const negativeAvail = available !== null && available < 0;
   const fhUsed = Number(row.fh_used) || 0;
@@ -108,7 +110,7 @@ export default function PtoRow({ row, expanded, onToggle, thisYear, children }: 
         </td>
         {/* Title */}
         <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{row.role ?? muted}</td>
-        {/* Start */}
+        {/* Start Date */}
         <td className="px-3 py-2 tabular-nums whitespace-nowrap">
           {row.start ? fmtDay(row.start, thisYear) : muted}
         </td>
@@ -128,25 +130,27 @@ export default function PtoRow({ row, expanded, onToggle, thisYear, children }: 
         <td className="px-3 py-2 text-right tabular-nums">{fmtInt(row.wfh_days)}</td>
         {/* Birthday */}
         <td className="px-3 py-2 text-right tabular-nums">{fmtInt(row.birthday_days)}</td>
-        {/* Review */}
-        <td className="px-3 py-2 text-center">
-          {row.review === 0 && row.waiting === 0
-            ? muted
-            : (
-              <div className="flex items-center justify-center gap-1 flex-wrap">
-                {row.review > 0
-                  ? <StatusChip tone="amber">{row.review}</StatusChip>
-                  : muted}
-                {row.waiting > 0 && (
-                  <span className="ml-1 text-[11px] text-slate-400 whitespace-nowrap">{row.waiting} not yet</span>
-                )}
-              </div>
-            )}
-        </td>
+        {/* Review: superusers only */}
+        {showReview && (
+          <td className="px-3 py-2 text-center">
+            {row.review === 0 && row.waiting === 0
+              ? muted
+              : (
+                <div className="flex items-center justify-center gap-1 flex-wrap">
+                  {row.review > 0
+                    ? <StatusChip tone="amber">{row.review}</StatusChip>
+                    : muted}
+                  {row.waiting > 0 && (
+                    <span className="ml-1 text-[11px] text-slate-400 whitespace-nowrap">{row.waiting} not yet</span>
+                  )}
+                </div>
+              )}
+          </td>
+        )}
       </tr>
       {expanded && children && (
         <tr>
-          <td colSpan={11} className="bg-slate-50/60 p-0">
+          <td colSpan={showReview ? 11 : 10} className="bg-slate-50/60 p-0">
             {children}
           </td>
         </tr>

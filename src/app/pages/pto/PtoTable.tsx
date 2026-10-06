@@ -45,7 +45,7 @@ type RawRow = {
 const COLUMNS: Col<PtoRowData>[] = [
   { key: 'display_name', label: 'Employee' },
   { key: 'role',         label: 'Title' },
-  { key: 'start',        label: 'Start' },
+  { key: 'start',        label: 'Start Date' },
   { key: 'accrued',      label: 'Accrued',  align: 'right', tip: 'DAYS360(start, as-of) ÷ 11 — the sheet\'s formula. About 1 day per 11 calendar days.' },
   { key: 'taken_days',   label: 'Taken',    align: 'right', tip: 'Sum of recorded PTO days. Withdrawn rows don\'t count.' },
   { key: 'available',    label: 'Available', align: 'right', tip: 'Accrued − Taken. Red when negative.' },
@@ -58,7 +58,9 @@ const COLUMNS: Col<PtoRowData>[] = [
 
 export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRowsChange, onCountsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
-  const { viewAs } = useViewer();
+  const { viewAs, isSuper } = useViewer();
+  // Review is a superuser task: everyone else gets the table without it (Saul, 2026-10-06).
+  const columns = isSuper ? COLUMNS : COLUMNS.filter(c => c.key !== 'review');
 
   const year = asOf.slice(0, 4);
   const [rawRows, loading, error, reload] = useLoadAction(
@@ -142,9 +144,9 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
       String(r.employee_id) === employee || r.display_name.toLowerCase().includes(employee.toLowerCase())
     );
     if (role) rows = rows.filter(r => (r.role ?? '').toLowerCase().includes(role.toLowerCase()));
-    if (onlyPending) rows = rows.filter(r => r.review > 0 || r.waiting > 0);
+    if (isSuper && onlyPending) rows = rows.filter(r => r.review > 0 || r.waiting > 0);
     return rows;
-  }, [derived, employee, role, onlyPending]);
+  }, [derived, employee, role, onlyPending, isSuper]);
 
   const sorted = useMemo(
     () => sortRows(filtered, sortKey as keyof PtoRowData | null, sortDir, 'display_name'),
@@ -164,15 +166,17 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
     <div className="flex flex-col flex-1 min-h-0">
       {/* Controls strip */}
       <div className="flex flex-wrap items-center gap-3 px-6 pb-3">
-        <label className="flex items-center gap-1.5 text-[13px] text-slate-600 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={onlyPending}
-            onChange={e => setOnlyPending(e.target.checked)}
-            className="rounded"
-          />
-          Only With Review
-        </label>
+        {isSuper && (
+          <label className="flex items-center gap-1.5 text-[13px] text-slate-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={onlyPending}
+              onChange={e => setOnlyPending(e.target.checked)}
+              className="rounded"
+            />
+            Only With Review
+          </label>
+        )}
         {loading && (rawRows as RawRow[]).length > 0 && (
           <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
         )}
@@ -190,7 +194,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
         </div>
       ) : (
         <DataTable
-          columns={COLUMNS}
+          columns={columns}
           sortKey={sortKey}
           sortDir={sortDir}
           onSort={handleSort}
@@ -199,7 +203,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
         >
           {sorted.length === 0 ? (
             <tr>
-              <td colSpan={11} className="p-0">
+              <td colSpan={columns.length} className="p-0">
                 <EmptyState
                   title="No Employees Match"
                   hint="Try clearing the search or filters."
@@ -215,6 +219,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
                 expanded={expanded.has(row.employee_id)}
                 onToggle={() => handleToggle(row.employee_id)}
                 thisYear={thisYear}
+                showReview={isSuper}
               >
                 {expanded.has(row.employee_id) && (
                   <PtoBreakdown
