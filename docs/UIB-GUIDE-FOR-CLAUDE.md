@@ -254,6 +254,14 @@ These were never written down and had to be rediscovered. They are stable.
   loops times out the Chrome tool (45 s); check with one short query instead.
 - Downloads: the zip name restarts at `GAF Panama HR Hub.zip` when no older copy is in
   Downloads, then `(1)`, `(2)`… Take the newest by time, not by number.
+- **Paste without clicking:** `document.querySelector('textarea').focus()` via JS, then `ctrl+v`.
+  Clicking by coordinate is fragile: the panel's height changes with the window, a click can land
+  on the model switch at the box's bottom-left (opens a "High power / Fast changes" menu), and
+  the panel can be collapsed (toggle = the icon left of **Preview** in the toolbar). Check
+  `.value.length` against the file before `button.submit-message`.click().
+- A long prompt takes 2–5 minutes; UIB's own code check sometimes "times out" — not a failure.
+  A **Runtime errors** banner right after a multi-file write can be transient (files half
+  written): reload `/dev` and read the console before deciding anything. Never press Fix.
 
 ### The other apps on this instance (found 2026-09-07)
 

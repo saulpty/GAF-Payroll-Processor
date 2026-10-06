@@ -78,3 +78,16 @@ test('PC5: Coming Up — scoped loader, pending + recorded, flat params, mounted
 
   assert.match(read('src/app/pages/PtoTracker.tsx'), /<PtoComingUp today=\{today\} refreshKey=\{refreshKey\} \/>/);
 });
+
+test('PC6: code-review fixes — refresh, no duplicates, filters, December, unique keys', () => {
+  const a = read('src/actions/loadPtoUpcoming.ts');
+  assert.match(a, /AND NOT EXISTS \(SELECT 1 FROM pto_approvals x[\s\S]{0,200}x\.leave_on = r\.start_date AND x\.return_on = r\.return_date\)/);
+  assert.equal((a.match(/AS src_id/g) ?? []).length, 2);
+  const c = read('src/app/pages/pto/PtoComingUp.tsx');
+  assert.match(c, /const \{ manager, employee, role, ptoVersion \} = useGlobalFilters\(\);/);
+  assert.match(c, /\}, \[refreshKey, ptoVersion, reload\]\);/);
+  assert.match(c, /today\.slice\(5, 7\) === '12' \? `\$\{Number\(thisYear\) \+ 1\}-01-31`/);
+  assert.equal((c.match(/key=\{r\.src_id\}/g) ?? []).length, 2);
+  assert.equal(fmtLeaveDates('', '2026-08-24', '2026'), '');
+  assert.match(read('src/app/SectionBar.tsx'), /if \(!sec && !getConfig\(location\.pathname\)\) return null;/);
+});
