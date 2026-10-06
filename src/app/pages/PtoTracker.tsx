@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import PageHeader from '@/app/components/PageHeader';
 import PtoTable from './pto/PtoTable';
 import RecordApprovalDialog from './pto/RecordApprovalDialog';
+import PtoComingUp from './pto/PtoComingUp';
 import type { DialogMode } from './pto/RecordApprovalDialog';
 import type { PtoRowData } from './pto/PtoRow';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
@@ -91,6 +92,7 @@ export default function PtoTracker() {
         subtitle="Accrual, approvals and floating holidays — one row per employee"
         actions={actions}
       />
+      <PtoComingUp today={today} refreshKey={refreshKey} />
       <div className="flex-1 min-h-0 flex flex-col">
         <PtoTable
           asOf={asOf}
