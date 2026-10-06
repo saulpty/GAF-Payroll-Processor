@@ -26,7 +26,7 @@ export default function AdminAccessHub() {
       {/* Page header */}
       <div className="px-6 pt-5 pb-0 shrink-0">
         <div className="mb-4">
-          <h1 className="text-lg font-bold text-slate-800 leading-tight">Access</h1>
+          <h1 className="sr-only">Access</h1>
           <p className="text-xs text-slate-500 mt-0.5">Who can open the app, and which employees each manager sees</p>
         </div>
 

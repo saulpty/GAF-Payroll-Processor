@@ -6,14 +6,14 @@ import { Activity, Clock, RefreshCw } from 'lucide-react';
 import InfoTip from '@/app/components/InfoTip';
 import TodayTiles from './TodayTiles';
 import { easternDate, easternMinutes } from '@/app/lib/teramindTime';
-import { buildToday, fmtClock, fmtDuration } from '@/app/lib/teramindToday';
-import type { TodayEmployee, TodayPunch, TodayRow, TodayStatus } from '@/app/lib/teramindToday';
+import { buildToday, fmtClock } from '@/app/lib/teramindToday';
+import type { TodayEmployee, TodayPunch, TodayRow } from '@/app/lib/teramindToday';
 import { isScheduledWorkDay, getSchedule, parseTimeToMinutes } from '@/app/lib/classificationEngine';
 import { fmtDayShort } from '@/app/lib/activityDays';
-import type { WhyChip } from '@/app/lib/activityDays';
 import { matchesManager } from '@/app/lib/managerFilter';
 import { useTodayWhy } from './useTodayWhy';
-import { TodayTableRow, isOnLeave } from './TodayRow';
+import { isOnLeave } from './TodayRow';
+import TodayTable from './TodayTable';
 import { AttendancePanel } from './AttendancePanel';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadTeramindDayPunchesAction from '@/actions/loadTeramindDayPunches';
@@ -197,13 +197,14 @@ export default function AttendanceToday() {
     <div className="flex flex-col h-full bg-background">
       {/* Header bar */}
       <div className="shrink-0 px-5 py-3 border-b border-slate-200 bg-white flex flex-wrap items-center gap-3">
-        <Clock className="w-4 h-4 text-[#2AA876] shrink-0" />
-        <span className="font-semibold text-[#1e7a56] text-sm flex items-center gap-0.5">
+        <Clock className="w-4 h-4 text-primary shrink-0" />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-status-green-fill px-2.5 py-0.5 text-[12px] font-semibold text-status-green-ink">
+          <span className="w-1.5 h-1.5 rounded-full bg-status-green-ink" aria-hidden="true" />
           Live
-          <InfoTip text="Teramind data syncs every 15 minutes. The time shown is the latest sync received." />
         </span>
-        <span className="text-slate-500 text-xs">
-          Data As Of {dataAsOf} · Data Updates Every 15 Minutes · Times In US Eastern
+        <InfoTip text="Teramind data syncs every 15 minutes. The time shown is the latest sync received." />
+        <span className="text-slate-500 text-[13px]">
+          Data as of {dataAsOf} · updates every 15 minutes · times in US Eastern
         </span>
         {loadingPunches && <RefreshCw className="w-3.5 h-3.5 text-slate-400 animate-spin ml-auto" />}
 
@@ -219,12 +220,12 @@ export default function AttendanceToday() {
             value={day}
             max={today}
             onChange={e => setDay(e.target.value)}
-            className="h-8 px-2.5 text-[13px] border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#2AA876]/30"
+            className="h-8 px-2.5 text-[13px] border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-warm-ring"
           />
           {!isToday && (
             <button
               onClick={() => setDay(today)}
-              className="h-8 px-3 text-[13px] rounded-lg bg-[#2AA876] text-white font-medium hover:bg-[#22966a] transition-colors"
+              className="h-8 px-3 text-[13px] rounded-md bg-warm text-warm-ink font-semibold hover:brightness-95 transition"
             >
               Today
             </button>
@@ -235,7 +236,7 @@ export default function AttendanceToday() {
       {/* Stale data notice — only for today, only when data is >25 min old */}
       {isToday && dataAsOfMin !== null && nowMin - dataAsOfMin > 25 && (
         <div className="shrink-0 px-5 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800">
-          Data Is {nowMin - dataAsOfMin} Minutes Old — Statuses Are As Of {fmtClock(dataAsOfMin)}. It Refreshes While A Super User Has The Hub Open.
+          Data is {nowMin - dataAsOfMin} minutes old — statuses are as of {fmtClock(dataAsOfMin)}. It refreshes while a super user has the Hub open.
         </div>
       )}
 
@@ -244,7 +245,7 @@ export default function AttendanceToday() {
         {loading && rows.length === 0 && (
           <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
             <Activity className="w-5 h-5 animate-pulse" />
-            Loading Attendance Data…
+            Loading attendance data…
           </div>
         )}
 
@@ -261,7 +262,7 @@ export default function AttendanceToday() {
 
         {!loading && employees.length === 0 && (
           <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
-            No Employees Match These Filters.
+            No employees match these filters.
           </div>
         )}
 
@@ -292,67 +293,6 @@ export default function AttendanceToday() {
           onClose={() => setPanelRow(null)}
         />
       )}
-    </div>
-  );
-}
-
-function TodayTable({
-  rows, isToday, whyById, whyLoading, ghostByEmployee, onRowClick,
-}: {
-  rows: TodayRow[];
-  isToday: boolean;
-  whyById: Map<number, WhyChip | null>;
-  whyLoading: boolean;
-  ghostByEmployee: Map<number, number>;
-  onRowClick?: (row: TodayRow) => void;
-}) {
-  const thCls = 'px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap select-none';
-  const tdCls = 'px-3 py-2.5 text-sm text-slate-800 align-top';
-
-  // Event delegation: find the closest <tr> ancestor from the click target,
-  // then match its index in rows array.
-  function handleBodyClick(e: React.MouseEvent<HTMLTableSectionElement>) {
-    if (!onRowClick) return;
-    const tr = (e.target as Element).closest('tr');
-    if (!tr) return;
-    const tbody = tr.parentElement;
-    if (!tbody) return;
-    const idx = Array.from(tbody.children).indexOf(tr);
-    if (idx >= 0 && idx < rows.length) onRowClick(rows[idx]);
-  }
-
-  return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className={thCls}>Employee <InfoTip text="Employee name and role from the directory." /></th>
-              <th className={thCls}>Status <InfoTip text="Current attendance status computed from Teramind activity and schedule." /></th>
-              <th className={thCls}>Why <InfoTip text="Reason pulled from Monday.com forms or the holiday calendar." /></th>
-              <th className={thCls}>Scheduled <InfoTip text="Contracted shift window for today from the employee's schedule." /></th>
-              <th className={thCls}>Entry <InfoTip text="First Teramind activity recorded today." /></th>
-              <th className={thCls}>Late <InfoTip text="Minutes after the scheduled start (plus grace period) the employee arrived." /></th>
-              <th className={thCls}>Last Activity <InfoTip text="Most recent Teramind event recorded today." /></th>
-              {isToday && <th className={thCls}>Idle <InfoTip text="Time since the last activity (live only)." /></th>}
-              <th className={thCls}>Active Time <InfoTip text="Total time Teramind recorded active usage today." /></th>
-              <th className={thCls}>Records <InfoTip text="Number of Teramind activity records imported for today." /></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 cursor-pointer" onClick={handleBodyClick}>
-            {rows.map(row => (
-              <TodayTableRow
-                key={row.employeeId}
-                row={row}
-                isToday={isToday}
-                why={whyLoading ? undefined : (whyById.get(row.employeeId) ?? null)}
-                ghostMin={ghostByEmployee.has(row.employeeId) ? (ghostByEmployee.get(row.employeeId) ?? null) : null}
-                tdCls={tdCls}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }

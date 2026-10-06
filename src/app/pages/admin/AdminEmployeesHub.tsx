@@ -31,7 +31,7 @@ export default function AdminEmployeesHub() {
       {/* Page header */}
       <div className="px-6 pt-5 pb-0 shrink-0">
         <div className="mb-4">
-          <h1 className="text-lg font-bold text-slate-800 leading-tight">Employees</h1>
+          <h1 className="sr-only">Employees</h1>
           <p className="text-xs text-slate-500 mt-0.5">Roster · Monday · Aliases · Teramind</p>
         </div>
 

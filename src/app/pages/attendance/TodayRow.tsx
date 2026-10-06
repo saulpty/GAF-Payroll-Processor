@@ -1,14 +1,15 @@
 import { fmtClock, fmtDuration } from '@/app/lib/teramindToday';
+import { fmtTime } from '@/app/lib/fmtTime';
 import type { TodayRow, TodayStatus } from '@/app/lib/teramindToday';
 import type { WhyChip } from '@/app/lib/activityDays';
 import GhostMark from '@/app/pages/attendance/activity/GhostMark';
 
 export const STATUS_CHIP: Record<TodayStatus, { label: string; cls: string }> = {
-  working:     { label: 'Working',      cls: 'bg-green-100 text-green-700 border-green-200' },
-  away:        { label: 'Away',         cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+  working:     { label: 'Working',      cls: 'bg-status-green-fill text-status-green-ink border-transparent' },
+  away:        { label: 'Away',         cls: 'bg-status-yellow-fill text-status-yellow-ink border-transparent' },
   not_in_yet:  { label: 'Not In Yet',  cls: 'bg-slate-100 text-slate-600 border-slate-200' },
-  late_not_in: { label: 'No Records',  cls: 'bg-amber-100 text-amber-800 border-amber-200' },
-  finished:    { label: 'Finished',     cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+  late_not_in: { label: 'No Records',  cls: 'bg-status-red-fill text-status-red-ink border-transparent' },
+  finished:    { label: 'Finished',     cls: 'bg-blue-50 text-blue-700 border-blue-200' },
   day_off:     { label: 'Day Off',      cls: 'bg-slate-100 text-slate-400 border-slate-200' },
   holiday:     { label: 'Holiday',      cls: 'bg-slate-100 text-slate-400 border-slate-200' },
   not_started: { label: 'Not Started', cls: 'bg-slate-100 text-slate-400 border-slate-200' },
@@ -39,7 +40,7 @@ export function TodayTableRow({
   const offToday = row.status === 'day_off' && row.records === 0;
   const onLeave = isOnLeave(row.status, why);
   const chip = onLeave
-    ? { label: 'On Leave', cls: 'bg-blue-100 text-blue-700 border-blue-200' }
+    ? { label: 'On Leave', cls: 'bg-blue-50 text-blue-700 border-blue-200' }
     : STATUS_CHIP[row.status];
   const chipLabel =
     !onLeave && row.status === 'holiday' && row.holidayName ? row.holidayName : chip.label;
@@ -57,18 +58,21 @@ export function TodayTableRow({
   };
   const chipTitle = onLeave ? STATUS_TITLE.on_leave : (STATUS_TITLE[row.status] ?? '');
 
+  // House formats (design system): 9AM–5PM, 9:05AM; minutes as 45 min, 1h 15m.
+  const clock = (min: number) => fmtTime(fmtClock(min));
   const scheduledStr =
     row.scheduledStartMin !== null && row.scheduledEndMin !== null
-      ? `${fmtClock(row.scheduledStartMin)} – ${fmtClock(row.scheduledEndMin)}`
+      ? `${clock(row.scheduledStartMin)}–${clock(row.scheduledEndMin)}`
       : '—';
+  const lateBy = (m: number) => (m < 60 ? `+${m} min` : `+${fmtDuration(m)}`);
 
   const lateStr =
     row.entryMin !== null ? (
       row.minutesLate === 0 ? (
-        <span className="text-slate-400 text-xs">On Time</span>
+        <span className="text-slate-500 text-xs">On time</span>
       ) : (
-        <span className={row.lateAfterGrace ? 'text-red-600 font-medium' : 'text-amber-600'}>
-          +{row.minutesLate}m
+        <span className={row.lateAfterGrace ? 'text-status-red-ink font-semibold' : 'text-amber-700 font-medium'}>
+          {lateBy(row.minutesLate)}
         </span>
       )
     ) : (
@@ -77,7 +81,7 @@ export function TodayTableRow({
 
   const lastActivityStr =
     row.lastActivityMin !== null
-      ? `${fmtClock(row.lastActivityMin)}${row.lastActivityNextDay ? ' +1d' : ''}`
+      ? `${clock(row.lastActivityMin)}${row.lastActivityNextDay ? ' +1d' : ''}`
       : '—';
 
   const idleStr =
@@ -116,7 +120,7 @@ export function TodayTableRow({
       </td>
       <td className={`${tdCls} tabular-nums whitespace-nowrap`}>
         {row.entryMin !== null ? (
-          fmtClock(row.entryMin)
+          clock(row.entryMin)
         ) : (
           <span className="text-slate-400">—</span>
         )}

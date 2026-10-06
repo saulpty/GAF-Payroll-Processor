@@ -113,10 +113,12 @@ Light mode only. Desktop-first (this is a back-office tool used on a workstation
 | 2026-09-25 | Action Required | AR-4..14 |
 | 2026-10-06 | **Top bar, whole app**: navy, orange underline on the active section, orange badges with navy ink | `prompts/2026-10-06-pto-columns/04` |
 | 2026-10-06 | PTO Tracker: orange primary, filter chips, Coming Up card (🌴 / ⭐ kept, Saul), Title Case headers, Excel status chips. Mockup: https://claude.ai/artifact/KwG7zjaQowhh22A2w1Bdkh | `…/05`, `…/06` |
+| 2026-10-06 | **Navigation option A, whole app**: navy row of sections, each with its own colour (Payroll blue, Attendance green, Disciplinary pink, Contracts yellow, PTO violet, Admin grey); white second row `SectionBar` with the section's pages as tabs + compact filters (name inside the box, Quick range dropdown). Page titles that repeated the nav are screen-reader only. Mockup: https://claude.ai/artifact/UB7uj557cZ7gA6gLpYghwo | `…/07`, `…/08`, `…/10`, `…/11` |
+| 2026-10-06 | Attendance → Today: Title Case tiles with coloured dots, Excel status chips, `9AM–5PM` / `+2h 47m` formats, table split into `TodayTable.tsx` | `…/09` |
 
 `DataTable` takes `titleCase` (off by default): turn it on per page as each page is redesigned.
-Not yet redesigned: Payroll Master, Process, HRK Summary, Period Log, Attendance, Contracts,
-Disciplinary, Admin. `PageHeader` titles are still slate, not navy (shared by every page).
+Not yet redesigned: Payroll Master, Process, HRK Summary, Period Log, Attendance Activity / List /
+Reports, Contracts, Disciplinary, Admin.
 
 **Decision (Saul, 2026-09-25): Title Case where applicable.**
 - **Title Case**: page titles, section and card headings, buttons, tabs, nav items, column headers, filter chips, field labels, dialog titles. Minor words stay lowercase unless first or last: a, an, the, and, or, but, of, to, in, on, at, for, by, with. Examples: `Action Required`, `Commit 2 to Green`, `Needs an Event`, `Set Impact`, `Add Employee`.

@@ -183,7 +183,7 @@ export default function FilterBar() {
   const labelCls = 'text-[12px] font-medium text-slate-500';
   const boxCls   = 'h-8 flex items-center gap-1.5 pl-2.5 pr-1 border border-slate-300 rounded-md bg-white focus-within:ring-2 focus-within:ring-warm-ring';
   const inLabel  = 'text-[12px] font-medium text-slate-500 whitespace-nowrap';
-  const bareSel  = 'h-full max-w-[200px] bg-transparent text-[13px] text-slate-900 focus:outline-none';
+  const bareSel  = 'h-full max-w-[130px] bg-transparent text-[13px] text-slate-900 focus:outline-none';
   const divider  = null;
 
   const hasBothModes = !!(cfg.periods && cfg.dateRange);
@@ -255,7 +255,7 @@ export default function FilterBar() {
             onChange={setEmployee}
             options={emps}
             placeholder="Search employee…"
-            className={inputCls + ' w-44'}
+            className={inputCls + ' w-40'}
           />
           {(cfg.role || cfg.manager || cfg.statusTab || cfg.pmTab) && divider}
         </>
