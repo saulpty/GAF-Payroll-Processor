@@ -240,6 +240,21 @@ These were never written down and had to be rediscovered. They are stable.
 | **Work** — AI panel, the one builder session | `https://uib.vitasya.cloud/edit/vitasya/jAaT7LYarG/builder/summary` |
 | **Export / verify** — draft app, safe for the ⋮ menu | `https://uib.vitasya.cloud/dev/vitasya/jAaT7LYarG/<route>` |
 
+### Exactly two tabs: one to edit, one to export and check (Saul, 2026-10-06)
+
+- **Tab 1 — Edit:** the builder (`/edit/…/builder/summary`). Only for pasting and submitting
+  prompts in the AI panel. Never export from here.
+- **Tab 2 — Export and check:** the draft app on `/dev/…/<route>` (e.g. `/dev/vitasya/jAaT7LYarG/pto`).
+  The ⋮ menu next to *GAF Panama HR Hub* in its left sidebar has Export; the same tab is
+  where you hard-refresh (Ctrl+Shift+R) and look at the change.
+- **Never open a second builder tab.** Two `/edit/` sessions fight each other. If one appears
+  (it did on 2026-10-06 while a prompt ran), close it.
+- Done-signal for a prompt: in tab 1, the textarea placeholder is back to `Ask UI Bakery...`
+  and the panel's last message is that prompt's summary. Polling with long JS `setTimeout`
+  loops times out the Chrome tool (45 s); check with one short query instead.
+- Downloads: the zip name restarts at `GAF Panama HR Hub.zip` when no older copy is in
+  Downloads, then `(1)`, `(2)`… Take the newest by time, not by number.
+
 ### The other apps on this instance (found 2026-09-07)
 
 The sidebar's app list is the cheapest way to get an app id: every entry is an

@@ -41,11 +41,20 @@ function parseJSON<T>(v: T | string | null | undefined, fallback: T): T {
   return v as T;
 }
 
-const HEADERS = ['Type', 'Requested', 'What payroll says', 'Evidence', 'Status', ''];
+// [header, column width class]. Payroll columns and actions are superuser-only (Saul, 2026-10-06).
+const SUPER_COLS: [string, string][] = [
+  ['Type', 'w-28'], ['Dates Requested', 'w-64'], ['Total Days Off', 'w-32'], ['Returning On', 'w-36'],
+  ['What Payroll Says', 'w-60'], ['Evidence', ''], ['Status', 'w-28'], ['', 'w-44'],
+];
+const BASIC_COLS: [string, string][] = [
+  ['Type', 'w-28'], ['Dates Requested', 'w-64'], ['Total Days Off', 'w-32'], ['Returning On', 'w-36'],
+  ['Status', 'w-36'],
+];
 
 export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, onChanged, refreshToken }: Props) {
   const { bumpPtoVersion } = useGlobalFilters();
-  const { viewAs } = useViewer();
+  const { viewAs, isSuper } = useViewer();
+  const cols = isSuper ? SUPER_COLS : BASIC_COLS;
   const [rawDetail, loading, error, reload] = useLoadAction(
     loadPtoEmployeeDetailAction,
     null,
@@ -160,25 +169,21 @@ export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, 
       {items.length === 0 ? (
         <EmptyState title="Nothing Recorded or Pending" compact />
       ) : (
-        <table className="table-fixed border-collapse text-left w-auto min-w-[960px]">
+        <table className={`table-fixed border-collapse text-left w-auto ${isSuper ? 'min-w-[1180px]' : 'min-w-[680px]'}`}>
           <colgroup>
-            <col className="w-28" />
-            <col className="w-48" />
-            <col className="w-60" />
-            <col />
-            <col className="w-28" />
-            <col className="w-44" />
+            {cols.map(([h, w], i) => <col key={`${h}-${i}`} className={w || undefined} />)}
           </colgroup>
           <thead>
             <tr>
-              {HEADERS.map((h, i) => (
+              {cols.map(([h], i) => (
                 <th
-                  key={h}
-                  className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-200 bg-transparent"
+                  key={`${h}-${i}`}
+                  className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-200 bg-transparent whitespace-nowrap"
                 >
-                  {i === HEADERS.length - 1 && loading
-                    ? <Loader2 className="w-3 h-3 animate-spin text-slate-300 inline" />
-                    : h}
+                  {h}
+                  {i === cols.length - 1 && loading && (
+                    <Loader2 className="w-3 h-3 ml-1 animate-spin text-slate-300 inline" />
+                  )}
                 </th>
               ))}
             </tr>

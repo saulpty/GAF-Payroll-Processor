@@ -73,3 +73,35 @@ export function weekdayCount(leaveOn: string, returnOn: string): number {
   }
   return n;
 }
+
+/** Inverse of dayNumber (Howard Hinnant's civil_from_days): day count → "YYYY-MM-DD". */
+function fromDayNumber(z: number): string {
+  const zz = z + 719468;
+  const era = Math.floor(zz / 146097);
+  const doe = zz - era * 146097;
+  const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365);
+  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+  const mp = Math.floor((5 * doy + 2) / 153);
+  const d = doy - Math.floor((153 * mp + 2) / 5) + 1;
+  const m = mp < 10 ? mp + 3 : mp - 9;
+  const y = yoe + era * 400 + (m <= 2 ? 1 : 0);
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/** The calendar day before a YYYY-MM-DD date ('' when the input is not a date). */
+export function dayBefore(ymd: string | null | undefined): string {
+  const p = parts(ymd);
+  if (!p) return '';
+  return fromDayNumber(dayNumber(p[0], p[1], p[2]) - 1);
+}
+
+/**
+ * The days someone is actually out: first day off → the day before they return.
+ * "Mon Aug 17 → Sun Aug 23"; one date when it is a single day or the return is missing/invalid.
+ */
+export function fmtLeaveDates(leaveOn: string | null | undefined, returnOn: string | null | undefined, thisYear?: string): string {
+  const a = String(leaveOn ?? '').slice(0, 10);
+  const b = String(returnOn ?? '').slice(0, 10);
+  if (!b || b <= a) return fmtDay(a, thisYear);
+  return fmtRange(a, dayBefore(b), thisYear);
+}
