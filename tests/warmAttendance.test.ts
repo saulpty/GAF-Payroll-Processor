@@ -52,3 +52,15 @@ test('WT1: page titles that repeat the navigation are screen-reader only', () =>
   assert.match(read('src/app/pages/admin/AdminEmployeesHub.tsx'), /<h1 className="sr-only">Employees<\/h1>/);
   assert.match(read('src/app/pages/admin/AdminAccessHub.tsx'), /<h1 className="sr-only">Access<\/h1>/);
 });
+
+test('WA3: Activity uses the Warm look (no ALL CAPS, no old teal)', () => {
+  const dir = 'src/app/pages/attendance/activity/';
+  for (const f of ['AttendanceActivity.tsx', 'ActivityNeedsLook.tsx', 'ActivityByEmployee.tsx', 'ActivityByDay.tsx', 'ActivityThresholds.tsx']) {
+    const src = read(dir + f);
+    assert.doesNotMatch(src, /uppercase/, `${f}: never ALL CAPS`);
+    assert.doesNotMatch(src, /#2AA876|#25976a/i, `${f}: old Classic teal`);
+  }
+  assert.match(read(dir + 'ActivityByEmployee.tsx'), /onSort=\{handleSort\}\s+titleCase/);
+  assert.match(read(dir + 'ActivityByDay.tsx'), /onSort=\{handleSort\}\s+titleCase/);
+  assert.match(read(dir + 'ActivityThresholds.tsx'), /bg-warm text-warm-ink/);
+});
