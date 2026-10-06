@@ -17,6 +17,8 @@ import AttendanceReport     from '@/app/pages/attendance/AttendanceReport';
 import AttendanceToday      from '@/app/pages/attendance/AttendanceToday';
 import AttendanceActivity   from '@/app/pages/attendance/activity/AttendanceActivity';
 import { matchesManager }   from '@/app/lib/managerFilter';
+import type { ReportEmployee } from '@/app/lib/attendanceReportTypes';
+import { useLiveListRows } from '@/app/pages/attendance/useLiveListRows';
 import { useState } from 'react';
 
 type Tab = 'list' | 'reports' | 'today' | 'activity';
@@ -70,6 +72,16 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
   const rows = (rawRows as AttendanceRow[]) ?? [];
   const emps = (empList as EmpInfo[]) ?? [];
 
+  // Live days (not processed yet, from Teramind) are appended; attendanceStats never counts them.
+  const live = useLiveListRows({
+    dateFrom: safeFrom, dateTo: safeTo, viewAs,
+    employees: empList as unknown as ReportEmployee[], official: rows,
+  });
+  const allRows = useMemo(
+    () => (live.rows.length > 0 ? [...rows, ...live.rows] : rows),
+    [rows, live.rows],
+  );
+
   const empMap = useMemo(() => {
     const m = new Map<string, EmpInfo>();
     emps.forEach(e => m.set(e.email, e));
@@ -91,8 +103,8 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
   );
 
   const filteredRows = useMemo(
-    () => rows.filter(r => matchEmails.has(r.email)),
-    [rows, matchEmails],
+    () => allRows.filter(r => matchEmails.has(r.email)),
+    [allRows, matchEmails],
   );
 
   const empStats = useMemo(
@@ -118,7 +130,7 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
           )}
 
           {rowsError && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 mb-4">
+            <div className="bg-status-red-tint border border-status-red-fill rounded-lg px-4 py-3 text-sm text-status-red-ink mb-4">
               Error loading data. The view may not be created yet — apply the migration first.
             </div>
           )}
@@ -126,6 +138,11 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
           {(!loading || rows.length > 0) && (
             <>
               <AttendanceKpis kpis={kpis} />
+              {live.error && (
+                <div className="-mt-2 mb-4 px-1 text-xs text-slate-500">
+                  Live days could not be loaded from Teramind. Showing processed days only.
+                </div>
+              )}
 
               <div>
                 <div className="flex items-center justify-between mb-3">

@@ -6,6 +6,7 @@ import { STATUS_COLORS } from './AttendancePanelBody';
 import WhyChipBadge from './activity/WhyChipBadge';
 import SourceBadge from './activity/SourceBadge';
 import GhostMark from './activity/GhostMark';
+import LiveBadge, { fmtMins } from './LiveBadge';
 
 type Props = {
   days: ActivityDay[];
@@ -41,7 +42,7 @@ export default function AttendancePanelDays({ days, attendanceRows = [] }: Props
     <div>
       <div className="flex items-center gap-2 text-sm font-semibold mb-3">
         <div className="w-0.5 h-3.5 bg-primary rounded-full" />
-        Day By Day
+        Day by Day
       </div>
 
       {sorted.length === 0 ? (
@@ -49,11 +50,11 @@ export default function AttendancePanelDays({ days, attendanceRows = [] }: Props
           No activity data for this range.
         </p>
       ) : (
-        <div className="bg-white border border-border rounded-xl overflow-hidden">
+        <div className="bg-white border border-border rounded-lg shadow-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-muted/40 border-b border-border">
+                <tr className="bg-slate-50 border-b border-border">
                   <th className={TH}>Date</th>
                   <th className={TH}>Entry</th>
                   <th className={TH}>Exit</th>
@@ -67,7 +68,7 @@ export default function AttendancePanelDays({ days, attendanceRows = [] }: Props
               <tbody>
                 {sorted.map(d => {
                   const att = attByDate.get(d.date);
-                  const rowBg = d.needsLook ? 'bg-amber-50 hover:bg-amber-100/20' : 'hover:bg-muted/20';
+                  const rowBg = d.needsLook ? 'bg-status-yellow-tint' : 'hover:bg-slate-50';
                   return (
                     <tr key={d.date} className={`border-b border-border/50 ${rowBg}`}>
                       <td className={TD}>{fmtDayShort(d.date)}</td>
@@ -82,7 +83,12 @@ export default function AttendancePanelDays({ days, attendanceRows = [] }: Props
                       </td>
                       <td className={`${TD} tabular-nums`}>{fmtDuration(d.activeMin)}</td>
                       <td className={TD}>
-                        {att ? (
+                        {att?.live ? (
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                            <LiveBadge />
+                            <span>{att.live_label}</span>
+                          </span>
+                        ) : att ? (
                           <span className="inline-flex items-center gap-1">
                             <span
                               className="w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -96,14 +102,14 @@ export default function AttendancePanelDays({ days, attendanceRows = [] }: Props
                       </td>
                       <td className={`${TD} tabular-nums whitespace-nowrap`}>
                         {att && att.minutes_late > 0
-                          ? <span className="text-amber-700">{att.minutes_late}m</span>
+                          ? <span className="text-status-yellow-ink">{fmtMins(att.minutes_late)}</span>
                           : <span className="text-slate-300">—</span>}
                       </td>
                       <td className={TD}>
                         <div className="flex flex-wrap gap-1">
                           {d.needsLook && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                              Needs A Look
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-status-yellow-fill text-status-yellow-ink">
+                              Needs a Look
                             </span>
                           )}
                           {d.flag === 'long_break' && (

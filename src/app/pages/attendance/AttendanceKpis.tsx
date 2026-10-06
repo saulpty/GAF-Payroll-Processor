@@ -1,4 +1,5 @@
 import { CompanyKpis } from '@/app/lib/attendanceStats';
+import LiveBadge from './LiveBadge';
 
 type Tone = 'lead' | 'alert' | 'plain';
 type Props = { kpis: CompanyKpis };
@@ -10,7 +11,7 @@ function Kpi({
 }) {
   const cardCls = tone === 'lead'
     ? 'bg-white rounded-lg border border-primary p-3 shadow-[inset_3px_0_0_var(--primary)] min-w-0'
-    : 'bg-white rounded-lg border border-border p-3 shadow-sm min-w-0';
+    : 'bg-white rounded-lg border border-border p-3 shadow-card min-w-0';
 
   const valueCls = tone === 'plain'
     ? 'text-2xl font-bold tracking-tight leading-none tabular-nums mb-0.5 text-foreground'
@@ -19,7 +20,7 @@ function Kpi({
   return (
     <div className={cardCls}>
       <div
-        className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1 truncate cursor-default"
+        className="text-xs font-semibold text-slate-600 mb-1 truncate cursor-default"
         title={tooltip}
         tabIndex={tooltip ? 0 : undefined}
         aria-label={tooltip ? `${label}: ${tooltip}` : undefined}
@@ -50,7 +51,7 @@ export function AttendanceKpis({ kpis }: Props) {
           value={`${kpis.lateRate.toFixed(1)}%`}
           sub={`${kpis.lateDays} of ${kpis.daysTracked} Expected`}
           tone="alert"
-          color="text-amber-600"
+          color="text-status-yellow-ink"
           tooltip="Late days divided by expected days (on time + late + absent)."
         />
         <Kpi
@@ -79,7 +80,7 @@ export function AttendanceKpis({ kpis }: Props) {
           value={`${kpis.absent}`}
           sub="Reported or Not"
           tone="alert"
-          color="text-[#B91C1C]"
+          color="text-status-red-ink"
           tooltip="Scheduled to work with no clock-in and no time off or permission covering the day, whether or not a form was filed."
         />
         <Kpi
@@ -94,7 +95,7 @@ export function AttendanceKpis({ kpis }: Props) {
           value={`${kpis.unreported}`}
           sub="Late/Absent, No Form"
           tone="alert"
-          color="text-destructive"
+          color="text-status-red-ink"
           tooltip="Late or absent days with no attendance form on file."
         />
         <Kpi
@@ -112,9 +113,18 @@ export function AttendanceKpis({ kpis }: Props) {
           tooltip="An approved permission covered the day. Does not affect the score."
         />
       </div>
-      <div className="text-[10px] text-muted-foreground px-1">
-        On-Time ({kpis.onTime}) + Late ({kpis.lateDays}) + Absent ({kpis.absent}) + Time off ({kpis.excused}) + Permission ({kpis.permission}) = {totalCheck} = Work Days ({kpis.workDays})
+      <div className="text-[11px] text-muted-foreground px-1">
+        On Time ({kpis.onTime}) + Late ({kpis.lateDays}) + Absent ({kpis.absent}) + Time Off ({kpis.excused}) + Permission ({kpis.permission}) = {totalCheck} = Work Days ({kpis.workDays})
       </div>
+      {(kpis.liveDays ?? 0) > 0 && (
+        <div className="flex items-center gap-2 mt-1 px-1 text-xs text-slate-600">
+          <LiveBadge />
+          <span>
+            {kpis.liveDays} live day{kpis.liveDays === 1 ? '' : 's'} not yet counted
+            {(kpis.liveLate ?? 0) > 0 ? ` · ${kpis.liveLate} late` : ''}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

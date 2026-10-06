@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLoadAction } from '@uibakery/data';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useViewer } from '@/app/context/ViewerContext';
@@ -9,6 +9,10 @@ import { toLocalYMD,
 import { buildAttendanceReport } from '@/app/lib/attendanceReport';
 import type { ReportEmployee, ReportPayrollRow, ReportForm, ReportRequest,
   ReportPeriod, ReportHoliday, ReportRow, ReportSummary } from '@/app/lib/attendanceReportTypes';
+import { liveWindow, applyLiveDays, liveSummary } from '@/app/lib/liveAttendance';
+import { whyFor } from '@/app/lib/activityDays';
+import type { ActivityDayRow } from '@/app/lib/activityDays';
+import { easternDate } from '@/app/lib/teramindTime';
 
 import loadAttendanceReportDaysAction    from '@/actions/loadAttendanceReportDays';
 import { matchesManager }               from '@/app/lib/managerFilter';
@@ -18,13 +22,18 @@ import loadAttendanceEmployeesAction     from '@/actions/loadAttendanceEmployees
 import loadHolidaysAction                from '@/actions/loadHolidays';
 import loadPeriodsAction                 from '@/actions/loadPeriods';
 import loadDstCalendarAction             from '@/actions/loadDstCalendar';
+import loadTeramindActivityDaysAction    from '@/actions/loadTeramindActivityDays';
 
 import { reportRowsToKpis } from '@/app/lib/reportKpis';
 import { AttendanceKpis } from './AttendanceKpis';
 import { AttendanceReportStrips } from './AttendanceReportStrips';
 import { AttendanceReportTable }  from './AttendanceReportTable';
+import LiveBadge from './LiveBadge';
 
 type View = 'strips' | 'table';
+
+// No live window: a range that ends before it starts, so the Teramind loader returns no rows.
+const NO_LIVE = { from: '9999-12-31', to: '1970-01-01' };
 
 function today() { return toLocalYMD(new Date()); }
 function daysAgo(n: number) {
@@ -43,6 +52,8 @@ export default function AttendanceReport() {
 
   const safeFrom = dateFrom || daysAgo(30);
   const safeTo   = dateTo   || today();
+  // Teramind's "today" is US Eastern (same as the Today tab).
+  const tmToday  = easternDate(Date.now());
 
   // ── Data loads ─────────────────────────────────────────────────────────────
   const [rawDays,     loadingDays,    errDays]    = useLoadAction(
@@ -71,12 +82,33 @@ export default function AttendanceReport() {
     loadDstCalendarAction, [] as { year: number; us_dst_start: string; us_dst_end: string }[],
   );
 
+  // Live days: after the newest processed period, up to today. Null until periods load.
+  const win = useMemo(
+    () => (loadingPeriods ? null
+      : liveWindow((rawPeriods as ReportPeriod[]) ?? [], safeFrom, safeTo, tmToday)),
+    [loadingPeriods, rawPeriods, safeFrom, safeTo, tmToday],
+  );
+  const [rawTm,       loadingTm,      errTm]      = useLoadAction(
+    loadTeramindActivityDaysAction, [] as ActivityDayRow[],
+    { dateFrom: win?.from ?? NO_LIVE.from, dateTo: win?.to ?? NO_LIVE.to, viewAs },
+  );
+
   const loading = loadingDays || loadingForms || loadingReqs || loadingEmps ||
-                  loadingHols || loadingPeriods || loadingDst;
+                  loadingHols || loadingPeriods || loadingDst || (win !== null && loadingTm);
   const anyError = errDays || errForms || errReqs || errEmps;
 
+  // Which window the loaded Teramind rows belong to. Until the load for the current window has
+  // finished, show official rows only (otherwise live days flash "No records yet" for a render).
+  const winKey = win ? `${win.from}|${win.to}` : '';
+  const [tmFor, setTmFor] = useState('');
+  const tmWasLoading = useRef(false);
+  useEffect(() => {
+    if (loadingTm) tmWasLoading.current = true;
+    else if (tmWasLoading.current) { tmWasLoading.current = false; setTmFor(winKey); }
+  }, [loadingTm, winKey]);
+
   // ── Build report ───────────────────────────────────────────────────────────
-  const { rows, perEmployee, unmatchedForms } = useMemo(() => {
+  const { rows: officialRows, perEmployee, unmatchedForms } = useMemo(() => {
     if (loading) return { rows: [] as ReportRow[], perEmployee: [] as ReportSummary[], unmatchedForms: 0 };
 
     const employees = (rawEmps as ReportEmployee[]).filter(e => {
@@ -104,17 +136,39 @@ export default function AttendanceReport() {
   }, [loading, rawEmps, rawDays, rawForms, rawRequests, rawHolidays, rawPeriods, rawDst,
       safeFrom, safeTo, manager, role, globalEmployee]);
 
-  // ── Summary strip KPIs ─────────────────────────────────────────────────────
+  // ── Live days (Teramind) on top. Payroll rows always win; a Teramind error shows official only.
+  const rows = useMemo(() => {
+    if (!win || errTm || tmFor !== winKey) return officialRows;
+    return applyLiveDays({
+      rows: officialRows,
+      payrollRows: (rawDays as ReportPayrollRow[]) ?? [],
+      tmRows: (rawTm as ActivityDayRow[]) ?? [],
+      employees: (rawEmps as ReportEmployee[]) ?? [],
+      requests: (rawRequests as ReportRequest[]) ?? [],
+      window: win,
+      today: tmToday,
+      helpers: { parseTimeToMinutes, whyFor },
+    });
+  }, [officialRows, win, winKey, tmFor, errTm, rawDays, rawTm, rawEmps, rawRequests, tmToday]);
+
+  // ── Summary strip KPIs: same as before live days existed. Live rows keep their verdict, so
+  // not-processed days are never counted and PTO / permission / holiday days still are.
   const kpis = useMemo(() => reportRowsToKpis(rows), [rows]);
+  const live = useMemo(() => liveSummary(rows), [rows]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  const toggleCls = (on: boolean) => [
+    'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors',
+    on ? 'bg-warm text-warm-ink' : 'bg-white text-slate-600 hover:bg-slate-50',
+  ].join(' ');
+
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="flex-1 overflow-auto px-4 py-4">
 
         {/* Error */}
         {anyError && (
-          <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 mb-4">
+          <div className="flex items-start gap-2 bg-status-red-tint border border-status-red-fill rounded-lg px-4 py-3 text-sm text-status-red-ink mb-4">
             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
             Error loading report data. Check the database connection.
           </div>
@@ -132,23 +186,30 @@ export default function AttendanceReport() {
           <>
             <AttendanceKpis kpis={kpis} />
 
+            {/* Live days: shown, never counted above */}
+            {live.days > 0 && (
+              <div className="flex items-center gap-2 -mt-2 mb-4 px-1 text-xs text-slate-600">
+                <LiveBadge />
+                <span>
+                  Live, not yet processed: {live.days} day{live.days === 1 ? '' : 's'}
+                  {' · '}{live.late} late{' · '}{live.noRecords} no records yet
+                </span>
+              </div>
+            )}
+            {win && errTm && (
+              <div className="flex items-center gap-2 -mt-2 mb-4 px-1 text-xs text-slate-500">
+                <Info className="w-3.5 h-3.5 shrink-0" />
+                Live days could not be loaded from Teramind. Showing processed days only.
+              </div>
+            )}
+
             {/* View toggle */}
             <div className="flex justify-end mb-3">
-              <div className="flex rounded-lg border border-border overflow-hidden shadow-sm">
-                <button
-                  onClick={() => setView('strips')}
-                  className={['flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors',
-                    view === 'strips' ? 'bg-[#2AA876] text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
-                  ].join(' ')}
-                >
+              <div className="flex rounded-md border border-border overflow-hidden shadow-card">
+                <button onClick={() => setView('strips')} className={toggleCls(view === 'strips')}>
                   <LayoutGrid className="w-3.5 h-3.5" /> Cards
                 </button>
-                <button
-                  onClick={() => setView('table')}
-                  className={['flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors border-l',
-                    view === 'table' ? 'bg-[#2AA876] text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
-                  ].join(' ')}
-                >
+                <button onClick={() => setView('table')} className={toggleCls(view === 'table') + ' border-l'}>
                   <TableIcon className="w-3.5 h-3.5" /> Table
                 </button>
               </div>
@@ -184,5 +245,3 @@ export default function AttendanceReport() {
     </div>
   );
 }
-
-

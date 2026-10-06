@@ -31,7 +31,7 @@ const COLUMNS: Col<EmployeeActivitySummary>[] = [
   { key: 'avgActiveMin', label: 'Avg Active' },
   { key: 'avgFirstMin',  label: 'Avg Entry' },
   { key: 'avgLastMin',   label: 'Avg Exit' },
-  { key: 'needsLook',    label: 'Needs A Look' },
+  { key: 'needsLook',    label: 'Needs a Look' },
   { key: 'awayDays',     label: 'Away Days' },
 ];
 
