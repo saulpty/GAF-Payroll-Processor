@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { Info, AlertTriangle, Copy } from 'lucide-react';
-import type { ReportRow, ReportSummary, Verdict, LiveInfo } from '@/app/lib/attendanceReportTypes';
+import type { ReportRow, ReportSummary, Verdict } from '@/app/lib/attendanceReportTypes';
 import { fmtDay } from '@/app/lib/fmtDay';
 import { fmtTime } from '@/app/lib/fmtTime';
-import LiveBadge, { fmtMins, liveInOut } from './LiveBadge';
+import { fmtDuration } from '@/app/lib/teramindToday';
 
 type Props = { rows: ReportRow[]; perEmployee: ReportSummary[] };
 
@@ -63,19 +63,15 @@ const CARD_LABEL: Record<Verdict, string> = {
   not_processed:           'Not Run Yet',
 };
 
-/** Live day tone: late yellow, worked green, a reason (PTO, form…) blue, no records grey. */
-function liveTone(l: LiveInfo): Tone {
-  if (l.kind === 'worked') return l.minutesLate > 0 ? 'yellow' : 'green';
-  return l.kind === 'reason' ? 'blue' : 'grey';
-}
+/** House minutes format: '45 min', '1h 15m'. */
+const fmtMins = (m: number): string => (m < 60 ? `${m} min` : fmtDuration(m));
 
 /** Payroll times are US Eastern "H:MM AM" text; fmtTime reshapes them ('9:54AM'). */
 const time = (t: string | null) => fmtTime(t) || '—';
 
 // ── Tile ──────────────────────────────────────────────────────────────────────
 function DayTile({ row, thisYear }: { row: ReportRow; thisYear: string }) {
-  const live = row.live ?? null;
-  const t = TONE[live ? liveTone(live) : VERDICT_TONE[row.verdict]];
+  const t = TONE[VERDICT_TONE[row.verdict]];
 
   // Split "Mon Aug 10" into weekday and month-day — no Date object
   const dayStr = fmtDay(row.date, thisYear);
@@ -83,37 +79,25 @@ function DayTile({ row, thisYear }: { row: ReportRow; thisYear: string }) {
   const wd = spaceIdx >= 0 ? dayStr.slice(0, spaceIdx) : dayStr;
   const md = spaceIdx >= 0 ? dayStr.slice(spaceIdx + 1) : '';
 
-  // Live days: dashed border = not official yet
-  const frame = live ? 'border-dashed border-slate-400' : 'border-slate-200';
-  const liveTimes = live && live.kind === 'worked' ? liveInOut(live) : null;
-
   return (
     <div
-      className={`relative w-[170px] shrink-0 bg-white border ${frame} border-t-[3px] ${t.stripe} rounded-md px-2.5 pt-1.5 pb-2 shadow-card text-[11px] leading-snug`}
-      title={live ? `Live: ${live.label}` : VERDICT_LABEL[row.verdict]}
+      className={`relative w-[170px] shrink-0 bg-white border border-slate-200 border-t-[3px] ${t.stripe} rounded-md px-2.5 pt-1.5 pb-2 shadow-card text-[11px] leading-snug`}
+      title={VERDICT_LABEL[row.verdict]}
     >
       {/* Date */}
       <div className="flex items-baseline gap-1.5 mb-1">
         <span className="text-[11px] font-semibold text-slate-500">{wd}</span>
         <span className="text-[14px] font-bold text-slate-900">{md}</span>
-        {live && <span className="ml-auto self-center"><LiveBadge /></span>}
       </div>
 
       {/* Status label */}
       <div className={`flex items-center gap-1.5 font-semibold mb-1 whitespace-nowrap ${t.text}`}>
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.dot}`} />
-        <span className="truncate">{live ? live.label : CARD_LABEL[row.verdict]}</span>
+        <span className="truncate">{CARD_LABEL[row.verdict]}</span>
       </div>
 
       {/* Time line */}
-      {liveTimes ? (
-        <div className="tabular-nums text-slate-900 whitespace-nowrap">
-          {liveTimes.entry} <span className="text-slate-400">→</span>{' '}
-          {liveTimes.exit || <span className="text-slate-400">no exit</span>}
-        </div>
-      ) : live ? (
-        <div className="text-slate-500 truncate">{live.kind === 'reason' ? 'No punches' : 'No Teramind records'}</div>
-      ) : row.entryTime ? (
+      {row.entryTime ? (
         <div className="tabular-nums text-slate-900 whitespace-nowrap">
           {time(row.entryTime)} <span className="text-slate-400">→</span>{' '}
           {row.exitTime ? time(row.exitTime) : <span className="text-slate-400">no exit</span>}
@@ -164,12 +148,11 @@ function EmployeeCard({ summary, rows, thisYear }: { summary: ReportSummary; row
     : summary.onTimeRate >= 75 ? 'text-status-yellow-ink'
     : 'text-status-red-ink';
 
-  // Average minutes late across official late days (live days never count)
-  const lateRows = rows.filter(r => !r.live && r.verdict.startsWith('late'));
+  // Average minutes late across late days
+  const lateRows = rows.filter(r => r.verdict.startsWith('late'));
   const avgLate = lateRows.length > 0
     ? Math.round(lateRows.reduce((s, r) => s + (r.minutesLate ?? 0), 0) / lateRows.length)
     : null;
-  const liveDays = rows.filter(r => r.live).length;
 
   return (
     <div className="bg-white border border-border rounded-lg shadow-card p-4 mb-4">
@@ -184,10 +167,6 @@ function EmployeeCard({ summary, rows, thisYear }: { summary: ReportSummary; row
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span>{summary.expectedDays} days</span>
-          {liveDays > 0 && (
-            <LiveBadge count={liveDays}
-              title={`${liveDays} day${liveDays === 1 ? '' : 's'} not processed yet, shown from Teramind. Not counted in any number.`} />
-          )}
           {summary.lateDays > 0 && (
             <span className="text-status-yellow-ink font-medium">
               <AlertTriangle className="w-3 h-3 inline mr-0.5" />

@@ -7,10 +7,9 @@ import { toLocalYMD,
   isScheduledWorkDay, getSchedule, parseTimeToMinutes,
 } from '@/app/lib/classificationEngine';
 import { buildAttendanceReport } from '@/app/lib/attendanceReport';
-import type { ReportEmployee, ReportPayrollRow, ReportForm, ReportRequest,
+import type { ReportEmployee, ReportPayrollRow, ReportForm, ReportRequest, ReportInput,
   ReportPeriod, ReportHoliday, ReportRow, ReportSummary } from '@/app/lib/attendanceReportTypes';
-import { liveWindow, applyLiveDays, liveSummary } from '@/app/lib/liveAttendance';
-import { whyFor } from '@/app/lib/activityDays';
+import { liveWindow, liveReport } from '@/app/lib/liveAttendance';
 import type { ActivityDayRow } from '@/app/lib/activityDays';
 import { easternDate } from '@/app/lib/teramindTime';
 
@@ -28,7 +27,6 @@ import { reportRowsToKpis } from '@/app/lib/reportKpis';
 import { AttendanceKpis } from './AttendanceKpis';
 import { AttendanceReportStrips } from './AttendanceReportStrips';
 import { AttendanceReportTable }  from './AttendanceReportTable';
-import LiveBadge from './LiveBadge';
 
 type View = 'strips' | 'table';
 
@@ -93,12 +91,8 @@ export default function AttendanceReport() {
     { dateFrom: win?.from ?? NO_LIVE.from, dateTo: win?.to ?? NO_LIVE.to, viewAs },
   );
 
-  const loading = loadingDays || loadingForms || loadingReqs || loadingEmps ||
-                  loadingHols || loadingPeriods || loadingDst || (win !== null && loadingTm);
-  const anyError = errDays || errForms || errReqs || errEmps;
-
   // Which window the loaded Teramind rows belong to. Until the load for the current window has
-  // finished, show official rows only (otherwise live days flash "No records yet" for a render).
+  // finished the page keeps loading, so the numbers never flash without the unprocessed days.
   const winKey = win ? `${win.from}|${win.to}` : '';
   const [tmFor, setTmFor] = useState('');
   const tmWasLoading = useRef(false);
@@ -107,8 +101,16 @@ export default function AttendanceReport() {
     else if (tmWasLoading.current) { tmWasLoading.current = false; setTmFor(winKey); }
   }, [loadingTm, winKey]);
 
+  const loading = loadingDays || loadingForms || loadingReqs || loadingEmps ||
+                  loadingHols || loadingPeriods || loadingDst ||
+                  (win !== null && (loadingTm || (!errTm && tmFor !== winKey)));
+  const anyError = errDays || errForms || errReqs || errEmps;
+
   // ── Build report ───────────────────────────────────────────────────────────
-  const { rows: officialRows, perEmployee, unmatchedForms } = useMemo(() => {
+  // Days payroll has not processed yet (the live window) are counted exactly as payroll would
+  // count them, from Teramind (liveReport). A payroll row always wins. A Teramind error leaves
+  // those days uncounted, as before payroll runs.
+  const { rows, perEmployee, unmatchedForms } = useMemo(() => {
     if (loading) return { rows: [] as ReportRow[], perEmployee: [] as ReportSummary[], unmatchedForms: 0 };
 
     const employees = (rawEmps as ReportEmployee[]).filter(e => {
@@ -121,7 +123,7 @@ export default function AttendanceReport() {
       return true;
     });
 
-    return buildAttendanceReport({
+    const input: ReportInput = {
       dateFrom: safeFrom,
       dateTo: safeTo,
       employees,
@@ -132,29 +134,18 @@ export default function AttendanceReport() {
       periods:     (rawPeriods  as ReportPeriod[])    ?? [],
       dstWindows:  (rawDst as { year: number; us_dst_start: string; us_dst_end: string }[]) ?? [],
       helpers: { isScheduledWorkDay, getSchedule, parseTimeToMinutes },
+    };
+    const main = buildAttendanceReport(input);
+    if (!win || errTm) return main;
+    return liveReport({
+      input, main, window: win, today: tmToday,
+      tmRows: (rawTm as ActivityDayRow[]) ?? [], build: buildAttendanceReport,
     });
   }, [loading, rawEmps, rawDays, rawForms, rawRequests, rawHolidays, rawPeriods, rawDst,
-      safeFrom, safeTo, manager, role, globalEmployee]);
+      safeFrom, safeTo, manager, role, globalEmployee, win, errTm, rawTm, tmToday]);
 
-  // ── Live days (Teramind) on top. Payroll rows always win; a Teramind error shows official only.
-  const rows = useMemo(() => {
-    if (!win || errTm || tmFor !== winKey) return officialRows;
-    return applyLiveDays({
-      rows: officialRows,
-      payrollRows: (rawDays as ReportPayrollRow[]) ?? [],
-      tmRows: (rawTm as ActivityDayRow[]) ?? [],
-      employees: (rawEmps as ReportEmployee[]) ?? [],
-      requests: (rawRequests as ReportRequest[]) ?? [],
-      window: win,
-      today: tmToday,
-      helpers: { parseTimeToMinutes, whyFor },
-    });
-  }, [officialRows, win, winKey, tmFor, errTm, rawDays, rawTm, rawEmps, rawRequests, tmToday]);
-
-  // ── Summary strip KPIs: same as before live days existed. Live rows keep their verdict, so
-  // not-processed days are never counted and PTO / permission / holiday days still are.
+  // ── Summary strip KPIs: every counted day, processed or not.
   const kpis = useMemo(() => reportRowsToKpis(rows), [rows]);
-  const live = useMemo(() => liveSummary(rows), [rows]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   const toggleCls = (on: boolean) => [
@@ -186,20 +177,10 @@ export default function AttendanceReport() {
           <>
             <AttendanceKpis kpis={kpis} />
 
-            {/* Live days: shown, never counted above */}
-            {live.days > 0 && (
-              <div className="flex items-center gap-2 -mt-2 mb-4 px-1 text-xs text-slate-600">
-                <LiveBadge />
-                <span>
-                  Live, not yet processed: {live.days} day{live.days === 1 ? '' : 's'}
-                  {' · '}{live.late} late{' · '}{live.noRecords} no records yet
-                </span>
-              </div>
-            )}
             {win && errTm && (
               <div className="flex items-center gap-2 -mt-2 mb-4 px-1 text-xs text-slate-500">
                 <Info className="w-3.5 h-3.5 shrink-0" />
-                Live days could not be loaded from Teramind. Showing processed days only.
+                Teramind could not be loaded, so days payroll has not processed yet are not counted.
               </div>
             )}
 

@@ -31,34 +31,33 @@ test('computeEmployeeStats defaults role/manager to empty when EmpInfo missing',
   assert.equal(stats[0].manager, '');
 });
 
-// ── Live days (2026-10-06): shown in the List, never counted ─────────────────
+// ── 2026-10-07: days payroll has not processed yet are ordinary rows and count like any other ──
 
-test('AS-L1: computeEmployeeStats excludes live rows from every count but keeps them in rows', () => {
-  const official = [row({}), row({ date: '2026-06-02', status: 'Late - Unreported', bucket: 'late_1to10', minutes_late: 5 })];
-  const live = [
-    row({ date: '2026-06-03', status: 'Live', bucket: 'late_11to30', minutes_late: 20, live: true, live_label: 'Late 20 min', filed_gaf: true }),
-    row({ date: '2026-06-04', status: 'Live', bucket: null, entry_time: null, live: true, live_label: 'No records yet' }),
+test("AS-C1: computeEmployeeStats counts every row (no live exclusion)", () => {
+  const rows = [
+    row({}),
+    row({ date: "2026-06-02", status: "Late - Unreported", bucket: "late_11to30", minutes_late: 20, period_name: "" }),
+    row({ date: "2026-06-03", status: "Absent - Unexplained", bucket: "absent", entry_time: null, period_name: "" }),
   ];
-  const before = computeEmployeeStats(official, new Map(), new Set(['a@x.com']))[0];
-  const after = computeEmployeeStats([...official, ...live], new Map(), new Set(['a@x.com']))[0];
-  for (const k of ['days', 'onTime', 'totalLate', 'reported', 'unreported', 'excused', 'permission',
-    'absent', 'daysWorked', 'avgMinLate', 'pctOnTime', 'b1to10', 'b11to30', 'b31plus'] as const) {
-    assert.equal(after[k], before[k], k);
-  }
-  assert.deepEqual(after.filing, before.filing);
-  assert.equal(after.rows.length, 4);
-  assert.equal(after.liveDays, 2);
-  assert.equal(after.liveLate, 1);
-  assert.equal(before.liveDays, 0);
+  const [s] = computeEmployeeStats(rows, new Map(), new Set(["a@x.com"]));
+  assert.equal(s.days, 3);
+  assert.equal(s.onTime, 1);
+  assert.equal(s.unreported, 1);
+  assert.equal(s.absent, 1);
+  assert.equal(s.b11to30, 1);
+  assert.equal(s.rows.length, 3);
+  assert.equal("liveDays" in s, false);
 });
 
-test('AS-L2: computeCompanyKpis ignores live rows, reports them separately', () => {
-  const official = [row({}), row({ date: '2026-06-02', status: 'Absent - Unexplained', bucket: 'absent', entry_time: null })];
-  const live = [row({ date: '2026-06-03', status: 'Live', minutes_late: 7, live: true })];
-  const before = computeCompanyKpis(official);
-  const after = computeCompanyKpis([...official, ...live]);
-  assert.deepEqual({ ...after, liveDays: undefined, liveLate: undefined }, { ...before, liveDays: undefined, liveLate: undefined });
-  assert.equal(after.totalRows, 2);
-  assert.equal(after.liveDays, 1);
-  assert.equal(after.liveLate, 1);
+test("AS-C2: computeCompanyKpis counts every row and has no live fields", () => {
+  const k = computeCompanyKpis([
+    row({}),
+    row({ date: "2026-06-02", status: "Absent - Unexplained", bucket: "absent", entry_time: null }),
+    row({ date: "2026-06-03", status: "Late - Unreported", bucket: "late_1to10", minutes_late: 7, period_name: "" }),
+  ]);
+  assert.equal(k.totalRows, 3);
+  assert.equal(k.lateDays, 1);
+  assert.equal(k.absent, 1);
+  assert.equal(k.daysTracked, 3);
+  assert.equal("liveDays" in k, false);
 });

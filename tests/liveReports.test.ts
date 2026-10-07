@@ -1,4 +1,4 @@
-// Attendance Reports live days + Warm look (prompt 3 of 2026-10-06 live attendance).
+// Attendance Reports: days payroll has not processed yet are counted (2026-10-07), no Live tag.
 // Static source checks: the logic itself is unit-tested in liveAttendance.test.ts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,50 +17,46 @@ test('LR1: one extra Teramind loader, flat params with viewAs, only for the live
   assert.equal((src.match(/useLoadAction\(/g) ?? []).length, 8, 'seven official loaders + one Teramind loader');
 });
 
-test('LR2: liveWindow waits for periods, uses Eastern today; applyLiveDays runs after the report', () => {
+test('LR2: liveWindow waits for periods, uses Eastern today; liveReport runs on the built report', () => {
   const src = read(REPORT);
   assert.match(src, /const tmToday\s+= easternDate\(Date\.now\(\)\);/);
   assert.match(src, /loadingPeriods \? null\s*: liveWindow\(\(rawPeriods as ReportPeriod\[\]\) \?\? \[\], safeFrom, safeTo, tmToday\)/);
-  const build = src.indexOf('buildAttendanceReport({');
-  const apply = src.indexOf('applyLiveDays({');
-  assert.ok(build > 0 && apply > build, 'applyLiveDays decorates the built report');
-  assert.match(src, /helpers: \{ parseTimeToMinutes, whyFor \}/);
-  // A Teramind error shows official days only, and so does the moment before THIS window's
-  // Teramind rows have arrived (no flash of "No records yet").
-  assert.match(src, /if \(!win \|\| errTm \|\| tmFor !== winKey\) return officialRows;/);
+  const build = src.indexOf('const main = buildAttendanceReport(input);');
+  const live = src.indexOf('return liveReport({');
+  assert.ok(build > 0 && live > build, 'liveReport takes the built report');
+  assert.match(src, /if \(!win \|\| errTm\) return main;/, 'a Teramind error counts processed days only');
+  assert.match(src, /tmRows: \(rawTm as ActivityDayRow\[\]\) \?\? \[\], build: buildAttendanceReport,/);
+  // The page keeps loading until THIS window's Teramind rows have arrived: no flash of numbers
+  // without the unprocessed days.
+  assert.match(src, /\(win !== null && \(loadingTm \|\| \(!errTm && tmFor !== winKey\)\)\)/);
   assert.match(src, /else if \(tmWasLoading\.current\) \{ tmWasLoading\.current = false; setTmFor\(winKey\); \}/);
+  assert.doesNotMatch(src, /applyLiveDays|liveSummary|whyFor/);
 });
 
-test('LR3: KPIs unchanged from before live days; live line from liveSummary when there are live days', () => {
+test('LR3: KPIs from every row; no live line', () => {
   const src = read(REPORT);
-  // Live rows keep their verdict: not_processed is never counted, PTO / permission / holiday
-  // still are (as before) — so the KPIs take all rows, not a live-filtered list (Saul's call).
   assert.match(src, /const kpis = useMemo\(\(\) => reportRowsToKpis\(rows\), \[rows\]\);/);
+  assert.doesNotMatch(src, /Live, not yet processed|no records yet|LiveBadge/);
   const table = read(`${A}AttendanceReportTable.tsx`);
   assert.match(table, /absent_reported_on_time: 'bg-blue-50 text-blue-700'/, 'reported ahead stays blue');
   assert.match(table, /absent_reported_late:    'bg-orange-100 text-orange-800'/, 'reported after shift stays orange');
-  assert.match(src, /const live = useMemo\(\(\) => liveSummary\(rows\), \[rows\]\);/);
-  assert.match(src, /\{live\.days > 0 && \(/);
-  assert.match(src, /Live, not yet processed: \{live\.days\} day\{live\.days === 1 \? '' : 's'\}/);
-  assert.match(src, /\{live\.late\} late\{' · '\}\{live\.noRecords\} no records yet/);
 });
 
-test('LR4: table and cards show the Live tag and the live label for r.live', () => {
-  const table = read(`${A}AttendanceReportTable.tsx`);
-  assert.match(table, /\{r\.live \? \(/);
-  assert.match(table, /<LiveBadge \/>\s*<span className=\{`text-\[11px\] font-semibold \$\{liveLabelCls\(r\.live\)\}`\}>\{r\.live\.label\}<\/span>/);
-  assert.match(table, /r\.live\.kind === 'worked' && r\.live\.why && <WhyChipBadge chip=\{r\.live\.why\} \/>/);
+test('LR4: table and cards show every day like a processed one — no Live tag, no dashed border', () => {
+  for (const f of ['AttendanceReportTable.tsx', 'AttendanceReportStrips.tsx']) {
+    const src = read(A + f);
+    assert.doesNotMatch(src, /LiveBadge|LiveInfo|\b(r|row|rows)\.live\b|liveInOut|liveTone|border-dashed|Live ·|No Teramind records/, f);
+  }
   const strips = read(`${A}AttendanceReportStrips.tsx`);
-  assert.match(strips, /const frame = live \? 'border-dashed border-slate-400' : 'border-slate-200';/);
-  assert.match(strips, /\{live \? live\.label : CARD_LABEL\[row\.verdict\]\}/);
-  const badge = read(`${A}LiveBadge.tsx`);
-  assert.match(badge, /export default function LiveBadge/);
-  assert.match(badge, /\$\{exit\} so far/);
-  assert.match(badge, /\$\{exit\} \+1d/);
+  assert.match(strips, /const t = TONE\[VERDICT_TONE\[row\.verdict\]\];/);
+  assert.match(strips, /\{CARD_LABEL\[row\.verdict\]\}/);
+  assert.match(strips, /bg-white border border-slate-200 border-t-\[3px\]/);
+  const table = read(`${A}AttendanceReportTable.tsx`);
+  assert.match(table, /\{VERDICT_LABEL\[r\.verdict\]\}/);
 });
 
 test('LR5: Reports use the Warm look and stay under 15 KB', () => {
-  for (const f of ['AttendanceReport.tsx', 'AttendanceReportTable.tsx', 'AttendanceReportStrips.tsx', 'LiveBadge.tsx']) {
+  for (const f of ['AttendanceReport.tsx', 'AttendanceReportTable.tsx', 'AttendanceReportStrips.tsx']) {
     const src = read(A + f);
     assert.doesNotMatch(src, /uppercase/, `${f}: Title Case, never ALL CAPS`);
     assert.doesNotMatch(src, /#2AA876/i, `${f}: old Classic teal`);
@@ -76,5 +72,7 @@ test('LR5: Reports use the Warm look and stay under 15 KB', () => {
   assert.match(table, /import \{ fmtTime \} from '@\/app\/lib\/fmtTime';/);
   assert.match(table, /fmtDay\(r\.date, thisYear\)/);
   assert.doesNotMatch(table, /toLocaleDateString|new Date\(/, 'dates via fmtDay, no Date objects');
-  assert.match(read(`${A}LiveBadge.tsx`), /\(m < 60 \? `\$\{m\} min` : fmtDuration\(m\)\)/);
+  for (const f of ['AttendanceReportTable.tsx', 'AttendanceReportStrips.tsx']) {
+    assert.match(read(A + f), /const fmtMins = \(m: number\): string => \(m < 60 \? `\$\{m\} min` : fmtDuration\(m\)\);/, f);
+  }
 });

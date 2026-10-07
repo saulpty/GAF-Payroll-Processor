@@ -72,7 +72,7 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
   const rows = (rawRows as AttendanceRow[]) ?? [];
   const emps = (empList as EmpInfo[]) ?? [];
 
-  // Live days (not processed yet, from Teramind) are appended; attendanceStats never counts them.
+  // Days payroll has not processed yet (from Teramind) are appended and counted like any day.
   const live = useLiveListRows({
     dateFrom: safeFrom, dateTo: safeTo, viewAs,
     employees: empList as unknown as ReportEmployee[], official: rows,
@@ -116,13 +116,14 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
 
   const panelStats = panelEmail ? empStats.find(s => s.email === panelEmail) ?? null : null;
   const panelEmpId = panelEmail ? Number((empMap.get(panelEmail) as { id?: number } | undefined)?.id) : NaN;
-  const loading = loadingRows || loadingEmps;
+  // Wait for those days too, so the numbers never flash without them.
+  const loading = loadingRows || loadingEmps || live.loading;
 
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="flex-1 overflow-auto px-4 py-4 w-full">
         <div className="w-full">
-          {loading && rows.length === 0 && (
+          {loading && (
             <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
               <Activity className="w-5 h-5 animate-pulse" />
               Loading attendance data…
@@ -135,12 +136,12 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
             </div>
           )}
 
-          {(!loading || rows.length > 0) && (
+          {!loading && (
             <>
               <AttendanceKpis kpis={kpis} />
               {live.error && (
                 <div className="-mt-2 mb-4 px-1 text-xs text-slate-500">
-                  Live days could not be loaded from Teramind. Showing processed days only.
+                  Teramind could not be loaded, so days payroll has not processed yet are not counted.
                 </div>
               )}
 

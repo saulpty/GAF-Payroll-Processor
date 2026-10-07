@@ -1,31 +1,30 @@
-// Live days: Attendance List / Reports days that Process Payroll has not written yet,
-// filled from Teramind. A payroll_entries row ALWAYS wins. Live rows keep their official
-// verdict (not_processed, or pto / permission / holiday from coverage), so no KPI counts them.
+// Live days: Attendance List / Reports days that Process Payroll has not written yet.
+// Decision 2026-10-07 (Saul): they COUNT, exactly as payroll would count them, with no Live tag.
+// How: each such day gets a stand-in payroll row built from Teramind (livePayrollRows), the way
+// classificationEngine would write it, and the window is treated as processed (livePeriod).
+// buildAttendanceReport then applies its usual rules: late / on time, forms, PTO, holidays,
+// unexplained absence. A real payroll_entries row ALWAYS wins. Today without punches is never
+// counted (the day is not over).
 //
 // NO RUNTIME IMPORTS — node --test cannot resolve extension-less imports (see reportKpis.ts).
-// whyFor (activityDays.ts) and parseTimeToMinutes (classificationEngine.ts) are injected.
+// buildAttendanceReport and parseTimeToMinutes are injected by the caller.
 // Dates are 'YYYY-MM-DD' strings compared as strings; no Date objects anywhere.
 
 import type {
-  ReportRow, ReportPayrollRow, ReportEmployee, ReportRequest, ReportPeriod, LiveInfo,
+  ReportRow, ReportPayrollRow, ReportPeriod, ReportInput, ReportOutput, ReportSummary,
+  ReportEmployee,
 } from './attendanceReportTypes';
-import type { ActivityDayRow, WhyChip } from './activityTypes';
-import type { AttendanceRow } from './attendanceStats';
+import type { ActivityDayRow } from './activityTypes';
 
 export type LiveWindow = { from: string; to: string };
 
-export type LiveHelpers = {
-  parseTimeToMinutes(t: string): number;
-  whyFor(a: {
-    reportRow: ReportRow | null; requests: ReportRequest[];
-    scheduled: boolean; hasActivity: boolean;
-  }): WhyChip | null;
-};
-
-export const NO_RECORDS_LABEL = 'No records yet';
-
-// Verdicts a day outside every processed period can carry. Anything else is official.
-const LIVE_VERDICTS = ['not_processed', 'pto', 'permission', 'holiday'];
+/** Verdicts payroll scores (same list as attendanceReport SCORED_VERDICTS). */
+const SCORED = [
+  'on_time', 'late_reported_on_time', 'late_reported_late', 'late_no_form',
+  'absent_reported_on_time', 'absent_reported_late', 'unexplained_absence',
+];
+/** Verdicts a day can only get from a holiday or a Monday request when it has no payroll row. */
+const COVERED = ['holiday', 'pto', 'permission'];
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const ymd10 = (v: unknown): string => (v == null ? '' : String(v).slice(0, 10));
@@ -60,19 +59,12 @@ function toMin(v: unknown): number | null {
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
 }
 
-/** 485 -> '8:05 AM' (payroll text style). Wraps past midnight: 1560 -> '2:00 AM'. */
+/** 485 -> '8:05 AM' (payroll text style, like formatTime12). Wraps past midnight: 1560 -> '2:00 AM'. */
 export function fmtLiveTime(min: number | null): string | null {
   if (min === null) return null;
   const t = ((Math.trunc(min) % 1440) + 1440) % 1440;
   const h = Math.floor(t / 60), m = t % 60;
   return `${h % 12 === 0 ? 12 : h % 12}:${pad2(m)} ${h < 12 ? 'AM' : 'PM'}`;
-}
-
-/** 485 -> '08:05' — v_attendance_daily's entry_time format (TO_CHAR HH24:MI). */
-function fmt24(min: number | null): string | null {
-  if (min === null) return null;
-  const t = ((Math.trunc(min) % 1440) + 1440) % 1440;
-  return `${pad2(Math.floor(t / 60))}:${pad2(t % 60)}`;
 }
 
 const key = (empId: unknown, date: string): string => `${Number(empId)}|${date}`;
@@ -97,135 +89,127 @@ export function liveWindow(
   return from <= to ? { from, to } : null;
 }
 
-/**
- * Decorate the report's own rows with Teramind data. Never creates a row: a day the
- * report skips (day off, before start date) stays skipped, exactly like official days.
- */
-export function applyLiveDays(input: {
-  rows: ReportRow[]; payrollRows: ReportPayrollRow[]; tmRows: ActivityDayRow[];
-  employees: ReportEmployee[]; requests: ReportRequest[];
-  window: LiveWindow | null; today: string; helpers: LiveHelpers;
-}): ReportRow[] {
-  const win = input.window;
-  const today = ymd10(input.today);
-  if (!win || !isYmd(today)) return input.rows;
-  const { parseTimeToMinutes, whyFor } = input.helpers;
+/** The live window as a processed period, so buildAttendanceReport scores its days. */
+export function livePeriod(win: LiveWindow): ReportPeriod {
+  return { period_name: '', start_date: win.from, end_date: win.to, processed_at: 'live' };
+}
 
+/**
+ * Stand-in payroll rows for the live window, one per row the report already has there
+ * (so day off / before start date stay skipped) with no real payroll row. Mirrors
+ * classificationEngine: holiday keeps punches; a PTO / permission day has no times; an
+ * Absence form → 'Ausencia Justificada.'; no punches and no Absence form →
+ * 'Ausencia Injustificada'; punches → entry/exit and late = entry − scheduled start (Step 7).
+ * Today with no punches gets no row unless a holiday / request covers it.
+ */
+export function livePayrollRows(input: {
+  rows: ReportRow[]; payrollRows: ReportPayrollRow[]; tmRows: ActivityDayRow[];
+  window: LiveWindow | null; today: string; parseTimeToMinutes(t: string): number;
+}): ReportPayrollRow[] {
+  const win = input.window, today = ymd10(input.today);
+  if (!win || !isYmd(today)) return [];
   const paid = new Set<string>();
   for (const p of input.payrollRows ?? []) paid.add(key(p.employee_id, ymd10(p.work_date)));
   const tm = new Map<string, ActivityDayRow>();
   for (const r of input.tmRows ?? []) tm.set(key(r.employee_id, tmYmd(r.work_date)), r);
-  const grace = new Map<number, number>();
-  for (const e of input.employees ?? []) grace.set(Number(e.id), Number(e.grace_minutes) || 0);
-  const reqs = new Map<number, ReportRequest[]>();
-  for (const r of input.requests ?? []) {
-    const list = reqs.get(Number(r.employee_id));
-    if (list) list.push(r); else reqs.set(Number(r.employee_id), [r]);
-  }
 
-  return input.rows.map((r) => {
+  const out: ReportPayrollRow[] = [];
+  for (const r of input.rows ?? []) {
     const date = ymd10(r.date);
-    if (date < win.from || date > win.to || date > today) return r;
+    if (date < win.from || date > win.to || date > today) continue;
     const k = key(r.employeeId, date);
-    if (paid.has(k)) return r;                          // payroll always wins
-    if (!LIVE_VERDICTS.includes(r.verdict)) return r;   // official verdict: leave it
+    if (paid.has(k)) continue;                                  // payroll always wins
+    paid.add(k);
+    const t = tm.get(k) ?? null;
+    const entryMin = toMin(t?.first_min);
+    const covered = COVERED.includes(r.verdict);
+    if (entryMin === null && date === today && !covered) continue;   // day not over
+    const absenceForm = (r.allForms ?? []).some(f => /absence/i.test(String(f.type ?? '')));
+    const away = r.verdict === 'pto' || r.verdict === 'permission';
+    const punched = entryMin !== null && !away;
+    const event = covered ? '' : absenceForm ? 'Ausencia Justificada.'
+      : entryMin === null ? 'Ausencia Injustificada' : '';
+    const late = punched && !covered && !absenceForm
+      ? Math.max(0, entryMin! - input.parseTimeToMinutes(r.scheduledStart)) : 0;
+    out.push({
+      employee_id: Number(r.employeeId),
+      work_date: date,
+      entry_time: punched ? fmtLiveTime(entryMin) : null,
+      exit_time: punched && date !== today ? fmtLiveTime(toMin(t?.last_min)) : null,
+      scheduled_start: r.scheduledStart || null,
+      late_minutes: late,
+      early_leave_minutes: 0,
+      event_type_1: event,
+      documentation: absenceForm ? 'Attendance Form' : '',
+      auto_notes: '',
+      period_name: '',
+    });
+  }
+  return out;
+}
 
-    const row = tm.get(k) ?? null;
-    const requests = reqs.get(Number(r.employeeId)) ?? [];
-    const entryMin = toMin(row?.first_min);
-
-    if (entryMin === null) {
-      const why = whyFor({ reportRow: r, requests, scheduled: true, hasActivity: false });
-      const reason = why !== null && why.kind !== 'none';
-      const live: LiveInfo = {
-        kind: reason ? 'reason' : 'no_records',
-        entryMin: null, exitMin: null, crossesMidnight: false, inProgress: false,
-        minutesLate: 0, lateAfterGrace: 0,
-        label: reason ? why!.label : NO_RECORDS_LABEL,
-        why: reason ? why : why ? { ...why, label: NO_RECORDS_LABEL } : null,
-      };
-      return { ...r, entryTime: null, exitTime: null, minutesLate: 0, live };
+/** Per-employee totals, the same accumulators buildAttendanceReport uses. */
+export function summarizeRows(rows: ReportRow[], employees: ReportEmployee[]): ReportSummary[] {
+  const byEmp = new Map<string, ReportRow[]>();
+  for (const r of rows ?? []) {
+    const id = String(r.employeeId);
+    const list = byEmp.get(id);
+    if (list) list.push(r); else byEmp.set(id, [r]);
+  }
+  return (employees ?? []).map((emp) => {
+    let expectedDays = 0, onTime = 0, lateDays = 0, lateDaysWithoutForm = 0;
+    let unexplainedAbsences = 0, awayDays = 0, formsFiled = 0, formsOnTime = 0;
+    for (const r of byEmp.get(String(emp.id)) ?? []) {
+      const v = r.verdict;
+      if (r.countsToScore) expectedDays++;
+      if (v === 'on_time') onTime++;
+      if (v === 'late_reported_on_time' || v === 'late_reported_late' || v === 'late_no_form') lateDays++;
+      if (v === 'late_no_form') lateDaysWithoutForm++;
+      if (v === 'unexplained_absence') unexplainedAbsences++;
+      if (v === 'pto' || v === 'permission' || v === 'holiday') awayDays++;
+      if ((r.allForms ?? []).length > 0) formsFiled++;
+      if (r.form?.onTime) formsOnTime++;
     }
-
-    const exitMin = toMin(row?.last_min);
-    const lastYmd = tmYmd(row?.last_ymd);
-    const crossesMidnight = lastYmd !== '' && lastYmd > date;
-    const inProgress = date === today;
-    // Same rule as classificationEngine Step 7. A covered day (PTO, holiday...) is never late.
-    const minutesLate = r.verdict === 'not_processed'
-      ? Math.max(0, entryMin - parseTimeToMinutes(r.scheduledStart)) : 0;
-    const lateAfterGrace = Math.max(0, minutesLate - (grace.get(Number(r.employeeId)) ?? 0));
-    const why = whyFor({ reportRow: r, requests, scheduled: true, hasActivity: true });
-    const live: LiveInfo = {
-      kind: 'worked', entryMin, exitMin, crossesMidnight, inProgress,
-      minutesLate, lateAfterGrace,
-      label: inProgress ? 'In progress' : minutesLate > 0 ? `Late ${minutesLate} min` : 'On time',
-      why,
-    };
     return {
-      ...r,
-      entryTime: fmtLiveTime(entryMin),
-      exitTime: inProgress ? null : fmtLiveTime(exitMin),
-      minutesLate,
-      live,
+      employeeId: emp.id, employeeName: emp.name, role: emp.role, manager: emp.manager,
+      expectedDays, onTime, lateDays, lateDaysWithoutForm, unexplainedAbsences, awayDays,
+      formsFiled, formsOnTime,
+      onTimeRate: expectedDays > 0 ? (onTime / expectedDays) * 100 : null,
     };
   });
 }
 
-/** Counts over live rows only. */
-export function liveSummary(rows: ReportRow[]): {
-  days: number; worked: number; late: number; noRecords: number; reasons: number;
-} {
-  let days = 0, worked = 0, late = 0, noRecords = 0, reasons = 0;
-  for (const r of rows ?? []) {
-    const l = r.live;
-    if (!l) continue;
-    days += 1;
-    if (l.kind === 'worked') { worked += 1; if (l.minutesLate > 0) late += 1; }
-    else if (l.kind === 'reason') reasons += 1;
-    else noRecords += 1;
-  }
-  return { days, worked, late, noRecords, reasons };
-}
-
-function bucketOf(late: number): string {
-  if (late <= 0) return 'on_time';
-  if (late <= 10) return 'late_1to10';
-  if (late <= 30) return 'late_11to30';
-  return 'late_830plus';
-}
-
 /**
- * Live ReportRows -> Attendance List rows (v_attendance_daily shape, entry_time 'HH:MM').
- * Status 'Live' and live: true keep them out of every count in attendanceStats.
- * Skips any email|date the official List rows already hold.
+ * The report with live days counted. `main` is buildAttendanceReport(input) as before.
+ * The live window is built again with the stand-in rows (plus any real payroll row in it)
+ * and the window as a processed period; its rows replace main's rows for those dates.
+ * Outside the window nothing changes. Today with no punches stays 'not_processed'.
  */
-export function liveToAttendanceRows(rows: ReportRow[], official: AttendanceRow[]): AttendanceRow[] {
-  const seen = new Set<string>();
-  for (const o of official ?? []) seen.add(`${String(o.email ?? '').trim().toLowerCase()}|${ymd10(o.date)}`);
-  const out: AttendanceRow[] = [];
-  for (const r of rows ?? []) {
-    const l = r.live;
-    if (!l) continue;
-    const k = `${String(r.email ?? '').trim().toLowerCase()}|${ymd10(r.date)}`;
-    if (seen.has(k)) continue;
-    seen.add(k);
-    const worked = l.kind === 'worked';
-    out.push({
-      email: r.email,
-      name: r.employeeName,
-      date: ymd10(r.date),
-      entry_time: worked ? fmt24(l.entryMin) : null,
-      exit_time: worked && !l.inProgress ? fmt24(l.exitMin) : null,
-      status: 'Live',
-      bucket: worked && r.verdict === 'not_processed' ? bucketOf(r.minutesLate) : null,
-      filed_gaf: !!r.form,
-      minutes_late: r.minutesLate,
-      period_name: '',
-      time_off_kind: null,
-      live: true,
-      live_label: l.label,
-    });
-  }
-  return out;
+export function liveReport(a: {
+  input: ReportInput; main: ReportOutput; window: LiveWindow | null; today: string;
+  tmRows: ActivityDayRow[]; build(input: ReportInput): ReportOutput;
+}): ReportOutput {
+  const win = a.window, today = ymd10(a.today);
+  if (!win || !isYmd(today)) return a.main;
+  const inWin = (d: string) => d >= win.from && d <= win.to;
+  const real = (a.input.payrollRows ?? []).filter(p => inWin(ymd10(p.work_date)));
+  const stand = livePayrollRows({
+    rows: a.main.rows, payrollRows: a.input.payrollRows ?? [], tmRows: a.tmRows,
+    window: win, today, parseTimeToMinutes: a.input.helpers.parseTimeToMinutes,
+  });
+  const live = a.build({
+    ...a.input, dateFrom: win.from, dateTo: win.to,
+    payrollRows: [...real, ...stand], periods: [livePeriod(win)],
+  });
+  const worked = new Set<string>();
+  for (const p of [...real, ...stand]) if (p.entry_time != null) worked.add(key(p.employee_id, ymd10(p.work_date)));
+  const realKeys = new Set(real.map(p => key(p.employee_id, ymd10(p.work_date))));
+  const liveRows = live.rows.map((r) => {
+    const k = key(r.employeeId, r.date);
+    if (r.date !== today || worked.has(k) || realKeys.has(k) || !SCORED.includes(r.verdict)) return r;
+    return { ...r, verdict: 'not_processed' as const, countsToScore: false };
+  });
+  const rows = [...a.main.rows.filter(r => !inWin(ymd10(r.date))), ...liveRows];
+  rows.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : x.employeeName.localeCompare(y.employeeName)));
+  return { rows, perEmployee: summarizeRows(rows, a.input.employees), unmatchedForms: a.main.unmatchedForms };
 }

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { EmpStats } from '@/app/lib/attendanceStats';
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import InfoTip from '@/app/components/InfoTip';
-import LiveBadge from './LiveBadge';
 
 type SortKey = keyof EmpStats | 'reporting';
 
@@ -179,15 +178,7 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
               <tr key={s.email}
                 className="border-b border-border/60 hover:bg-slate-50 cursor-pointer transition-colors"
                 onClick={() => onRowClick(s.email)}>
-                <td className="px-3 py-2.5 font-semibold text-foreground whitespace-nowrap">
-                  {s.name}
-                  {s.liveDays > 0 && (
-                    <span className="ml-2 align-middle">
-                      <LiveBadge count={s.liveDays}
-                        title={`${s.liveDays} day${s.liveDays === 1 ? '' : 's'} not processed yet, shown from Teramind${s.liveLate > 0 ? ` (${s.liveLate} late)` : ''}. Not counted in any number.`} />
-                    </span>
-                  )}
-                </td>
+                <td className="px-3 py-2.5 font-semibold text-foreground whitespace-nowrap">{s.name}</td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.role || <span className="text-slate-300">—</span>}</td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.manager || <span className="text-slate-300">—</span>}</td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.schedule}</td>

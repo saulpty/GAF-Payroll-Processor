@@ -4,8 +4,7 @@ import type { ReportRow, Verdict } from '@/app/lib/attendanceReportTypes';
 import { fmtDay } from '@/app/lib/fmtDay';
 import { fmtTime } from '@/app/lib/fmtTime';
 import { VERDICT_LABEL } from './AttendanceReportStrips';
-import LiveBadge, { fmtMins, liveInOut, liveLabelCls } from './LiveBadge';
-import WhyChipBadge from './activity/WhyChipBadge';
+import { fmtDuration } from '@/app/lib/teramindToday';
 
 type Props = { rows: ReportRow[] };
 
@@ -37,13 +36,11 @@ const ALL_VERDICTS: Verdict[] = [
 /** Payroll times are US Eastern "H:MM AM" text; fmtTime only reshapes them ('9:54AM'). */
 const time = (t: string | null) => fmtTime(t) || '—';
 
-/** In / Out cell. Live days use Teramind: exit 'so far' while in progress, '+1d' past midnight. */
+/** House minutes format: '45 min', '1h 15m'. */
+const fmtMins = (m: number): string => (m < 60 ? `${m} min` : fmtDuration(m));
+
+/** In / Out cell. A day still in progress has no exit yet. */
 function inOut(r: ReportRow): string {
-  if (r.live) {
-    if (r.live.kind !== 'worked') return '—';
-    const { entry, exit } = liveInOut(r.live);
-    return exit ? `${entry} → ${exit}` : entry;
-  }
   return `${time(r.entryTime)}${r.exitTime ? ` → ${time(r.exitTime)}` : ''}`;
 }
 
@@ -183,17 +180,9 @@ export function AttendanceReportTable({ rows }: Props) {
                       : <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    {r.live ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <LiveBadge />
-                        <span className={`text-[11px] font-semibold ${liveLabelCls(r.live)}`}>{r.live.label}</span>
-                        {r.live.kind === 'worked' && r.live.why && <WhyChipBadge chip={r.live.why} />}
-                      </span>
-                    ) : (
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold ${VERDICT_BADGE[r.verdict]}`}>
-                        {VERDICT_LABEL[r.verdict]}
-                      </span>
-                    )}
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold ${VERDICT_BADGE[r.verdict]}`}>
+                      {VERDICT_LABEL[r.verdict]}
+                    </span>
                     {/* Subtle flags */}
                     {r.flags.recordedUnexplainedButFormOnFile && (
                       <Info className="w-3 h-3 inline ml-1 text-slate-400"

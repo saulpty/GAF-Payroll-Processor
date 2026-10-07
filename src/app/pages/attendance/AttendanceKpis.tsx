@@ -1,5 +1,4 @@
 import { CompanyKpis } from '@/app/lib/attendanceStats';
-import LiveBadge from './LiveBadge';
 
 type Tone = 'lead' | 'alert' | 'plain';
 type Props = { kpis: CompanyKpis };
@@ -116,15 +115,6 @@ export function AttendanceKpis({ kpis }: Props) {
       <div className="text-[11px] text-muted-foreground px-1">
         On Time ({kpis.onTime}) + Late ({kpis.lateDays}) + Absent ({kpis.absent}) + Time Off ({kpis.excused}) + Permission ({kpis.permission}) = {totalCheck} = Work Days ({kpis.workDays})
       </div>
-      {(kpis.liveDays ?? 0) > 0 && (
-        <div className="flex items-center gap-2 mt-1 px-1 text-xs text-slate-600">
-          <LiveBadge />
-          <span>
-            {kpis.liveDays} live day{kpis.liveDays === 1 ? '' : 's'} not yet counted
-            {(kpis.liveLate ?? 0) > 0 ? ` · ${kpis.liveLate} late` : ''}
-          </span>
-        </div>
-      )}
     </div>
   );
 }

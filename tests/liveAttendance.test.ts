@@ -4,26 +4,23 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   buildAttendanceReport,
-  type ReportEmployee, type ReportPayrollRow, type ReportForm,
+  type ReportEmployee, type ReportPayrollRow, type ReportForm, type ReportInput, type ReportOutput,
   type ReportRequest, type ReportPeriod, type ReportHoliday, type ReportRow,
 } from '../src/app/lib/attendanceReport.ts';
 import {
   isScheduledWorkDay, getSchedule, parseTimeToMinutes,
 } from '../src/app/lib/classificationEngine.ts';
-import { whyFor, type ActivityDayRow } from '../src/app/lib/activityDays.ts';
+import type { ActivityDayRow } from '../src/app/lib/activityDays.ts';
 import { reportRowsToKpis } from '../src/app/lib/reportKpis.ts';
-import { computeCompanyKpis, type AttendanceRow } from '../src/app/lib/attendanceStats.ts';
 import {
-  liveWindow, applyLiveDays, liveSummary, liveToAttendanceRows,
+  liveWindow, livePeriod, livePayrollRows, liveReport, summarizeRows,
 } from '../src/app/lib/liveAttendance.ts';
 
-// Live days (2026-10-06): a day with no payroll_entries row is filled from Teramind and
-// tagged live. A payroll row always wins. Live rows keep their official verdict, so no
-// KPI ever counts them. The report rows come from the real buildAttendanceReport with the
-// engine's helpers; whyFor is the real one from activityDays.ts.
+// Days payroll has not processed yet (decision 2026-10-07): they COUNT exactly as payroll
+// would count them, with no Live tag. liveReport gives each such day a stand-in payroll row
+// from Teramind and lets the real buildAttendanceReport (real engine helpers) decide.
 
 const helpers = { isScheduledWorkDay, getSchedule, parseTimeToMinutes };
-const liveHelpers = { parseTimeToMinutes, whyFor };
 
 // ── fixtures ──────────────────────────────────────────────────────────────
 // Ana works Mon–Fri, 8:00 AM start. Q2-Sep-2026 (Sep 11 → Sep 25) is the newest
@@ -53,6 +50,11 @@ const tm = (date: string, over: Partial<ActivityDayRow> = {}): ActivityDayRow =>
   has_manual: false, accounts: 1, synced_at: '', ghost_min: -1, ...over,
 });
 
+const form = (date: string, type: string, submitted: string, id = 1): ReportForm => ({
+  employee_id: id, form_date: date, form_type: type, reason: 'Car trouble', details: '', eta: '',
+  submitted_at: submitted, employee_email_raw: 'ana@x.com', monday_item_id: '9',
+});
+
 const PERIODS: ReportPeriod[] = [
   { period_name: 'Q1-Sep-2026', start_date: '2026-08-27', end_date: '2026-09-10', processed_at: '2026-09-11' },
   { period_name: 'Q2-Sep-2026', start_date: '2026-09-11', end_date: '2026-09-25', processed_at: '2026-09-26' },
@@ -63,25 +65,29 @@ type Scn = {
   dateFrom?: string; dateTo?: string; today?: string;
   employees?: ReportEmployee[]; payrollRows?: ReportPayrollRow[]; tmRows?: ActivityDayRow[];
   forms?: ReportForm[]; requests?: ReportRequest[]; holidays?: ReportHoliday[];
+  noBasePay?: boolean;
 };
 
-// The processed Sep 25 payroll row is always there, so Ana "has payroll" like a real employee.
-function run(s: Scn = {}): ReportRow[] {
+// The processed Sep 25 payroll row is there unless noBasePay, so Ana "has payroll" like a real employee.
+function both(s: Scn = {}): { input: ReportInput; main: ReportOutput; out: ReportOutput } {
   const dateFrom = s.dateFrom ?? MON, dateTo = s.dateTo ?? '2026-10-09', today = s.today ?? TODAY;
-  const employees = s.employees ?? [emp()];
-  const payrollRows = [pay(), ...(s.payrollRows ?? [])];
-  const requests = s.requests ?? [];
-  const rep = buildAttendanceReport({
-    dateFrom, dateTo, employees, payrollRows, forms: s.forms ?? [], requests,
-    holidays: s.holidays ?? [], periods: PERIODS, dstWindows: DST, helpers,
+  const input: ReportInput = {
+    dateFrom, dateTo, employees: s.employees ?? [emp()],
+    payrollRows: [...(s.noBasePay ? [] : [pay()]), ...(s.payrollRows ?? [])],
+    forms: s.forms ?? [], requests: s.requests ?? [], holidays: s.holidays ?? [],
+    periods: PERIODS, dstWindows: DST, helpers,
+  };
+  const main = buildAttendanceReport(input);
+  const out = liveReport({
+    input, main, window: liveWindow(PERIODS, dateFrom, dateTo, today), today,
+    tmRows: s.tmRows ?? [], build: buildAttendanceReport,
   });
-  return applyLiveDays({
-    rows: rep.rows, payrollRows, tmRows: s.tmRows ?? [], employees, requests,
-    window: liveWindow(PERIODS, dateFrom, dateTo, today), today, helpers: liveHelpers,
-  });
+  return { input, main, out };
 }
+const run = (s: Scn = {}): ReportRow[] => both(s).out.rows;
 const day = (rows: ReportRow[], date: string, id = 1) =>
   rows.find((r) => r.date === date && r.employeeId === id);
+const one = (date: string, s: Scn = {}) => run({ dateFrom: date, dateTo: date, ...s });
 
 // ── liveWindow ────────────────────────────────────────────────────────────
 
@@ -103,203 +109,251 @@ test('LW3: an unprocessed period row does not move the window; no processed peri
   assert.deepEqual(liveWindow([], '2026-09-21', '2026-10-09', TODAY), { from: '2026-09-21', to: TODAY });
 });
 
-// ── payroll wins ─────────────────────────────────────────────────────────
-
-test('LA1: a processed payroll row wins — the day before the window is untouched even with punches', () => {
-  const rows = run({ dateFrom: '2026-09-21', tmRows: [tm('2026-09-24'), tm('2026-09-25')] });
-  const sep24 = day(rows, '2026-09-24')!;      // processed, no payroll row: official absence
-  assert.equal(sep24.verdict, 'unexplained_absence');
-  assert.equal(sep24.live, undefined);
-  assert.equal(sep24.entryTime, null);
-  const sep25 = day(rows, '2026-09-25')!;
-  assert.equal(sep25.verdict, 'on_time');
-  assert.equal(sep25.live, undefined);
-  assert.equal(sep25.entryTime, '8:00 AM');
+test('LW4: livePeriod makes the window a processed period', () => {
+  assert.deepEqual(livePeriod({ from: '2026-09-26', to: TODAY }),
+    { period_name: '', start_date: '2026-09-26', end_date: TODAY, processed_at: 'live' });
 });
 
-test('LA2: a payroll row in an UNPROCESSED period still wins over Teramind', () => {
-  const rows = run({
-    payrollRows: [pay({ work_date: TUE, entry_time: '8:30 AM', late_minutes: 30, period_name: 'Q1-Oct-2026' })],
-    tmRows: [tm(TUE, { first_min: 470 })],
-  });
-  const r = day(rows, TUE)!;
-  assert.equal(r.live, undefined);
-  assert.equal(r.entryTime, '8:30 AM');
-  assert.equal(r.verdict, 'not_processed');
-});
+// ── worked days: late / on time by payroll's rule (entry − scheduled start, no grace) ──
 
-// ── worked days ──────────────────────────────────────────────────────────
-
-test('LA3: unprocessed day with punches at 8:05 → late 5, verdict unchanged, KPIs count nothing', () => {
-  const rows = run({ tmRows: [tm(MON, { first_min: 485, last_min: 965 })] });
+test('LC1: worked 8:05 vs 8:00 start, no form → late_no_form, counted in the KPIs', () => {
+  const rows = one(MON, { tmRows: [tm(MON, { first_min: 485, last_min: 965 })] });
   const r = day(rows, MON)!;
-  assert.equal(r.verdict, 'not_processed');
-  assert.equal(r.countsToScore, false);
+  assert.equal(r.verdict, 'late_no_form');
+  assert.equal(r.countsToScore, true);
+  assert.equal(r.minutesLate, 5);
   assert.equal(r.entryTime, '8:05 AM');
   assert.equal(r.exitTime, '4:05 PM');
-  assert.equal(r.minutesLate, 5);
-  assert.equal(r.live!.kind, 'worked');
-  assert.equal(r.live!.minutesLate, 5);
-  assert.equal(r.live!.lateAfterGrace, 2);
-  assert.equal(r.live!.inProgress, false);
-  assert.equal(r.live!.label, 'Late 5 min');
-  const k = reportRowsToKpis(rows.filter((x) => x.live));
-  assert.equal(k.lateDays, 0);
-  assert.equal(k.absent, 0);
-  assert.equal(k.daysTracked, 0);
+  assert.equal(r.scheduledStart, '8:00 AM');
+  assert.equal('live' in r, false, 'no live tag on the row');
+  const k = reportRowsToKpis(rows);
+  assert.equal(k.lateDays, 1);
+  assert.equal(k.lateUnreported, 1);
+  assert.equal(k.daysTracked, 1);
+  assert.equal(k.avgMinLate, 5);
 });
 
-test('LA4: punches at 7:55 → on time', () => {
-  const r = day(run({ tmRows: [tm(MON, { first_min: 475 })] }), MON)!;
-  assert.equal(r.entryTime, '7:55 AM');
+test('LC2: late with a Tardiness form sent before the shift → late_reported_on_time', () => {
+  const rows = one(MON, { tmRows: [tm(MON)], forms: [form(MON, 'Tardiness', '2026-09-28 07:30')] });
+  assert.equal(day(rows, MON)!.verdict, 'late_reported_on_time');
+  assert.equal(reportRowsToKpis(rows).lateReported, 1);
+  const after = one(MON, { tmRows: [tm(MON)], forms: [form(MON, 'Tardiness', '2026-09-28 09:30')] });
+  assert.equal(day(after, MON)!.verdict, 'late_reported_late');
+});
+
+test('LC3: worked 7:55 → on time; 8:00 sharp → on time (no grace needed)', () => {
+  assert.equal(day(one(MON, { tmRows: [tm(MON, { first_min: 475 })] }), MON)!.verdict, 'on_time');
+  const r = day(one(MON, { tmRows: [tm(MON, { first_min: 480 })] }), MON)!;
+  assert.equal(r.verdict, 'on_time');
   assert.equal(r.minutesLate, 0);
-  assert.equal(r.live!.lateAfterGrace, 0);
-  assert.equal(r.live!.label, 'On time');
 });
 
-test('LA5: midnight-crossing shift (10 PM start) → crossesMidnight, exit 2:00 AM', () => {
+test('LC4: lateness uses the DST-aware schedule (summer pair before Nov 1, winter after)', () => {
+  const az = emp({ dst_start: '9:00 AM', dst_end: '5:00 PM' });   // summer 9, winter 8
+  const sep = day(one(MON, { employees: [az], tmRows: [tm(MON, { first_min: 545 })] }), MON)!;
+  assert.equal(sep.scheduledStart, '9:00 AM');
+  assert.equal(sep.minutesLate, 5);
+  const nov = day(run({
+    dateFrom: '2026-11-02', dateTo: '2026-11-02', today: '2026-11-03', employees: [az],
+    tmRows: [tm('2026-11-02', { first_min: 545 })],
+  }), '2026-11-02')!;
+  assert.equal(nov.scheduledStart, '8:00 AM');
+  assert.equal(nov.minutesLate, 65);
+});
+
+test('LC5: midnight-crossing shift (10 PM start) → on time, exit shown 2:00 AM', () => {
   const night = emp({ id: 2, name: 'Nico', email: 'nico@x.com',
     standard_start: '10:00 PM', standard_end: '6:00 AM', dst_start: '10:00 PM', dst_end: '6:00 AM' });
-  const rows = run({
+  const r = day(one(THU, {
     employees: [night],
     tmRows: [tm(THU, { employee_id: 2, first_min: 1320, last_ymd: ymdInt(FRI), last_min: 120 })],
-  });
-  const r = day(rows, THU, 2)!;
-  assert.equal(r.live!.crossesMidnight, true);
+  }), THU, 2)!;
+  assert.equal(r.verdict, 'on_time');
   assert.equal(r.entryTime, '10:00 PM');
   assert.equal(r.exitTime, '2:00 AM');
   assert.equal(r.minutesLate, 0);
 });
 
-test('LA6: today with punches → inProgress, no exit yet', () => {
-  const r = day(run({ tmRows: [tm(TODAY, { first_min: 478, last_min: 600 })] }), TODAY)!;
-  assert.equal(r.live!.inProgress, true);
-  assert.equal(r.live!.label, 'In progress');
-  assert.equal(r.entryTime, '7:58 AM');
-  assert.equal(r.exitTime, null);
-  assert.equal(r.live!.exitMin, 600);
+// ── past scheduled days with no punches: as payroll would classify them ──
+
+test('LC6: no punches, nothing on file → unexplained absence, counted', () => {
+  const rows = one(WED);
+  const r = day(rows, WED)!;
+  assert.equal(r.verdict, 'unexplained_absence');
+  assert.equal(r.countsToScore, true);
+  assert.equal(r.entryTime, null);
+  const k = reportRowsToKpis(rows);
+  assert.equal(k.absent, 1);
+  assert.equal(k.unreported, 1);
+  assert.equal(k.onTimeRate, 0);
 });
 
-// ── no punches ───────────────────────────────────────────────────────────
-
-test('LA7: no punches + PTO request → reason PTO, verdict pto', () => {
-  const r = day(run({
+test('LC7: PTO request → pto (time off), not scored', () => {
+  const rows = one(WED, {
     requests: [{ employee_id: 1, request_type: 'PTO / Vacation', permission_type: '',
       start_date: WED, end_date: WED, return_date: THU }],
-  }), WED)!;
-  assert.equal(r.verdict, 'pto');
-  assert.equal(r.live!.kind, 'reason');
-  assert.equal(r.live!.label, 'PTO');
-  assert.equal(r.live!.why!.kind, 'pto');
-});
-
-test('LA8: no punches + Monday form → the form type is the reason', () => {
-  const r = day(run({
-    forms: [{ employee_id: 1, form_date: FRI, form_type: 'Absence', reason: 'Car trouble', details: '',
-      eta: '', submitted_at: '2026-10-02 07:30', employee_email_raw: 'ana@x.com', monday_item_id: '9' }],
-  }), FRI)!;
-  assert.equal(r.verdict, 'not_processed');
-  assert.equal(r.live!.kind, 'reason');
-  assert.equal(r.live!.label, 'Absence');
-  assert.equal(r.live!.why!.kind, 'form');
-});
-
-test('LA9: nothing at all → "No records yet", never an absence in either KPI path', () => {
-  const rows = run();
+  });
   const r = day(rows, WED)!;
-  assert.equal(r.verdict, 'not_processed');
-  assert.equal(r.live!.kind, 'no_records');
-  assert.equal(r.live!.label, 'No records yet');
-  assert.equal(r.live!.why!.label, 'No records yet');
-  const live = rows.filter((x) => x.live);
-  const rk = reportRowsToKpis(live);
-  assert.equal(rk.absent, 0);
-  assert.equal(rk.daysTracked, 0);
-  const ck = computeCompanyKpis(liveToAttendanceRows(live, []));
-  assert.equal(ck.absent, 0);
-  assert.equal(ck.daysTracked, 0);
-  assert.equal(ck.totalRows, 0);
-  assert.equal(ck.liveDays, live.length);
+  assert.equal(r.verdict, 'pto');
+  assert.equal(r.coveredBy!.label, 'PTO / Vacation');
+  const k = reportRowsToKpis(rows);
+  assert.equal(k.excused, 1);
+  assert.equal(k.daysTracked, 0);
+  assert.equal(k.workDays, 1);
 });
 
-test('LA10: holiday → reason Holiday', () => {
-  const r = day(run({ holidays: [{ date: MON2, name: 'Feriado' }] }), MON2)!;
-  assert.equal(r.verdict, 'holiday');
-  assert.equal(r.live!.kind, 'reason');
-  assert.equal(r.live!.label, 'Holiday');
-  assert.equal(r.live!.why!.kind, 'holiday');
+test('LC8: Time Off / Permission request → permission', () => {
+  const r = day(one(WED, {
+    requests: [{ employee_id: 1, request_type: 'Time Off / Permission', permission_type: '',
+      start_date: WED, end_date: WED, return_date: null }],
+  }), WED)!;
+  assert.equal(r.verdict, 'permission');
 });
 
-// ── edges of the window ──────────────────────────────────────────────────
-
-test('LA11: future dates are untouched, even if Teramind somehow has a row', () => {
-  const rows = run({ tmRows: [tm('2026-10-07')] });
-  const r = day(rows, '2026-10-07')!;
-  assert.equal(r.live, undefined);
-  assert.equal(r.entryTime, null);
-  assert.equal(r.verdict, 'not_processed');
+test('LC9: holiday → holiday, even with punches', () => {
+  assert.equal(day(one(MON2, { holidays: [{ date: MON2, name: 'Feriado' }] }), MON2)!.verdict, 'holiday');
+  const worked = day(one(MON2, { holidays: [{ date: MON2, name: 'Feriado' }], tmRows: [tm(MON2)] }), MON2)!;
+  assert.equal(worked.verdict, 'holiday');
+  assert.equal(worked.entryTime, '8:05 AM');
 });
 
-test('LA12: only decorates existing rows — a weekend with punches gets no row, like official days', () => {
-  const rows = run({ tmRows: [tm(SAT)] });
-  assert.equal(day(rows, SAT), undefined);
+test('LC10: Absence form, no punches → Ausencia Justificada. → time off, as payroll writes it', () => {
+  const rows = one(FRI, { forms: [form(FRI, 'Absence', '2026-10-02 07:30')] });
+  const r = day(rows, FRI)!;
+  assert.equal(r.verdict, 'pto');
+  assert.equal(r.coveredBy!.label, 'Ausencia Justificada.');
+  assert.equal(reportRowsToKpis(rows).absent, 0);
 });
 
-test('LA13: no window → rows returned unchanged', () => {
-  const rows = run({ dateFrom: '2026-09-01', dateTo: '2026-09-25', tmRows: [tm('2026-09-24')] });
-  assert.equal(rows.some((r) => r.live), false);
+test('LC11: Tardiness form but no punches → absence reported (payroll: Ausencia Injustificada + form)', () => {
+  const r = day(one(FRI, { forms: [form(FRI, 'Tardiness', '2026-10-02 07:30')] }), FRI)!;
+  assert.equal(r.verdict, 'absent_reported_on_time');
+  assert.equal(r.flags.recordedUnexplainedButFormOnFile, true);
 });
 
-// ── summary + List conversion ────────────────────────────────────────────
+// ── today ────────────────────────────────────────────────────────────────
 
-test('LS1: liveSummary counts live rows only', () => {
+test('LC12: TODAY with no punches yet → not counted (day not over), even with an Absence form', () => {
+  for (const forms of [[], [form(TODAY, 'Absence', '2026-10-06 07:00')]]) {
+    const rows = one(TODAY, { forms });
+    const r = day(rows, TODAY)!;
+    assert.equal(r.verdict, 'not_processed');
+    assert.equal(r.countsToScore, false);
+    assert.equal(reportRowsToKpis(rows).workDays, 0);
+  }
+});
+
+test('LC13: TODAY with punches → counted by its entry; no exit yet', () => {
+  const rows = one(TODAY, { tmRows: [tm(TODAY, { first_min: 490, last_min: 600 })] });
+  const r = day(rows, TODAY)!;
+  assert.equal(r.verdict, 'late_no_form');
+  assert.equal(r.minutesLate, 10);
+  assert.equal(r.entryTime, '8:10 AM');
+  assert.equal(r.exitTime, null);
+  assert.equal(reportRowsToKpis(rows).lateDays, 1);
+  assert.equal(day(one(TODAY, { tmRows: [tm(TODAY, { first_min: 470 })] }), TODAY)!.verdict, 'on_time');
+});
+
+test('LC14: TODAY covered by PTO stays PTO (as before)', () => {
+  const r = day(one(TODAY, {
+    requests: [{ employee_id: 1, request_type: 'PTO / Vacation', permission_type: '',
+      start_date: TODAY, end_date: TODAY, return_date: null }],
+  }), TODAY)!;
+  assert.equal(r.verdict, 'pto');
+});
+
+// ── payroll wins, window edges ──────────────────────────────────────────
+
+test('LC15: a payroll row in the window wins over Teramind and nothing is duplicated', () => {
   const rows = run({
-    tmRows: [tm(MON, { first_min: 485 }), tm(TUE, { first_min: 470 })],
-    holidays: [{ date: MON2, name: 'Feriado' }],
+    payrollRows: [pay({ work_date: TUE, entry_time: '8:30 AM', late_minutes: 30, period_name: 'Q1-Oct-2026' })],
+    tmRows: [tm(TUE, { first_min: 470 })],
   });
-  // MON late, TUE on time, WED THU FRI no records, MON2 holiday, TODAY no records
-  assert.deepEqual(liveSummary(rows), { days: 7, worked: 2, late: 1, noRecords: 4, reasons: 1 });
+  const tue = rows.filter((r) => r.date === TUE);
+  assert.equal(tue.length, 1);
+  assert.equal(tue[0].entryTime, '8:30 AM');
+  assert.equal(tue[0].minutesLate, 30);
+  assert.equal(tue[0].verdict, 'late_no_form');
+  const keys = rows.map((r) => `${r.employeeId}|${r.date}`);
+  assert.equal(new Set(keys).size, keys.length, 'one row per employee and day');
 });
 
-test('LL1: liveToAttendanceRows → List rows: HH:MM times, status Live, no period, filed_gaf from form', () => {
-  const rows = run({
-    tmRows: [tm(MON, { first_min: 485, last_min: 965 })],
-    forms: [{ employee_id: 1, form_date: MON, form_type: 'Tardiness', reason: '', details: '',
-      eta: '', submitted_at: '2026-09-28 07:30', employee_email_raw: 'ana@x.com', monday_item_id: '1' }],
-  });
-  const list = liveToAttendanceRows(rows, []);
-  const mon = list.find((r) => r.date === MON)!;
-  assert.equal(mon.entry_time, '08:05');
-  assert.equal(mon.exit_time, '16:05');
-  assert.equal(mon.status, 'Live');
-  assert.equal(mon.live, true);
-  assert.equal(mon.live_label, 'Late 5 min');
-  assert.equal(mon.period_name, '');
-  assert.equal(mon.filed_gaf, true);
-  assert.equal(mon.minutes_late, 5);
-  assert.equal(mon.bucket, 'late_1to10');
-  const wed = list.find((r) => r.date === WED)!;
-  assert.equal(wed.entry_time, null);
-  assert.equal(wed.live_label, 'No records yet');
-  assert.equal(wed.filed_gaf, false);
-  assert.equal(list.some((r) => r.date === '2026-09-25'), false);   // official payroll day
+test('LC16: days before the window are exactly the processed report; future days stay uncounted', () => {
+  const { main, out } = both({ dateFrom: '2026-09-21', tmRows: [tm('2026-09-24'), tm('2026-10-07')] });
+  const before = (rows: ReportRow[]) => rows.filter((r) => r.date < '2026-09-26');
+  assert.deepEqual(before(out.rows), before(main.rows));
+  assert.equal(day(out.rows, '2026-09-24')!.verdict, 'unexplained_absence');   // processed, no payroll row
+  assert.equal(day(out.rows, '2026-09-25')!.verdict, 'on_time');
+  for (const d of ['2026-10-07', '2026-10-08', '2026-10-09']) {
+    const r = day(out.rows, d)!;
+    assert.equal(r.verdict, 'not_processed');
+    assert.equal(r.entryTime, null);
+  }
+  assert.equal(day(out.rows, SAT), undefined, 'a day off never becomes a row');
 });
 
-test('LL2: liveToAttendanceRows skips any email|date the official rows already have', () => {
-  const rows = run({ tmRows: [tm(MON)] });
-  const official: AttendanceRow[] = [{
-    email: 'ANA@x.com', name: 'Ana', date: MON + 'T00:00:00.000Z', entry_time: '08:00', status: 'On Time',
-    bucket: 'on_time', filed_gaf: false, minutes_late: 0, period_name: 'Q1-Oct-2026', time_off_kind: null,
-  }];
-  const list = liveToAttendanceRows([...rows, ...rows], official);
-  assert.equal(list.some((r) => r.date === MON), false);
-  const dates = list.map((r) => r.date);
-  assert.equal(new Set(dates).size, dates.length, 'no duplicates');
+test('LC17: an employee payroll never ran for keeps processed days uncounted; live days count', () => {
+  const { out } = both({ dateFrom: '2026-09-21', noBasePay: true, tmRows: [tm(MON)] });
+  assert.equal(day(out.rows, '2026-09-22')!.verdict, 'not_processed');
+  assert.equal(day(out.rows, MON)!.verdict, 'late_no_form');
+  assert.equal(day(out.rows, WED)!.verdict, 'unexplained_absence');
+});
+
+test('LC18: start date respected — no rows before it', () => {
+  const rows = run({ employees: [emp({ start_date: THU })], tmRows: [tm(MON), tm(THU)] });
+  assert.equal(day(rows, MON), undefined);
+  assert.equal(day(rows, THU)!.verdict, 'late_no_form');
+});
+
+test('LC19: no window → main report returned unchanged', () => {
+  const { main, out } = both({ dateFrom: '2026-09-01', dateTo: '2026-09-25', tmRows: [tm('2026-09-24')] });
+  assert.equal(out, main);
+});
+
+// ── summaries ────────────────────────────────────────────────────────────
+
+test('LS1: summarizeRows reproduces buildAttendanceReport perEmployee', () => {
+  const { input, main } = both({
+    dateFrom: '2026-09-01',
+    payrollRows: [pay({ work_date: '2026-09-24', entry_time: '8:20 AM', late_minutes: 20 })],
+    forms: [form('2026-09-24', 'Tardiness', '2026-09-24 07:00')],
+    holidays: [{ date: '2026-09-15', name: 'Feriado' }],
+  });
+  assert.deepEqual(summarizeRows(main.rows, input.employees), main.perEmployee);
+});
+
+test('LS2: perEmployee after liveReport counts the unprocessed days', () => {
+  const { out } = both({ tmRows: [tm(MON), tm(TUE, { first_min: 470 })] });
+  const [s] = out.perEmployee;
+  // MON late, TUE on time, WED THU FRI MON2 absent, TODAY not counted, Oct 7-9 future
+  assert.equal(s.expectedDays, 6);
+  assert.equal(s.onTime, 1);
+  assert.equal(s.lateDays, 1);
+  assert.equal(s.unexplainedAbsences, 4);
+});
+
+test('LP0: livePayrollRows — Teramind text times, engine events, no row for payroll / today without punches', () => {
+  const { main } = both({
+    payrollRows: [pay({ work_date: TUE, period_name: 'Q1-Oct-2026' })],
+    forms: [form(THU, 'Absence', '2026-10-01 07:00')],
+  });
+  const rows = livePayrollRows({
+    rows: main.rows, payrollRows: [pay(), pay({ work_date: TUE })], tmRows: [tm(MON)],
+    window: { from: '2026-09-26', to: TODAY }, today: TODAY, parseTimeToMinutes,
+  });
+  const at = (d: string) => rows.find((r) => r.work_date === d);
+  assert.equal(at(TUE), undefined, 'payroll wins');
+  assert.equal(at(TODAY), undefined, 'today without punches');
+  assert.equal(at(MON)!.entry_time, '8:05 AM');
+  assert.equal(at(MON)!.late_minutes, 5);
+  assert.equal(at(WED)!.event_type_1, 'Ausencia Injustificada');
+  assert.equal(at(THU)!.event_type_1, 'Ausencia Justificada.');
+  assert.equal(at(THU)!.documentation, 'Attendance Form');
 });
 
 // ── source guards ────────────────────────────────────────────────────────
 
-for (const f of ['liveAttendance.ts', 'attendancePeriods.ts']) {
+for (const f of ['liveAttendance.ts', 'liveListRows.ts', 'attendancePeriods.ts']) {
   test(`LG: ${f} has no runtime import, no new Date(, and stays under 15,000 bytes`, () => {
     const p = fileURLToPath(new URL(`../src/app/lib/${f}`, import.meta.url));
     const src = readFileSync(p, 'utf8');
@@ -315,11 +369,12 @@ for (const f of ['liveAttendance.ts', 'attendancePeriods.ts']) {
 }
 
 for (const f of ['attendanceReportTypes.ts', 'attendanceStats.ts']) {
-  test(`LG: ${f} stays under 15,000 bytes and gains no runtime import`, () => {
+  test(`LG: ${f} stays under 15,000 bytes, gains no runtime import, carries no live fields`, () => {
     const src = readFileSync(fileURLToPath(new URL(`../src/app/lib/${f}`, import.meta.url)), 'utf8');
     assert.ok(Buffer.byteLength(src) < 15000);
     for (const line of src.split('\n')) {
       if (/^\s*import\s/.test(line)) assert.match(line, /^\s*import\s+type\s/, `runtime import: ${line}`);
     }
+    assert.doesNotMatch(src, /LiveInfo|live\?:|live_label|liveDays|liveLate/);
   });
 }

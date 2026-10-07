@@ -14,14 +14,7 @@ export type AttendanceRow = {
   minutes_late: number;
   period_name: string;
   time_off_kind: string | null;
-  /** Live day: no payroll row yet, filled from Teramind (liveAttendance.ts). Never counted. */
-  live?: boolean;
-  live_label?: string;
 };
-
-/** Live days are shown but never counted in any number or rate. */
-const official = (rows: AttendanceRow[]) => rows.filter(r => !r.live);
-const liveLateOf = (rows: AttendanceRow[]) => rows.filter(r => r.live && r.minutes_late > 0).length;
 
 export type EmpInfo = {
   email: string;
@@ -63,10 +56,7 @@ export type EmpStats = {
   b31plus: number;
   /** GAF form reporting: filed = days with filed_gaf=true, needed = late+absent days */
   filing: { filed: number; needed: number };
-  /** Live (not yet processed) days, and how many of them Teramind shows as late. Not in any rate. */
-  liveDays: number;
-  liveLate: number;
-  rows: AttendanceRow[];   // includes live rows
+  rows: AttendanceRow[];
 };
 
 export function computeEmployeeStats(
@@ -80,9 +70,8 @@ export function computeEmployeeStats(
     if (emails.has(r.email)) byEmp.get(r.email)!.push(r);
   });
 
-  return Array.from(byEmp.entries()).map(([email, allRows]) => {
+  return Array.from(byEmp.entries()).map(([email, empRows]) => {
     const info = empMap.get(email);
-    const empRows = official(allRows);
     // active = rows that count toward on-time rate (excused & permission excluded)
     const active  = empRows.filter(r => !isExcluded(r.status));
     // arrived = active rows that are NOT an unexplained absence (have real arrival)
@@ -115,9 +104,7 @@ export function computeEmployeeStats(
       reported, unreported, excused, permission, absent, daysWorked,
       avgMinLate, pctOnTime, b1to10, b11to30, b31plus,
       filing: { filed: filedCount, needed: neededCount },
-      liveDays: allRows.length - empRows.length,
-      liveLate: liveLateOf(allRows),
-      rows: allRows,
+      rows: empRows,
     };
   });
 }
@@ -138,13 +125,9 @@ export type CompanyKpis = {
   avgMinLate: number;      // over late days only
   onTimeRate: number;
   lateRate: number;
-  /** List only: live days shown alongside, never counted above. */
-  liveDays?: number;
-  liveLate?: number;
 };
 
-export function computeCompanyKpis(allRows: AttendanceRow[]): CompanyKpis {
-  const rows    = official(allRows);
+export function computeCompanyKpis(rows: AttendanceRow[]): CompanyKpis {
   const active  = rows.filter(r => !isExcluded(r.status));
   const arrived = active.filter(r => !isAbsent(r.status));
   const onTime        = arrived.filter(r => r.status === 'On Time').length;
@@ -168,7 +151,6 @@ export function computeCompanyKpis(allRows: AttendanceRow[]): CompanyKpis {
   return {
     daysTracked, onTime, lateReported, lateUnreported, lateDays, excused, permission, absent,
     reported, unreported, totalRows, workDays, avgMinLate, onTimeRate, lateRate,
-    liveDays: allRows.length - rows.length, liveLate: liveLateOf(allRows),
   };
 }
 

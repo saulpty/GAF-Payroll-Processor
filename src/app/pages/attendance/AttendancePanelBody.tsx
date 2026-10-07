@@ -75,7 +75,7 @@ function ArrivalTooltip({ active, payload }: ScatterTooltipProps) {
 }
 
 export default function AttendancePanelBody({ stats }: Props) {
-  const scatterPoints = computeArrivalScatter(stats.rows.filter(r => !r.live)).map(p => ({
+  const scatterPoints = computeArrivalScatter(stats.rows).map(p => ({
     ...p,
     minutesSinceMidnight: p.minutesSinceMidnight ?? (
       p.status === 'Absent - Unexplained'       ? ABSENT_Y  :

@@ -2,9 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLoadAction } from '@uibakery/data';
 import { isScheduledWorkDay, getSchedule, parseTimeToMinutes } from '@/app/lib/classificationEngine';
 import { buildAttendanceReport } from '@/app/lib/attendanceReport';
-import { liveWindow, applyLiveDays, liveToAttendanceRows } from '@/app/lib/liveAttendance';
+import { liveWindow, liveReport } from '@/app/lib/liveAttendance';
 import { liveListRows, NO_LIVE_WINDOW } from '@/app/lib/liveListRows';
-import { whyFor } from '@/app/lib/activityDays';
 import type { ActivityDayRow } from '@/app/lib/activityDays';
 import type { ReportEmployee, ReportForm, ReportRequest, ReportHoliday, ReportPeriod } from '@/app/lib/attendanceReportTypes';
 import type { AttendanceRow } from '@/app/lib/attendanceStats';
@@ -20,10 +19,11 @@ import loadDstCalendarAction                from '@/actions/loadDstCalendar';
 type DstRow = { year: number; us_dst_start: string; us_dst_end: string };
 
 /**
- * Attendance List live rows (2026-10-06): days payroll has not processed yet, from Teramind.
- * Only the live window is loaded (after the newest processed period, up to today). With no
- * window every ranged loader gets NO_LIVE_WINDOW and returns nothing. Never blocks the page:
- * live rows are never counted, so the List can show its official numbers first.
+ * Attendance List rows for days payroll has not processed yet, from Teramind (2026-10-07: they
+ * count, exactly as payroll would count them). Only the live window is loaded (after the newest
+ * processed period, up to today). With no window every ranged loader gets NO_LIVE_WINDOW and
+ * returns nothing. `loading` stays true until the window's own data has arrived, so the page can
+ * wait and its numbers never flash without these days.
  */
 export function useLiveListRows({ dateFrom, dateTo, viewAs, employees, official }: {
   dateFrom: string; dateTo: string; viewAs: string;
@@ -53,12 +53,10 @@ export function useLiveListRows({ dateFrom, dateTo, viewAs, employees, official 
   const [rawHols,  loadingHols]  = useLoadAction(loadHolidaysAction, [] as ReportHoliday[]);
   const [rawDst,   loadingDst]   = useLoadAction(loadDstCalendarAction, [] as DstRow[]);
 
-  const loading = loadingPeriods || (win !== null &&
-    (loadingTm || loadingForms || loadingReqs || loadingHols || loadingDst));
   const error = !!(errPeriods || (win !== null && (errTm || errForms || errReqs)));
 
-  // Build live rows only once the window's own data has arrived (no one-render flash of
-  // "No records yet" with the previous, empty results).
+  // Build rows only once the window's own data has arrived (no one-render flash with the
+  // previous, empty results).
   const winKey = win ? `${win.from}|${win.to}` : '';
   const busy = loadingTm || loadingForms || loadingReqs;
   const [dataFor, setDataFor] = useState('');
@@ -67,6 +65,9 @@ export function useLiveListRows({ dateFrom, dateTo, viewAs, employees, official 
     if (busy) wasBusy.current = true;
     else if (wasBusy.current) { wasBusy.current = false; setDataFor(winKey); }
   }, [busy, winKey]);
+
+  const loading = loadingPeriods || (win !== null && !error &&
+    (loadingTm || loadingForms || loadingReqs || loadingHols || loadingDst || dataFor !== winKey));
 
   const rows = useMemo(() => {
     if (loading || error || !win || dataFor !== winKey) return [] as AttendanceRow[];
@@ -82,7 +83,7 @@ export function useLiveListRows({ dateFrom, dateTo, viewAs, employees, official 
       tmRows: (rawTm as ActivityDayRow[]) ?? [],
       official: official ?? [],
       deps: {
-        buildAttendanceReport, applyLiveDays, liveToAttendanceRows, whyFor,
+        buildAttendanceReport, liveReport,
         reportHelpers: { isScheduledWorkDay, getSchedule, parseTimeToMinutes },
       },
     });

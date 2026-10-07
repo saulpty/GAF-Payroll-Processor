@@ -6,7 +6,6 @@ import { STATUS_COLORS } from './AttendancePanelBody';
 import WhyChipBadge from './activity/WhyChipBadge';
 import SourceBadge from './activity/SourceBadge';
 import GhostMark from './activity/GhostMark';
-import LiveBadge, { fmtMins } from './LiveBadge';
 
 type Props = {
   days: ActivityDay[];
@@ -15,6 +14,9 @@ type Props = {
 
 const TH = 'px-3 py-2 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap';
 const TD = 'px-3 py-2 text-xs text-slate-700';
+
+/** House minutes format: '45 min', '1h 15m'. */
+const fmtMins = (m: number): string => (m < 60 ? `${m} min` : fmtDuration(m));
 
 function toDateKey(val: unknown): string {
   if (!val) return '';
@@ -83,12 +85,7 @@ export default function AttendancePanelDays({ days, attendanceRows = [] }: Props
                       </td>
                       <td className={`${TD} tabular-nums`}>{fmtDuration(d.activeMin)}</td>
                       <td className={TD}>
-                        {att?.live ? (
-                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                            <LiveBadge />
-                            <span>{att.live_label}</span>
-                          </span>
-                        ) : att ? (
+                        {att ? (
                           <span className="inline-flex items-center gap-1">
                             <span
                               className="w-1.5 h-1.5 rounded-full flex-shrink-0"
