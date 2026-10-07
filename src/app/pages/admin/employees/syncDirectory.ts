@@ -21,12 +21,12 @@ const ONBOARD_KEYS = [
 export type DirectoryDeps = SyncDeps & {
   emps: {
     id: number; display_name: string; teramind_email: string; active: boolean;
-    is_grace_list: boolean; is_macbook_swap: boolean; excluded_from_payroll: boolean;
+    is_grace_list: boolean; excluded_from_payroll: boolean;
     role: string; manager: string; start_date: string | null;
   }[];
   updateRoleManager: (p: { id: number; role: string | null; manager: string | null }) => Promise<unknown>;
   updateFlag: (p: {
-    id: number; is_grace_list: boolean; is_macbook_swap: boolean;
+    id: number; is_grace_list: boolean;
     excluded_from_payroll: boolean; active: boolean;
   }) => Promise<unknown>;
   upsertEmp: (p: Record<string, unknown>) => Promise<unknown>;
@@ -157,7 +157,7 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
     if (mondayActive !== emp.active) {
       await deps.updateFlag({
         id: emp.id, is_grace_list: emp.is_grace_list,
-        is_macbook_swap: emp.is_macbook_swap,
+
         excluded_from_payroll: emp.excluded_from_payroll, active: mondayActive,
       });
       changed = true;
@@ -184,7 +184,7 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
         const domain = c.email.includes('@') ? c.email.split('@')[1] : '';
         await deps.upsertEmp({
           display_name: c.name, teramind_email: c.email, company_domain: domain,
-          schedule_id: deps.defaultScheduleId, is_grace_list: false, is_macbook_swap: false,
+          schedule_id: deps.defaultScheduleId, is_grace_list: false,
           excluded_from_payroll: false, active: true,
           notes: 'Added via Monday directory sync', role: c.role || null, manager: c.manager || null,
         });
@@ -199,7 +199,7 @@ export async function syncDirectory(deps: DirectoryDeps): Promise<SyncResult> {
         const domain = c.email.includes('@') ? c.email.split('@')[1] : '';
         await deps.upsertEmp({
           display_name: c.name, teramind_email: c.email, company_domain: domain,
-          schedule_id: deps.defaultScheduleId, is_grace_list: false, is_macbook_swap: false,
+          schedule_id: deps.defaultScheduleId, is_grace_list: false,
           excluded_from_payroll: false, active: true,
           notes: 'Added via Monday directory sync', role: c.role || null, manager: c.manager || null,
         });

@@ -34,7 +34,7 @@ type ConfigRow  = { key: string; value: string };
 type NewSyncRow = { id: number; kind: string; ran_at: string; ran_by: string; created: number; updated: number; error: string | null };
 type EmpRow    = {
   id: number; display_name: string; teramind_email: string; company_domain: string;
-  active: boolean; is_grace_list: boolean; is_macbook_swap: boolean;
+  active: boolean; is_grace_list: boolean;
   excluded_from_payroll: boolean; role: string; manager: string;
   start_date: string | null;
 };

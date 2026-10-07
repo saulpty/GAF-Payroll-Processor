@@ -12,7 +12,7 @@ const WIN_STR = [{ year: '2026' as any, us_dst_start: '2026-03-08', us_dst_end: 
 
 const base = (o: Partial<EmployeeRecord>): EmployeeRecord => ({
   id: 1, display_name: 'X', teramind_email: 'x@gaf.com',
-  is_grace_list: false, is_macbook_swap: false, schedule_name: 'S',
+  is_grace_list: false, schedule_name: 'S',
   dst_start: '9:00 AM', dst_end: '5:00 PM', standard_start: '9:00 AM', standard_end: '5:00 PM',
   grace_minutes: 10, ...o,
 });

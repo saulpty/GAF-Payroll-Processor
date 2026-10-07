@@ -46,7 +46,6 @@ function emp(over: Partial<EmployeeRecord> = {}): EmployeeRecord {
     display_name: 'Gabriel Chu',
     teramind_email: ROSTER_EMAIL,
     is_grace_list: false,
-    is_macbook_swap: false,
     schedule_name: 'Standard',
     dst_start: '9:00 AM',
     dst_end: '5:00 PM',

@@ -102,7 +102,7 @@ deleted per-period by `deletePeriodSnapshots`.
 
 **`employees`** — `display_name`, `teramind_email` (unique; **this is the join
 key to Teramind data**), `company_domain`, `schedule_id` → `schedules`,
-`is_grace_list`, `is_macbook_swap`, `excluded_from_payroll`, `active`,
+`is_grace_list`, `is_macbook_swap` (unused since 2026-10-07, always FALSE), `excluded_from_payroll`, `active`,
 `start_date`, `end_date`, `notes`, plus `role` and `manager` (added by
 `1781400300`, populated by Admin → Directory Sync from Monday.com).
 
@@ -435,11 +435,10 @@ Evaluated per employee per date, first match wins:
    go to Action Required, with event and pay impact pre-filled as a suggestion.
 4. **Absence form** (Monday Attendance board) → `Ausencia Justificada.`,
    YELLOW; **RED** if Teramind also shows activity that day (a conflict).
-5. **Macbook swap** with no Teramind data → schedule times, GREEN.
-6. **No data and no form** → `Ausencia Injustificada`, RED, and
+5. **No data and no form** → `Ausencia Injustificada`, RED, and
    `discount_total_minutes` is set directly to
    `cfg.full_day_absence_discount_minutes` (default 420).
-7. **Normal day with data** → tardiness and early-leave logic below.
+6. **Normal day with data** → tardiness and early-leave logic below.
 
 ### Tardiness, grace, and TFT
 

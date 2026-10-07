@@ -15,7 +15,6 @@ const EMP: EmployeeRecord = {
   display_name: 'Ozzy Medina',
   teramind_email: 'ozzy@gaf.com',
   is_grace_list: false,
-  is_macbook_swap: false,
   schedule_name: 'Standard',
   dst_start: '8:00 AM',
   dst_end: '4:00 PM',

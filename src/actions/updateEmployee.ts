@@ -10,7 +10,7 @@ function updateEmployee() {
         company_domain        = {{params.company_domain}},
         schedule_id           = {{params.schedule_id}}::bigint,
         is_grace_list         = {{params.is_grace_list}}::boolean,
-        is_macbook_swap       = {{params.is_macbook_swap}}::boolean,
+
         excluded_from_payroll = {{params.excluded_from_payroll}}::boolean,
         active                = {{params.active}}::boolean,
         notes                 = {{params.notes}}

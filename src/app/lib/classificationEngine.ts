@@ -5,7 +5,6 @@ export interface EmployeeRecord {
   display_name: string;
   teramind_email: string;
   is_grace_list: boolean;
-  is_macbook_swap: boolean;
   schedule_name: string;
   dst_start: string;   // e.g. "8:00 AM"
   dst_end: string;
@@ -278,7 +277,7 @@ export function computeDiscount(entry: Partial<PayrollEntry>, fullDayMinutes = F
 /** Compute payroll_ready and status_current per Section 6.4.
  *
  * A row is payroll_ready=YES only if:
- *   (a) initial_status is GREEN (clean day, outage, full-day perm, macbook-swap) — always ready, OR
+ *   (a) initial_status is GREEN (clean day, outage, full-day perm) — always ready, OR
  *   (b) initial_status is YELLOW/RED AND the operator has resolved it:
  *       - et1 is set AND pi1 is filled in
  *       - if et2 is also set, pi2 must be filled in too
@@ -658,18 +657,6 @@ export function runClassificationEngine(input: EngineInput): PayrollEntry[] {
         continue;
       }
 
-      // ── Step 4: Macbook-swap, no Teramind data ──
-      if (emp.is_macbook_swap && !tmEntry) {
-        const entry = buildEntry({ ...baseEntry, entry_time: sched.start, exit_time: sched.end }, {
-          event_type_1: '', pay_impact_1: '',
-          event_type_2: '', pay_impact_2: '',
-          documentation: '', notes: 'Macbook swap',
-          auto_notes: 'Macbook swap — default schedule.',
-          initial_status: 'GREEN',
-        });
-        results.push(entry);
-        continue;
-      }
 
       // ── Step 5: No data + no form ──
       if (!tmEntry) {

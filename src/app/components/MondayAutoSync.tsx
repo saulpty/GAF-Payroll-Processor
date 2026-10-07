@@ -32,7 +32,7 @@ import upsertMondaySyncLogAction from '@/actions/upsertMondaySyncLog';
 type ConfigRow = { key: string; value: string };
 type EmpRow    = {
   id: number; display_name: string; teramind_email: string; company_domain: string;
-  active: boolean; is_grace_list: boolean; is_macbook_swap: boolean;
+  active: boolean; is_grace_list: boolean;
   excluded_from_payroll: boolean; role: string; manager: string;
   start_date: string | null; schedule_id?: number;
 };

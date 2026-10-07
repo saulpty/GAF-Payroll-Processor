@@ -47,7 +47,7 @@ export default function RosterTab() {
           company_domain: editing.company_domain ?? '',
           schedule_id: editing.schedule_id ?? 0,
           is_grace_list: editing.is_grace_list ?? false,
-          is_macbook_swap: editing.is_macbook_swap ?? false,
+
           excluded_from_payroll: editing.excluded_from_payroll ?? false,
           active: editing.active ?? true,
           notes: editing.notes ?? '',
@@ -71,7 +71,7 @@ export default function RosterTab() {
     await updateFlag({
       id: emp.id,
       is_grace_list:         key === 'is_grace_list'         ? newVal : emp.is_grace_list,
-      is_macbook_swap:       key === 'is_macbook_swap'       ? newVal : emp.is_macbook_swap,
+
       excluded_from_payroll: key === 'excluded_from_payroll' ? newVal : emp.excluded_from_payroll,
       active:                key === 'active'                ? newVal : emp.active,
     });

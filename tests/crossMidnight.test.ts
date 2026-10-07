@@ -11,7 +11,7 @@ import { runClassificationEngine, type EmployeeRecord, type EngineInput } from '
 const MON = '2026-06-15';
 const emp: EmployeeRecord = {
   id: 1, display_name: 'Test Employee', teramind_email: 'emp@gaf.com',
-  is_grace_list: false, is_macbook_swap: false, schedule_name: 'Standard',
+  is_grace_list: false, schedule_name: 'Standard',
   dst_start: '9:00 AM', dst_end: '5:00 PM', standard_start: '9:00 AM', standard_end: '5:00 PM',
   grace_minutes: 10,
 };

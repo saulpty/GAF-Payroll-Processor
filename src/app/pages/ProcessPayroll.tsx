@@ -43,7 +43,7 @@ import { unexplainedWorkdays } from '@/app/lib/teramindCoverage';
 
 type Employee = {
   id: number; display_name: string; teramind_email: string;
-  is_grace_list: boolean; is_macbook_swap: boolean;
+  is_grace_list: boolean;
   schedule_name: string; dst_start: string; dst_end: string;
   standard_start: string; standard_end: string; grace_minutes: number;
   work_days?: string;
