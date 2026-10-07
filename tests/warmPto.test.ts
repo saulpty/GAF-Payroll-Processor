@@ -45,7 +45,8 @@ test('WP1: Title Case table header is opt-in, so un-redesigned pages keep their 
   assert.match(dt, /titleCase = false/);
   assert.match(dt, /titleCase\s*\?\s*'bg-white text-\[12px\]/);
   assert.match(read('src/app/pages/pto/PtoTable.tsx'), /stickyHeader\s+titleCase/);
-  for (const page of ['src/app/pages/contracts/ContractsTable.tsx', 'src/app/pages/disciplinary/DisciplinaryTable.tsx']) {
+  // Contracts went Warm on 2026-10-07 (tests/contractsWarm.test.ts).
+  for (const page of ['src/app/pages/disciplinary/DisciplinaryTable.tsx']) {
     assert.doesNotMatch(read(page), /titleCase/, `${page} is not redesigned yet`);
   }
 });

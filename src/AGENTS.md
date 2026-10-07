@@ -706,7 +706,7 @@ rows. Dates on this page use `lib/fmtDay.ts` (`Mon Aug 17`, year only when
 not the current one). `fh_used` in `loadPtoBalancesInputs` is
 `GREATEST(pto_floating_holidays.fh_used, SUM(total_days))` — days, not records.
 
-`/contracts` — `contracts/ContractsTable.tsx`, `ContractRow.tsx`
+`/contracts` — `contracts/ContractsTable.tsx` (loads, filters, summary chips, sorts), `ContractsChips.tsx`, `ContractRow.tsx`, `ContractCells.tsx` (milestone and contract-end cells); chip counting and labels in `lib/contractChips.ts`. Dates use `lib/fmtDay.ts`.
 
 `/disciplinary` — `disciplinary/DisciplinaryTable.tsx` (loads, resolves names, groups, filters, sorts), `DisciplinaryRow.tsx` (one row plus the escalation ladder), `CaseFile.tsx` (**prop-driven, no `useLoadAction` — Employee 360 will reuse it unchanged**), `CloseCaseDialog.tsx`
 

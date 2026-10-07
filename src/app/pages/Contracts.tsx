@@ -45,26 +45,15 @@ export default function Contracts() {
     XLSX.writeFile(wb, `contracts-${asOf}.xlsx`);
   };
 
-  const countSummary = counts !== null ? (() => {
-    const empPart = `${counts.employees} ${counts.employees === 1 ? 'employee' : 'employees'}`;
-    const expPart = counts.expiring > 0
-      ? ` · ${counts.expiring} ${counts.expiring === 1 ? 'ending' : 'ending'} within 30 days`
-      : '';
-    return `${empPart}${expPart}`;
-  })() : null;
-
+  // Warm redesign (2026-10-07): the employee and "ending within 30 days" counts moved to the
+  // summary chips above the table; Export stays an outline button and exports the rows shown.
   const actions = (
     <>
-      {countSummary !== null && (
-        <span className="text-[12px] text-slate-400 mr-1">{countSummary}</span>
-      )}
-
       <Button
         size="sm"
         variant="outline"
         onClick={handleExport}
         disabled={rows.length === 0}
-        className="focus-visible:ring-2 focus-visible:ring-primary/30"
       >
         <Download className="w-3.5 h-3.5 mr-1" />
         Export
@@ -76,7 +65,7 @@ export default function Contracts() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="Contracts"
-        subtitle="Tenure milestones and contract end dates — one row per employee"
+        subtitle="Tenure milestones and contract end dates."
         actions={actions}
       />
 
@@ -88,7 +77,7 @@ export default function Contracts() {
           </span>
           <Link
             to="/admin/employees?tab=monday"
-            className="underline underline-offset-2 hover:text-amber-900 focus-visible:ring-2 focus-visible:ring-primary/30 rounded"
+            className="underline underline-offset-2 hover:text-amber-900 focus-visible:ring-2 focus-visible:ring-warm-ring rounded"
           >
             Employees → Monday
           </Link>

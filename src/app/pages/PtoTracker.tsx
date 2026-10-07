@@ -85,7 +85,7 @@ export default function PtoTracker() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="PTO Tracker"
-        subtitle="Accrual, requests and floating holidays, one row per employee."
+        subtitle="Accrual, requests and floating holidays."
         actions={actions}
       />
       <PtoComingUp today={today} refreshKey={refreshKey} />

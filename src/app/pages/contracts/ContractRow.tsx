@@ -1,6 +1,8 @@
-import { fmtDate } from '@/app/lib/fmtDate';
+import { fmtDay } from '@/app/lib/fmtDay';
+import { tenureDisplay } from '@/app/lib/contractChips';
 import StatusChip from '@/app/components/StatusChip';
 import type { RenewalState } from '@/app/lib/tenure';
+import { MilestoneCells, ContractEndCell } from './ContractCells';
 
 export interface ContractRowData {
   employee_id: number;
@@ -24,32 +26,28 @@ export interface ContractRowData {
   renewal: RenewalState;
 }
 
-interface Props { row: ContractRowData }
+interface Props { row: ContractRowData; thisYear: string }
 
 const muted = <span className="text-slate-300">—</span>;
 
-const MS_LABELS: Record<string, string> = {
-  '1m': '1 m', '3m': '3 m', '6m': '6 m', '1y': '1 y', '2y': '2 y',
-};
-const MS_TIPS: Record<string, string> = {
-  '1m': 'Start + 1 month.', '3m': 'Start + 3 months.', '6m': 'Start + 6 months.',
-  '1y': 'Start + 1 year.',  '2y': 'Start + 2 years.',
-};
+// Warm redesign (2026-10-07): position under the name, weekday dates (fmtDay),
+// tenure as "11 mo" / "New", Excel status colours in ContractCells.
+export default function ContractRow({ row, thisYear }: Props) {
+  const { start, tenure, startMismatch } = row;
+  const position = row.has_board_row ? row.position : null;
 
-export default function ContractRow({ row }: Props) {
-  const { start, end, ms, next, tenure, endState, startMismatch } = row;
-
-  // ── Employee cell ───────────────────────────────────────────────────────
+  // ── Employee cell: name, then position ─────────────────────────────────
   const nameCell = (
     <div>
       <div className="font-medium text-slate-900 whitespace-nowrap">
         {row.display_name}
         {!row.has_board_row && (
-          <StatusChip tone="slate">
-            Not on Onboarding board
-          </StatusChip>
+          <span className="ml-1.5">
+            <StatusChip tone="slate">Not on Onboarding Board</StatusChip>
+          </span>
         )}
       </div>
+      {position && <div className="text-[12px] text-slate-500 whitespace-nowrap">{position}</div>}
     </div>
   );
 
@@ -59,17 +57,19 @@ export default function ContractRow({ row }: Props) {
     startCell = (
       <span className="inline-flex items-center gap-1">
         {muted}
-        <StatusChip tone="amber">No Start Date</StatusChip>
+        <span className="inline-flex items-center rounded-full px-2 py-px text-[11px] font-semibold bg-status-yellow-fill text-status-yellow-ink">
+          No Start Date
+        </span>
       </span>
     );
   } else {
     startCell = (
       <span className="whitespace-nowrap">
-        {fmtDate(start)}
+        {fmtDay(start, thisYear)}
         {startMismatch && (
           <span
             className="ml-1 text-amber-500 cursor-help"
-            title={`Roster start: ${fmtDate(start)} · Board start: ${fmtDate(row.board_start ?? '')}`}
+            title={`Roster start: ${fmtDay(start, thisYear)} · Board start: ${fmtDay(row.board_start, thisYear)}`}
           >
             ⚠
           </span>
@@ -78,103 +78,10 @@ export default function ContractRow({ row }: Props) {
     );
   }
 
-  // ── Milestone cells ─────────────────────────────────────────────────────
-  const msCells = ms
-    ? ms.map(m => {
-        const isPast = next ? m.date < next.date : true;
-        const isNext = next?.key === m.key;
-        if (isNext) {
-          const label = next.days === 0 ? 'today' : `in ${next.days} d`;
-          return (
-            <td key={m.key} className="px-3 py-2 text-center whitespace-nowrap">
-              <span
-                className="inline-flex flex-col items-center rounded bg-primary/10 px-1.5 py-0.5 font-medium text-slate-800"
-                title={MS_TIPS[m.key]}
-              >
-                <span className="text-[12px]">{fmtDate(m.date)}</span>
-                <span className="text-[10px] text-primary">{label}</span>
-              </span>
-            </td>
-          );
-        }
-        if (isPast) {
-          return (
-            <td key={m.key} className="px-3 py-2 text-center text-slate-300 whitespace-nowrap" title={`${MS_TIPS[m.key]} Reached ${fmtDate(m.date)}.`}>
-              ✔
-            </td>
-          );
-        }
-        return (
-          <td key={m.key} className="px-3 py-2 text-center text-slate-400 tabular-nums whitespace-nowrap" title={MS_TIPS[m.key]}>
-            {fmtDate(m.date)}
-          </td>
-        );
-      })
-    : ['1m', '3m', '6m', '1y', '2y'].map(k => (
-        <td key={k} className="px-3 py-2 text-center">{muted}</td>
-      ));
-
-  // ── Contract end cell ───────────────────────────────────────────────────
-  const { renewal } = row;
-  let endCell: React.ReactNode;
-  if (endState.kind === 'none' || !end) {
-    endCell = muted;
-  } else if (endState.kind === 'ended') {
-    if (renewal === 'renewed') {
-      endCell = (
-        <span title={`Board status Passed. Fixed term ended on ${fmtDate(end)}.`}>
-          <StatusChip tone="green">Renewed</StatusChip>
-          <div className="text-[10px] text-slate-400 mt-0.5">was {fmtDate(end)}</div>
-        </span>
-      );
-    } else if (renewal === 'not_renewed') {
-      endCell = (
-        <span title="Board status Failed — still on the active roster.">
-          <StatusChip tone="red">Not Renewed</StatusChip>
-          <div className="text-[10px] text-slate-400 mt-0.5">ended {fmtDate(end)}</div>
-        </span>
-      );
-    } else {
-      endCell = (
-        <span title="Fixed term ended and the board has no renewal decision yet.">
-          <StatusChip tone="amber">Pending Review</StatusChip>
-          <div className="text-[10px] text-slate-400 mt-0.5">ended {fmtDate(end)}</div>
-        </span>
-      );
-    }
-  } else {
-    // future
-    const days = endState.days ?? 0;
-    const label = `${fmtDate(end)} · in ${days} d`;
-    let chip: React.ReactNode;
-    if (days <= 30) {
-      chip = <StatusChip tone="red">{label}</StatusChip>;
-    } else if (days <= 60) {
-      chip = <StatusChip tone="amber">{label}</StatusChip>;
-    } else {
-      chip = <span className="whitespace-nowrap tabular-nums">{fmtDate(end)}</span>;
-    }
-    endCell = (
-      <span className="inline-flex flex-col items-start">
-        {chip}
-        {renewal === 'renewed' && (
-          <span className="text-[10px] text-emerald-700 font-medium mt-0.5">renewed</span>
-        )}
-        {renewal === 'not_renewed' && (
-          <span className="text-[10px] text-red-700 font-medium mt-0.5">not renewed</span>
-        )}
-      </span>
-    );
-  }
-
   return (
-    <tr className="hover:bg-slate-50/80 transition-colors duration-100">
-      {/* Employee */}
+    <tr className="hover:bg-slate-100 transition-colors duration-100">
+      {/* Employee (+ position) */}
       <td className="px-3 py-2">{nameCell}</td>
-      {/* Position */}
-      <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
-        {row.has_board_row ? (row.position || muted) : muted}
-      </td>
       {/* State */}
       <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
         {row.has_board_row ? (row.state || muted) : muted}
@@ -182,16 +89,13 @@ export default function ContractRow({ row }: Props) {
       {/* Start */}
       <td className="px-3 py-2 tabular-nums whitespace-nowrap">{startCell}</td>
       {/* Tenure */}
-      <td className="px-3 py-2 whitespace-nowrap">{tenure ?? muted}</td>
+      <td className="px-3 py-2 tabular-nums text-slate-600 whitespace-nowrap">{tenure ? tenureDisplay(tenure) : muted}</td>
       {/* Contract end */}
-      <td className="px-3 py-2 whitespace-nowrap">
-        {row.has_board_row ? endCell : muted}
+      <td className="px-3 py-2 tabular-nums whitespace-nowrap">
+        <ContractEndCell row={row} thisYear={thisYear} />
       </td>
       {/* Milestones */}
-      {msCells}
+      <MilestoneCells row={row} thisYear={thisYear} />
     </tr>
   );
 }
-
-// Re-export MS_LABELS for column headers
-export { MS_LABELS };
