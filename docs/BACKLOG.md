@@ -560,6 +560,10 @@ Built and on /dev (see `HANDOFF-2026-10-12-activity-trend.md`). Left out on purp
 - One-day ranges read `vs Oct 7 – Oct 7` / "the 1 days"; 90-day ranges crowd the chart labels;
   narrow windows scroll the opened row sideways.
 - `SourceBadge.tsx` is unused since the day lists moved to `ActivityDaysSideBySide.tsx`.
+- **Split `useActivityData.ts` before its next edit** (13.9 KB of 15): move `parseSettings` /
+  `parseMinimums` out.
+- Review minors: tooltip omits permission days; Thresholds dialog copy and 2.5-day rounding;
+  ▼/▲ read aloud on the Show All button.
 - Activity tab vs design system: `9:04 AM` / `45m` formats, left-aligned numbers, sort icon on
   every header.
 

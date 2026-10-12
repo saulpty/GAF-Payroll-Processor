@@ -74,7 +74,7 @@ export default function AttendanceActivity() {
 
   const {
     days, byEmployee, totals, settings, loading, error, configFallbacks, reloadConfig, retry,
-    prev, today, trends, prevDays, startDates, totalsChange, minimums,
+    prev, today, trends, prevDays, startDates, totalsChange, minimums, compareTo,
   } = useActivityData({
     dateFrom: safeFrom,
     dateTo: safeTo,
@@ -86,7 +86,7 @@ export default function AttendanceActivity() {
   const avgActiveLabel = totals.avgActiveMin !== null ? fmtDuration(totals.avgActiveMin) : '—';
 
   const beforeLabel = rangeLabel(prev.from, prev.to);
-  const afterLabel = rangeLabel(safeFrom, safeTo);
+  const afterLabel = rangeLabel(safeFrom, compareTo);
   // One line under each card: these dates against the same number of days right before them.
   // The raw difference; the minimums only apply to each employee's Trend.
   const versus = (delta: number | null, lowerIsBetter: boolean, fmt: (n: number) => string): TileNote => {

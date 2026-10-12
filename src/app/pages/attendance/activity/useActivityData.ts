@@ -6,7 +6,7 @@ import { matchesManager } from '@/app/lib/managerFilter';
 import { toLocalYMD, isScheduledWorkDay, getSchedule, parseTimeToMinutes } from '@/app/lib/classificationEngine';
 import { buildAttendanceReport } from '@/app/lib/attendanceReport';
 import { buildActivityDays } from '@/app/lib/activityDays';
-import { previousRange, summarisePeriod, compareEmployee, compareTotals, DEFAULT_TREND_MINIMUMS } from '@/app/lib/activityTrend';
+import { comparisonRanges, summarisePeriod, compareEmployee, compareTotals, DEFAULT_TREND_MINIMUMS } from '@/app/lib/activityTrend';
 import type { EmployeeTrend, TrendMinimums, TotalsChange } from '@/app/lib/activityTrend';
 import type { ActivitySettings, ActivityDay, ActivityDayRow, EmployeeActivitySummary, ActivityTotals, ActivityEmployee } from '@/app/lib/activityDays';
 import type { ReportEmployee, ReportPayrollRow, ReportForm, ReportRequest, ReportPeriod, ReportHoliday } from '@/app/lib/attendanceReportTypes';
@@ -30,6 +30,7 @@ export type ActivityDataResult = {
   totals: ActivityTotals;
   settings: ActivitySettings;
   prev: { from: string; to: string; days: number };
+  compareTo: string;
   today: string;
   trends: Record<number, EmployeeTrend>;
   prevDays: Record<number, ActivityDay[]>;
@@ -101,7 +102,11 @@ export function useActivityData({ dateFrom, dateTo, compare = false }: { dateFro
   const safeFrom = dateFrom || toLocalYMD(new Date());
   const safeTo   = dateTo   || toLocalYMD(new Date());
 
-  const prev = compare ? previousRange(safeFrom, safeTo) : NO_PREV;
+  // Today is a partial day and later days have not happened: the comparison stops at yesterday,
+  // against the same number of days right before the range.
+  const cmp = compare ? comparisonRanges(safeFrom, safeTo, toLocalYMD(new Date())) : null;
+  const prev = cmp ? cmp.before : NO_PREV;
+  const compareTo = cmp && cmp.before.days > 0 ? cmp.after.to : safeTo;
   const spanFrom = prev.days > 0 ? prev.from : safeFrom;
 
   const [rawTm,      loadingTm,  errTm,      refetchTm]      = useLoadAction(loadTeramindActivityDaysAction, [],       { dateFrom: spanFrom, dateTo: safeTo, viewAs });
@@ -202,7 +207,7 @@ export function useActivityData({ dateFrom, dateTo, compare = false }: { dateFro
         totals: { avgActiveMin: null, daysWorked: 0, needsLook: 0, lateArrivals: 0 },
         settings,
         configFallbacks: [],
-        prev, today: toLocalYMD(new Date()), trends: {}, prevDays: {}, startDates: {},
+        prev, compareTo, today: toLocalYMD(new Date()), trends: {}, prevDays: {}, startDates: {},
         totalsChange: null, minimums: { ...DEFAULT_TREND_MINIMUMS },
       };
     }
@@ -289,8 +294,8 @@ export function useActivityData({ dateFrom, dateTo, compare = false }: { dateFro
     }
     const totalsChange = before ? compareTotals(before.totals, totals) : null;
 
-    return { days, byEmployee, totals, settings, configFallbacks, prev, today, trends, prevDays, startDates, totalsChange, minimums };
-  }, [error, rawEmps, rawTm, rawDays, rawForms, rawReqs, rawHols, rawPeriods, rawDst, rawConfig, safeFrom, safeTo, spanFrom, employee, manager, role]);
+    return { days, byEmployee, totals, settings, configFallbacks, prev, compareTo, today, trends, prevDays, startDates, totalsChange, minimums };
+  }, [error, rawEmps, rawTm, rawDays, rawForms, rawReqs, rawHols, rawPeriods, rawDst, rawConfig, safeFrom, safeTo, spanFrom, compare, compareTo, employee, manager, role]);
 
   return { ...result, loading: effectiveLoading, error: effectiveError, reloadConfig, retry };
 }
