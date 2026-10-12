@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
-  previousRange, subDays, rangeLabel, dayKind, summarisePeriod, compareEmployee, compareTotals,
+  previousRange, comparisonRanges, subDays, rangeLabel, dayKind, summarisePeriod, compareEmployee, compareTotals,
   changeText, fmtMinutes, DEFAULT_TREND_MINIMUMS, VERDICT_ORDER, VERDICT_LABEL,
   type PeriodSummary,
 } from '../src/app/lib/activityTrend.ts';
@@ -120,9 +120,9 @@ test('T12: an empty period summarises to zeros and nulls', () => {
   assert.deepEqual(summarisePeriod([], TODAY), { scheduled: 0, worked: 0, avgActiveMin: null, avgEntryMin: null, lowDays: 0, missedDays: 0 });
 });
 
-test('T13: the entry average uses the official punch when one was captured', () => {
+test('T13: the entry average is the same Teramind entry the Avg Entry cell averages', () => {
   const s = summarisePeriod([mkDay('2026-10-05', { firstMin: 600, shownFirstMin: 540 })], TODAY);
-  assert.equal(s.avgEntryMin, 540);
+  assert.equal(s.avgEntryMin, 600);
 });
 
 test('T14: verdicts — improved, worse, mixed, steady', () => {
@@ -175,6 +175,28 @@ test('T19: changeText reads like the mockup', () => {
   assert.equal(changeText('missed', { delta: 3, tone: 'bad' }), '3 more');
   assert.equal(changeText('active', { delta: 12, tone: '' }), 'About the same');
   assert.equal(fmtMinutes(120), '2h');
+});
+
+test('T21: a range ending today or later is compared only up to yesterday, against as many days before', () => {
+  // Ends today: Oct 12 is dropped, 18 days against 18.
+  assert.deepEqual(comparisonRanges('2026-09-24', TODAY, TODAY), {
+    after: { from: '2026-09-24', to: '2026-10-11', days: 18 },
+    before: { from: '2026-09-06', to: '2026-09-23', days: 18 },
+  });
+  // Month to date picked as the whole month: 11 elapsed days against 11, never against 31.
+  assert.deepEqual(comparisonRanges('2026-10-01', '2026-10-31', TODAY), {
+    after: { from: '2026-10-01', to: '2026-10-11', days: 11 },
+    before: { from: '2026-09-20', to: '2026-09-30', days: 11 },
+  });
+  // Fully in the past: unchanged.
+  assert.deepEqual(comparisonRanges('2026-09-24', '2026-10-09', TODAY).before, { from: '2026-09-08', to: '2026-09-23', days: 16 });
+});
+
+test('T22: nothing elapsed yet, or a bad range, switches the comparison off', () => {
+  assert.equal(comparisonRanges(TODAY, TODAY, TODAY).before.days, 0);
+  assert.equal(comparisonRanges('2026-10-20', '2026-10-25', TODAY).after.days, 0);
+  assert.equal(comparisonRanges('', '', TODAY).before.days, 0);
+  assert.equal(comparisonRanges('2026-09-24', '2026-10-09', '').before.days, 0);
 });
 
 test('T20: Trend sorts Worse first and Not enough data last; every verdict has a label', () => {

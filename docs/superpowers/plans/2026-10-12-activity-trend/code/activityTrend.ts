@@ -63,6 +63,21 @@ export function previousRange(dateFrom: string, dateTo: string): { from: string;
   return { from: subDays(dateFrom, days), to: subDays(dateFrom, 1), days };
 }
 
+/** The two periods actually compared. Today is a partial day and later days have not happened yet,
+ *  so the selected range is cut back to yesterday first; the earlier period is then the same
+ *  number of calendar days right before it. days = 0 on both when nothing has elapsed or the range
+ *  is not valid. */
+export function comparisonRanges(dateFrom: string, dateTo: string, today: string): {
+  after: { from: string; to: string; days: number }; before: { from: string; to: string; days: number };
+} {
+  const none = { from: dateFrom, to: dateFrom, days: 0 };
+  if (!YMD.test(today) || !YMD.test(dateTo)) return { after: none, before: none };
+  const to = dateTo < today ? dateTo : subDays(today, 1);
+  const before = previousRange(dateFrom, to);
+  if (before.days === 0) return { after: none, before: none };
+  return { after: { from: dateFrom, to, days: before.days }, before };
+}
+
 /** 'Sep 5 – Sep 23'; years are added only when the two ends are in different years. */
 export function rangeLabel(from: string, to: string): string {
   const part = (s: string, withYear: boolean) =>
@@ -101,7 +116,8 @@ export function summarisePeriod(days: ActivityDay[], today: string, startDate = 
   return {
     scheduled: worked.length + missedDays, worked: worked.length,
     avgActiveMin: avg(worked.map((d) => d.activeMin)),
-    avgEntryMin: avg(worked.map((d) => d.shownFirstMin ?? d.firstMin)),
+    // Same entry the Avg Entry cell averages (activityDays), so the arrow describes the number beside it.
+    avgEntryMin: avg(worked.map((d) => d.firstMin)),
     lowDays, missedDays,
   };
 }

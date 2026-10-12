@@ -28,7 +28,10 @@ test('TW1 (prompt 01): the migration seeds the four minimums and deletes nothing
 test('TW2 (prompt 02): the hook loads the earlier period too and builds each period on its own rows', () => {
   const hook = read(DIR + 'useActivityData.ts');
   // Only the Activity page asks for the comparison; the side panel keeps loading its own range only.
-  assert.match(hook, /const prev = compare \? previousRange\(safeFrom, safeTo\) : NO_PREV;/);
+  assert.match(hook, /const cmp = compare \? comparisonRanges\(safeFrom, safeTo, toLocalYMD\(new Date\(\)\)\) : null;/);
+  assert.match(hook, /const prev = cmp \? cmp\.before : NO_PREV;/);
+  // The memo reads compare and the period ends: both must be dependencies.
+  assert.match(hook, /safeFrom, safeTo, spanFrom, compare, compareTo, employee, manager, role\]\);/);
   assert.match(read('src/app/pages/attendance/AttendancePanel.tsx'), /useActivityData\(\{ dateFrom: safeFrom, dateTo: safeTo \}\)/);
   assert.match(hook, /const spanFrom = prev\.days > 0 \? prev\.from : safeFrom;/);
   // Every range loader reads the combined span.
@@ -72,6 +75,8 @@ test('TW5 (prompt 03): the four cards carry a comparison line; By Day and the si
   assert.match(page, /<ActivityByDay days=\{days\} dateFrom=\{safeFrom\} dateTo=\{safeTo\} \/>/);
   assert.match(page, /<ActivityNeedsLook days=\{filteredNeedsLook\} dateTo=\{safeTo\} settings=\{settings\} onPick=\{handlePickEmployee\} \/>/);
   assert.match(page, /compare: true,/);
+  // The tooltip and panels name the dates actually compared (up to yesterday), not the raw range.
+  assert.match(page, /const afterLabel = rangeLabel\(safeFrom, compareTo\);/);
   assert.ok(Buffer.byteLength(page, 'utf8') < 15 * 1024, 'AttendanceActivity.tsx is over 15 KB');
 });
 
