@@ -162,7 +162,7 @@ export default function AttendanceActivity() {
 
             {/* Footer */}
             <p className="text-xs text-slate-400 text-center mt-6 pb-2">
-              Data Updates Every 15 Minutes · Times In US Eastern
+              Data Updates Every 5 Minutes · Times In US Eastern
             </p>
           </>
         )}

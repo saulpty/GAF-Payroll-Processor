@@ -202,9 +202,9 @@ export default function AttendanceToday() {
           <span className="w-1.5 h-1.5 rounded-full bg-status-green-ink" aria-hidden="true" />
           Live
         </span>
-        <InfoTip text="Teramind data syncs every 15 minutes. The time shown is the latest sync received." />
+        <InfoTip text="Teramind data syncs every 5 minutes. The time shown is the latest sync received." />
         <span className="text-slate-500 text-[13px]">
-          Data as of {dataAsOf} · updates every 15 minutes · times in US Eastern
+          Data as of {dataAsOf} · updates every 5 minutes · times in US Eastern
         </span>
         {loadingPunches && <RefreshCw className="w-3.5 h-3.5 text-slate-400 animate-spin ml-auto" />}
 
