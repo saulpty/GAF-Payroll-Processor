@@ -52,7 +52,7 @@
   .tile .d { font-size: 12px; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--s100); white-space: nowrap; }
   .good { color: var(--green-ink); } .bad { color: var(--red-ink); } .flat { color: var(--s500); }
 
-  .tablewrap { overflow: auto; border: 1px solid var(--border); border-radius: 12px; background: #fff; box-shadow: var(--card); }
+  .tablewrap { overflow: auto; border: 1px solid var(--border); border-radius: 8px; background: #fff; box-shadow: var(--card); }
   table { width: 100%; border-collapse: collapse; }
   thead.main th { background: #fff; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--s600); text-align: left; padding: 8px 12px; white-space: nowrap; border-bottom: 1px solid var(--border); }
   td.c { padding: 8px 12px; font-size: 14px; color: var(--s700); vertical-align: top; white-space: nowrap; border-top: 1px solid var(--s100); }
@@ -64,7 +64,7 @@
   .bar { display: inline-block; width: 64px; height: 6px; background: var(--s100); border-radius: 999px; overflow: hidden; vertical-align: middle; margin-left: 8px; }
   .bar i { display: block; height: 100%; background: var(--navy); border-radius: 999px; }
   .arrow { font-size: 12px; font-weight: 700; margin-left: 4px; }
-  .pill { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; }
+  .pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; }
   .t-improved { background: var(--green-tint); color: var(--green-ink); border-color: var(--green-fill); }
   .t-worse    { background: var(--red-tint); color: var(--red-ink); border-color: var(--red-fill); }
   .t-mixed    { background: var(--yellow-tint); color: var(--yellow-ink); border-color: var(--yellow-fill); }
@@ -73,14 +73,15 @@
 
   /* ── expanded area, shared ── */
   td.exp { padding: 16px; background: var(--s50); border-top: 1px solid var(--s200); border-bottom: 2px solid var(--s300); }
-  .panel { background: #fff; border: 1px solid var(--s200); border-radius: 10px; overflow: hidden; }
+  .panel { background: #fff; border: 1px solid var(--s200); border-radius: 8px; box-shadow: var(--card); overflow: hidden; }
   .phead { padding: 10px 14px; border-bottom: 1px solid var(--s200); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .phead b { font-size: 13px; font-weight: 700; color: var(--s800); } .phead span { font-size: 12px; color: var(--s500); }
-  .tag { font-size: 11px; font-weight: 700; letter-spacing: .04em; padding: 2px 7px; border-radius: 4px; }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
   .tag.b { background: var(--s100); color: var(--s600); } .tag.a { background: var(--navy); color: #fff; }
   table.d th { font-size: 12px; font-weight: 600; color: var(--s500); text-align: left; padding: 6px 14px; white-space: nowrap; background: #fff; }
-  table.d td { padding: 6px 14px; font-size: 13px; color: var(--s700); border-top: 1px solid var(--s100); white-space: nowrap; }
-  table.d tr.flag td { background: #fffbeb; }
+  table.d th:not(:first-child), table.d td.num { text-align: right; }
+  table.d td { padding: 6px 12px; font-size: 13px; color: var(--s700); border-top: 1px solid var(--s100); white-space: nowrap; }
+  table.d tr.flag td { background: var(--yellow-tint); }
   table.d tr.miss td { background: var(--red-tint); color: var(--red-ink); }
   .link { color: #C2410C; font-weight: 600; font-size: 13px; } .link:hover { text-decoration: underline; }
   .none { padding: 14px; color: var(--s500); }
@@ -111,9 +112,9 @@
   .plot .ylab.min { color: #b45309; font-weight: 600; }
   .plot .col { position: relative; flex: 1; height: 100%; display: flex; align-items: flex-end; }
   .plot .col i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: var(--navy); }
-  .plot .col.flag i { background: #f59e0b; }
+  .plot .col.flag i { background: var(--yellow-fill); box-shadow: inset 0 0 0 1px var(--yellow-ink); }
   .plot .col.miss { background: var(--red-tint); align-items: center; justify-content: center; color: var(--red-ink); font-weight: 700; font-size: 14px; border-radius: 3px 3px 0 0; }
-  .plot .thr { position: absolute; left: 0; right: 0; border-top: 2px dashed #d97706; z-index: 2; }
+  .plot .thr { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--yellow-ink); z-index: 2; }
   .plot .avg { position: absolute; left: 0; right: 0; border-top: 2px solid var(--s900); z-index: 3; }
   .plot .avg span { position: absolute; right: 4px; bottom: 3px; font-size: 11px; font-weight: 700; color: var(--s900); background: rgb(255 255 255 / .92); padding: 0 5px; border-radius: 3px; white-space: nowrap; }
   .axis { display: flex; gap: 4px; padding: 4px 6px 0; }
@@ -123,7 +124,7 @@
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
   .legend u { display: inline-block; width: 18px; margin-right: 5px; vertical-align: 3px; text-decoration: none; }
   .more { margin-top: 12px; }
-  .morebtn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; background: #fff; border: 1px solid var(--s300); border-radius: 8px; box-shadow: var(--card); font-size: 13px; font-weight: 600; color: var(--s800); }
+  .morebtn { width: 100%; height: 36px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; background: #fff; border: 1px solid var(--s300); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--s800); }
   .morebtn:hover { background: var(--s50); border-color: var(--s400); }
   .morebtn span { color: var(--s500); font-weight: 500; }
 
@@ -134,7 +135,7 @@
   table.w tr.wk { cursor: pointer; } table.w tr.wk:hover td { background: var(--s50); }
   table.w tr.wk td:first-child { padding-left: 30px; }
   table.w tr.day td { background: var(--s50); font-size: 12px; color: var(--s600); padding-top: 5px; padding-bottom: 5px; } table.w tr.day td:first-child { padding-left: 52px; }
-  table.w tr.day.flag td { background: #fffbeb; } table.w tr.day.miss td { background: var(--red-tint); color: var(--red-ink); }
+  table.w tr.day.flag td { background: var(--yellow-tint); } table.w tr.day.miss td { background: var(--red-tint); color: var(--red-ink); }
   .foot { font-size: 12px; color: var(--s400); text-align: center; margin: 24px 0 8px; }
 </style>
 </head>
@@ -142,9 +143,9 @@
 
 <div class="pick">
   <b>Mockup. Pick a layout for the opened row:</b>
-  <button type="button" data-layout="1">1 · Side by side</button>
-  <button type="button" data-layout="2" class="on">2 · Summary and chart</button>
-  <button type="button" data-layout="3">3 · Week by week</button>
+  <button type="button" data-layout="1">1 · Side by Side</button>
+  <button type="button" data-layout="2" class="on">2 · Summary and Chart</button>
+  <button type="button" data-layout="3">3 · Week by Week</button>
   <small>Invented numbers. Click the arrow beside any name to open or close it.</small>
 </div>
 
@@ -193,13 +194,13 @@
   var THR = 390, DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
   function span(mon, start, count, dow, wk) {
     var out = [];
-    for (var i = 0; i < count; i++) out.push({ label: DOW[dow + i] + ', ' + mon + ' ' + (start + i), short: mon + ' ' + (start + i), d: start + i, wk: wk });
+    for (var i = 0; i < count; i++) out.push({ label: DOW[dow + i] + ' ' + mon + ' ' + (start + i), short: mon + ' ' + (start + i), d: start + i, wk: wk });
     return out;
   }
   var BEFORE = span('Sep', 7, 5, 0, 'a').concat(span('Sep', 14, 5, 0, 'b'), span('Sep', 21, 3, 0, 'c'));
   var AFTER  = span('Sep', 24, 2, 3, 'd').concat(span('Sep', 28, 3, 0, 'e'), span('Oct', 1, 2, 3, 'e'), span('Oct', 5, 5, 0, 'f'), span('Oct', 12, 1, 0, 'g'));
 
-  function dur(m) { m = Math.round(m); return Math.floor(m / 60) + 'h ' + ('0' + (m % 60)).slice(-2) + 'm'; }
+  function dur(m) { m = Math.round(m); var h = Math.floor(m / 60), r = m % 60; return h === 0 ? r + 'm' : r === 0 ? h + 'h' : h + 'h ' + r + 'm'; }
   function clock(m) { m = Math.round(m); var h = Math.floor(m / 60), p = h >= 12 ? 'PM' : 'AM'; return ((h + 11) % 12 + 1) + ':' + ('0' + (m % 60)).slice(-2) + ' ' + p; }
 
   // Build one period's days from a short spec, so every number on the page comes from the same rows.
@@ -264,14 +265,14 @@
   var DAYHEAD = '<thead><tr><th>Date</th><th>Entry</th><th>Exit</th><th>Active</th><th>Breaks</th></tr></thead>';
   function figs(s, c) {
     function f(label, val, chg, tone) { return '<div><small>' + label + '</small><b class="num">' + val + '</b><em class="' + (tone || 'flat') + '">' + (chg || '') + '</em></div>'; }
-    return '<div class="figs">' + f('Avg active', dur(s.avg), c && CHG.act(c), c && c.tAct) + f('Avg entry', clock(s.entry), c && CHG.ent(c), c && c.tEnt)
-      + f('⚠️ Days', s.flags + ' of ' + s.n, c && CHG.fl(c), c && c.tFl) + f('Days missed', s.missed + ' of ' + s.sd, c && CHG.ms(c), c && c.tMs) + '</div>';
+    return '<div class="figs">' + f('Avg Active', dur(s.avg), c && CHG.act(c), c && c.tAct) + f('Avg Entry', clock(s.entry), c && CHG.ent(c), c && c.tEnt)
+      + f('⚠️ Days', s.flags + ' of ' + s.n, c && CHG.fl(c), c && c.tFl) + f('Days Missed', s.missed + ' of ' + s.sd, c && CHG.ms(c), c && c.tMs) + '</div>';
   }
   function sideBySide(e) {
     function col(tag, cls, title, s, c, days) {
       return '<div class="panel"><div class="phead"><span class="tag ' + cls + '">' + tag + '</span><b>' + title + '</b><span>' + s.n + ' days with work</span></div>' + figs(s, c) + '<table class="d">' + DAYHEAD + '<tbody>' + dayRows(days, '') + '</tbody></table></div>';
     }
-    return '<div class="two">' + col('BEFORE', 'b', 'Sep 5 – Sep 23', e.sb, null, e.before) + col('AFTER', 'a', 'Sep 24 – Oct 12', e.sa, e.cmp, e.after) + '</div>';
+    return '<div class="two">' + col('Before', 'b', 'Sep 5 – Sep 23', e.sb, null, e.before) + col('After', 'a', 'Sep 24 – Oct 12', e.sa, e.cmp, e.after) + '</div>';
   }
 
   function layout1(e) { return sideBySide(e); }
@@ -279,9 +280,9 @@
   function layout2(e, i) {
     var b = e.sb, a = e.sa, c = e.cmp;
     function row(label, bv, av, chg, tone) { return '<tr><td>' + label + '</td><td class="num">' + bv + '</td><td class="num now">' + av + '</td><td class="chg ' + (tone || 'flat') + '">' + chg + '</td></tr>'; }
-    var cmp = '<div class="panel"><div class="phead"><b>Before and after</b><span class="pill t-' + c.trend + '">' + TREND[c.trend] + '</span></div><table class="cmp"><thead><tr><th></th><th>Before<br>Sep 5 – 23</th><th>After<br>Sep 24 – Oct 12</th><th>Change</th></tr></thead><tbody>'
-      + row('Avg active', dur(b.avg), dur(a.avg), CHG.act(c), c.tAct) + row('Avg entry', clock(b.entry), clock(a.entry), CHG.ent(c), c.tEnt)
-      + row('⚠️ Days', b.flags + ' of ' + b.n, a.flags + ' of ' + a.n, CHG.fl(c), c.tFl) + row('Days missed', b.missed + ' of ' + b.sd, a.missed + ' of ' + a.sd, CHG.ms(c), c.tMs) + '</tbody></table></div>';
+    var cmp = '<div class="panel"><div class="phead"><b>Before and After</b><span class="pill t-' + c.trend + '">' + TREND[c.trend] + '</span></div><table class="cmp"><thead><tr><th></th><th>Before<br>Sep 5 – 23</th><th>After<br>Sep 24 – Oct 12</th><th>Change</th></tr></thead><tbody>'
+      + row('Avg Active', dur(b.avg), dur(a.avg), CHG.act(c), c.tAct) + row('Avg Entry', clock(b.entry), clock(a.entry), CHG.ent(c), c.tEnt)
+      + row('⚠️ Days', b.flags + ' of ' + b.n, a.flags + ' of ' + a.n, CHG.fl(c), c.tFl) + row('Days Missed', b.missed + ' of ' + b.sd, a.missed + ' of ' + a.sd, CHG.ms(c), c.tMs) + '</tbody></table></div>';
     var DL = ['M', 'T', 'W', 'T', 'F'], DN = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4 };
     function pct(m) { return Math.round(m / 480 * 1000) / 10; }
     function bars(days) { return days.map(function (d) { return d.miss ? '<div class="col miss" title="' + d.dt.label + ': missed">✕</div>' : '<div class="col' + (d.flag ? ' flag' : '') + '" title="' + d.dt.label + ': ' + dur(d.act) + ' active"><i style="height:' + pct(d.act) + '%"></i></div>'; }).join(''); }
@@ -293,12 +294,12 @@
         + '<div class="plot">' + y + '<div class="thr" style="bottom:' + pct(THR) + '%"></div><div class="avg" style="bottom:' + pct(s.avg) + '%"><span>Average ' + dur(s.avg) + '</span></div>' + bars(days) + '</div>'
         + '<div class="axis">' + ticks(days) + '</div></div>';
     }
-    var chart = '<div class="panel"><div class="phead"><b>Hours active each day</b></div><div class="chart">'
+    var chart = '<div class="panel"><div class="phead"><b>Hours Active Each Day</b></div><div class="chart">'
       + '<p class="how">Each bar is one work day. A taller bar means more active time. The black line is the average for that period.</p>'
-      + '<div class="groups">' + group('bef', 'BEFORE', 'b', 'Sep 5 – Sep 23', e.before, b, true) + group('aft', 'AFTER', 'a', 'Sep 24 – Oct 12', e.after, a, false) + '</div>'
-      + '<div class="legend"><span><i style="background:var(--navy)"></i>Normal day</span><span><i style="background:#f59e0b"></i>⚠️ Under the 6h 30m minimum</span><span><i style="background:var(--red-tint);border:1px solid var(--red-fill)"></i>✕ Missed, no approved reason</span><span><u style="border-top:2px solid var(--s900)"></u>Average</span><span><u style="border-top:2px dashed #d97706"></u>6h 30m minimum</span></div></div></div>';
+      + '<div class="groups">' + group('bef', 'Before', 'b', 'Sep 5 – Sep 23', e.before, b, true) + group('aft', 'After', 'a', 'Sep 24 – Oct 12', e.after, a, false) + '</div>'
+      + '<div class="legend"><span><i style="background:var(--navy)"></i>Normal day</span><span><i style="background:var(--yellow-fill);border:1px solid var(--yellow-ink)"></i>⚠️ Under the 6h 30m minimum</span><span><i style="background:var(--red-tint);border:1px solid var(--red-fill)"></i>✕ Missed, no approved reason</span><span><u style="border-top:2px solid var(--s900)"></u>Average</span><span><u style="border-top:2px dashed var(--yellow-ink)"></u>6h 30m minimum</span></div></div></div>';
     var total = e.before.length + e.after.length;
-    return '<div class="sum">' + cmp + chart + '</div><div class="more"><button type="button" class="morebtn" data-more="' + i + '" data-n="' + total + '">▼ Show all ' + total + ' days one by one <span>entry, exit, active and breaks for each day</span></button><div id="more' + i + '" hidden style="margin-top:12px">' + sideBySide(e) + '</div></div>';
+    return '<div class="sum">' + cmp + chart + '</div><div class="more"><button type="button" class="morebtn" data-more="' + i + '" data-n="' + total + '">▼ Show All ' + total + ' Days <span>entry, exit, active and breaks for each day</span></button><div id="more' + i + '" hidden style="margin-top:12px">' + sideBySide(e) + '</div></div>';
   }
 
   function layout3(e, i) {
@@ -320,7 +321,7 @@
       return h;
     }
     return '<div class="panel"><table class="w"><thead><tr><th>Period / Week</th><th>Days With Work</th><th>Avg Active</th><th>Avg Entry</th><th>⚠️ Days</th><th>Days Missed</th></tr></thead><tbody>'
-      + block('AFTER', 'a', 'Sep 24 – Oct 12', e.after, e.sa, e.cmp) + block('BEFORE', 'b', 'Sep 5 – Sep 23', e.before, e.sb, null) + '</tbody></table></div>';
+      + block('After', 'a', 'Sep 24 – Oct 12', e.after, e.sa, e.cmp) + block('Before', 'b', 'Sep 5 – Sep 23', e.before, e.sb, null) + '</tbody></table></div>';
   }
 
   var LAYOUTS = { 1: layout1, 2: layout2, 3: layout3 }, current = 2;
@@ -353,7 +354,7 @@
     } else if (t.dataset.row !== undefined) {
       EMPS[t.dataset.row].open = !EMPS[t.dataset.row].open; render();
     } else if (t.dataset.more !== undefined) {
-      var m = document.getElementById('more' + t.dataset.more); m.hidden = !m.hidden; t.firstChild.textContent = m.hidden ? '▼ Show all ' + t.dataset.n + ' days one by one ' : '▲ Hide the ' + t.dataset.n + ' days ';
+      var m = document.getElementById('more' + t.dataset.more); m.hidden = !m.hidden; t.firstChild.textContent = m.hidden ? '▼ Show All ' + t.dataset.n + ' Days ' : '▲ Hide the ' + t.dataset.n + ' Days ';
     } else if (wk) {
       var rows = document.querySelectorAll('.k' + wk.dataset.week), hide = !rows[0].hidden;
       rows.forEach(function (r) { r.hidden = hide; }); wk.querySelector('.chev').textContent = hide ? '▶' : '▼';

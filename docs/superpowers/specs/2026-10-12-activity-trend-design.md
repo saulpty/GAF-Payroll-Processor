@@ -74,27 +74,59 @@ Columns: Employee, **Trend**, Days With Work, Avg Active, Avg Entry, Avg Exit, *
 
 Replaces today's single day list.
 
-1. **Before and after** panel: the Trend pill, then a table with rows Avg active, Avg entry,
-   ⚠️ Days, Days missed and columns Before (with its dates), After (with its dates), Change.
+1. **Before and After** panel: the Trend pill, then a table with rows Avg Active, Avg Entry,
+   ⚠️ Days, Days Missed and columns Before (with its dates), After (with its dates), Change.
    Change reads `+1h 11m`, `12m earlier`, `5 fewer`, or `About the same` when under the
    minimum.
-2. **Hours active each day** panel: one sentence of explanation, then two boxes side by
-   side, BEFORE and AFTER, each headed with its dates and "5h 37m a day on average".
-   One bar per scheduled day that counts. Navy bar = normal day, amber = under the
+2. **Hours Active Each Day** panel: one sentence of explanation, then two boxes side by
+   side, Before and After, each headed with its dates and "5h 37m a day on average".
+   One bar per scheduled day that counts. Navy bar = normal day, yellow = under the
    minimum, pink column with a red ✕ = missed. Scale 0h–8h on the left. A solid black
-   line at the period's average, a dashed amber line at the low-activity minimum. Day
+   line at the period's average, a dashed yellow-ink line at the low-activity minimum. Day
    letter and date under each bar. Legend underneath. Hovering a bar shows the date and
    the exact active time.
-3. **Full-width button**: `▼ Show all 26 days one by one · entry, exit, active and breaks
-   for each day`. Opens two day lists side by side, Before on the left and After on the
+3. **Full-width button**: `▼ Show All 26 Days · entry, exit, active and breaks for each day`. Opens two day lists side by side, Before on the left and After on the
    right, newest first, each topped with its four figures. Columns: Date, Entry, Exit,
    Active (with ⚠️ when low), Breaks (with the existing Long Break chip when it applies).
    A missed day is one red line "No work and no approved reason". An away day is one line
    with its existing reason chip (PTO, Sick, Holiday, Permission…) in place of the times.
-   The button then reads `▲ Hide the 26 days`.
+   The button then reads `▲ Hide the 26 Days`.
 
 When there is not enough data, the opened row shows one line saying so and the current
 period's day list only.
+
+## Design system
+
+Follows `docs/DESIGN-SYSTEM.md` (Warm variant) and `src/DESIGN.md`. The points that apply here:
+
+- **Tokens, never raw hex.** Verdict pills use the Excel status tokens: Improved =
+  green tint + green ink, Worse = red tint + red ink, Mixed = yellow tint + yellow ink;
+  Steady and Not enough data are neutral slate. Good/bad arrows use green ink and red ink.
+  Chart: normal bar `--primary` (navy), low-activity bar yellow fill with a yellow-ink
+  outline, missed day red tint with a red-ink ✕, minimum line yellow ink. The Show All
+  Days button is a secondary (outline) button, 36px high, not a pill.
+- **Case.** Title Case for panel titles, column headers, row labels and buttons
+  (`Before and After`, `Hours Active Each Day`, `Days Missed`, `Show All 26 Days`).
+  Sentence case for the tooltip, the chart's explanation line, the legend and the
+  not-enough-data line. Never ALL CAPS: the period tags read `Before` and `After`.
+- **Formats.** Dates through the tab's existing `fmtDayShort` (`Wed Sep 16`), times through
+  `fmtClock`, durations through `fmtDuration`. Nothing hand-formatted.
+- **Type and shape.** 13px cells, 12px/600 headers, 11px only for chart axis labels; tabular
+  figures on every number. Cards 1px border, 8px radius, `shadow-card`. Pills only for
+  status chips. Spacing from the 4px scale.
+- **Tables.** Numeric columns right-aligned in the new Before and After table and the day
+  lists. No zebra striping; a low-activity day row uses the yellow tint, a missed day row
+  the red tint. Sticky headers as today.
+- **Accessibility.** Colour is never the only signal: every arrow has a direction and a
+  text equivalent (`title` / `aria-label` such as "12m earlier, better"), chart bars carry
+  a text label for screen readers, the ⚠️ has an accessible name, buttons are real
+  `<button>`s with the global focus ring.
+
+**Known gaps, left alone on purpose** (the design system says to flag, not silently fix):
+the existing By Employee table left-aligns its numbers and shows a sort icon on every
+header, and the Activity tab formats times as `9:04 AM` and short durations as `45m` where
+the design system says `9:04AM` and `45 min`. This work keeps the tab consistent with
+itself and does not restyle the existing columns.
 
 ## Rules
 
