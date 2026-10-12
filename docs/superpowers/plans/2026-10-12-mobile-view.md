@@ -1,20 +1,30 @@
-# Phone view: plan (2026-10-12)
+# Phone view: plan (2026-10-12, revision 2)
 
-**Status: DRAFT. Nothing executed.** Design: `docs/superpowers/specs/2026-10-12-mobile-view-design.md`.
-Evidence: `docs/findings/2026-10-12-mobile-baseline.md`. Mockup: https://claude.ai/artifact/REqmwzDbgqWauuHu4NCJLN
+**Status: FINAL DRAFT. Nothing executed.** Design:
+`docs/superpowers/specs/2026-10-12-mobile-view-design.md` (revision 2, after the design review).
+Evidence: `docs/findings/2026-10-12-mobile-baseline.md`.
+Mockup: https://claude.ai/artifact/REqmwzDbgqWauuHu4NCJLN
 
-Twelve prompts in two stages, plus a step 0 that changes nothing. One prompt = one full change
-loop (`docs/CHANGE-LOOP.md`). Each prompt file is written and committed just before it is sent,
-against the code as it is *that day*: the files below may have moved since 2026-10-12.
+One prompt = one full change loop (`docs/CHANGE-LOOP.md`). Each prompt file is written and
+committed just before it is sent, against the code as it is *that day*. Sizes below are from
+2026-10-12. Folder: `docs/superpowers/prompts/<date>-mobile/NN-<slug>.md`.
 
-Folder for the prompts: `docs/superpowers/prompts/<date>-mobile/NN-<slug>.md`.
+| Stage | Prompts | What you get | Ships alone |
+|---|---|---|---|
+| — | **M0** | Sections can be changed on a phone again | yes, any time |
+| 0 | none | Facts from a real phone | n/a |
+| 1 | **M1a, M1b, M2, M3, M4, M5** | Phone frame, filters, Payroll/Admin slide, pop-ups fit | **release A** |
+| 2 | **M6, M7** | Today and the employee panel as rows | **release B** |
+| 2 | **M8, M9, M10, M11** | PTO, Contracts, Disciplinary | each page; **release C** |
+| 3 | M12, M13, M14 | Attendance List, Activity, Reports | only if asked for |
+
+A loop is about 30–60 minutes. Stage 1 is one long session; stage 2 is about two.
 
 ## Before any prompt
 
-- **Saul reviews the spec and answers its six questions** (or accepts the defaults).
-- The parallel work that was running on 2026-10-12 is finished, exported, synced and committed, so
-  the baseline is clean. Then `git merge --ff-only` this branch's documents into `main`.
-- Re-read every file a prompt names before writing that prompt. Sizes below are from 2026-10-12.
+- The parallel work from 2026-10-12 is exported, synced and committed; `git status` clean. Then
+  `git merge --ff-only` this branch's documents into `main` and push.
+- Re-read every file a prompt names before writing that prompt.
 
 ## Rules every prompt repeats, word for word
 
@@ -22,247 +32,289 @@ Folder for the prompts: `docs/superpowers/prompts/<date>-mobile/NN-<slug>.md`.
 - "Never touch `ProcessPayroll.tsx`, `PayrollMaster.tsx`, `ActionRequired.tsx`,
   `classificationEngine.ts`, `AdminLookups.tsx`, `teramindParser.ts`, or anything in
   `src/components/ui/`."
-- "At 768 px and wider, nothing may look or behave differently."
+- "With a mouse on a screen 768 px or wider, nothing may look or behave differently."
 - "Every file stays under 15 KB."
-- "Never `window.location.reload()`: the app lives in a frame and a reload 404s."
+- "Never `window.location.reload()` and never `history.pushState` / `replaceState`."
+- From M6 on: "Follow the Phone section of `src/DESIGN.md`."
 
 ## Checks after every prompt
 
 1. `git status --short`: only the named files.
-2. `node --test "tests/*.test.ts"`: all pass (baseline 718 on 2026-10-12, plus the new ones).
-3. `/dev`, hard refresh, **phone size 375 × 812**: the acceptance list of that prompt, screenshot.
-4. `/dev`, **desktop 1440 wide**: same page, screenshot, compared with the "before" taken at the
-   start of that prompt. Any difference not listed in the prompt = revert in UIB and re-prompt.
-5. Console: no errors on load or after each tap.
-6. Commit: what changed, what was checked, both screenshots named.
+2. `node --test "tests/*.test.ts"`: all pass (718 on 2026-10-12, plus the new ones).
+3. `/dev`, hard refresh, three sizes: **375 × 667**, **667 × 375** (sideways), **1440 wide**.
+   The computer screenshot is compared with the one taken before the prompt.
+4. Console: no errors on load or after each tap.
+5. Commit: what changed, what was checked, the screenshots named.
 
-How to get phone size without disturbing anything: in the `/dev` tab, narrow the app's frame
-(`document.querySelector('iframe').style.width = '375px'`), or use the browser tool's phone preset.
-Moving between pages without a reload: `history.pushState` + a `popstate` event inside the frame
-(a reload resets the width).
+Phone size without disturbing anyone: in a `/dev` tab of your own, narrow the app's frame
+(`iframe.style.width = '375px'; iframe.style.height = '667px'`). Move between pages by clicking
+inside the app, not by reloading (a reload resets the size). Touch-only rules
+(`pointer: coarse`) do not switch on this way: check those with the browser's device mode or on a
+real phone.
 
 ---
 
-## Step 0. Look at it on a real phone (no change, 15 minutes, needs Saul)
+## M0. Sections reachable again (2 files, ships on its own)
 
-Open the **live** address on a phone, signed in. Three things to learn, each changes a detail of
-prompt M1:
+**Edited:** `src/app/TopNav.tsx` (10.1 KB), `src/app/components/RefreshButton.tsx` (1.6 KB).
 
-| Question | If yes |
+Below 768 px: hide the "GAF Panama / HR Hub" words (already hidden below 640), the word
+"Refresh" (icon stays, `aria-label` unchanged) and the name and role text in the name pill (icon
+stays). Nothing else. The section row is already `flex-1 min-w-0 overflow-x-auto`; it was at
+0 px only because its neighbours would not shrink.
+
+Keep `<RefreshButton />` directly before `{isViewingAs ? (` (test `RB1`).
+
+**Test first** (`tests/mobileShell.test.ts`): `RB1`–`RB4` still pass; both files under 15 KB.
+**Phone:** the six sections (four for a manager) are visible or reachable by sliding the navy
+bar; tapping each changes section; the View As pill still shows the person's name and still stops.
+**Computer:** identical.
+
+## Step 0. A real phone (no change; needs Saul for 15 minutes)
+
+On the **live** address, signed in, iPhone Safari and Android Chrome if both are used:
+
+| Check | Decides |
 |---|---|
-| Does UI Bakery add its own bar or menu around the app on a phone? | The phone frame must fit inside it; measure the room left |
-| Is the bottom of the app hidden behind the browser's bar? | Use `h-dvh` instead of `h-screen` on a phone |
-| Does tapping a text box zoom the page? | Confirms the 16 px rule (expected: yes) |
+| Open Contracts and scroll to the last employee. Is the last row fully visible above the browser's bar, upright and sideways? | Whether the bottom bar is built (M1b) or the sections stay in the top row |
+| Is there any UI Bakery bar or menu around the app? | How much room the frame has |
+| Pull down at the top of a list. Does the whole page reload? | Confirms `overscroll-behavior` in M4 |
+| Tap a text box. Does the page zoom in? | Confirms the 16 px rule in M4 |
+| Open the employee panel, press the phone's Back. Where do you land? | What sheets must tolerate; written into LESSONS |
+| Leave the tab for a few minutes and come back. Does it reload, and where to? | Known frame behaviour; written down |
 
-Also: save the four "before" screenshots from a real phone next to the ones in
-`docs/assets/2026-10-12-mobile-baseline/`.
+Save real-phone "before" screenshots beside the ones in `docs/assets/2026-10-12-mobile-baseline/`.
 
 ---
 
-## Stage 1. Everything reachable (3 prompts → release point A)
+## Stage 1. Everything reachable and touchable
 
-### M1. The phone frame: bottom section bar, slim top bar
+### M1a. The switch and the counts (no visible change except a 48 px top bar on a phone)
 
-**New:** `src/app/lib/useIsMobile.ts`, `src/app/lib/mobileNav.ts`,
-`src/app/components/mobile/BottomNav.tsx`, `src/app/components/mobile/MobileSheet.tsx`.
-**Edited:** `src/app/app.tsx` (4.5 KB), `src/app/TopNav.tsx` (10.1 KB),
-`src/app/components/RefreshButton.tsx` (1.6 KB), `src/AGENTS.md`.
+**New:** `src/app/lib/useIsPhone.ts`, `src/app/lib/useNavBadges.ts`.
+**Edited:** `src/tailwind.config.js`, `src/app/app.tsx` (4.5 KB), `src/app/TopNav.tsx`, `src/AGENTS.md`.
 
-- `useIsMobile.ts`: `isMobileWidth(w)` and `useIsMobile()` (`matchMedia('(max-width: 767px)')`).
-- `mobileNav.ts`: `mobileNavItems(isSuper)` → `{ bar, more }`. Manager: bar = Attendance, PTO,
-  Contracts, Disciplinary; more = empty. Super: same bar plus More = Payroll, Admin.
-- `BottomNav.tsx`: rendered by `app.tsx` after `<main>`, inside `RefreshBoundary`, only on a phone.
-  Section icon, short name, section colour, the three count badges (the count loaders move to a
-  small shared hook so `TopNav` and `BottomNav` do not each run them; if that pushes `TopNav` near
-  its limit, the hook goes in `src/app/lib/useNavBadges.ts`, a fifth new file to add to the list).
-- `TopNav.tsx` on a phone: 48 px tall; the section row is hidden (`hidden md:flex`); the current
-  section's name shows instead; the name pill shows only its icon and opens a `MobileSheet` with
-  name, role, email; while viewing as someone, an amber strip under the bar with Stop.
-- `RefreshButton.tsx`: the word "Refresh" hidden on a phone, 40 px target, `aria-label` unchanged.
-- **Keep** `<RefreshButton />` directly before `{isViewingAs ? (` in `TopNav.tsx`: test `RB1`
-  matches on that. **Keep** `<div key={refreshVersion}` and `<MondayAutoSync />` directly before
-  `<RefreshBoundary>`: test `RB3`.
+- `useIsPhone.ts`: exports `PHONE_QUERY = '(max-width: 767px), (max-height: 500px) and (pointer: coarse)'`
+  and `useIsPhone()`, whose first value comes from `window.matchMedia(PHONE_QUERY).matches` inside
+  the `useState` initialiser, with a `change` listener.
+- `tailwind.config.js`: under `theme.extend.screens`, `phone: { raw: '<the same string>' }`.
+- `useNavBadges.ts`: the three count loaders and the PTO reload effect, moved out of `TopNav`
+  unchanged (same actions, same flat parameters, same `viewAs`). Called **once**, in a small
+  `Shell` component in `app.tsx`, and passed to `TopNav` as a prop.
+- `TopNav.tsx`: takes `badges`; `phone:h-12`. M0's `md:` classes become `phone:` classes.
+- `AGENTS.md`: a short "Phone layout" note naming the switch and the two rules (layout by
+  `phone`, touch comfort by `pointer: coarse`).
 
-**Tests first** (`tests/mobileShell.test.ts`): `isMobileWidth(767)` true, `(768)` false;
-`mobileNavItems(false)` has four bar items and no More; `mobileNavItems(true)` puts `payroll` and
-`admin` under More and nowhere else; `app.tsx` renders `BottomNav` inside `RefreshBoundary`;
-`TopNav.tsx` section row carries `hidden md:flex`; every new file under 15 KB; `RB1`–`RB4` still pass.
+**Tests first:** the string in `tailwind.config.js` equals `PHONE_QUERY`; `useNavBadges.ts` still
+passes `viewAs` to the two scoped counts (no new action, so `accessGuards` needs no new entry);
+`TopNav.tsx` no longer imports the three count actions; size guard.
+**Phone:** top bar is 48 px tall (**this proves UI Bakery honours the Tailwind change**; if it is
+still 56, stop and switch to the `data-phone` fallback in the spec). Badges show the same numbers.
+**Computer:** identical; the network tab shows three count queries on load, not six.
 
-**Phone acceptance:** a bar of sections at the bottom on every page; tapping each goes to that
-section's home; badges show the same numbers as desktop; as a manager (View As) there is no More
-and no Payroll/Admin; as a super user More lists both; the amber View As strip shows and Stop
-works; Refresh still spins and reloads the data; Process Payroll is not remounted by Refresh.
-**Desktop acceptance:** top bar pixel-identical; no bottom bar.
+### M1b. The phone frame
 
-### M2. Tabs and filters on a phone
+**New:** `src/app/lib/mobileNav.ts`, `src/app/components/mobile/MobileSheet.tsx`,
+`src/app/components/mobile/BottomNav.tsx`.
+**Edited:** `src/app/app.tsx`, `src/app/TopNav.tsx`.
+
+- `mobileNav.ts`: `mobileNavItems(isSuper)` → `{ bar, more }`, in `SECTIONS` order.
+- `MobileSheet.tsx`: built on `Dialog` / `DialogContent` from `@/components/ui/dialog` with
+  override classes (bottom-anchored, full width, `max-h` of the frame, inner scroll, 44 px close,
+  radius `lg`). Props: `open`, `onClose`, `title`, `size: 'partial' | 'full'`.
+- `BottomNav.tsx`: after `<main>` inside `Shell`, phone only. Icon, short name in `color.ink`,
+  badges from the prop, More → `MobileSheet`.
+- `TopNav.tsx` on a phone: the section row is not rendered; the current section's name is;
+  View As becomes the amber strip under the bar.
+- **If step 0 said the bottom is unreliable:** skip `BottomNav`; keep M0's sliding row; More is
+  not needed. Everything after M1b is unaffected.
+
+**Tests first:** `mobileNavItems(false)` = four items in desktop order, no More;
+`mobileNavItems(true)` adds More = payroll, admin; `MobileSheet.tsx` imports `ui/dialog` and that
+file is unchanged; size guard; `RB1`–`RB4`.
+**Phone:** every section one tap away from every page; manager (View As) sees four buttons, no
+More, no Disciplinary badge; super user sees More with both; View As strip always visible; Refresh
+works; with a keyboard, Tab stays inside an open sheet and Esc closes it.
+**Computer:** identical, no bottom bar.
+
+### M2. Row 2: tabs and the Filters sheet
 
 **New:** `src/app/components/mobile/MobileFilters.tsx`.
-**Edited:** `src/app/SectionBar.tsx` (3.9 KB), `src/app/FilterBar.tsx` (**12.9 KB, 2 KB of room**),
+**Edited:** `src/app/SectionBar.tsx` (3.9 KB), `src/app/FilterBar.tsx` (**12.9 KB**),
 `src/app/components/PeriodMultiSelect.tsx` (4.1 KB), `src/app/components/EmployeeSearchInput.tsx`
 (3.7 KB), `src/app/components/AttendanceRangeControls.tsx` (5.6 KB).
 
-- `SectionBar.tsx` on a phone: no section name (the top bar has it); the tabs on one scrolling line
-  with a right-edge fade; under it `MobileFilters` in place of the inline `FilterBar`. A page with
-  no tabs and no filters shows no white bar at all.
-- `MobileFilters.tsx`: employee search at full width (when the page has it) + a Filters button
-  showing how many filters are in use (reuses `hasVisibleFilter`'s inputs); the button opens a
-  `MobileSheet` holding `<FilterBar stacked />`, Clear Filters, Done.
-- `FilterBar.tsx`: one new optional prop, `stacked`. When set, the root is a column and each
-  control is full width; the employee search is left out (it is already on the search row).
-  **Smallest possible edit**: class strings only, no logic moved. If it cannot stay under 15 KB,
-  stop and split the status-tab buttons into their own file first, as a separate prompt.
-- `PeriodMultiSelect`, `EmployeeSearchInput`: on a phone the drop-down is as wide as its box and
-  never runs off the screen. `AttendanceRangeControls`: From / To / Quick each full width when stacked.
-- All of these inputs: 16 px text on a phone.
+- `SectionBar.tsx` on a phone, manager sections: one 44 px line. Left: tabs (sliding, right-edge
+  fade), or the active filters as chips when the section has no tabs. Right: `MobileFilters`.
+  Payroll and Admin routes on a phone: today's bar, forced onto one sliding line.
+- `MobileFilters.tsx`: the Filters button (dot when `hasVisibleFilter` is true) and a
+  `MobileSheet` that is **always mounted** and holds `<FilterBar stacked />`, with Done.
+- `FilterBar.tsx`: one optional prop, `stacked`: root becomes a column, controls full width.
+  Class strings only; every loader and effect stays where it is. If it cannot stay under 15 KB,
+  stop: first send a separate no-visible-change prompt that moves the Red/Yellow and
+  All/Green/Yellow/Red buttons into `src/app/components/StatusTabs.tsx`.
+- `PeriodMultiSelect`: a `inline` prop that renders the list in place instead of floating.
+  `EmployeeSearchInput`: no suggestion list on a phone. `AttendanceRangeControls`: full-width
+  boxes when stacked.
 
-**Tests first** (`tests/mobileFilters.test.ts`): `FilterBar.tsx` under 15 KB and accepts `stacked`;
-`SectionBar.tsx` renders `MobileFilters` and still renders `FilterBar` for desktop; `filterRoutes.ts`
-unchanged (the rules stay in one place); existing `clearFilters.test.ts`, `periodPicker.test.ts` pass.
+**Tests first:** `filterRoutes.ts` unchanged; `FilterBar.tsx` under 15 KB; existing
+`clearFilters`, `periodPicker`, `attendancePeriods` tests pass.
+**Phone:** **open Attendance → List cold, without opening Filters: the current period's rows
+show** (proves `FilterBar` is alive while hidden); Reports tab reachable by sliding; choose a Title
+→ dot on the button, page filtered, chip visible on PTO; Clear Filters empties; Periods/Dates
+switch, period list and date pickers work inside the sheet.
+**Computer:** the white bar identical on all twelve routes that have filters.
 
-**Phone acceptance:** on Today the white area above the page is at most 92 px (was 177); Reports
-tab reachable by sliding the tabs; Filters shows "Filters · 1" after choosing a Title and the page
-is filtered; Clear Filters empties them; Periods / Dates switch, period picker and date pickers all
-work inside the sheet on Attendance → List; Action Required still shows its Red / Yellow switch
-with counts inside the sheet. **Desktop:** the white bar identical on all twelve routes with filters.
-
-### M3. Computer-sized Payroll and Admin; shared touch fixes
+### M3. Computer-sized Payroll and Admin; headers wrap; ⓘ on tap
 
 **New:** `src/app/components/mobile/DesktopCanvas.tsx`.
 **Edited:** `src/app/app.tsx`, `src/app/pages/admin/AdminLayout.tsx` (0.2 KB),
 `src/app/components/PageHeader.tsx` (0.7 KB), `src/app/components/InfoTip.tsx` (0.3 KB),
-`src/app/components/AccessGate.tsx` (2.0 KB), `src/app/components/ds/BulkBar.tsx` (2.1 KB),
+`src/app/components/AccessGate.tsx` (2.0 KB).
+
+- `DesktopCanvas`: on a phone, `h-full min-w-[1024px]` around its children; otherwise just the
+  children. Around the five Payroll route elements (inside `RequireSuper`) and around `<Outlet />`.
+- `PageHeader`: wraps on a phone. `AccessGate`: side margin.
+- `InfoTip`: click or tap toggles a small bubble with the text; closes on a tap elsewhere;
+  `title` kept. Works at every width (tablets have no mouse either).
+
+**Phone:** Payroll Master, Action Required, Process, HRK Summary, Period Log and the six Admin
+pages look like the computer and slide both ways; Notes reachable on Payroll Master; Edit and
+Delete reachable on Rules & Config; the name-matching step of Process shows the unmatched name;
+PTO's header buttons sit under the subtitle and the page no longer slides sideways.
+**Computer:** identical, except an ⓘ now also opens on click.
+
+### M4. Touch floor 1: text boxes, the panel, floating pieces
+
+**Edited:** `src/index.css` (4.7 KB), `src/app/pages/attendance/AttendancePanel.tsx` (5.2 KB),
+`src/app/components/ds/Toast.tsx` (3.6 KB), `src/app/components/ds/BulkBar.tsx` (2.1 KB),
 `src/app/components/ds/Combobox.tsx` (8.0 KB).
 
-- `DesktopCanvas`: on a phone, wraps its children in `h-full min-w-[1024px]` and shows the one-line
-  "Built for a computer. Slide sideways to see everything." note (dismissed for the session).
-  On desktop it renders its children and nothing else.
-- `app.tsx`: the five Payroll routes' elements go inside `<DesktopCanvas>` (inside `RequireSuper`).
-  `AdminLayout.tsx`: `<Outlet />` goes inside it.
-- `PageHeader`: wraps on a phone. `InfoTip`: tap shows the text in a bubble; mouse-over kept.
-- `AccessGate`: side margin. `BulkBar`: stays inside the screen. `Combobox`: the list never runs
-  past the right edge and does not close itself when the phone keyboard opens.
+- `index.css`, inside `@media (pointer: coarse)`: `input, select, textarea { font-size: 16px }`
+  (not inside `.desktop-canvas`, so Payroll and Admin do not reflow); a `.tap` helper giving a
+  44 px minimum hit area. And `overscroll-behavior: contain` on `main` and on sheets. The Excel
+  status colours in this file are not touched.
+- `AttendancePanel`: on a phone the width is 100% (the `clamp(520px, …)` applies otherwise).
+  Its contents are still the desktop ones until M7; they are now all reachable.
+- `Toast` and `BulkBar`: sit above the bottom bar on a phone and inside the screen's edges.
+- `Combobox`: the list never passes the right edge and does not close when the keyboard opens.
 
-**Tests first** (`tests/mobileCanvas.test.ts`): each of `/process`, `/action-required`,
-`/payroll-master`, `/hrk-summary`, `/period-log` is wrapped; `AdminLayout` wraps the outlet;
-`DesktopCanvas.tsx` renders only its children when not on a phone. (That no do-not-touch file
-changed is proven by the `git status` check in the loop, not by a test.)
+**Tests first:** `AttendancePanel.tsx` does not apply the 520 px minimum unconditionally; the
+status-fill variables in `index.css` are byte-identical before and after.
+**Phone:** from Today, tap an employee: the panel's left edge and the full name are visible and
+it closes. Toast and BulkBar position: checked in the code and by eye on Action Required with two
+rows ticked (the bar appears; commit nothing).
+**Real phone only:** tapping a text box no longer zooms.
 
-**Phone acceptance:** Payroll Master, Action Required, Process, HRK Summary, Period Log and all six
-Admin pages look like the computer version and slide in both directions; on Payroll Master you can
-reach the Notes column; on Rules & Config you can reach Edit and Delete; an ⓘ shows its text when
-tapped; PTO's header buttons sit under the subtitle and the page no longer slides sideways.
-**Desktop:** all pages identical; clicking an ⓘ now also shows its bubble (the one intended change).
+### M5. Touch floor 2: pop-ups fit, no scroll-inside-scroll
 
-**→ Release point A.** Real-phone check by Saul. After this, nothing is broken on a phone.
+**Edited (class strings only):** `src/app/pages/pto/RecordApprovalDialog.tsx` (**13.5 KB**),
+`RecordDialogPayrollPanel.tsx` (4.8 KB), `src/app/pages/disciplinary/CloseCaseDialog.tsx` (3.7 KB),
+`DeleteActionDialog.tsx` (3.8 KB), `src/app/pages/attendance/activity/ActivityThresholds.tsx`
+(5.5 KB), `src/app/pages/pto/PtoTable.tsx` (10.9 KB), `src/app/pages/contracts/ContractsTable.tsx`
+(8.2 KB), `src/app/pages/disciplinary/DisciplinaryTable.tsx` (**13.5 KB**).
 
----
+- Each dialog's `DialogContent` gets phone classes: side margin, never taller than the frame,
+  scrolls inside. Two-column grids become one column on a phone.
+- The three tables' `max-h-[calc(100vh-…)]` boxes are released on a phone, so the page scrolls as
+  one instead of a small box inside it.
 
-## Stage 2. Manager pages as cards (9 prompts)
+**Phone:** Record PTO, Close Case, Delete and Thresholds each open, scroll, and show their
+buttons (**cancel every one; save nothing**). On PTO, Contracts and Disciplinary one finger
+scrolls the whole page.
+**Real phone only:** with the keyboard open in Record PTO, Save can still be reached.
 
-Every prompt here follows one pattern: a new `…Cards.tsx` file renders the same rows the table
-renders, from the same data the table already has; the page shows cards when `useIsMobile()` is
-true and the table otherwise. No loader is touched.
-
-### M4. `MobileCard` + Attendance → Today
-
-**New:** `components/mobile/MobileCard.tsx`, `pages/attendance/TodayCards.tsx`.
-**Edited:** `pages/attendance/AttendanceToday.tsx` (**12.0 KB**), `TodayTiles.tsx` (3.7 KB).
-Cards: name + status pill · Why chip · shift · Entry · Late · Active. Tiles three across. The row
-click in `TodayTable.tsx` works by position in the list and is **not** changed; cards call the same
-"open panel" with the employee directly.
-**Phone:** 43 cards for 43 employees; counts on the tiles equal the desktop tiles; tap opens the panel.
-
-### M5. The employee panel as a full-screen sheet
-
-**New:** `pages/attendance/AttendancePanelDayCards.tsx`.
-**Edited:** `AttendancePanel.tsx` (5.2 KB), `AttendancePanelBody.tsx` (7.5 KB),
-`AttendanceDonuts.tsx` (5.4 KB), `AttendancePanelDays.tsx` (5.8 KB).
-On a phone the panel's width is 100% (the inline `clamp(520px, …)` applies from 768 px up only),
-padding 16 px, close button 44 px; the scatter chart and ring charts are not rendered; Day by Day
-renders as cards.
-**Tests:** the 520 px minimum is not applied unconditionally. **Phone:** opened from Today, List
-and Activity; name fully visible; closes with the button; the page behind does not scroll.
-
-**→ Release point B** (the daily "who is in" check works end to end on a phone).
-
-### M6. PTO Tracker
-
-**New:** `pages/pto/PtoCards.tsx`, `pages/pto/PtoRequestCards.tsx`.
-**Edited:** `PtoTracker.tsx` (3.9 KB), `PtoTable.tsx` (10.9 KB), `PtoComingUp.tsx` (7.1 KB),
-`RecordApprovalDialog.tsx` (**13.5 KB, class strings only**), `RecordDialogPayrollPanel.tsx` (4.8 KB).
-Reuses `PtoVerdictCell` and `PtoPayrollCell` unchanged inside the request cards for super users.
-**Phone:** Available is the largest number on each card and red when negative; a manager sees no
-Record / Edit / Withdraw; a super user can record a pending request with the keyboard open and
-still reach Save (**do not save**: cancel, as in the AR plan's "exercise without committing").
-
-### M7. Contracts
-
-**New:** `pages/contracts/ContractCards.tsx`.
-**Edited:** `ContractsTable.tsx` (8.2 KB), `ContractsChips.tsx` (2.3 KB).
-Card shows `row.next` (the data already has it) as the single "next milestone"; opened card shows
-all five via the existing `MilestoneCells` logic and writes out the mouse-over texts.
-**Phone:** chips on one sliding line and still filter; order is still "soonest first".
-
-### M8. Disciplinary: list and case file
-
-**New:** `pages/disciplinary/DisciplinaryCards.tsx`, `pages/disciplinary/CaseFileSheet.tsx`.
-**Edited:** `Disciplinary.tsx` (6.1 KB), `DisciplinaryTable.tsx` (**13.5 KB, one conditional only**).
-**Phone:** the full scenario text is readable; the case file opens as a full-screen sheet; the same
-employees and counts as desktop for a manager under View As (scoping untouched: no loader change).
-
-### M9. Disciplinary: reading and acting on one action
-
-**Edited:** `ActionDetail.tsx` (8.7 KB), `EditActionForm.tsx` (8.8 KB), `CloseCaseDialog.tsx`
-(3.7 KB), `DeleteActionDialog.tsx` (3.8 KB), `ActionPdfBar.tsx` (3.7 KB).
-Facts stacked at full width; edit form one column; Reopen a real button; dialogs scroll.
-**Phone:** Download PDF works on a real iPhone and Android (the one thing a narrowed desktop
-browser cannot prove); Close Case dialog reachable with the keyboard open (**cancel, do not save**).
-
-### M10. Attendance → List
-
-**New:** `pages/attendance/AttendanceListCards.tsx`.
-**Edited:** `pages/Attendance.tsx` (6.5 KB), `AttendanceTable.tsx` (10.8 KB), `AttendanceKpis.tsx` (4.6 KB).
-The sort logic moves out of `AttendanceTable.tsx` into a small pure function both layouts use
-(`src/app/lib/attendanceSort.ts`, with a test), so cards and table cannot sort differently.
-The inline `calc(100vh - 220px)` applies from 768 px up only.
-
-### M11. Attendance → Activity
-
-**New:** `pages/attendance/activity/ActivityCards.tsx`.
-**Edited:** `AttendanceActivity.tsx` (7.6 KB), `ActivityNeedsLook.tsx` (5.8 KB),
-`ActivityByEmployee.tsx` (9.7 KB), `ActivityByDay.tsx` (6.7 KB), `ActivityThresholds.tsx` (5.5 KB).
-
-### M12. Attendance → Reports
-
-**New:** `pages/attendance/ReportDaySheet.tsx`, `pages/attendance/AttendanceReportCards.tsx`.
-**Edited:** `AttendanceReport.tsx` (10.9 KB), `AttendanceReportStrips.tsx` (10.4 KB),
-`AttendanceReportTable.tsx` (10.2 KB).
-
-**→ Release point C.** Then, by hand (allowed: `docs/` is hand-written): a "Phone" section in
-`docs/DESIGN-SYSTEM.md`, a lesson in `docs/LESSONS.md` for anything that bit, the handoff. One last
-small prompt mirrors the Phone section into `src/DESIGN.md` and `src/AGENTS.md`.
+**→ Release A.** Real-phone check (step 0's list again, plus rotation). After this, every page
+and every pop-up is reachable on a phone.
 
 ---
 
-## Order, size, and what can be dropped
+## Stage 2. The daily pages as rows
 
-| Stage | Prompts | Rough time (one loop ≈ 30–60 min) | Can ship alone |
-|---|---|---|---|
-| 0 | none | 15 min with Saul's phone | n/a |
-| 1 | M1–M3 | one session | yes: release A |
-| 2a | M4–M5 | half a session | yes: release B |
-| 2b | M6–M9 | one session | each page on its own |
-| 2c | M10–M12 | one session | each page on its own |
+Pattern for every prompt: a new `…Rows.tsx` renders the same data the table already has; the page
+renders rows when `useIsPhone()` is true and the table otherwise. No loader is touched. Each list
+has loading, nothing-found and error states (spec, "States").
 
-M1 → M2 → M3 in that order. M4 before M5. After that, M6–M12 are independent and can be reordered
-by what managers ask for first. If time runs out, everything not yet done still works at the
-"release A" level: the frame is right and the table slides sideways.
+### M6. `MobileRow` + Attendance → Today
 
-## Things that could change this plan
+**New:** `src/app/components/mobile/MobileRow.tsx`, `src/app/pages/attendance/TodayRows.tsx`.
+**Edited:** `src/app/pages/attendance/AttendanceToday.tsx` (**12.0 KB**), `TodayTiles.tsx`
+(3.7 KB), `src/DESIGN.md` (the Phone section copied from `docs/DESIGN-SYSTEM.md`).
 
-- Step 0 finds that UI Bakery frames the app differently on a phone → M1's heights change.
-- Saul says payroll people do use phones → M3's "computer-sized page" needs a second look for
-  Action Required at least.
-- Saul prefers a top menu to a bottom bar → `BottomNav` becomes a menu sheet; nothing else moves.
-- The parallel work changed `TopNav`, `SectionBar`, `FilterBar` or `app.tsx` → M1/M2 are re-read
-  against the new code before their prompts are written (they would be anyway).
+Header scrolls with the page on a phone; tiles render as one sliding line of counts; rows per
+spec. `TodayTable.tsx`'s click-by-position is **not** changed; rows open the panel with the
+employee directly.
+**Phone (375 × 667):** at least four employees visible without scrolling; the counts equal the
+computer's tiles; people needing attention come first; a long name wraps and the pill stays right.
+
+### M7. The employee panel as a sheet
+
+**New:** `src/app/pages/attendance/AttendancePanelDayRows.tsx`.
+**Edited:** `AttendancePanel.tsx`, `AttendancePanelBody.tsx` (7.5 KB), `AttendanceDonuts.tsx`
+(5.4 KB), `AttendancePanelDays.tsx` (5.8 KB).
+
+On a phone the panel renders inside `MobileSheet` (`full`); charts not rendered; Day by Day as
+rows above the seven small numbers.
+**Phone:** opened from Today, List and Activity; closes with the button and Esc; the page behind
+does not move.
+
+**→ Release B.**
+
+### M8. PTO Tracker
+
+**New:** `src/app/pages/pto/PtoRows.tsx`, `src/app/pages/pto/PtoRequestRows.tsx`.
+**Edited:** `PtoTracker.tsx` (3.9 KB), `PtoTable.tsx`, `PtoComingUp.tsx` (7.1 KB).
+`PtoVerdictCell` and `PtoPayrollCell` reused unchanged in the super user's sheet.
+**Phone:** Available is the one large number, red when negative; a manager's row opens in place
+and has no Record / Edit / Withdraw; a super user's row opens a sheet and can start Record
+(**cancel**).
+
+### M9. Contracts
+
+**New:** `src/app/pages/contracts/ContractRows.tsx`.
+**Edited:** `ContractsTable.tsx`, `ContractsChips.tsx` (2.3 KB).
+Row shows `row.next` (already in the data). **Phone:** chips on one sliding line, 44 px tall to
+the finger, still filter; order still "soonest first".
+
+### M10. Disciplinary: list and case file
+
+**New:** `src/app/pages/disciplinary/DisciplinaryRows.tsx`, `CaseFileSheet.tsx`.
+**Edited:** `Disciplinary.tsx` (6.1 KB), `DisciplinaryTable.tsx` (one conditional).
+**Phone:** no scenario text on the list; the file opens as a full sheet; an action opens in place;
+same employees and counts as the computer for a manager under View As.
+
+### M11. Disciplinary: one action
+
+**Edited:** `ActionDetail.tsx` (8.7 KB), `EditActionForm.tsx` (8.8 KB), `ActionPdfBar.tsx` (3.7 KB).
+Facts stacked; edit form one column; Reopen a real button; Close Case not red.
+**Real phone only:** Download PDF saves or opens the file on iPhone and Android.
+
+**→ Release C.** Then by hand: lessons into `docs/LESSONS.md`, the handoff.
+
+---
+
+## Stage 3. On request only
+
+Until asked for, these three pages stay at the release A level (right frame, table slides).
+
+- **M12 List.** New `AttendanceListRows.tsx`, `src/app/lib/attendanceSort.ts` (the table's sort,
+  moved to a pure function both layouts use, with a test). Edited `Attendance.tsx`,
+  `AttendanceTable.tsx` (the inline `calc(100vh - 220px)` not applied on a phone).
+- **M13 Activity.** New `activity/ActivityRows.tsx`. Edited `AttendanceActivity.tsx`,
+  `ActivityNeedsLook.tsx`, `ActivityByEmployee.tsx`, `ActivityByDay.tsx` (their `max-h-[70vh]`
+  boxes released on a phone).
+- **M14 Reports.** New `ReportDaySheet.tsx`. Edited `AttendanceReport.tsx`,
+  `AttendanceReportStrips.tsx` (tiles two across). Phone shows the tile view only.
+
+## Order and dependencies
+
+M0 any time. Step 0 before M1b. M1a → M1b → M2 → M3 → M4 → M5 in order. M6 before M7. M8–M11
+independent of each other after M7 (M10 before M11). Stage 3 after release B, in any order.
+
+## What would change this plan
+
+- Step 0: bottom of the screen unreliable → no `BottomNav` (M1b shrinks); everything else stands.
+- M1a: Tailwind change ignored → the `data-phone` fallback; class names in later prompts change
+  from `phone:x` to `group-data-[phone=true]/app:x`, nothing else.
+- Managers use tablets → nothing to do: tablets keep the computer layout and get the touch rules.
+- Payroll people want Action Required on a phone → a separate design; not covered here.
