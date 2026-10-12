@@ -10,6 +10,7 @@ import { syncRequests } from '@/app/pages/admin/employees/syncRequests';
 import { syncAttendanceForms } from '@/app/pages/admin/employees/syncAttendanceForms';
 import { syncContracts } from '@/app/pages/admin/employees/syncContracts';
 import { easternDate } from '@/app/lib/teramindTime';
+import { registerSync } from '@/app/lib/refreshBus';
 import loadClassificationConfigAction from '@/actions/loadClassificationConfig';
 import loadAllEmployeesAction from '@/actions/loadAllEmployees';
 import loadNameAliasesAction from '@/actions/loadNameAliases';
@@ -77,7 +78,7 @@ export default function MondayAutoSync() {
   useEffect(() => {
     if (!isSuper) return;
 
-    async function maybeSync() {
+    async function maybeSync(force = false) {
       if (document.hidden) return;
       if (inFlight) return;
 
@@ -121,7 +122,7 @@ export default function MondayAutoSync() {
         { kind: 'contracts' },
       ];
 
-      const due = BOARDS.filter(b => {
+      const due = force ? BOARDS : BOARDS.filter(b => {
         const last = lastSuccessMs(b.kind);
         return last === 0 || Date.now() - last >= intervalMs;
       });
@@ -156,7 +157,8 @@ export default function MondayAutoSync() {
           // Claim the run at DB level — zero rows = another tab beat us
           let claimId: number | null = null;
           try {
-            const claimResp = await claimRun({ kind: board.kind, ranBy: 'auto', intervalMinutes });
+            // A forced run (Refresh button) still skips a board another run claimed in the last minute.
+            const claimResp = await claimRun({ kind: board.kind, ranBy: 'auto', intervalMinutes: force ? 1 : intervalMinutes });
             const claimRows = rowsOf(claimResp);
             if (!claimRows.length) continue; // another tab claimed it
             claimId = Number(claimRows[0].id);
@@ -284,7 +286,8 @@ export default function MondayAutoSync() {
 
     const first = setTimeout(maybeSync, 20_000);
     const timer = setInterval(maybeSync, 60_000);
-    return () => { clearTimeout(first); clearInterval(timer); };
+    const unregister = registerSync('monday', maybeSync);
+    return () => { clearTimeout(first); clearInterval(timer); unregister(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuper]);
 

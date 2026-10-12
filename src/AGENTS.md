@@ -1098,6 +1098,14 @@ invariants as before, now enforced by two layers:
 Silently creates employees found on Monday with no confirmation dialog (a background process cannot
 prompt) — see BACKLOG #16 before relying on this for anything sensitive.
 
+**Refresh button (added 2026-10-12)** — `src/app/components/RefreshButton.tsx`, in `TopNav` left of
+the name pill, shown to everyone. It calls `runAllSyncs()` from `src/app/lib/refreshBus.ts`, then
+`bumpRefreshVersion()`; `RefreshBoundary` in `app.tsx` is keyed on `refreshVersion`, so the bars and
+the page remount and every loader refetches. The three `*AutoSync` components register their
+`maybeSync(force)` with `registerSync` **inside** the `if (!isSuper) return;` effect, so a manager's
+click runs no sync at all — it only reloads saved data. On `/process` the button never remounts
+(an unsaved payroll run lives in page state). Never `window.location.reload()`.
+
 **Payroll Master `'__all__'` rule**: the period dropdown on `/payroll-master` gets one extra option,
 **All Periods**, which stores the sentinel `'__all__'`. Every other Attendance/Payroll route treats
 `'__all__'` as invalid and collapses it back to `''` (see `FilterBar.tsx:107` and

@@ -6,6 +6,7 @@ import loadClassificationConfigAction from '@/actions/loadClassificationConfig';
 import loadTeramindPullLogAction from '@/actions/loadTeramindPullLog';
 import { keepFreshRange } from '@/app/lib/teramindPull';
 import { easternDate } from '@/app/lib/teramindTime';
+import { registerSync } from '@/app/lib/refreshBus';
 
 // Module-level guards — survive across re-renders; reset on full page reload.
 let inFlight = false;
@@ -25,7 +26,7 @@ export default function TeramindAutoSync() {
   useEffect(() => {
     if (!isSuper) return;
 
-    async function maybeSync() {
+    async function maybeSync(force = false) {
       // Skip when the tab is hidden
       if (document.hidden) return;
       // Skip when another copy is already running
@@ -48,7 +49,7 @@ export default function TeramindAutoSync() {
       const intervalMs = intervalMinutes * 60 * 1000;
 
       // Don't retry within the interval after a failure
-      if (lastFailureMs > 0 && Date.now() - lastFailureMs < intervalMs) return;
+      if (!force && lastFailureMs > 0 && Date.now() - lastFailureMs < intervalMs) return;
 
       // Read the pull log to find the newest 'auto' pull with no error
       let lastAutoMs = 0;
@@ -66,7 +67,7 @@ export default function TeramindAutoSync() {
       }
 
       // Enough time has passed?
-      if (lastAutoMs > 0 && Date.now() - lastAutoMs < intervalMs) return;
+      if (!force && lastAutoMs > 0 && Date.now() - lastAutoMs < intervalMs) return;
 
       // Pull
       inFlight = true;
@@ -84,7 +85,8 @@ export default function TeramindAutoSync() {
     // Check on mount and then every 60 seconds
     const first = setTimeout(maybeSync, 20_000);
     const timer = setInterval(maybeSync, 60_000);
-    return () => { clearTimeout(first); clearInterval(timer); };
+    const unregister = registerSync('teramind', maybeSync);
+    return () => { clearTimeout(first); clearInterval(timer); unregister(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuper]);
 

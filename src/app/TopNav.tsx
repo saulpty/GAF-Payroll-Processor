@@ -16,6 +16,7 @@ import loadPtoReviewCountAction from '@/actions/loadPtoReviewCount';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import BrandLogo from '@/app/components/BrandLogo';
+import RefreshButton from '@/app/components/RefreshButton';
 import { useViewer } from '@/app/context/ViewerContext';
 import { canSeeSection, homeFor } from '@/app/lib/access';
 
@@ -213,6 +214,8 @@ export default function TopNav() {
           );
         })}
       </nav>
+
+      <RefreshButton />
 
       {isViewingAs ? (
         <button

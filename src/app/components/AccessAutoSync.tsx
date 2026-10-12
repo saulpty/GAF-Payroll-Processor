@@ -3,6 +3,7 @@ import { useMutateAction } from '@uibakery/data';
 import { useAccessSync } from '@/app/pages/admin/access/useAccessSync';
 import { useViewer } from '@/app/context/ViewerContext';
 import loadClassificationConfigAction from '@/actions/loadClassificationConfig';
+import { registerSync } from '@/app/lib/refreshBus';
 
 type ConfigRow = { key: string; value: string };
 
@@ -18,7 +19,7 @@ export default function AccessAutoSync() {
 
   useEffect(() => {
     if (!isSuper) return;
-    async function maybeSync() {
+    async function maybeSync(force = false) {
       if (document.hidden) return;
 
       let intervalMinutes = 15;
@@ -33,7 +34,7 @@ export default function AccessAutoSync() {
       } catch { /* use default */ }
 
       const intervalMs = intervalMinutes * 60 * 1000;
-      if (lastRunMs > 0 && Date.now() - lastRunMs < intervalMs) return;
+      if (!force && lastRunMs > 0 && Date.now() - lastRunMs < intervalMs) return;
 
       try {
         await sync(false);
@@ -45,7 +46,8 @@ export default function AccessAutoSync() {
 
     const first = setTimeout(maybeSync, 20_000);
     const timer = setInterval(maybeSync, 60_000);
-    return () => { clearTimeout(first); clearInterval(timer); };
+    const unregister = registerSync('access', maybeSync);
+    return () => { clearTimeout(first); clearInterval(timer); unregister(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuper]);
 

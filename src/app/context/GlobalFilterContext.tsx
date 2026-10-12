@@ -9,6 +9,8 @@ export interface GlobalFilters {
   bumpPtoVersion: () => void;
   arVersion: number;
   bumpArVersion: () => void;
+  refreshVersion: number;
+  bumpRefreshVersion: () => void;
   period: string;
   setPeriod: (v: string) => void;
   dateFrom: string;
@@ -42,6 +44,8 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
   const bumpPtoVersion = () => setPtoVersion(v => v + 1);
   const [arVersion, setArVersion] = useState(0);
   const bumpArVersion = () => setArVersion(v => v + 1);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const bumpRefreshVersion = () => setRefreshVersion(v => v + 1);
   const [period,    setPeriod]    = useState('');
   const [dateFrom,  setDateFromRaw] = useState('');
   const [dateTo,    setDateToRaw]   = useState('');
@@ -81,6 +85,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     periodsVersion, bumpPeriodsVersion,
     ptoVersion, bumpPtoVersion,
     arVersion, bumpArVersion,
+    refreshVersion, bumpRefreshVersion,
     period, setPeriod,
     dateFrom, setDateFrom,
     dateTo, setDateTo,
@@ -94,7 +99,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     hasAny,
     clearAll,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [periodsVersion, ptoVersion, arVersion, period, dateFrom, dateTo, attendancePeriods, attendanceMode, employee, role, manager, statusTab, pmTab, hasAny]);
+  }), [periodsVersion, ptoVersion, arVersion, refreshVersion, period, dateFrom, dateTo, attendancePeriods, attendanceMode, employee, role, manager, statusTab, pmTab, hasAny]);
 
   return (
     <GlobalFilterContext.Provider value={value}>

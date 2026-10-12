@@ -1,10 +1,11 @@
 'use client';
 
 import '@/index.css';
+import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import TopNav from '@/app/TopNav';
 import SectionBar from '@/app/SectionBar';
-import { GlobalFilterProvider } from '@/app/context/GlobalFilterContext';
+import { GlobalFilterProvider, useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { ViewerProvider } from '@/app/context/ViewerContext';
 import AccessGate from '@/app/components/AccessGate';
 import AccessAutoSync from '@/app/components/AccessAutoSync';
@@ -29,6 +30,17 @@ import PtoTracker from '@/app/pages/PtoTracker';
 import Contracts from '@/app/pages/Contracts';
 import Disciplinary from '@/app/pages/Disciplinary';
 
+// The Refresh button bumps refreshVersion; the new key remounts the bars and the page so every
+// loader refetches. The three background syncs sit outside it and keep running.
+function RefreshBoundary({ children }: { children: ReactNode }) {
+  const { refreshVersion } = useGlobalFilters();
+  return (
+    <div key={refreshVersion} className="flex flex-col h-screen overflow-hidden bg-background">
+      {children}
+    </div>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -38,7 +50,7 @@ function App() {
             <AccessAutoSync />
             <TeramindAutoSync />
             <MondayAutoSync />
-            <div className="flex flex-col h-screen overflow-hidden bg-background">
+            <RefreshBoundary>
               <TopNav />
               <SectionBar />
               <main className="flex-1 overflow-auto">
@@ -68,7 +80,7 @@ function App() {
                   <Route path="/hrk-summary" element={<RequireSuper><HrkSummary /></RequireSuper>} />
                 </Routes>
               </main>
-            </div>
+            </RefreshBoundary>
           </GlobalFilterProvider>
         </AccessGate>
       </ViewerProvider>
