@@ -74,7 +74,7 @@ export default function AttendanceActivity() {
 
   const {
     days, byEmployee, totals, settings, loading, error, configFallbacks, reloadConfig, retry,
-    prev, today, trends, prevDays, startDates, totalsChange,
+    prev, today, trends, prevDays, startDates, totalsChange, minimums,
   } = useActivityData({
     dateFrom: safeFrom,
     dateTo: safeTo,
@@ -148,7 +148,7 @@ export default function AttendanceActivity() {
               <SummaryTile label="Late Arrivals"    value={totals.lateArrivals} accent={totals.lateArrivals > 0 ? 'text-status-red-ink' : undefined} dot="bg-red-600" note={lateNote.note} noteTone={lateNote.noteTone} />
               {isSuper && (
                 <div className="flex items-center self-center ml-auto">
-                  <ActivityThresholds settings={settings} onSaved={reloadConfig} />
+                  <ActivityThresholds settings={settings} minimums={minimums} onSaved={reloadConfig} />
                 </div>
               )}
             </div>

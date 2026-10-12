@@ -5,79 +5,95 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import type { ActivitySettings } from '@/app/lib/activityDays';
+import type { TrendMinimums } from '@/app/lib/activityTrend';
 import upsertClassificationConfigAction from '@/actions/upsertClassificationConfig';
 
 type Props = {
   settings: ActivitySettings;
+  minimums: TrendMinimums;
   onSaved: () => Promise<void>;
 };
 
-const CONFIG_META: Record<string, { label: string; description: string }> = {
-  activity_min_active_minutes: {
-    label: 'Minimum Active Time Per Full Day',
-    description: 'Minutes of Teramind activity a full scheduled day must reach. Shorter shifts scale proportionally.',
-  },
-  activity_break_minutes: {
-    label: 'Break Allowance',
-    description: 'Minutes of break allowed in a day before the gap is counted against the employee.',
-  },
-  activity_break_over_minutes: {
-    label: 'Flag Breaks Longer Than Allowance By',
-    description: 'Minutes past the break allowance before a day is flagged as a long break.',
-  },
-};
+// unit 'hours': stored in minutes, typed in hours. Any other unit is stored exactly as typed.
+type Field = { key: string; label: string; description: string; unit: 'hours' | 'minutes' | 'days' };
 
-function toHours(minutes: number): string {
-  return (minutes / 60).toFixed(1);
+const DAY_FIELDS: Field[] = [
+  { key: 'activity_min_active_minutes', unit: 'hours', label: 'Minimum Active Time Per Full Day',
+    description: 'Minutes of Teramind activity a full scheduled day must reach. Shorter shifts scale proportionally.' },
+  { key: 'activity_break_minutes', unit: 'hours', label: 'Break Allowance',
+    description: 'Minutes of break allowed in a day before the gap is counted against the employee.' },
+  { key: 'activity_break_over_minutes', unit: 'hours', label: 'Flag Breaks Longer Than Allowance By',
+    description: 'Minutes past the break allowance before a day is flagged as a long break.' },
+];
+
+const TREND_FIELDS: Field[] = [
+  { key: 'activity_trend_min_active_minutes', unit: 'minutes', label: 'Average Active Time Must Move By',
+    description: 'Minutes the average active time must change between the two periods before the Activity trend counts it.' },
+  { key: 'activity_trend_min_entry_minutes', unit: 'minutes', label: 'Average Entry Must Move By',
+    description: 'Minutes the average entry time must change between the two periods before the Activity trend counts it.' },
+  { key: 'activity_trend_min_days', unit: 'days', label: 'Low or Missed Days Must Move By',
+    description: 'Days the count of low-activity days, or of missed days, must change before the Activity trend counts it.' },
+  { key: 'activity_trend_min_worked_days', unit: 'days', label: 'Days With Work Needed to Compare',
+    description: 'Fewer days with work than this in either period shows Not enough data instead of a trend.' },
+];
+
+const ALL_FIELDS = [...DAY_FIELDS, ...TREND_FIELDS];
+
+function startValues(settings: ActivitySettings, minimums: TrendMinimums): Record<string, string> {
+  const hours = (minutes: number) => (minutes / 60).toFixed(1);
+  return {
+    activity_min_active_minutes: hours(settings.minActiveMinutes),
+    activity_break_minutes: hours(settings.breakMinutes),
+    activity_break_over_minutes: hours(settings.breakOverMinutes),
+    activity_trend_min_active_minutes: String(minimums.activeMinutes),
+    activity_trend_min_entry_minutes: String(minimums.entryMinutes),
+    activity_trend_min_days: String(minimums.days),
+    activity_trend_min_worked_days: String(minimums.workedDays),
+  };
 }
 
-function fromHours(hours: string): number {
-  return Math.round(parseFloat(hours) * 60);
+/** The number to store, or null when what was typed is not a positive number. */
+function toStored(field: Field, typed: string): number | null {
+  const n = parseFloat(typed);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const stored = field.unit === 'hours' ? Math.round(n * 60) : Math.round(n);
+  return stored > 0 ? stored : null;
 }
 
-export default function ActivityThresholds({ settings, onSaved }: Props) {
+export default function ActivityThresholds({ settings, minimums, onSaved }: Props) {
   const [open, setOpen] = useState(false);
-  const [minActive, setMinActive] = useState('');
-  const [breakAl, setBreakAl] = useState('');
-  const [breakOver, setBreakOver] = useState('');
+  const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const [upsert] = useMutateAction(upsertClassificationConfigAction);
 
   function handleOpen() {
-    setMinActive(toHours(settings.minActiveMinutes));
-    setBreakAl(toHours(settings.breakMinutes));
-    setBreakOver(toHours(settings.breakOverMinutes));
+    setValues(startValues(settings, minimums));
     setError('');
     setOpen(true);
   }
 
   async function handleSave() {
-    const vals = [
-      { key: 'activity_min_active_minutes', hours: minActive },
-      { key: 'activity_break_minutes',      hours: breakAl },
-      { key: 'activity_break_over_minutes', hours: breakOver },
-    ];
-
-    for (const v of vals) {
-      const n = parseFloat(v.hours);
-      if (!Number.isFinite(n) || n <= 0) {
+    const toSave: { field: Field; stored: number }[] = [];
+    for (const field of ALL_FIELDS) {
+      const stored = toStored(field, values[field.key] ?? '');
+      if (stored === null) {
         setError('All values must be positive numbers.');
         return;
       }
+      toSave.push({ field, stored });
     }
 
     setSaving(true);
     setError('');
     try {
-      for (const v of vals) {
-        const meta = CONFIG_META[v.key];
+      for (const { field, stored } of toSave) {
         await upsert({
-          key: v.key,
-          value: String(fromHours(v.hours)),
-          label: meta.label,
-          description: meta.description,
+          key: field.key,
+          value: String(stored),
+          label: field.label,
+          description: field.description,
           value_type: 'number',
           category: 'teramind',
         });
@@ -91,6 +107,23 @@ export default function ActivityThresholds({ settings, onSaved }: Props) {
     }
   }
 
+  const renderField = (field: Field) => (
+    <div key={field.key}>
+      <label className="block text-xs font-semibold text-slate-700 mb-1">
+        {field.label}
+        <span className="ml-1 font-normal text-slate-400">({field.unit})</span>
+      </label>
+      <input
+        type="number"
+        min="0"
+        step={field.unit === 'hours' ? '0.1' : '1'}
+        value={values[field.key] ?? ''}
+        onChange={e => setValues(v => ({ ...v, [field.key]: e.target.value }))}
+        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+      />
+    </div>
+  );
+
   return (
     <>
       <button
@@ -103,7 +136,7 @@ export default function ActivityThresholds({ settings, onSaved }: Props) {
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Activity Thresholds</DialogTitle>
           </DialogHeader>
@@ -112,28 +145,14 @@ export default function ActivityThresholds({ settings, onSaved }: Props) {
             Applies to everyone. A shorter shift is scaled proportionally.
           </p>
 
-          <div className="space-y-4">
-            {([
-              { key: 'activity_min_active_minutes', val: minActive, set: setMinActive },
-              { key: 'activity_break_minutes',      val: breakAl,   set: setBreakAl },
-              { key: 'activity_break_over_minutes', val: breakOver,  set: setBreakOver },
-            ] as const).map(({ key, val, set }) => (
-              <div key={key}>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  {CONFIG_META[key].label}
-                  <span className="ml-1 font-normal text-slate-400">(hours)</span>
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={val}
-                  onChange={e => set(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-            ))}
-          </div>
+          <div className="space-y-4">{DAY_FIELDS.map(renderField)}</div>
+
+          <h3 className="text-sm font-semibold text-slate-800 mt-6 mb-1">Trend Minimums</h3>
+          <p className="text-xs text-slate-500 mb-4">
+            How far a number must move between the two periods before the Trend column counts it as a change.
+          </p>
+
+          <div className="space-y-4">{TREND_FIELDS.map(renderField)}</div>
 
           {error && (
             <p className="text-xs text-red-600 mt-2">{error}</p>
