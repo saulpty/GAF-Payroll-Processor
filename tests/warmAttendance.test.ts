@@ -26,7 +26,7 @@ test('WA1: Today page is back under 15 KB with its table in its own file', () =>
   assert.match(table, /export default function TodayTable\(/);
   assert.doesNotMatch(table, /uppercase/, 'Title Case headers, never ALL CAPS');
   assert.doesNotMatch(read(`${A}TodayTiles.tsx`), /uppercase/);
-  assert.match(page, /Data as of \{dataAsOf\} · updates every 15 minutes · times in US Eastern/);
+  assert.match(page, /Data as of \{dataAsOf\} · updates every 5 minutes · times in US Eastern/);
 });
 
 test('WA2: statuses use the Excel colours; times use the house format', () => {
