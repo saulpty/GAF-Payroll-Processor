@@ -37,7 +37,7 @@ function Group({ tag, label, bars, avg, scale, thresholdMin, withAxis, dark }: {
         <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${dark ? 'bg-primary text-white' : 'bg-white text-slate-600'}`}>{tag}</span>
         <span className="text-[13px] font-bold text-slate-800">{label}</span>
         <span className="ml-auto text-sm font-bold text-slate-900 whitespace-nowrap">
-          {avg === null ? 'No days with work' : `${fmtMinutes(avg)} a day on average`}
+          {avg === null ? 'No Days With Work' : `Avg Active ${fmtMinutes(avg)}`}
         </span>
       </div>
       <div className="relative h-40 flex items-end gap-1 px-1.5 border-x border-slate-200 border-b border-b-slate-400">
@@ -65,11 +65,13 @@ function Group({ tag, label, bars, avg, scale, thresholdMin, withAxis, dark }: {
         )))}
       </div>
       <div className="flex gap-1 px-1.5 pt-1" aria-hidden="true">
-        {bars.map(b => {
+        {bars.map((b, i) => {
           const [dow, , day] = fmtDayShort(b.date).split(' ');
+          // A long range has too many bars to label each one: label Mondays (and the first bar) only.
+          const show = bars.length <= 26 || dow === 'Mon' || i === 0;
           return (
-            <span key={b.date} className="flex-1 min-w-0 text-center text-[11px] leading-tight text-slate-500">
-              {(dow ?? '').charAt(0)}<span className="block font-semibold text-slate-700">{day}</span>
+            <span key={b.date} className="flex-1 min-w-0 flex flex-col items-center text-[11px] leading-tight text-slate-500 whitespace-nowrap">
+              {show ? <>{(dow ?? '').charAt(0)}<span className="block font-semibold text-slate-700">{day}</span></> : null}
             </span>
           );
         })}
@@ -99,11 +101,11 @@ export default function ActivityDayChart(p: Props) {
           <Group tag="After" label={p.afterLabel} bars={after} avg={p.afterAvg} scale={scale} thresholdMin={p.thresholdMin} withAxis={false} dark />
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 ml-11 text-xs text-slate-600">
-          <span><i className={`${SWATCH} bg-primary`} />Normal day</span>
-          <span><i className={`${SWATCH} bg-status-yellow-fill ring-1 ring-inset ring-status-yellow-ink`} />⚠️ Under the {fmtMinutes(p.thresholdMin)} minimum</span>
-          <span><i className={`${SWATCH} bg-status-red-tint ring-1 ring-inset ring-status-red-fill`} />✕ Missed, no approved reason</span>
+          <span><i className={`${SWATCH} bg-primary`} />Normal Day</span>
+          <span><i className={`${SWATCH} bg-status-yellow-fill ring-1 ring-inset ring-status-yellow-ink`} />⚠️ Under the {fmtMinutes(p.thresholdMin)} Minimum</span>
+          <span><i className={`${SWATCH} bg-status-red-tint ring-1 ring-inset ring-status-red-fill`} />✕ Missed, No Approved Reason</span>
           <span><i className="inline-block w-4 mr-1.5 align-[3px] border-t-2 border-slate-900" />Average</span>
-          <span><i className="inline-block w-4 mr-1.5 align-[3px] border-t-2 border-dashed border-status-yellow-ink" />{fmtMinutes(p.thresholdMin)} minimum</span>
+          <span><i className="inline-block w-4 mr-1.5 align-[3px] border-t-2 border-dashed border-status-yellow-ink" />{fmtMinutes(p.thresholdMin)} Minimum</span>
         </div>
       </div>
     </div>

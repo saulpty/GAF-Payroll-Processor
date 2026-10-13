@@ -6,7 +6,7 @@ import { TrendPill, toneClass } from './TrendPill';
 type Props = { trend: EmployeeTrend; beforeLabel: string; afterLabel: string };
 
 const TH = 'px-3 py-2 text-right text-[12px] font-semibold text-slate-500 whitespace-nowrap';
-const TD = 'px-3 py-2 text-right text-sm tabular-nums whitespace-nowrap border-t border-slate-100';
+const TD = 'px-3 py-2 text-right text-[13px] tabular-nums whitespace-nowrap border-t border-slate-100';
 
 function Row({ label, before, after, measure, change }: {
   label: string; before: string; after: string; measure: Measure; change: MeasureChange;

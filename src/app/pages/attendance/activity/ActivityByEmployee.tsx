@@ -66,6 +66,10 @@ function OutOf({ n, of }: { n: number; of: number }) {
   return <span className={`tabular-nums ${n === 0 ? MUTED : ''}`}>{n} of {of}</span>;
 }
 
+// The opened row stays as wide as the visible table area and sticks to its left edge, so on a
+// narrow window it does not scroll sideways with the columns.
+const OPENED_WIDTH = { width: 'min(100%, calc(100vw - 50px))' };
+
 function OpenedRow({ emp, trend, p }: { emp: EmployeeActivitySummary; trend: EmployeeTrend; p: TrendProps }) {
   const [showDays, setShowDays] = useState(false);
   const before = p.prevDays[emp.employeeId] ?? [];
@@ -81,7 +85,7 @@ function OpenedRow({ emp, trend, p }: { emp: EmployeeActivitySummary; trend: Emp
 
   if (trend.verdict === 'nodata') {
     return (
-      <div className="p-4 bg-slate-50 border-b-2 border-slate-300">
+      <div className="sticky left-0 p-4 bg-slate-50 border-b-2 border-slate-300" style={OPENED_WIDTH}>
         <p className="text-[13px] text-slate-600 mb-3">
           Nothing to compare yet: fewer than the minimum days with work in one of the two periods.
         </p>
@@ -92,8 +96,8 @@ function OpenedRow({ emp, trend, p }: { emp: EmployeeActivitySummary; trend: Emp
 
   const total = before.length + emp.days.length;
   return (
-    <div className="p-4 bg-slate-50 border-b-2 border-slate-300">
-      <div className="grid grid-cols-1 xl:grid-cols-[430px_minmax(0,1fr)] gap-4">
+    <div className="sticky left-0 p-4 bg-slate-50 border-b-2 border-slate-300" style={OPENED_WIDTH}>
+      <div className="grid grid-cols-1 xl:grid-cols-[480px_minmax(0,1fr)] gap-4 items-start">
         <ActivityCompare trend={trend} beforeLabel={p.beforeLabel} afterLabel={p.afterLabel} />
         <ActivityDayChart
           before={before} after={emp.days}
@@ -109,7 +113,8 @@ function OpenedRow({ emp, trend, p }: { emp: EmployeeActivitySummary; trend: Emp
         aria-expanded={showDays}
         className="mt-3 w-full h-9 flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-white text-[13px] font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
       >
-        {showDays ? `▲ Hide the ${total} Days` : `▼ Show All ${total} Days`}
+        <span aria-hidden="true">{showDays ? '▲' : '▼'}</span>
+        {showDays ? `Hide All ${total} Days` : `Show All ${total} Days`}
         {!showDays && <span className="font-medium text-slate-500">entry, exit, active and breaks for each day</span>}
       </button>
       {showDays && <div className="mt-3">{lists}</div>}
@@ -240,7 +245,7 @@ export default function ActivityByEmployee({ byEmployee, expandedId, onToggle, .
   }
 
   const tip = p.prevDayCount > 0
-    ? `Compares ${p.afterLabel} with the ${p.prevDayCount} days right before it, ${p.beforeLabel}. Days off, PTO, sick days and holidays are left out of both. Change the dates above to compare a different period.`
+    ? `Compares ${p.afterLabel} with the ${p.prevDayCount} ${p.prevDayCount === 1 ? 'day' : 'days'} right before it, ${p.beforeLabel}. Days off, PTO, permissions, sick days and holidays are left out of both. Change the dates above to compare a different period.`
     : 'Pick a date range above to compare it with the days right before it.';
   const sorted = sortEmployees(byEmployee, sortKey, sortDir, p.trends);
 

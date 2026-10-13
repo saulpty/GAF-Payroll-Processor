@@ -103,6 +103,8 @@ test('TW7 (prompt 07): long ranges thin the chart labels; minutes and days are w
   // Narrow windows: the opened row sticks to the left edge at the visible width (both branches).
   const be = read(DIR + 'ActivityByEmployee.tsx');
   assert.equal((be.match(/className="sticky left-0 p-4 bg-slate-50 border-b-2 border-slate-300" style=\{OPENED_WIDTH\}/g) ?? []).length, 2);
+  // 72px = page padding + borders + both scrollbars, measured on /dev (50px overflowed by 20px).
+  assert.match(be, /const OPENED_WIDTH = \{ width: 'min\(100%, calc\(100vw - 72px\)\)' \};/);
   // Title Case labels and the Before and After panel's size (Saul's screenshot, 2026-10-13).
   assert.match(be, /xl:grid-cols-\[480px_minmax\(0,1fr\)\] gap-4 items-start/);
   assert.match(chart, /`Avg Active \$\{fmtMinutes\(avg\)\}`/);
