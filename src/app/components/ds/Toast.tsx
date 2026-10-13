@@ -34,7 +34,7 @@ function ToastCard({ t, onDismiss }: { t: ToastItem; onDismiss: (id: number) => 
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      className={`pointer-events-auto flex items-start gap-2 rounded-md border bg-white px-3 py-2 text-[12px] shadow-lg ${
+      className={`pointer-events-auto flex items-start gap-2 rounded-md border bg-white px-3 py-2 text-[12px] shadow-lg phone:items-center ${
         t.tone === 'error' ? 'border-red-200 text-red-700' : 'border-slate-200 text-slate-700'
       }`}
     >
@@ -46,7 +46,7 @@ function ToastCard({ t, onDismiss }: { t: ToastItem; onDismiss: (id: number) => 
             t.onUndo?.();
             onDismiss(t.id);
           }}
-          className="font-medium text-warm-text hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring"
+          className="font-medium text-warm-text hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring phone:min-h-11 phone:px-2"
         >
           Undo
         </button>
@@ -55,7 +55,7 @@ function ToastCard({ t, onDismiss }: { t: ToastItem; onDismiss: (id: number) => 
         type="button"
         aria-label="Close"
         onClick={() => onDismiss(t.id)}
-        className="rounded p-0.5 text-slate-400 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring"
+        className="rounded p-0.5 text-slate-400 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring phone:inline-flex phone:min-h-11 phone:min-w-11 phone:items-center phone:justify-center"
       >
         <X className="h-3 w-3" aria-hidden="true" />
       </button>
@@ -81,7 +81,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ show }}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 left-4 z-50 flex w-80 flex-col gap-2">
+      <div className="pointer-events-none fixed bottom-4 left-4 z-50 flex w-80 flex-col gap-2 phone:bottom-[144px] phone:left-3 phone:right-3 phone:w-auto phone:max-w-sm">
         <div role="alert" aria-live="assertive" className="flex flex-col gap-2">{region('error')}</div>
         <div role="status" aria-live="polite" className="flex flex-col gap-2">{region('success')}</div>
       </div>

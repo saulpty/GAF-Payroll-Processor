@@ -42,3 +42,19 @@ export function nextIndex(current: number, delta: 1 | -1, length: number): numbe
   if (n < 0) n += length;
   return n;
 }
+
+/**
+ * Keeps a floating list inside the screen's left and right edges: never wider than the
+ * screen less a margin each side, never past either edge. A list that already fits is
+ * returned unchanged.
+ */
+export function clampPopup(
+  left: number,
+  width: number,
+  viewportWidth: number,
+  margin = 8,
+): { left: number; width: number } {
+  const w = Math.min(width, Math.max(0, viewportWidth - margin * 2));
+  const l = Math.max(margin, Math.min(left, viewportWidth - margin - w));
+  return { left: l, width: w };
+}

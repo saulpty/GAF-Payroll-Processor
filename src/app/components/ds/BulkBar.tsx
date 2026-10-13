@@ -18,7 +18,7 @@ export function BulkBar({
     <div
       role="toolbar"
       aria-label="Bulk actions"
-      className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full bg-slate-900 px-4 py-2 text-[12px] text-white shadow-xl"
+      className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full bg-slate-900 px-4 py-2 text-[12px] text-white shadow-xl phone:bottom-[72px] phone:left-3 phone:right-3 phone:mx-auto phone:max-w-md phone:translate-x-0 phone:flex-wrap phone:justify-center phone:rounded-2xl"
     >
       <span className="font-medium">{count} Selected</span>
       <span className="h-4 w-px bg-white/25" aria-hidden="true" />
@@ -27,7 +27,7 @@ export function BulkBar({
       <button
         type="button"
         onClick={onClear}
-        className="rounded-full px-2 py-1 font-medium text-white/80 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring"
+        className="rounded-full px-2 py-1 font-medium text-white/80 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring phone:min-h-11 phone:px-3"
       >
         Clear
       </button>
@@ -49,7 +49,7 @@ export function BulkPrimaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="rounded-full bg-warm px-3 py-1 font-semibold text-warm-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring disabled:opacity-50"
+      className="rounded-full bg-warm px-3 py-1 font-semibold text-warm-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring disabled:opacity-50 phone:min-h-11 phone:px-4"
     >
       {children}
     </button>
@@ -70,7 +70,7 @@ export function BulkButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="rounded-full border border-white/25 px-3 py-1 text-white/90 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring disabled:opacity-50"
+      className="rounded-full border border-white/25 px-3 py-1 text-white/90 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring disabled:opacity-50 phone:min-h-11 phone:px-4"
     >
       {children}
     </button>

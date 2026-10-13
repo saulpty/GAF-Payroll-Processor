@@ -1,7 +1,8 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, X } from 'lucide-react';
-import { filterOptions, nextIndex } from '@/app/components/ds/comboboxFilter';
+import { clampPopup, filterOptions, nextIndex } from '@/app/components/ds/comboboxFilter';
+import { useIsPhone } from '@/app/lib/useIsPhone';
 
 // Dropdowns rule (docs/uib/DESIGN.md): searchable when > 7 options, empty
 // shows "—", a × clears back to empty, no "None" / "— pick —" option.
@@ -40,6 +41,7 @@ export function Combobox({
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
   const searchable = options.length > 7;
+  const isPhone = useIsPhone();
 
   const filtered = useMemo(
     () => (searchable && open ? filterOptions(options, query) : options),
@@ -54,19 +56,27 @@ export function Combobox({
     const above = r.top - 8;
     const up = below < 240 && above > below;
     const room = Math.max(120, Math.min(280, up ? above : below));
+    // On a phone the list is kept inside the screen's left and right edges.
+    const want = { left: r.left, width: Math.max(r.width, 180) };
+    const box = isPhone ? clampPopup(want.left, want.width, window.innerWidth) : want;
     setPos({
-      position: 'fixed', left: r.left, width: Math.max(r.width, 180), zIndex: 60, maxHeight: room,
+      position: 'fixed', left: box.left, width: box.width, zIndex: 60, maxHeight: room,
       ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
     });
-  }, [open]);
+  }, [open, isPhone]);
 
   useEffect(() => {
     if (!open) return;
     const inside = (t: EventTarget | null) =>
       !!t && ((rootRef.current?.contains(t as Node) ?? false) || (popRef.current?.contains(t as Node) ?? false));
     const onDocPointer = (e: MouseEvent) => { if (!inside(e.target)) setOpen(false); };
-    const onScroll = (e: Event) => { if (!inside(e.target)) setOpen(false); };
-    const onResize = () => setOpen(false);
+    // On a phone the on-screen keyboard pans the whole page and changes the window's height.
+    // Neither may close the list: only a scroll of the page area or a table, or a change of
+    // width (turning the phone), does.
+    const openWidth = window.innerWidth;
+    const pagePan = (t: EventTarget | null) => t === document || t === document.documentElement || t === document.body;
+    const onScroll = (e: Event) => { if (!inside(e.target) && !(isPhone && pagePan(e.target))) setOpen(false); };
+    const onResize = () => { if (!isPhone || window.innerWidth !== openWidth) setOpen(false); };
     document.addEventListener('mousedown', onDocPointer);
     window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', onResize);
@@ -75,7 +85,7 @@ export function Combobox({
       window.removeEventListener('scroll', onScroll, true);
       window.removeEventListener('resize', onResize);
     };
-  }, [open]);
+  }, [open, isPhone]);
 
   useEffect(() => {
     if (!open) { setPos(null); return; }

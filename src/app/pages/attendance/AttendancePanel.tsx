@@ -3,6 +3,7 @@ import type { EmpStats } from '@/app/lib/attendanceStats';
 import type { ActivityDay } from '@/app/lib/activityDays';
 import { fmtDayShort } from '@/app/lib/activityDays';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import { useIsPhone } from '@/app/lib/useIsPhone';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { useActivityData } from './activity/useActivityData';
 import { useEmployeeStats } from './useEmployeeStats';
@@ -45,6 +46,7 @@ export function AttendancePanel({
   displayManager,
 }: Props) {
   const { dateFrom, dateTo } = useGlobalFilters();
+  const isPhone = useIsPhone();
   const safeFrom = dateFrom || daysAgo(30);
   const safeTo   = dateTo   || toLocalYMD(new Date());
 
@@ -90,14 +92,14 @@ export function AttendancePanel({
       />
       {/* Panel */}
       <div
-        className="fixed top-0 right-0 bottom-0 bg-white z-50 overflow-y-auto shadow-2xl flex flex-col"
+        className="fixed top-0 right-0 bottom-0 bg-white z-50 overflow-y-auto shadow-2xl flex flex-col phone:overscroll-contain"
         style={{
-          width: 'clamp(520px, 55vw, 900px)',
+          width: isPhone ? '100%' : 'clamp(520px, 55vw, 900px)',
           animation: 'slideInRight 280ms cubic-bezier(0.22, 0.68, 0, 1.1) both',
         }}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-border px-7 py-5 flex items-start justify-between z-10">
+        <div className="sticky top-0 bg-white border-b border-border px-7 py-5 flex items-start justify-between z-10 phone:px-4">
           <div className="flex items-center gap-3 min-w-0">
             {name && <Initials name={name} />}
             <div className="min-w-0">
@@ -111,13 +113,13 @@ export function AttendancePanel({
           <button
             onClick={onClose}
             aria-label="Close employee panel"
-            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-border transition-colors shrink-0 ml-4"
+            className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-border transition-colors shrink-0 ml-4 phone:w-11 phone:h-11"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-7 flex flex-col gap-6">
+        <div className="p-7 flex flex-col gap-6 phone:p-4">
           {activityError ? (
             <p className="text-xs text-muted-foreground italic py-2">
               Couldn't Load Activity Data For This Range.

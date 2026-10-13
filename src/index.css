@@ -147,3 +147,33 @@ summary:focus-visible,
 .topnav-dark [role="button"]:focus-visible {
   outline-color: #FFFFFF !important;
 }
+
+/* Touch screens (phones and tablets), 2026-10-13. A computer with a mouse never matches
+   (pointer: coarse), so nothing in this block reaches it. */
+@media (pointer: coarse) {
+  /* Text boxes at 16px: below that, a phone zooms the whole page in when one is tapped.
+     Not inside .desktop-canvas: Payroll and Admin keep their computer sizing on every touch screen.
+     Each :not(...) makes the selector more specific than a single Tailwind class
+     (text-sm, text-xs, text-[12px] ...), so this wins without !important. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not(.desktop-canvas *),
+  select:not(.desktop-canvas *),
+  textarea:not(.desktop-canvas *) {
+    font-size: 16px;
+  }
+
+  /* Add the class "tap" to anything tappable that is drawn smaller than 44 x 44. */
+  .tap {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Reaching the end of a list must not drag whatever is behind it, or start the browser's
+     pull-down reload: the page scroller, pop-ups and sheets, and open dropdown lists. */
+  html,
+  body,
+  main,
+  [role="dialog"],
+  [role="listbox"] {
+    overscroll-behavior: contain;
+  }
+}
