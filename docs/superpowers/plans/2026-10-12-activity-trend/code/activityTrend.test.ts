@@ -65,12 +65,16 @@ test('T4: a bad or backwards range gives days 0 instead of throwing', () => {
   assert.equal(previousRange('2026-10-12', '2026-10-01').days, 0);
   assert.equal(previousRange('garbage', 'more').days, 0);
   assert.equal(subDays('garbage', 3), 'garbage');
+  // Longer than the 1000-day cap: no comparison, instead of a silently mismatched earlier period.
+  assert.equal(previousRange('2020-01-01', '2026-10-01').days, 0);
+  assert.equal(previousRange('2024-01-06', '2026-10-01').days, 1000);
 });
 
 test('T5: rangeLabel adds years only when the ends differ', () => {
   assert.equal(rangeLabel('2026-09-05', '2026-09-23'), 'Sep 5 – Sep 23');
   assert.equal(rangeLabel('2026-12-22', '2027-01-10'), 'Dec 22, 2026 – Jan 10, 2027');
   assert.equal(rangeLabel('', '2026-09-23'), '');
+  assert.equal(rangeLabel('2026-10-07', '2026-10-07'), 'Oct 7');
 });
 
 test('T6: dayKind sorts a day into worked, low, missed, away or skip', () => {

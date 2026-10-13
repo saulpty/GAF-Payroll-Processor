@@ -39,7 +39,14 @@ test('TW2 (prompt 02): the hook loads the earlier period too and builds each per
   assert.doesNotMatch(hook, /useLoadAction\([^\n]*dateFrom: safeFrom/);
   // Payroll rows are cut back to each period, so the selected range is built exactly as before.
   assert.match(hook, /payrollRows: payrollRows\.filter\(\(r\) => inRange\(r\.work_date, from, to\)\)/);
-  for (const k of KEYS) assert.match(hook, new RegExp(`'${k}'`), `${k} is not read`);
+  // Settings parsing lives in its own file since 2026-10-13 (the hook was 13.9 KB of 15).
+  const settings = read(DIR + 'activitySettings.ts');
+  for (const k of KEYS) assert.match(settings, new RegExp(`'${k}'`), `${k} is not read`);
+  assert.match(hook, /import \{ parseSettings, parseMinimums \} from '\.\/activitySettings';/);
+  assert.doesNotMatch(hook, /function parseSettings|function parseMinimums/);
+  assert.ok(Buffer.byteLength(hook, 'utf8') < 13 * 1024, 'useActivityData.ts should be back under 13 KB');
+  // The start date reaches the day builder, so days before it get no row.
+  assert.match(hook, /start_date: e\.start_date,/);
   assert.doesNotMatch(hook, /\{\s*params:/, 'params-wrapper: loader parameters go flat');
   assert.ok(Buffer.byteLength(hook, 'utf8') < 15 * 1024, 'useActivityData.ts is over 15 KB');
 });
@@ -63,8 +70,10 @@ test('TW4 (prompt 03): the By Employee table has the Trend, low-day and missed-d
   assert.match(src, /\{ key: 'trend',\s+label: 'Trend', tip \}/);
   assert.match(src, /\{ key: 'needsLook',\s+label: '⚠️ Days' \}/);
   assert.match(src, /\{ key: 'missed',\s+label: 'Days Missed' \}/);
-  assert.match(src, /Compares \$\{p\.afterLabel\} with the \$\{p\.prevDayCount\} days right before it, \$\{p\.beforeLabel\}\./);
-  assert.match(src, /`▼ Show All \$\{total\} Days`/);
+  assert.match(src, /Compares \$\{p\.afterLabel\} with the \$\{p\.prevDayCount\} \$\{p\.prevDayCount === 1 \? 'day' : 'days'\} right before it, \$\{p\.beforeLabel\}\./);
+  assert.match(src, /Days off, PTO, permissions, sick days and holidays are left out of both\./);
+  assert.match(src, /`Show All \$\{total\} Days`/);
+  assert.match(src, /<span aria-hidden="true">\{showDays \? '▲' : '▼'\}<\/span>/);
   assert.match(src, /<td colSpan=\{9\}/);
   assert.ok(Buffer.byteLength(src, 'utf8') < 15 * 1024, 'ActivityByEmployee.tsx is over 15 KB');
 });
@@ -86,4 +95,13 @@ test('TW6 (prompt 04): the Thresholds dialog saves the four minimums as typed', 
   assert.match(src, /Trend Minimums/);
   assert.match(src, /const stored = field\.unit === 'hours' \? Math\.round\(n \* 60\) : Math\.round\(n\);/);
   assert.match(read(DIR + 'AttendanceActivity.tsx'), /<ActivityThresholds settings=\{settings\} minimums=\{minimums\} onSaved=\{reloadConfig\} \/>/);
+});
+
+test('TW7 (prompt 07): long ranges thin the chart labels; minutes and days are whole numbers', () => {
+  const chart = read(DIR + 'ActivityDayChart.tsx');
+  assert.match(chart, /const show = bars\.length <= 26 \|\| dow === 'Mon' \|\| i === 0;/);
+  const dlg = read(DIR + 'ActivityThresholds.tsx');
+  assert.match(dlg, /if \(field\.unit !== 'hours' && !Number\.isInteger\(n\)\) return null;/);
+  assert.match(dlg, /The minimum active time is scaled for a shorter shift\./);
+  assert.doesNotMatch(dlg, /A shorter shift is scaled proportionally\./);
 });
