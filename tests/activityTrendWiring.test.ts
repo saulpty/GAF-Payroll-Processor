@@ -167,7 +167,8 @@ test('TW10 (prompt 10): the row shows the comparison\'s own figures, so it alway
   assert.match(be, /\{a\.avgEntryMin !== null \? fmtClock\(a\.avgEntryMin\) : '—'\}/);
   assert.match(be, /\{a\.avgExitMin !== null \? fmtClock\(a\.avgExitMin\) : '—'\}/);
   // No row cell or sort key reads the all-days averages any more.
-  assert.doesNotMatch(be, /emp\.avg(Active|First|Last)Min|emp\.daysWorked|emp\.scheduledDays|e\.avg(Active|First|Last)Min|return e\.daysWorked/);
+  // (\b: "trend.before.avgActiveMin" in the chart's props is not one of them.)
+  assert.doesNotMatch(be, /emp\.avg(Active|First|Last)Min|emp\.daysWorked|emp\.scheduledDays|\be\.avg(Active|First|Last)Min|return e\.daysWorked/);
   assert.match(be, /if \(key === 'avgFirstMin'\) return t \? t\.after\.avgEntryMin \?\? -1 : -1;/);
   assert.ok(Buffer.byteLength(be, 'utf8') < 15 * 1024, 'ActivityByEmployee.tsx is over 15 KB');
 });

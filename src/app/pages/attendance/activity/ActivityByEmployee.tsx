@@ -179,18 +179,18 @@ function EmployeeRow({ emp, trend, p, onOpenPanel, expanded, onToggle }: Employe
         </td>
         <td className={TD}><TrendPill verdict={trend.verdict} /></td>
         <td className={TD}>
-          <span className="font-medium">{emp.daysWorked}</span>
-          <span className={MUTED}> / {emp.scheduledDays}</span>
+          <span className="font-medium">{a.worked}</span>
+          <span className={MUTED}> / {a.scheduled}</span>
         </td>
         <td className={TD}>
-          <ActiveBar activeMin={emp.avgActiveMin} shiftMin={shift} />
+          <ActiveBar activeMin={a.avgActiveMin} shiftMin={shift} />
           <ChangeArrow measure="active" change={trend.active} />
         </td>
         <td className={TD}>
-          {emp.avgFirstMin !== null ? fmtClock(emp.avgFirstMin) : '—'}
+          {a.avgEntryMin !== null ? fmtClock(a.avgEntryMin) : '—'}
           <ChangeArrow measure="entry" change={trend.entry} />
         </td>
-        <td className={TD}>{emp.avgLastMin !== null ? fmtClock(emp.avgLastMin) : '—'}</td>
+        <td className={TD}>{a.avgExitMin !== null ? fmtClock(a.avgExitMin) : '—'}</td>
         <td className={TD}>
           <OutOf n={a.lowDays} of={a.worked} />
           <ChangeArrow measure="low" change={trend.low} />
@@ -222,10 +222,11 @@ function sortEmployees(
     const t = trends[e.employeeId];
     if (key === 'employeeName') return e.employeeName;
     if (key === 'trend') return t ? VERDICT_ORDER[t.verdict] : VERDICT_ORDER.nodata;
-    if (key === 'daysWorked') return e.daysWorked;
-    if (key === 'avgActiveMin') return e.avgActiveMin ?? -1;
-    if (key === 'avgFirstMin') return e.avgFirstMin ?? -1;
-    if (key === 'avgLastMin') return e.avgLastMin ?? -1;
+    // Same figures the row shows: the comparison's days (scheduled work days, today left out).
+    if (key === 'daysWorked') return t ? t.after.worked : 0;
+    if (key === 'avgActiveMin') return t ? t.after.avgActiveMin ?? -1 : -1;
+    if (key === 'avgFirstMin') return t ? t.after.avgEntryMin ?? -1 : -1;
+    if (key === 'avgLastMin') return t ? t.after.avgExitMin ?? -1 : -1;
     if (key === 'needsLook') return t ? t.after.lowDays : 0;
     if (key === 'missed') return t ? t.after.missedDays : 0;
     return e.awayDays;
