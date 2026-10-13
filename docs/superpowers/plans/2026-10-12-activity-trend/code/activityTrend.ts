@@ -17,7 +17,7 @@ export type Measure = 'active' | 'entry' | 'low' | 'missed';
 export type PeriodSummary = {
   scheduled: number;            // days that count: worked + missed
   worked: number;               // days with work (normal + low)
-  avgActiveMin: number | null; avgEntryMin: number | null;
+  avgActiveMin: number | null; avgEntryMin: number | null; avgExitMin: number | null;
   lowDays: number; missedDays: number;
 };
 export type MeasureChange = { delta: number; tone: Tone };
@@ -121,6 +121,7 @@ export function summarisePeriod(days: ActivityDay[], today: string, startDate = 
     avgActiveMin: avg(worked.map((d) => d.activeMin)),
     // Same entry the Avg Entry cell averages (activityDays), so the arrow describes the number beside it.
     avgEntryMin: avg(worked.map((d) => d.firstMin)),
+    avgExitMin: avg(worked.map((d) => d.lastMin)),
     lowDays, missedDays,
   };
 }

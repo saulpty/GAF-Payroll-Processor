@@ -38,7 +38,7 @@ const away = (date: string, kind: WhyChip['kind'] = 'pto') => mkDay(date, {
   why: { kind, label: 'PTO', tone: 'blue' },
 });
 function sum(o: Partial<PeriodSummary> = {}): PeriodSummary {
-  return { scheduled: 10, worked: 10, avgActiveMin: 400, avgEntryMin: 540, lowDays: 2, missedDays: 0, ...o };
+  return { scheduled: 10, worked: 10, avgActiveMin: 400, avgEntryMin: 540, avgExitMin: 1020, lowDays: 2, missedDays: 0, ...o };
 }
 
 test('T1: source is pure (type-only imports, no Date) and under 15 KB', () => {
@@ -117,11 +117,11 @@ test('T11: summarisePeriod counts each kind once and averages only days with wor
     away('2026-10-08'),
     mkDay(TODAY, { isToday: true, activeMin: 10 }),
   ], TODAY);
-  assert.deepEqual(s, { scheduled: 3, worked: 2, avgActiveMin: 360, avgEntryMin: 540, lowDays: 1, missedDays: 1 });
+  assert.deepEqual(s, { scheduled: 3, worked: 2, avgActiveMin: 360, avgEntryMin: 540, avgExitMin: 1050, lowDays: 1, missedDays: 1 });
 });
 
 test('T12: an empty period summarises to zeros and nulls', () => {
-  assert.deepEqual(summarisePeriod([], TODAY), { scheduled: 0, worked: 0, avgActiveMin: null, avgEntryMin: null, lowDays: 0, missedDays: 0 });
+  assert.deepEqual(summarisePeriod([], TODAY), { scheduled: 0, worked: 0, avgActiveMin: null, avgEntryMin: null, avgExitMin: null, lowDays: 0, missedDays: 0 });
 });
 
 test('T13: the entry average is the same Teramind entry the Avg Entry cell averages', () => {
@@ -207,4 +207,18 @@ test('T20: Trend sorts Worse first and Not enough data last; every verdict has a
   const order = (['improved', 'nodata', 'steady', 'worse', 'mixed'] as const).slice().sort((x, y) => VERDICT_ORDER[x] - VERDICT_ORDER[y]);
   assert.deepEqual(order, ['worse', 'mixed', 'steady', 'improved', 'nodata']);
   assert.equal(VERDICT_LABEL.nodata, 'Not Enough Data');
+});
+
+// Lilian Barría, 2026-10-13: one Sunday shift from 4:35 PM moved her row's Avg Entry from 8:54 to 9:18.
+test('T23: work on a day off does not move the averages (entry, exit, active) or the day counts', () => {
+  const weekdays = ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08'].map((d) => mkDay(d, { firstMin: 534, lastMin: 1020, activeMin: 400 }));
+  const sunday = mkDay('2026-10-04', {
+    scheduled: false, firstMin: 995, lastMin: 28, crossesMidnight: true, activeMin: 177,
+    why: { kind: 'day_off', label: 'Day Off', tone: 'gray' },
+  });
+  const withSunday = summarisePeriod([...weekdays, sunday], TODAY);
+  assert.deepEqual(withSunday, summarisePeriod(weekdays, TODAY));
+  assert.equal(withSunday.avgEntryMin, 534);
+  assert.equal(withSunday.avgExitMin, 1020);
+  assert.equal(withSunday.worked, 4);
 });
