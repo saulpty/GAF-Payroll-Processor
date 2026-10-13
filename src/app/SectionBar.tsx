@@ -7,6 +7,9 @@ import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import FilterBar from '@/app/FilterBar';
 import { getConfig } from '@/app/lib/filterRoutes';
 import { SECTIONS, getActiveSection, BADGE } from '@/app/TopNav';
+import { useViewer } from '@/app/context/ViewerContext';
+import { useIsPhone } from '@/app/lib/useIsPhone';
+import MobileFilters from '@/app/components/mobile/MobileFilters';
 
 // Navigation option A, row 2 (Saul, 2026-10-06): the active section's name and its
 // pages as tabs on the left, that page's filters on the right (FilterBar, compact).
@@ -15,7 +18,9 @@ import { SECTIONS, getActiveSection, BADGE } from '@/app/TopNav';
 export default function SectionBar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { arVersion } = useGlobalFilters();
+  const { arVersion, employee, role, manager } = useGlobalFilters();
+  const { isSuper } = useViewer();
+  const isPhone = useIsPhone();
 
   const [unresolvedData, , , reloadUnresolved] = useLoadAction(loadUnresolvedCountAction, [] as { count: number }[]);
   const unresolvedCount = (unresolvedData as { count: number }[])[0]?.count ?? 0;
@@ -34,10 +39,60 @@ export default function SectionBar() {
   // Nothing to show (e.g. '/' while it redirects): no empty white strip.
   if (!sec && !getConfig(location.pathname)) return null;
 
+  // Phone, manager sections (2026-10-13): one 44 px line. Left: this section's pages on a line
+  // that slides sideways, or (no pages) the filters in use as chips. Right: the Filters button.
+  // The navy bar already names the section. Payroll and Admin fall through to the bar below.
+  if (isPhone && sec && sec.id !== 'payroll' && sec.id !== 'admin') {
+    const cfg = getConfig(location.pathname);
+    if (sec.links.length === 0 && !cfg) return null;
+    const chips = [
+      cfg?.employee && employee ? `Employee: ${employee}` : '',
+      cfg?.manager && isSuper && manager ? `Manager: ${manager}` : '',
+      cfg?.role && role ? `Title: ${role}` : '',
+    ].filter(Boolean);
+    return (
+      <div className="shrink-0 bg-white border-b border-slate-200 h-11 flex items-center z-30">
+        <div className="relative flex-1 min-w-0">
+          {sec.links.length > 0 ? (
+            <nav aria-label={`${sec.label} pages`} className="flex h-11 overflow-x-auto no-scrollbar pl-2 pr-6">
+              {sec.links.map(l => {
+                const isActive = location.pathname === l.to || location.pathname.startsWith(l.to + '/');
+                return (
+                  <button
+                    key={l.to}
+                    onClick={() => navigate(l.to)}
+                    aria-current={isActive ? 'page' : undefined}
+                    style={isActive ? { borderBottomColor: sec.color.accent } : undefined}
+                    className={cn(
+                      'h-11 min-w-11 px-3 border-b-2 text-[14px] whitespace-nowrap shrink-0 focus:outline-none',
+                      isActive ? 'font-semibold text-slate-900' : 'border-transparent font-medium text-slate-500'
+                    )}
+                  >
+                    {l.label}
+                  </button>
+                );
+              })}
+            </nav>
+          ) : (
+            <div className="flex items-center gap-1.5 h-11 overflow-x-auto no-scrollbar pl-4 pr-6">
+              {chips.map(c => (
+                <span key={c} className="shrink-0 rounded-full border border-slate-200 px-2.5 py-1 text-[12px] text-slate-700 whitespace-nowrap">
+                  {c}
+                </span>
+              ))}
+            </div>
+          )}
+          <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent" />
+        </div>
+        {cfg && <MobileFilters />}
+      </div>
+    );
+  }
+
   return (
-    <div className="shrink-0 bg-white border-b border-slate-200 px-5 min-h-[48px] flex flex-wrap items-center gap-x-3 z-30">
+    <div className={cn('shrink-0 bg-white border-b border-slate-200 px-5 min-h-[48px] flex flex-wrap items-center gap-x-3 z-30 no-scrollbar phone:flex-nowrap phone:overflow-x-auto', (sec?.id === 'payroll' || sec?.id === 'admin') && 'desktop-canvas')}>
       {sec && (
-        <div className="flex items-center gap-2 h-12 min-w-0 max-w-full">
+        <div className="flex items-center gap-2 h-12 min-w-0 max-w-full phone:shrink-0 phone:max-w-none">
           <span
             className="flex items-center gap-2 pr-3 border-r border-slate-200 text-[13px] font-bold whitespace-nowrap shrink-0"
             style={{ color: sec.color.ink }}

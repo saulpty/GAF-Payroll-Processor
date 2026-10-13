@@ -1,4 +1,6 @@
 import { useState, useRef, useId, useCallback } from 'react';
+import { cn } from '@/lib/utils';
+import { useIsPhone } from '@/app/lib/useIsPhone';
 
 interface Option {
   name: string;
@@ -12,6 +14,8 @@ interface Props {
   options: Option[];
   placeholder?: string;
   className?: string;
+  /** Phone Filters sheet: full width and first in the column. */
+  stacked?: boolean;
 }
 
 export default function EmployeeSearchInput({
@@ -20,6 +24,7 @@ export default function EmployeeSearchInput({
   options,
   placeholder,
   className,
+  stacked = false,
 }: Props) {
   const [open, setOpen]       = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -39,7 +44,9 @@ export default function EmployeeSearchInput({
   const suggestions =
     matches.length === 1 && matches[0].name === value ? [] : matches;
 
-  const showList = open && suggestions.length > 0;
+  // On a phone there is no suggestion list: typing already filters the page.
+  const isPhone = useIsPhone();
+  const showList = !isPhone && open && suggestions.length > 0;
 
   const pick = useCallback(
     (name: string) => {
@@ -74,7 +81,7 @@ export default function EmployeeSearchInput({
   }
 
   return (
-    <div className="relative">
+    <div className={stacked ? 'relative order-first' : 'relative'}>
       <input
         ref={inputRef}
         type="text"
@@ -84,7 +91,7 @@ export default function EmployeeSearchInput({
         aria-controls={listId}
         value={value}
         placeholder={placeholder}
-        className={className}
+        className={stacked ? cn(className, 'phone:w-full') : className}
         onChange={e => {
           onChange(e.target.value);
           setActiveIdx(-1);

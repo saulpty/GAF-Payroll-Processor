@@ -51,10 +51,12 @@ interface Props {
   inputCls: string;
   labelCls: string;
   divider: React.ReactNode;
+  /** Phone Filters sheet: every box is a full-width, 44 px line and the period list opens in place. */
+  stacked?: boolean;
 }
 
 export default function AttendanceRangeControls({
-  periods, rangeOf, allNamedPeriods, showDivider, divider,
+  periods, rangeOf, allNamedPeriods, showDivider, divider, stacked = false,
 }: Props) {
   const {
     attendanceMode, setAttendanceMode,
@@ -63,6 +65,10 @@ export default function AttendanceRangeControls({
     dateTo, setDateTo,
   } = useGlobalFilters();
 
+
+  // `stacked` only happens on a phone, so phone:h-11 (which always wins over h-8) is enough.
+  const box  = stacked ? BOX + ' phone:h-11 w-full' : BOX;
+  const bare = stacked ? BARE + ' flex-1 min-w-0' : BARE;
 
   const today = toLocalYMD(new Date());
 
@@ -80,14 +86,14 @@ export default function AttendanceRangeControls({
   return (
     <>
       {/* Segmented switch */}
-      <div className="flex rounded-md border border-slate-300 overflow-hidden h-8">
+      <div className={'flex rounded-md border border-slate-300 overflow-hidden h-8' + (stacked ? ' phone:h-11' : '')}>
         {(['periods', 'dates'] as const).map(mode => {
           const isActive = attendanceMode === mode;
           return (
             <button
               key={mode}
               onClick={() => setAttendanceMode(mode)}
-              className={`px-3 text-[12px] font-semibold border-r last:border-r-0 transition-colors ${
+              className={`${stacked ? 'flex-1 ' : ''}px-3 text-[12px] font-semibold border-r last:border-r-0 transition-colors ${
                 isActive ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
               }`}
             >
@@ -101,6 +107,7 @@ export default function AttendanceRangeControls({
         <>
           <PeriodMultiSelect
             periods={periods}
+            inline={stacked}
             selected={attendancePeriods}
             onChange={names => setAttendancePeriods(names, names.length ? rangeOf(names) : null)}
           />
@@ -112,20 +119,20 @@ export default function AttendanceRangeControls({
         </>
       ) : (
         <>
-          <label className={BOX}>
+          <label className={box}>
             <span className={IN_LABEL}>From</span>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={BARE} />
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={bare} />
           </label>
-          <label className={BOX}>
+          <label className={box}>
             <span className={IN_LABEL}>To</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={BARE} />
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={bare} />
           </label>
-          <label className={BOX}>
+          <label className={box}>
             <span className={IN_LABEL}>Quick</span>
             <select
               value=""
               onChange={e => quickPicks.find(q => q.label === e.target.value)?.handler?.()}
-              className={BARE}
+              className={bare}
             >
               <option value="">Pick a range</option>
               {quickPicks.map(({ label }) => <option key={label} value={label}>{label}</option>)}

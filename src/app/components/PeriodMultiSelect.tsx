@@ -14,9 +14,11 @@ type Props = {
   periods: Period[];
   selected: string[];
   onChange: (names: string[]) => void;
+  /** Phone Filters sheet: the list opens in place, full width, instead of floating over the page. */
+  inline?: boolean;
 };
 
-export default function PeriodMultiSelect({ periods, selected, onChange }: Props) {
+export default function PeriodMultiSelect({ periods, selected, onChange, inline = false }: Props) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -57,19 +59,21 @@ export default function PeriodMultiSelect({ periods, selected, onChange }: Props
     'h-8 px-2.5 text-[13px] border border-slate-300 rounded-md bg-white flex items-center gap-1.5 cursor-pointer hover:bg-slate-50 transition-colors min-w-[140px]';
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className={inline ? 'relative w-full' : 'relative'}>
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(v => !v)}
-        className={btnCls}
+        className={inline ? btnCls + ' phone:h-11 w-full' : btnCls}
       >
         <span className="flex-1 text-left truncate">{label}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-40 bg-white border border-slate-200 rounded-lg shadow-lg max-h-72 overflow-auto min-w-[260px]">
+        <div className={inline
+          ? 'mt-1 bg-white border border-slate-200 rounded-lg max-h-56 overflow-auto'
+          : 'absolute left-0 top-full mt-1 z-40 bg-white border border-slate-200 rounded-lg shadow-lg max-h-72 overflow-auto min-w-[260px]'}>
           {periods.length === 0 && (
             <div className="px-3 py-2 text-[13px] text-slate-400">No periods</div>
           )}
@@ -78,7 +82,7 @@ export default function PeriodMultiSelect({ periods, selected, onChange }: Props
             return (
               <label
                 key={p.period_name}
-                className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 transition-colors phone:min-h-11"
               >
                 <input
                   type="checkbox"
@@ -88,11 +92,11 @@ export default function PeriodMultiSelect({ periods, selected, onChange }: Props
                 />
                 <span className="font-medium text-[13px] text-slate-800 flex-1">{p.period_name}</span>
                 {p.processed === false && (
-                  <span className="rounded-full bg-status-yellow-fill px-2 py-0.5 text-[11px] font-medium text-status-yellow-ink whitespace-nowrap">
+                  <span className="rounded-full bg-status-yellow-fill px-2 py-0.5 text-[11px] font-medium text-status-yellow-ink whitespace-nowrap phone:text-[12px]">
                     Not processed
                   </span>
                 )}
-                <span className="text-[11px] text-slate-400 whitespace-nowrap">
+                <span className="text-[11px] text-slate-400 whitespace-nowrap phone:text-[12px]">
                   {fmtDate(p.start_date)} → {fmtDate(p.end_date)}
                 </span>
               </label>
@@ -106,7 +110,7 @@ export default function PeriodMultiSelect({ periods, selected, onChange }: Props
                   if (periods[0]) onChange([periods[0].period_name]);
                   setOpen(false);
                 }}
-                className="text-[12px] text-slate-500 hover:text-warm-text transition-colors"
+                className="text-[12px] text-slate-500 hover:text-warm-text transition-colors phone:min-h-11"
               >
                 Newest Only
               </button>

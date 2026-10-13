@@ -32,7 +32,14 @@ const PM_TAB_STYLES: Record<string, { active: string; idle: string; dot?: string
   RED:    { active: 'bg-red-600 text-white',   idle: 'bg-white text-red-700 hover:bg-red-50',     dot: 'bg-red-400' },
 };
 
-export default function FilterBar() {
+type Props = {
+  /** Phone Filters sheet (MobileFilters): one control per line, full width, employee first. */
+  stacked?: boolean;
+  /** Phone: gives MobileFilters the auto-picked period, for the dot on its button. */
+  onDefaultPeriod?: (name: string) => void;
+};
+
+export default function FilterBar({ stacked = false, onDefaultPeriod }: Props) {
   const location = useLocation();
   const cfg = getConfig(location.pathname);
 
@@ -120,6 +127,10 @@ export default function FilterBar() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg?.periods, attendanceMode, periodPick.defaultName, attendancePeriods.length]);
 
+  useEffect(() => {
+    if (periodPick.defaultName) onDefaultPeriod?.(periodPick.defaultName);
+  }, [periodPick.defaultName, onDefaultPeriod]);
+
   // Reset mode to route default on attendance sub-route change
   const prevRouteRef = useRef<string | null>(null);
   useEffect(() => {
@@ -142,17 +153,17 @@ export default function FilterBar() {
 
   // Compact filters (navigation option A, 2026-10-06): they sit in SectionBar's white row,
   // to the right of the tabs. A select carries its name inside its box ("Manager All").
-  const inputCls = 'h-8 px-2.5 text-[13px] border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-warm-ring';
+  const inputCls = 'h-8 px-2.5 text-[13px] border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-warm-ring' + (stacked ? ' phone:h-11' : '');
   const labelCls = 'text-[12px] font-medium text-slate-500';
-  const boxCls   = 'h-8 flex items-center gap-1.5 pl-2.5 pr-1 border border-slate-300 rounded-md bg-white focus-within:ring-2 focus-within:ring-warm-ring';
+  const boxCls   = 'h-8 flex items-center gap-1.5 pl-2.5 pr-1 border border-slate-300 rounded-md bg-white focus-within:ring-2 focus-within:ring-warm-ring' + (stacked ? ' phone:h-11 w-full' : '');
   const inLabel  = 'text-[12px] font-medium text-slate-500 whitespace-nowrap';
-  const bareSel  = 'h-full max-w-[130px] bg-transparent text-[13px] text-slate-900 focus:outline-none';
+  const bareSel  = 'h-full max-w-[130px] bg-transparent text-[13px] text-slate-900 focus:outline-none' + (stacked ? ' flex-1 min-w-0 phone:max-w-none' : '');
   const divider  = null;
 
   const hasBothModes = !!(cfg.periods && cfg.dateRange);
 
   return (
-    <div className="flex items-center justify-end gap-2 flex-wrap py-2 min-w-0">
+    <div className={stacked ? 'flex flex-col gap-3' : 'flex items-center justify-end gap-2 flex-wrap py-2 min-w-0 phone:flex-nowrap phone:shrink-0'}>
 
       {cfg.period && (
         <>
@@ -180,6 +191,7 @@ export default function FilterBar() {
           inputCls={inputCls}
           labelCls={labelCls}
           divider={divider}
+          stacked={stacked}
         />
       )}
 
@@ -220,6 +232,7 @@ export default function FilterBar() {
             options={emps}
             placeholder="Search employee…"
             className={inputCls + ' w-40'}
+            stacked={stacked}
           />
           {(cfg.role || cfg.manager || cfg.statusTab || cfg.pmTab) && divider}
         </>
@@ -298,7 +311,7 @@ export default function FilterBar() {
         defaultPeriod: periodPick.defaultName,
       }) && (
         <button onClick={clearAll}
-          className="flex items-center gap-1 text-[12px] text-slate-400 hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded px-1">
+          className={'flex items-center gap-1 text-[12px] text-slate-400 hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded px-1' + (stacked ? ' h-11 justify-center phone:text-slate-600' : '')}>
           <X className="w-3 h-3" />
           Clear Filters
         </button>
