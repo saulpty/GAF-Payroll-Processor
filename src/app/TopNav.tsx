@@ -9,6 +9,8 @@ import {
   Eye, X, KeyRound, UserCircle,
 } from 'lucide-react';
 import type { NavBadges } from '@/app/lib/useNavBadges';
+import { useIsPhone } from '@/app/lib/useIsPhone';
+import { navBadge } from '@/app/lib/mobileNav';
 import BrandLogo from '@/app/components/BrandLogo';
 import RefreshButton from '@/app/components/RefreshButton';
 import { useViewer } from '@/app/context/ViewerContext';
@@ -120,37 +122,13 @@ export default function TopNav({ badges }: { badges: NavBadges }) {
   const { isSuper, isViewingAs, name, email, setViewAs } = useViewer();
   const visibleSections = SECTIONS.filter(s => canSeeSection(isSuper, s.id));
 
-  // The three counts are loaded once, in Shell (app.tsx), by the useNavBadges hook.
-  const expiringCount = badges.contracts;
-  const dueCount      = badges.disciplinary;
-  const reviewCount   = badges.pto;
-
-  function sectionBadge(id: string): { count: number; label: string } | null {
-    if (!isSuper && id === 'disciplinary') return null;
-    if (id === 'contracts' && expiringCount > 0) {
-      return {
-        count: expiringCount,
-        label: `${expiringCount} contract${expiringCount === 1 ? '' : 's'} ending within 30 days`,
-      };
-    }
-    if (id === 'disciplinary' && dueCount > 0) {
-      return {
-        count: dueCount,
-        label: `${dueCount} disciplinary re-evaluation${dueCount === 1 ? '' : 's'} due`,
-      };
-    }
-    if (id === 'pto' && reviewCount > 0) {
-      return {
-        count: reviewCount,
-        label: `${reviewCount} PTO request${reviewCount === 1 ? '' : 's'} ready to record`,
-      };
-    }
-    return null;
-  }
-
+  // On a phone the sections live in the bottom bar (BottomNav); this bar names the current one.
+  const isPhone = useIsPhone();
   const activeSection = getActiveSection(location.pathname);
+  const current = SECTIONS.find(s => s.id === activeSection) ?? null;
 
   return (
+    <>
     <header className="topnav-dark shrink-0 h-14 bg-[var(--topnav)] text-[var(--topnav-foreground)] shadow-sm flex items-center px-4 gap-0 z-40 overflow-hidden phone:h-12">
       {/* Brand */}
       <div
@@ -165,6 +143,16 @@ export default function TopNav({ badges }: { badges: NavBadges }) {
       </div>
 
       {/* Sections: each keeps its colour; the active one is lit with an underline in its colour */}
+      {isPhone ? (
+        <div className="flex-1 min-w-0 flex items-center gap-2 text-[14px] font-semibold text-white">
+          {current && (
+            <>
+              <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: current.color.icon }} aria-hidden="true" />
+              <span className="truncate">{current.label}</span>
+            </>
+          )}
+        </div>
+      ) : (
       <nav aria-label="Sections" className="flex items-center h-14 flex-1 min-w-0 overflow-x-auto no-scrollbar phone:h-12">
         {visibleSections.map(s => {
           const isActive = activeSection === s.id;
@@ -184,7 +172,7 @@ export default function TopNav({ badges }: { badges: NavBadges }) {
               <s.icon className="w-4 h-4" style={{ color: s.color.icon }} />
               <span>{s.label}</span>
               {(() => {
-                const b = 'badge' in s && s.badge ? sectionBadge(s.id) : null;
+                const b = 'badge' in s && s.badge ? navBadge(s.id, badges, isSuper) : null;
                 return b && (
                   <span className={BADGE} aria-label={b.label}>
                     {b.count > 99 ? '99+' : b.count}
@@ -195,6 +183,7 @@ export default function TopNav({ badges }: { badges: NavBadges }) {
           );
         })}
       </nav>
+      )}
 
       <RefreshButton />
 
@@ -202,7 +191,7 @@ export default function TopNav({ badges }: { badges: NavBadges }) {
         <button
           onClick={() => setViewAs('')}
           title="Stop viewing as this person"
-          className="ml-3 shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
+          className="ml-3 shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 phone:hidden"
         >
           <Eye className="w-3.5 h-3.5" />
           <span><span className="phone:hidden">Viewing As </span>{name || email}</span>
@@ -219,5 +208,21 @@ export default function TopNav({ badges }: { badges: NavBadges }) {
         </div>
       )}
     </header>
+    {/* Phone, viewing as someone: a full-width strip under the bar. The name is never hidden. */}
+    {isViewingAs && isPhone && (
+      <div className="shrink-0 min-h-11 flex items-center gap-2 pl-4 bg-amber-100 text-amber-800 border-b border-amber-300 text-[13px] font-medium z-40">
+        <Eye className="w-4 h-4 shrink-0" aria-hidden="true" />
+        <span className="flex-1 min-w-0 py-1 break-words">Viewing As {name || email}</span>
+        <button
+          type="button"
+          onClick={() => setViewAs('')}
+          aria-label="Stop viewing as this person"
+          className="shrink-0 min-h-11 min-w-11 px-4 flex items-center justify-center font-semibold underline underline-offset-2"
+        >
+          Stop
+        </button>
+      </div>
+    )}
+    </>
   );
 }

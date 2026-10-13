@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import TopNav from '@/app/TopNav';
 import SectionBar from '@/app/SectionBar';
 import { useNavBadges } from '@/app/lib/useNavBadges';
+import { useIsPhone } from '@/app/lib/useIsPhone';
+import BottomNav from '@/app/components/mobile/BottomNav';
 import { GlobalFilterProvider, useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { ViewerProvider } from '@/app/context/ViewerContext';
 import AccessGate from '@/app/components/AccessGate';
@@ -46,11 +48,13 @@ function RefreshBoundary({ children }: { children: ReactNode }) {
 // to the bars as a prop: loading them inside each bar would run every count query twice.
 function Shell({ children }: { children: ReactNode }) {
   const badges = useNavBadges();
+  const isPhone = useIsPhone();
   return (
     <>
       <TopNav badges={badges} />
       <SectionBar />
       <main className="flex-1 overflow-auto">{children}</main>
+      {isPhone && <BottomNav badges={badges} />}
     </>
   );
 }
