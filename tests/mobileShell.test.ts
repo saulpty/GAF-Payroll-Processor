@@ -20,7 +20,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
-const SENT_THROUGH: 0 | 1 | 2 = 0;
+const SENT_THROUGH: 0 | 1 | 2 = 1;
 const waitsFor = (prompt: 0 | 1 | 2) =>
   prompt > SENT_THROUGH ? { todo: `waits for prompt 0${prompt} (SENT_THROUGH is ${SENT_THROUGH})` } : {};
 
