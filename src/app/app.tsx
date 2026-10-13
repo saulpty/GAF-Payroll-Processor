@@ -15,6 +15,7 @@ import AccessAutoSync from '@/app/components/AccessAutoSync';
 import TeramindAutoSync from '@/app/components/TeramindAutoSync';
 import MondayAutoSync from '@/app/components/MondayAutoSync';
 import RequireSuper, { HomeRedirect } from '@/app/components/RequireSuper';
+import DesktopCanvas from '@/app/components/mobile/DesktopCanvas';
 import ProcessPayroll from '@/app/pages/ProcessPayroll';
 import ActionRequired from '@/app/pages/ActionRequired';
 import PayrollMaster from '@/app/pages/PayrollMaster';
@@ -72,9 +73,9 @@ function App() {
               <Shell>
                 <Routes>
                   <Route path="/" element={<HomeRedirect />} />
-                  <Route path="/process" element={<RequireSuper><ProcessPayroll /></RequireSuper>} />
-                  <Route path="/action-required" element={<RequireSuper><ActionRequired /></RequireSuper>} />
-                  <Route path="/payroll-master" element={<RequireSuper><PayrollMaster /></RequireSuper>} />
+                  <Route path="/process" element={<RequireSuper><DesktopCanvas><ProcessPayroll /></DesktopCanvas></RequireSuper>} />
+                  <Route path="/action-required" element={<RequireSuper><DesktopCanvas><ActionRequired /></DesktopCanvas></RequireSuper>} />
+                  <Route path="/payroll-master" element={<RequireSuper><DesktopCanvas><PayrollMaster /></DesktopCanvas></RequireSuper>} />
 
                   <Route path="/admin" element={<RequireSuper><AdminLayout /></RequireSuper>}>
                     <Route index element={<Navigate to="/admin/employees" replace />} />
@@ -90,10 +91,10 @@ function App() {
                   <Route path="/contracts" element={<Contracts />} />
                   <Route path="/disciplinary" element={<Disciplinary />} />
                   <Route path="/pto" element={<PtoTracker />} />
-                  <Route path="/period-log" element={<RequireSuper><PeriodLog /></RequireSuper>} />
+                  <Route path="/period-log" element={<RequireSuper><DesktopCanvas><PeriodLog /></DesktopCanvas></RequireSuper>} />
                   {/* Single instance — tab driven by URL, no remount on tab switch */}
                   <Route path="/attendance/*" element={<Attendance />} />
-                  <Route path="/hrk-summary" element={<RequireSuper><HrkSummary /></RequireSuper>} />
+                  <Route path="/hrk-summary" element={<RequireSuper><DesktopCanvas><HrkSummary /></DesktopCanvas></RequireSuper>} />
                 </Routes>
               </Shell>
             </RefreshBoundary>

@@ -9,7 +9,7 @@ export default function AccessGate({ children }: { children: ReactNode }) {
   if (status === 'ready') return <>{children}</>;
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="flex items-center justify-center min-h-screen bg-background phone:px-4">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 max-w-md w-full flex flex-col items-center gap-4 text-center">
         {status === 'loading' && (
           <>
