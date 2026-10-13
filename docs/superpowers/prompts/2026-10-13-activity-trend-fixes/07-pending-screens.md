@@ -4,8 +4,8 @@
 rewrite, reformat, reorder or "improve" anything else in any file. If your context is compacted
 mid-task, re-read this prompt before writing.**
 
-**Only these three files may change**, all in `src/app/pages/attendance/activity/`: `ActivityByEmployee.tsx`,
-`ActivityDayChart.tsx`, `ActivityThresholds.tsx`. **No other file may be touched.**
+**Only these five files may change**, all in `src/app/pages/attendance/activity/`: `ActivityByEmployee.tsx`,
+`ActivityDayChart.tsx`, `ActivityThresholds.tsx`, `ActivityCompare.tsx`, `ActivityDaysSideBySide.tsx`. **No other file may be touched.**
 
 ## 1. `src/app/pages/attendance/activity/ActivityByEmployee.tsx`
 
@@ -31,7 +31,7 @@ with
 
 ```tsx
         <span aria-hidden="true">{showDays ? '▲' : '▼'}</span>
-        {showDays ? `Hide the ${total} Days` : `Show All ${total} Days`}
+        {showDays ? `Hide All ${total} Days` : `Show All ${total} Days`}
 ```
 
 Edit 3. Directly above the line `function OpenedRow(` add:
@@ -56,6 +56,18 @@ with
 ```
 
 (the second occurrence is indented by four spaces instead of six; keep its own indentation).
+
+Edit 5. The Before and After panel was 430px wide and cut off its Change column; it also stretched to the chart's height. Replace
+
+```tsx
+      <div className="grid grid-cols-1 xl:grid-cols-[430px_minmax(0,1fr)] gap-4">
+```
+
+with
+
+```tsx
+      <div className="grid grid-cols-1 xl:grid-cols-[480px_minmax(0,1fr)] gap-4 items-start">
+```
 
 ## 2. `src/app/pages/attendance/activity/ActivityDayChart.tsx`
 
@@ -85,6 +97,68 @@ with
             </span>
           );
         })}
+```
+
+Then five more edits in the same file (labels in Title Case; the header says what the number is):
+
+Edit 2. Replace
+
+```tsx
+          {avg === null ? 'No days with work' : `${fmtMinutes(avg)} a day on average`}
+```
+
+with
+
+```tsx
+          {avg === null ? 'No Days With Work' : `Avg Active ${fmtMinutes(avg)}`}
+```
+
+Edit 3. Replace
+
+```tsx
+          <span><i className={`${SWATCH} bg-primary`} />Normal day</span>
+```
+
+with
+
+```tsx
+          <span><i className={`${SWATCH} bg-primary`} />Normal Day</span>
+```
+
+Edit 4. Replace
+
+```tsx
+⚠️ Under the {fmtMinutes(p.thresholdMin)} minimum</span>
+```
+
+with
+
+```tsx
+⚠️ Under the {fmtMinutes(p.thresholdMin)} Minimum</span>
+```
+
+Edit 5. Replace
+
+```tsx
+✕ Missed, no approved reason</span>
+```
+
+with
+
+```tsx
+✕ Missed, No Approved Reason</span>
+```
+
+Edit 6. Replace
+
+```tsx
+border-dashed border-status-yellow-ink" />{fmtMinutes(p.thresholdMin)} minimum</span>
+```
+
+with
+
+```tsx
+border-dashed border-status-yellow-ink" />{fmtMinutes(p.thresholdMin)} Minimum</span>
 ```
 
 ## 3. `src/app/pages/attendance/activity/ActivityThresholds.tsx`
@@ -129,10 +203,42 @@ with
             Applies to everyone. The minimum active time is scaled for a shorter shift.
 ```
 
+## 4. `src/app/pages/attendance/activity/ActivityCompare.tsx`
+
+Table cells are 13px like every other table cell in the app.
+
+Edit 1. Replace
+
+```tsx
+const TD = 'px-3 py-2 text-right text-sm tabular-nums whitespace-nowrap border-t border-slate-100';
+```
+
+with
+
+```tsx
+const TD = 'px-3 py-2 text-right text-[13px] tabular-nums whitespace-nowrap border-t border-slate-100';
+```
+
+## 5. `src/app/pages/attendance/activity/ActivityDaysSideBySide.tsx`
+
+Edit 1. Replace
+
+```tsx
+        {sum && <span className="text-xs text-slate-500">{sum.worked} days with work</span>}
+```
+
+with
+
+```tsx
+        {sum && <span className="text-xs text-slate-500">{sum.worked} Days With Work</span>}
+```
+
 ## Acceptance
 1. The Trend tooltip mentions permissions and says "1 day" for a one-day comparison.
 2. On a 90-day range the chart labels no longer overlap (Mondays only).
 3. On a window narrower than the table, an opened row stays in view instead of scrolling sideways.
-4. Thresholds: typing 2.5 in a days field and saving shows an error instead of storing 3.
+4. The Before and After panel shows its whole Change column and is only as tall as its table.
+5. Labels read in Title Case: Not Enough Data, No Change, Normal Day, Avg Active 7h 4m, 10 Days With Work, Hide All 21 Days.
+6. Thresholds: typing 2.5 in a days field and saving shows an error instead of storing 3.
 
 When done, reply with a one-line summary per file.

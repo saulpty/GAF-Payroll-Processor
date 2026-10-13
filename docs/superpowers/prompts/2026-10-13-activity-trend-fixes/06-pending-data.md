@@ -111,6 +111,44 @@ with
 /** 'Sep 5 – Sep 23', or 'Oct 7' for a single day; years are added only when the two ends are in different years. */
 ```
 
+Then three more edits in the same file (labels in Title Case, and a shorter one that fits its column):
+
+Edit 4. Replace
+
+```ts
+  improved: 'Improved', worse: 'Worse', mixed: 'Mixed', steady: 'Steady', nodata: 'Not enough data',
+```
+
+with
+
+```ts
+  improved: 'Improved', worse: 'Worse', mixed: 'Mixed', steady: 'Steady', nodata: 'Not Enough Data',
+```
+
+Edit 5. Replace
+
+```ts
+/** The Change cell: '+1h 11m', '12m earlier', '5 fewer', or 'About the same' under the minimum. */
+```
+
+with
+
+```ts
+/** The Change cell: '+1h 11m', '12m earlier', '5 fewer', or 'No Change' under the minimum. */
+```
+
+Edit 6. Replace
+
+```ts
+  if (c.tone === '') return 'About the same';
+```
+
+with
+
+```ts
+  if (c.tone === '') return 'No Change';
+```
+
 ## 4. New file `src/app/pages/attendance/activity/activitySettings.ts` — the whole file
 
 ```ts

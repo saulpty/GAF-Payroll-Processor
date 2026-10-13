@@ -72,7 +72,7 @@ test('TW4 (prompt 03): the By Employee table has the Trend, low-day and missed-d
   assert.match(src, /\{ key: 'missed',\s+label: 'Days Missed' \}/);
   assert.match(src, /Compares \$\{p\.afterLabel\} with the \$\{p\.prevDayCount\} \$\{p\.prevDayCount === 1 \? 'day' : 'days'\} right before it, \$\{p\.beforeLabel\}\./);
   assert.match(src, /Days off, PTO, permissions, sick days and holidays are left out of both\./);
-  assert.match(src, /`Show All \$\{total\} Days`/);
+  assert.match(src, /`Hide All \$\{total\} Days` : `Show All \$\{total\} Days`/);
   assert.match(src, /<span aria-hidden="true">\{showDays \? '▲' : '▼'\}<\/span>/);
   assert.match(src, /<td colSpan=\{9\}/);
   assert.ok(Buffer.byteLength(src, 'utf8') < 15 * 1024, 'ActivityByEmployee.tsx is over 15 KB');
@@ -103,6 +103,13 @@ test('TW7 (prompt 07): long ranges thin the chart labels; minutes and days are w
   // Narrow windows: the opened row sticks to the left edge at the visible width (both branches).
   const be = read(DIR + 'ActivityByEmployee.tsx');
   assert.equal((be.match(/className="sticky left-0 p-4 bg-slate-50 border-b-2 border-slate-300" style=\{OPENED_WIDTH\}/g) ?? []).length, 2);
+  // Title Case labels and the Before and After panel's size (Saul's screenshot, 2026-10-13).
+  assert.match(be, /xl:grid-cols-\[480px_minmax\(0,1fr\)\] gap-4 items-start/);
+  assert.match(chart, /`Avg Active \$\{fmtMinutes\(avg\)\}`/);
+  assert.match(chart, /Normal Day<\/span>/);
+  assert.doesNotMatch(chart, /a day on average`\}|Normal day|no approved reason<|\} minimum</);
+  assert.match(read(DIR + 'ActivityDaysSideBySide.tsx'), /\{sum\.worked\} Days With Work/);
+  assert.match(read(DIR + 'ActivityCompare.tsx'), /const TD = 'px-3 py-2 text-right text-\[13px\] tabular-nums/);
   const dlg = read(DIR + 'ActivityThresholds.tsx');
   assert.match(dlg, /if \(field\.unit !== 'hours' && !Number\.isInteger\(n\)\) return null;/);
   assert.match(dlg, /The minimum active time is scaled for a shorter shift\./);

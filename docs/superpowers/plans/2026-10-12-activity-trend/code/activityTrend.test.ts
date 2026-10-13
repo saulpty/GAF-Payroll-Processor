@@ -177,7 +177,7 @@ test('T19: changeText reads like the mockup', () => {
   assert.equal(changeText('entry', { delta: 14, tone: 'bad' }), '14m later');
   assert.equal(changeText('low', { delta: -5, tone: 'good' }), '5 fewer');
   assert.equal(changeText('missed', { delta: 3, tone: 'bad' }), '3 more');
-  assert.equal(changeText('active', { delta: 12, tone: '' }), 'About the same');
+  assert.equal(changeText('active', { delta: 12, tone: '' }), 'No Change');
   assert.equal(fmtMinutes(120), '2h');
 });
 
@@ -206,5 +206,5 @@ test('T22: nothing elapsed yet, or a bad range, switches the comparison off', ()
 test('T20: Trend sorts Worse first and Not enough data last; every verdict has a label', () => {
   const order = (['improved', 'nodata', 'steady', 'worse', 'mixed'] as const).slice().sort((x, y) => VERDICT_ORDER[x] - VERDICT_ORDER[y]);
   assert.deepEqual(order, ['worse', 'mixed', 'steady', 'improved', 'nodata']);
-  assert.equal(VERDICT_LABEL.nodata, 'Not enough data');
+  assert.equal(VERDICT_LABEL.nodata, 'Not Enough Data');
 });

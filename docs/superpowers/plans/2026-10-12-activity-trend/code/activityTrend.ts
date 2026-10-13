@@ -28,7 +28,7 @@ export type EmployeeTrend = {
 export type TotalsChange = { avgActiveMin: number | null; daysWorkedBefore: number; needsLook: number; lateArrivals: number };
 
 export const VERDICT_LABEL: Record<Verdict, string> = {
-  improved: 'Improved', worse: 'Worse', mixed: 'Mixed', steady: 'Steady', nodata: 'Not enough data',
+  improved: 'Improved', worse: 'Worse', mixed: 'Mixed', steady: 'Steady', nodata: 'Not Enough Data',
 };
 /** Sort order for the Trend column: the people to look at first come first. */
 export const VERDICT_ORDER: Record<Verdict, number> = { worse: 0, mixed: 1, steady: 2, improved: 3, nodata: 4 };
@@ -165,9 +165,9 @@ export function fmtMinutes(minutes: number): string {
   return h === 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-/** The Change cell: '+1h 11m', '12m earlier', '5 fewer', or 'About the same' under the minimum. */
+/** The Change cell: '+1h 11m', '12m earlier', '5 fewer', or 'No Change' under the minimum. */
 export function changeText(measure: Measure, c: MeasureChange): string {
-  if (c.tone === '') return 'About the same';
+  if (c.tone === '') return 'No Change';
   const n = Math.abs(c.delta);
   if (measure === 'active') return `${c.delta > 0 ? '+' : '−'}${fmtMinutes(n)}`;
   if (measure === 'entry') return `${fmtMinutes(n)} ${c.delta < 0 ? 'earlier' : 'later'}`;
