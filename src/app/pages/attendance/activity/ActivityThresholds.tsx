@@ -131,7 +131,7 @@ export default function ActivityThresholds({ settings, minimums, onSaved }: Prop
       <button
         type="button"
         onClick={handleOpen}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm phone:min-h-11 phone:shrink-0"
       >
         <Settings2 className="w-3.5 h-3.5" />
         Thresholds

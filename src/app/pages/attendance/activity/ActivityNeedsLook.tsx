@@ -4,6 +4,8 @@ import type { ActivityDay, ActivitySettings } from '@/app/lib/activityDays';
 import { fmtDayShort, addDays, thresholdFor } from '@/app/lib/activityDays';
 import { fmtDuration } from '@/app/lib/teramindToday';
 import WhyChipBadge from './WhyChipBadge';
+import { useIsPhone } from '@/app/lib/useIsPhone';
+import { LookRows } from './ActivityRows';
 
 type Props = {
   days: ActivityDay[];
@@ -56,6 +58,7 @@ function windowStartDate(dateTo: string): string {
 
 // Closed by default (Saul, 2026-10-13): a small chip the viewer opens when they want the list.
 export default function ActivityNeedsLook({ days, dateTo, settings, onPick, open, onToggle, part }: Props) {
+  const isPhone = useIsPhone();
   const flagged = days.filter(d => d.needsLook);
   const totalFlagged = flagged.length;
 
@@ -78,7 +81,7 @@ export default function ActivityNeedsLook({ days, dateTo, settings, onPick, open
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="inline-flex items-center gap-2 h-8 px-3 rounded-full bg-status-yellow-tint border border-amber-200 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors whitespace-nowrap"
+        className="inline-flex items-center gap-2 h-8 px-3 rounded-full bg-status-yellow-tint border border-amber-200 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors whitespace-nowrap phone:h-11 phone:shrink-0"
       >
         <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
         Needs a Look
@@ -104,7 +107,7 @@ export default function ActivityNeedsLook({ days, dateTo, settings, onPick, open
         </div>
         <span className="flex items-center gap-3 text-xs text-amber-600 whitespace-nowrap">
           {totalFlagged} flagged {totalFlagged === 1 ? 'day' : 'days'} in the whole range
-          <button type="button" onClick={onToggle} aria-expanded className="font-semibold text-amber-800 hover:underline underline-offset-2">
+          <button type="button" onClick={onToggle} aria-expanded className="font-semibold text-amber-800 hover:underline underline-offset-2 phone:min-h-11 phone:px-2">
             Hide
           </button>
         </span>
@@ -112,6 +115,8 @@ export default function ActivityNeedsLook({ days, dateTo, settings, onPick, open
 
       {windowRows.length === 0 ? (
         <p className="text-xs text-amber-700/70 italic py-1">Nothing to look at in the last 7 days</p>
+      ) : isPhone ? (
+        <LookRows rows={windowRows} settings={settings} onPick={onPick} />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
