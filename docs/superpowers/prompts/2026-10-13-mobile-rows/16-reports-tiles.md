@@ -523,7 +523,7 @@ report, `toggleCls` and `<AttendanceKpis kpis={kpis} />` stay exactly as they ar
 
 On a phone-sized screen (375 × 667), Attendance → Reports:
 1. No `Cards | Table` switch. Each employee's card shows the name, role and manager, then on
-   its own line `12 days · 2 late · avg +14 min · 92% on time`.
+   its own line the counts: `12 days`, `2 late`, `avg +14 min`, `92% on time`.
 2. The day tiles sit two across and fill the card's width, with an 8 px gap. Nothing on a tile
    is smaller than 12 px.
 3. Tap a tile: a sheet slides up titled with the full date (`Monday, October 5, 2026`) and the

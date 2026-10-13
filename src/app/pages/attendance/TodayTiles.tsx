@@ -12,9 +12,9 @@ function SummaryTile({
   tip?: string;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 flex flex-col gap-0.5 min-w-[104px] shadow-card">
-      <span className={`text-[22px] leading-7 font-bold tabular-nums ${accent ?? 'text-slate-900'}`}>{value}</span>
-      <span className="text-[12px] text-slate-600 font-medium flex items-center gap-1.5 whitespace-nowrap">
+    <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 flex flex-col gap-0.5 min-w-[104px] shadow-card phone:min-w-0 phone:shrink-0 phone:flex-row phone:items-center phone:gap-1.5 phone:rounded-none phone:border-0 phone:bg-transparent phone:p-0 phone:shadow-none">
+      <span className={`text-[22px] leading-7 font-bold tabular-nums phone:text-[13px] phone:leading-5 ${accent ?? 'text-slate-900'}`}>{value}</span>
+      <span className="text-[12px] text-slate-600 font-medium flex items-center gap-1.5 whitespace-nowrap phone:text-[13px]">
         <span className={`w-2 h-2 rounded-full ${dot ?? 'bg-slate-300'}`} aria-hidden="true" />
         {label}
         {tip && <InfoTip text={tip} />}
@@ -47,7 +47,7 @@ export default function TodayTiles({
   offTodayCount,
 }: TodayTilesProps) {
   return (
-    <div className="flex flex-wrap gap-2 mb-4">
+    <div className="flex flex-wrap gap-2 mb-4 no-scrollbar phone:-mx-4 phone:mb-2 phone:h-10 phone:flex-nowrap phone:items-center phone:gap-4 phone:overflow-x-auto phone:px-4">
       <SummaryTile
         label="Scheduled"
         value={scheduledCount}

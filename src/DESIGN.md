@@ -81,3 +81,53 @@ Counts are chips; clicking one filters the table.
 ## Accessibility
 Real `<button>`s and `<label>`s; visible focus ring; icon-only buttons get `aria-label`;
 text contrast ≥ 4.5:1; honour `prefers-reduced-motion`.
+
+## Phone
+
+Everything above still holds on a phone; this section adds what a small touch screen needs. The
+app is still a spreadsheet: on a phone it is a spreadsheet one column wide, not a set of cards.
+
+**Two switches, never mixed up.**
+- *Phone-sized screen* (layout): the `phone` Tailwind screen and `useIsPhone()`, one shared query
+  (`(max-width: 767px), (max-height: 500px) and (pointer: coarse)`). Styling differences use
+  `phone:` classes; a different structure uses the hook so only one layout is rendered.
+- *Touch screen* (comfort, any width): `@media (pointer: coarse)` in `src/index.css`.
+  A desktop with a mouse matches neither and must not change.
+
+**Frame.** Top bar 48 · one 44 px row for tabs or active-filter chips plus the Filters button ·
+page · section bar 56. Nothing in the frame is `position: fixed`. Page headers scroll with the page.
+Section order and names are the same as on the computer.
+
+**Touch.** Anything tappable has a hit area of at least 44 × 44 px (the visible shape may be
+smaller). Text boxes are 16 px on touch screens. Nothing depends on hover: whatever a `title` says
+is written out where the person taps. No swipe gestures.
+
+**Type on a phone.** Name / row title 14 px semibold. Row facts 13 px. Labels and pills 12 px.
+Nothing below 12 px. Numbers tabular. The one headline number on a row (PTO Available) 20 px bold.
+
+**Rows, not cards (`MobileRow`).** Full width, flat, separated by a 1 px `border` hairline; no
+gaps, shadows or rounded boxes between rows; 12 px vertical and 16 px side padding; about 60 px
+tall. Line 1: name (wraps to two lines, never "…") and, pinned right, one status pill. Line 2: up
+to three facts in `muted-foreground`. A flagged row gets the matching `-tint` wash, as on desktop.
+Dimmed rows (day off, inactive) use the muted text colour, never opacity. A row that opens
+something is a real button with a pressed state.
+
+**Opening detail.** Down-chevron: opens in place, reading only. Right-chevron: opens a sheet,
+for long detail or anything with buttons. At most two layers over a page (a sheet, then one dialog).
+
+**Sheets (`MobileSheet`).** Built on the existing dialog. Full width, top corners `lg` (8 px),
+title bar stays while the body scrolls, close button top right. Dialogs on a phone: 16 px side
+margin, never taller than the screen, scroll inside, one-column forms, buttons full width.
+
+**Colour.** Section names and active labels on white use the section's `ink` colour, never its
+`accent` (Contracts accent on white is 3.2:1). Only truly destructive actions are red (Delete);
+Close Case is an ordinary button.
+
+**Sliding lines.** Tabs, filter chips and count strips that do not fit sit on one line that slides
+sideways, with a fade on the edge where more is hidden. They never wrap into a block.
+
+**States.** Every phone list has grey placeholder rows while loading, a nothing-found line that
+names the active filter, and the error message with a full-width Retry.
+
+**Payroll and Admin** are not redesigned for phones: they keep the computer layout inside
+`DesktopCanvas` and slide.

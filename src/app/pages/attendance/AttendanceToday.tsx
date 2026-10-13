@@ -14,6 +14,9 @@ import { matchesManager } from '@/app/lib/managerFilter';
 import { useTodayWhy } from './useTodayWhy';
 import { isOnLeave } from './TodayRow';
 import TodayTable from './TodayTable';
+import TodayRows, { TodayRowsLoading } from './TodayRows';
+import { useIsPhone } from '@/app/lib/useIsPhone';
+import { todayNothingFound } from '@/app/lib/todayRows';
 import { AttendancePanel } from './AttendancePanel';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadTeramindDayPunchesAction from '@/actions/loadTeramindDayPunches';
@@ -38,6 +41,7 @@ export default function AttendanceToday() {
 
   const { employee: globalEmployee, manager, role } = useGlobalFilters();
   const { viewAs } = useViewer();
+  const isPhone = useIsPhone();
 
   const [rawEmps, loadingEmps] = useLoadAction(
     loadAttendanceEmployeesAction,
@@ -194,17 +198,19 @@ export default function AttendanceToday() {
   ).length;
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background phone:h-auto phone:min-h-full">
       {/* Header bar */}
-      <div className="shrink-0 px-5 py-3 border-b border-slate-200 bg-white flex flex-wrap items-center gap-3">
+      <div className="shrink-0 px-5 py-3 border-b border-slate-200 bg-white flex flex-wrap items-center gap-3 phone:px-4">
         <Clock className="w-4 h-4 text-primary shrink-0" />
         <span className="inline-flex items-center gap-1.5 rounded-full bg-status-green-fill px-2.5 py-0.5 text-[12px] font-semibold text-status-green-ink">
           <span className="w-1.5 h-1.5 rounded-full bg-status-green-ink" aria-hidden="true" />
           Live
         </span>
-        <InfoTip text="Teramind data syncs every 5 minutes. The time shown is the latest sync received." />
+        <InfoTip text={isPhone
+          ? 'Teramind data syncs every 5 minutes. The time shown is the latest sync received. Times are in US Eastern.'
+          : 'Teramind data syncs every 5 minutes. The time shown is the latest sync received.'} />
         <span className="text-slate-500 text-[13px]">
-          Data as of {dataAsOf} · updates every 5 minutes · times in US Eastern
+          {isPhone ? <>Data as of {dataAsOf}</> : <>Data as of {dataAsOf} · updates every 5 minutes · times in US Eastern</>}
         </span>
         {loadingPunches && <RefreshCw className="w-3.5 h-3.5 text-slate-400 animate-spin ml-auto" />}
 
@@ -220,12 +226,12 @@ export default function AttendanceToday() {
             value={day}
             max={today}
             onChange={e => setDay(e.target.value)}
-            className="h-8 px-2.5 text-[13px] border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-warm-ring"
+            className="h-8 px-2.5 text-[13px] border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-warm-ring phone:h-11"
           />
           {!isToday && (
             <button
               onClick={() => setDay(today)}
-              className="h-8 px-3 text-[13px] rounded-md bg-warm text-warm-ink font-semibold hover:brightness-95 transition"
+              className="h-8 px-3 text-[13px] rounded-md bg-warm text-warm-ink font-semibold hover:brightness-95 transition phone:h-11"
             >
               Today
             </button>
@@ -235,14 +241,15 @@ export default function AttendanceToday() {
 
       {/* Stale data notice — only for today, only when data is >25 min old */}
       {isToday && dataAsOfMin !== null && nowMin - dataAsOfMin > 25 && (
-        <div className="shrink-0 px-5 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800">
+        <div className="shrink-0 px-5 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800 phone:px-4">
           Data is {nowMin - dataAsOfMin} minutes old — statuses are as of {fmtClock(dataAsOfMin)}. It refreshes while a super user has the Hub open.
         </div>
       )}
 
-      <div className="flex-1 overflow-auto px-5 py-4">
+      <div className="flex-1 overflow-auto px-5 py-4 phone:flex-none phone:overflow-visible phone:px-4 phone:py-3">
         {/* Loading state */}
-        {loading && rows.length === 0 && (
+        {loading && rows.length === 0 && isPhone && <TodayRowsLoading />}
+        {loading && rows.length === 0 && !isPhone && (
           <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
             <Activity className="w-5 h-5 animate-pulse" />
             Loading attendance data…
@@ -261,8 +268,8 @@ export default function AttendanceToday() {
         )}
 
         {!loading && employees.length === 0 && (
-          <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
-            No employees match these filters.
+          <div className="flex items-center justify-center py-24 text-muted-foreground text-sm phone:py-10 phone:text-center">
+            {isPhone ? todayNothingFound({ employee: globalEmployee, manager, role }) : 'No employees match these filters.'}
           </div>
         )}
 
@@ -279,7 +286,9 @@ export default function AttendanceToday() {
             />
 
             {/* Table */}
-            <TodayTable rows={rows} isToday={isToday} whyById={whyById} whyLoading={whyLoading} ghostByEmployee={ghostByEmployee} onRowClick={setPanelRow} />
+            {isPhone
+              ? <TodayRows rows={rows} whyById={whyById} whyLoading={whyLoading} ghostByEmployee={ghostByEmployee} onRowClick={setPanelRow} />
+              : <TodayTable rows={rows} isToday={isToday} whyById={whyById} whyLoading={whyLoading} ghostByEmployee={ghostByEmployee} onRowClick={setPanelRow} />}
           </>
         )}
       </div>
