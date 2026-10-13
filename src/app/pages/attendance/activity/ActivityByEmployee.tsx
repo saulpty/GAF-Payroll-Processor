@@ -159,17 +159,17 @@ function EmployeeRow({ emp, trend, p, onOpenPanel, expanded, onToggle }: Employe
 
   return (
     <>
-      <tr ref={rowRef} className={expanded ? 'sticky z-[5] bg-white shadow-sm' : 'hover:bg-slate-50 transition-colors'}>
+      <tr ref={rowRef} onClick={onToggle} className={expanded ? 'sticky z-[5] bg-white shadow-sm cursor-pointer' : 'hover:bg-slate-50 transition-colors cursor-pointer'}>
         <td className={TD}>
           <div className="flex items-center gap-2">
-            <button onClick={onToggle} className="shrink-0 text-slate-400 hover:text-slate-600"
+            <button onClick={e => { e.stopPropagation(); onToggle(); }} className="shrink-0 text-slate-400 hover:text-slate-600"
               aria-label={expanded ? 'Collapse' : 'Expand'} aria-expanded={expanded}>
               {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
             <div>
               <button
                 className="font-semibold text-slate-900 hover:text-warm-text hover:underline underline-offset-2 text-left transition-colors"
-                onClick={() => onOpenPanel(emp)}
+                onClick={e => { e.stopPropagation(); onOpenPanel(emp); }}
               >
                 {emp.employeeName}
               </button>

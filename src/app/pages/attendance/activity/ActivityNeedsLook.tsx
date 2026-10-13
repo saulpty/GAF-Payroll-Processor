@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import type { ActivityDay, ActivitySettings } from '@/app/lib/activityDays';
 import { fmtDayShort, addDays, thresholdFor } from '@/app/lib/activityDays';
@@ -10,6 +10,10 @@ type Props = {
   dateTo: string;
   settings: ActivitySettings;
   onPick?: (employeeId: number) => void;
+  // The page owns open/closed and renders this twice: the chip in its toolbar, the box under it.
+  open: boolean;
+  onToggle: () => void;
+  part: 'chip' | 'box';
 };
 
 const TH = 'px-2 py-1 text-left text-[12px] font-semibold text-status-yellow-ink whitespace-nowrap';
@@ -50,9 +54,8 @@ function windowStartDate(dateTo: string): string {
   return cur;
 }
 
-export default function ActivityNeedsLook({ days, dateTo, settings, onPick }: Props) {
-  // Closed by default (Saul, 2026-10-13): a small chip the viewer opens when they want the list.
-  const [open, setOpen] = useState(false);
+// Closed by default (Saul, 2026-10-13): a small chip the viewer opens when they want the list.
+export default function ActivityNeedsLook({ days, dateTo, settings, onPick, open, onToggle, part }: Props) {
   const flagged = days.filter(d => d.needsLook);
   const totalFlagged = flagged.length;
 
@@ -69,21 +72,22 @@ export default function ActivityNeedsLook({ days, dateTo, settings, onPick }: Pr
 
   if (totalFlagged === 0) return null;
 
-  if (!open) {
+  if (part === 'chip') {
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        aria-expanded={false}
-        className="inline-flex items-center gap-2 h-8 px-3 mb-4 rounded-full bg-status-yellow-tint border border-amber-200 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="inline-flex items-center gap-2 h-8 px-3 rounded-full bg-status-yellow-tint border border-amber-200 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors whitespace-nowrap"
       >
         <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
         Needs a Look
         <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-200 text-amber-900 tabular-nums">{totalFlagged}</span>
-        <span className="font-medium text-amber-700">Show</span>
+        <span className="font-medium text-amber-700">{open ? 'Hide' : 'Show'}</span>
       </button>
     );
   }
+  if (!open) return null;
 
   const headingStart = fmtDayShort(windowStartDate(dateTo));
   const headingEnd   = fmtDayShort(dateTo);
@@ -100,7 +104,7 @@ export default function ActivityNeedsLook({ days, dateTo, settings, onPick }: Pr
         </div>
         <span className="flex items-center gap-3 text-xs text-amber-600 whitespace-nowrap">
           {totalFlagged} flagged {totalFlagged === 1 ? 'day' : 'days'} in the whole range
-          <button type="button" onClick={() => setOpen(false)} aria-expanded className="font-semibold text-amber-800 hover:underline underline-offset-2">
+          <button type="button" onClick={onToggle} aria-expanded className="font-semibold text-amber-800 hover:underline underline-offset-2">
             Hide
           </button>
         </span>
