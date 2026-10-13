@@ -545,9 +545,11 @@ Full inventory: `docs/findings/2026-09-23-write-action-inventory.md`.
 
 ## Structural
 
-### 27. Activity trend follow-ups (2026-10-12)
+### 27. Activity trend follow-ups (2026-10-12, updated 2026-10-13)
 
-Built and on /dev (see `HANDOFF-2026-10-12-activity-trend.md`). Left out on purpose or found while testing:
+Built and on /dev (see `HANDOFF-2026-10-13.md`). The review minors, the pre-start days, the one-day
+wording, the crowded chart labels, the narrow-window scroll and the hook's size were fixed on
+2026-10-13. Still open, all left out on purpose:
 
 - **"Since this date" shortcut** on the date bar: pick the day you spoke to someone and get that
   day → today against the same length before. Closest to how Saul actually asks the question.
@@ -555,15 +557,8 @@ Built and on /dev (see `HANDOFF-2026-10-12-activity-trend.md`). Left out on purp
 - **Log the conversation** (who, when, why) so the date does not live in someone's head.
 - **Weekly trends tab** (layout 3 of the mockup) to see whether an improvement holds.
 - **Away days as grey slots** in the day chart, so a short week does not look like a mistake.
-- **The top Needs a Look card counts days before an employee's start date** (Alberto Cornejo: 8 of
-  his 9). The Trend ignores them; the card and the amber box do not. Existing behaviour.
-- One-day ranges read `vs Oct 7 – Oct 7` / "the 1 days"; 90-day ranges crowd the chart labels;
-  narrow windows scroll the opened row sideways.
-- `SourceBadge.tsx` is unused since the day lists moved to `ActivityDaysSideBySide.tsx`.
-- **Split `useActivityData.ts` before its next edit** (13.9 KB of 15): move `parseSettings` /
-  `parseMinimums` out.
-- Review minors: tooltip omits permission days; Thresholds dialog copy and 2.5-day rounding;
-  ▼/▲ read aloud on the Show All button.
+- `SourceBadge.tsx` is unused since the day lists moved to `ActivityDaysSideBySide.tsx`; the side
+  panel computes trends it never shows.
 - Activity tab vs design system: `9:04 AM` / `45m` formats, left-aligned numbers, sort icon on
   every header.
 
