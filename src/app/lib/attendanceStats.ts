@@ -26,6 +26,17 @@ export type EmpInfo = {
   standard_end: string;
 };
 
+/**
+ * Rows whose day is inside [from, to] (YYYY-MM-DD, compared as strings). A slower answer for an
+ * earlier, wider range can arrive after the answer for the range now shown; this drops its extra days.
+ */
+export function rowsInRange<T extends { date: string }>(rows: T[], from: string, to: string): T[] {
+  return rows.filter(r => {
+    const day = String(r.date).slice(0, 10);
+    return day >= from && day <= to;
+  });
+}
+
 export function isExcluded(status: string) {
   return EXCUSED_STATUSES.includes(status) || PERMISSION_STATUSES.includes(status);
 }

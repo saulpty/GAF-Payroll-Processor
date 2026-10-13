@@ -7,7 +7,7 @@ import { Activity } from 'lucide-react';
 import loadAttendanceDailyAction from '@/actions/loadAttendanceDaily';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import {
-  AttendanceRow, EmpInfo, computeEmployeeStats, computeCompanyKpis,
+  AttendanceRow, EmpInfo, computeEmployeeStats, computeCompanyKpis, rowsInRange,
 } from '@/app/lib/attendanceStats';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { AttendanceKpis }   from '@/app/pages/attendance/AttendanceKpis';
@@ -69,7 +69,11 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
     { viewAs },
   );
 
-  const rows = (rawRows as AttendanceRow[]) ?? [];
+  // The 30-day fallback's answer can land after the chosen period's: keep only the days shown.
+  const rows = useMemo(
+    () => rowsInRange((rawRows as AttendanceRow[]) ?? [], safeFrom, safeTo),
+    [rawRows, safeFrom, safeTo],
+  );
   const emps = (empList as EmpInfo[]) ?? [];
 
   // Days payroll has not processed yet (from Teramind) are appended and counted like any day.
