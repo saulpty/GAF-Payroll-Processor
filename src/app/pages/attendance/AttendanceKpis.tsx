@@ -27,7 +27,7 @@ function Kpi({
         {label}{tooltip && <span className="ml-0.5 opacity-50">ⓘ</span>}
       </div>
       <div className={valueCls}>{value}</div>
-      {sub && <div className="text-[11px] text-muted-foreground truncate">{sub}</div>}
+      {sub && <div className="text-[11px] text-muted-foreground truncate phone:whitespace-normal phone:text-xs">{sub}</div>}
     </div>
   );
 }

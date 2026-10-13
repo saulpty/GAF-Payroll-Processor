@@ -12,6 +12,8 @@ import {
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { AttendanceKpis }   from '@/app/pages/attendance/AttendanceKpis';
 import { AttendanceTable }  from '@/app/pages/attendance/AttendanceTable';
+import AttendanceListRows, { AttendanceListLoading } from '@/app/pages/attendance/AttendanceListRows';
+import { useIsPhone } from '@/app/lib/useIsPhone';
 import { AttendancePanel }  from '@/app/pages/attendance/AttendancePanel';
 import AttendanceReport     from '@/app/pages/attendance/AttendanceReport';
 import AttendanceToday      from '@/app/pages/attendance/AttendanceToday';
@@ -50,6 +52,7 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
     manager, role,
   } = useGlobalFilters();
   const { viewAs } = useViewer();
+  const isPhone = useIsPhone();
 
   const [panelEmail, setPanelEmail] = useState<string | null>(null);
 
@@ -124,10 +127,11 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
   const loading = loadingRows || loadingEmps || live.loading;
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      <div className="flex-1 overflow-auto px-4 py-4 w-full">
+    <div className="flex flex-col h-full bg-background phone:h-auto phone:min-h-full">
+      <div className="flex-1 overflow-auto px-4 py-4 w-full phone:flex-none phone:overflow-visible">
         <div className="w-full">
-          {loading && (
+          {loading && isPhone && <AttendanceListLoading />}
+          {loading && !isPhone && (
             <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
               <Activity className="w-5 h-5 animate-pulse" />
               Loading attendance data…
@@ -158,7 +162,9 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
                     </span>
                   </div>
                 </div>
-                <AttendanceTable stats={empStats} onRowClick={setPanelEmail} search={globalEmployee} />
+                {isPhone
+                  ? <AttendanceListRows stats={empStats} onRowClick={setPanelEmail} search={globalEmployee} manager={manager} role={role} />
+                  : <AttendanceTable stats={empStats} onRowClick={setPanelEmail} search={globalEmployee} />}
               </div>
             </>
           )}
