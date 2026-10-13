@@ -288,7 +288,7 @@ Top to bottom, all inside a sticky-header shell:
 
 ## Phone
 
-**Proposed 2026-10-12, not built yet.** Design: `superpowers/specs/2026-10-12-mobile-view-design.md`.
+**Stage 1 (frame, filters, touch rules, pop-ups) is on /dev since 2026-10-13; rows are still to come.** Design: `superpowers/specs/2026-10-12-mobile-view-design.md`.
 Everything above still holds on a phone; this section adds what a small touch screen needs. The
 app is still a spreadsheet: on a phone it is a spreadsheet one column wide, not a set of cards.
 

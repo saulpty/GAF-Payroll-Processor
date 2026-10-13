@@ -83,7 +83,7 @@ export default function RecordDialogPayrollPanel({ requested, match, thisYear, o
     && match.actualDays !== null;
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 phone:grid-cols-1 gap-3">
       {/* Left: requested */}
       <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">

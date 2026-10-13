@@ -174,7 +174,7 @@ export default function ContractsTable({ asOf, onRowsChange, onCountsChange }: P
         onSort={handleSort}
         stickyHeader
         titleCase
-        className="mx-6 mb-6 max-h-[calc(100vh-300px)]"
+        className="mx-6 mb-6 max-h-[calc(100vh-300px)] phone:max-h-none phone:shrink-0"
       >
         {shown.length === 0 ? (
           <tr>

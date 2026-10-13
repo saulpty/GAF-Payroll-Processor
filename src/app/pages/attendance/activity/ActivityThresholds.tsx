@@ -138,7 +138,7 @@ export default function ActivityThresholds({ settings, minimums, onSaved }: Prop
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto phone:w-[calc(100%-2rem)] phone:max-h-[calc(100vh-2rem)] phone:[max-height:calc(100dvh_-_2rem)]">
           <DialogHeader>
             <DialogTitle>Activity Thresholds</DialogTitle>
           </DialogHeader>

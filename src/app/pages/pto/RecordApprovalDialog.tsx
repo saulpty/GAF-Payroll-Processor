@@ -283,7 +283,7 @@ export default function RecordApprovalDialog({ mode, today, onClose, onSaved }: 
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg phone:w-[calc(100%-2rem)] phone:max-h-[calc(100vh-2rem)] phone:[max-height:calc(100dvh_-_2rem)] phone:overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {subtitle && (
@@ -326,7 +326,7 @@ export default function RecordApprovalDialog({ mode, today, onClose, onSaved }: 
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 phone:grid-cols-1 gap-3">
             <div>
               <Label htmlFor="leaveOn" className="text-xs">Leave on</Label>
               <Input id="leaveOn" type="date" value={leaveOn}

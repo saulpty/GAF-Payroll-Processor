@@ -49,7 +49,7 @@ export default function DeleteActionDialog({ action: da, onClose, onSaved }: Pro
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v && !saving) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md phone:w-[calc(100%-2rem)] phone:max-h-[calc(100vh-2rem)] phone:[max-height:calc(100dvh_-_2rem)] phone:overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Delete Disciplinary Action</DialogTitle>
           {da && (

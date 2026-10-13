@@ -225,7 +225,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
           onSort={handleSort}
           stickyHeader
           titleCase
-          className="mx-6 mb-6 max-h-[calc(100vh-260px)]"
+          className="mx-6 mb-6 max-h-[calc(100vh-260px)] phone:max-h-none phone:shrink-0"
         >
           {sorted.length === 0 ? (
             <tr>

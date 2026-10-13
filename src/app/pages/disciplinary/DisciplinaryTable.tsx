@@ -296,7 +296,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
       sortDir={sortDir}
       onSort={handleSort}
       stickyHeader
-      className="mx-6 mb-6 max-h-[calc(100vh-240px)]"
+      className="mx-6 mb-6 max-h-[calc(100vh-240px)] phone:max-h-none phone:shrink-0"
     >
       {sorted.length === 0 ? (
         <tr>
