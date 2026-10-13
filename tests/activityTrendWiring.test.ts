@@ -68,7 +68,7 @@ test('TW3 (prompt 03): the four new files exist, use tokens, and stay small', ()
 test('TW4 (prompt 03): the By Employee table has the Trend, low-day and missed-day columns', () => {
   const src = read(DIR + 'ActivityByEmployee.tsx');
   assert.match(src, /\{ key: 'trend',\s+label: 'Trend', tip \}/);
-  assert.match(src, /\{ key: 'needsLook',\s+label: '⚠️ Days' \}/);
+  assert.match(src, /\{ key: 'needsLook',\s+label: 'Low Activity Days', tip: lowTip \}/);
   assert.match(src, /\{ key: 'missed',\s+label: 'Days Missed' \}/);
   assert.match(src, /Compares \$\{p\.afterLabel\} with the \$\{p\.prevDayCount\} \$\{p\.prevDayCount === 1 \? 'day' : 'days'\} right before it, \$\{p\.beforeLabel\}\./);
   assert.match(src, /Days off, PTO, permissions, sick days and holidays are left out of both\./);
@@ -106,7 +106,7 @@ test('TW7 (prompt 07): long ranges thin the chart labels; minutes and days are w
   // 72px = page padding + borders + both scrollbars, measured on /dev (50px overflowed by 20px).
   assert.match(be, /const OPENED_WIDTH = \{ width: 'min\(100%, calc\(100vw - 72px\)\)' \};/);
   // Title Case labels and the Before and After panel's size (Saul's screenshot, 2026-10-13).
-  assert.match(be, /xl:grid-cols-\[480px_minmax\(0,1fr\)\] gap-4 items-start/);
+  assert.match(be, /xl:grid-cols-\[500px_minmax\(0,1fr\)\] gap-4 items-start/);
   assert.match(chart, /`Avg Active \$\{fmtMinutes\(avg\)\}`/);
   assert.match(chart, /Normal Day<\/span>/);
   assert.doesNotMatch(chart, /a day on average`\}|Normal day|no approved reason<|\} minimum</);
@@ -116,4 +116,27 @@ test('TW7 (prompt 07): long ranges thin the chart labels; minutes and days are w
   assert.match(dlg, /if \(field\.unit !== 'hours' && !Number\.isInteger\(n\)\) return null;/);
   assert.match(dlg, /The minimum active time is scaled for a shorter shift\./);
   assert.doesNotMatch(dlg, /A shorter shift is scaled proportionally\./);
+});
+
+test('TW8 (prompt 08): Needs a Look starts closed; the open row freezes; names are bold; no bare warning-sign labels', () => {
+  const nl = read(DIR + 'ActivityNeedsLook.tsx');
+  assert.match(nl, /const \[open, setOpen\] = useState\(false\);/);
+  assert.match(nl, /if \(!open\) \{/);
+  assert.match(nl, /onClick=\{\(\) => setOpen\(false\)\}/);
+  // Hooks stay above every early return.
+  assert.ok(nl.indexOf('useState(false)') < nl.indexOf('if (totalFlagged === 0) return null;'));
+  assert.ok(nl.indexOf('useMemo(') < nl.indexOf('if (totalFlagged === 0) return null;'));
+
+  const be = read(DIR + 'ActivityByEmployee.tsx');
+  assert.match(be, /<tr ref=\{rowRef\} className=\{expanded \? 'sticky z-\[5\] bg-white shadow-sm' : 'hover:bg-slate-50 transition-colors'\}>/);
+  assert.match(be, /<tr ref=\{detailRef\}>/);
+  assert.match(be, /row\.style\.top = `\$\{Math\.min\(headH, room\)\}px`;/);
+  assert.match(be, /scroller\.removeEventListener\('scroll', place\);/);
+  assert.match(be, /className="font-semibold text-slate-900 hover:text-warm-text/);
+  assert.match(be, /Days with work but under the minimum active time/);
+  for (const f of ['ActivityByEmployee.tsx', 'ActivityCompare.tsx', 'ActivityDaysSideBySide.tsx']) {
+    assert.doesNotMatch(read(DIR + f), /label[:=]\s*["']⚠️ Days["']/, `${f}: "⚠️ Days" says nothing`);
+  }
+  assert.match(read(DIR + 'ActivityCompare.tsx'), /<Row label="Low Activity Days"/);
+  assert.match(read(DIR + 'ActivityDaysSideBySide.tsx'), /<Figure label="Low Activity Days"/);
 });
