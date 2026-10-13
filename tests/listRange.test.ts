@@ -35,3 +35,13 @@ test('LR3: the List page counts only the rows inside the range it shows', () => 
   const lib = read('src/app/lib/attendanceStats.ts');
   assert.doesNotMatch(lib.slice(lib.indexOf('export function rowsInRange')).split('\n}')[0], /new Date\(/, 'dates are compared as strings');
 });
+
+test('LR4 (prompt 02): in Periods mode the chosen periods own the dates again', () => {
+  const src = read('src/app/components/AttendanceRangeControls.tsx');
+  const effect = src.slice(src.indexOf('useEffect(() => {'), src.indexOf('}, [attendanceMode, periods.length]);'));
+  assert.ok(effect.length > 0, 'the effect keyed on the mode is missing');
+  assert.match(effect, /if \(attendanceMode !== 'periods' \|\| attendancePeriods\.length === 0\) return;/, 'Dates mode is left alone');
+  assert.match(effect, /range\.from !== dateFrom \|\| range\.to !== dateTo/, 'it only writes when the dates differ (no loop)');
+  assert.match(effect, /setAttendancePeriods\(attendancePeriods, range\)/);
+  assert.ok(Buffer.byteLength(src, 'utf8') < 15 * 1024);
+});
