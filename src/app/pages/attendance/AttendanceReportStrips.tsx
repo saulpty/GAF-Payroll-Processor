@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
+import type { KeyboardEvent } from 'react';
 import { Info, AlertTriangle, Copy } from 'lucide-react';
 import type { ReportRow, ReportSummary, Verdict } from '@/app/lib/attendanceReportTypes';
 import { fmtDay } from '@/app/lib/fmtDay';
 import { fmtTime } from '@/app/lib/fmtTime';
 import { fmtDuration } from '@/app/lib/teramindToday';
+import { FLAG_NOTE, formTiming, infoNote } from '@/app/lib/reportDayText';
 
-type Props = { rows: ReportRow[]; perEmployee: ReportSummary[] };
+type Props = { rows: ReportRow[]; perEmployee: ReportSummary[]; onPickDay?: (row: ReportRow) => void };
 
 // ── Tone system: Excel colours (on time green, late yellow, absent red, away blue) ──
 type Tone = 'green' | 'yellow' | 'red' | 'blue' | 'orange' | 'grey';
@@ -64,13 +66,21 @@ const CARD_LABEL: Record<Verdict, string> = {
 };
 
 /** House minutes format: '45 min', '1h 15m'. */
-const fmtMins = (m: number): string => (m < 60 ? `${m} min` : fmtDuration(m));
+export const fmtMins = (m: number): string => (m < 60 ? `${m} min` : fmtDuration(m));
 
 /** Payroll times are US Eastern "H:MM AM" text; fmtTime reshapes them ('9:54AM'). */
-const time = (t: string | null) => fmtTime(t) || '—';
+export const time = (t: string | null) => fmtTime(t) || '—';
 
 // ── Tile ──────────────────────────────────────────────────────────────────────
-function DayTile({ row, thisYear }: { row: ReportRow; thisYear: string }) {
+/** Phone only: a tile that opens the day's sheet behaves as a button (tap, Enter, Space). */
+const tappable = (go: () => void) => ({
+  role: 'button', tabIndex: 0, onClick: go,
+  onKeyDown: (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } },
+});
+
+type TileProps = { row: ReportRow; thisYear: string; onPick?: (row: ReportRow) => void };
+
+function DayTile({ row, thisYear, onPick }: TileProps) {
   const t = TONE[VERDICT_TONE[row.verdict]];
 
   // Split "Mon Aug 10" into weekday and month-day — no Date object
@@ -81,12 +91,14 @@ function DayTile({ row, thisYear }: { row: ReportRow; thisYear: string }) {
 
   return (
     <div
-      className={`relative w-[170px] shrink-0 bg-white border border-slate-200 border-t-[3px] ${t.stripe} rounded-md px-2.5 pt-1.5 pb-2 shadow-card text-[11px] leading-snug`}
+      className={`relative w-[170px] shrink-0 bg-white border border-slate-200 border-t-[3px] ${t.stripe} rounded-md px-2.5 pt-1.5 pb-2 shadow-card text-[11px] leading-snug phone:w-[calc(50%-4px)] phone:text-[12px]${onPick ? ' cursor-pointer active:bg-slate-50' : ''}`}
       title={VERDICT_LABEL[row.verdict]}
+      aria-label={onPick ? `${dayStr}, ${VERDICT_LABEL[row.verdict]}. Open the day` : undefined}
+      {...(onPick ? tappable(() => onPick(row)) : {})}
     >
       {/* Date */}
       <div className="flex items-baseline gap-1.5 mb-1">
-        <span className="text-[11px] font-semibold text-slate-500">{wd}</span>
+        <span className="text-[11px] font-semibold text-slate-500 phone:text-[12px]">{wd}</span>
         <span className="text-[14px] font-bold text-slate-900">{md}</span>
       </div>
 
@@ -109,10 +121,10 @@ function DayTile({ row, thisYear }: { row: ReportRow; thisYear: string }) {
       {/* Meta row */}
       <div className="flex items-center gap-1.5 mt-1.5 min-h-[18px]">
         {row.minutesLate > 0 && (
-          <span className={`rounded-full border px-1.5 py-px text-[11px] font-semibold ${t.pill}`}>+{fmtMins(row.minutesLate)}</span>
+          <span className={`rounded-full border px-1.5 py-px text-[11px] phone:text-[12px] font-semibold ${t.pill}`}>+{fmtMins(row.minutesLate)}</span>
         )}
         {row.form && (
-          <span className="text-slate-500 truncate" title={row.form.onTime ? 'Form sent before the shift' : 'Form sent after the shift'}>
+          <span className="text-slate-500 truncate" title={formTiming(row.form.onTime)}>
             {row.form.onTime ? '✓' : '⚠'} {row.form.type}
           </span>
         )}
@@ -121,18 +133,12 @@ function DayTile({ row, thisYear }: { row: ReportRow; thisYear: string }) {
       {/* Subtle flags — bottom-right */}
       {(row.flags.recordedUnexplainedButFormOnFile || row.flags.formEmailUnrecognised || row.flags.excusedInPayrollNoRequest) && (
         <span className="absolute bottom-1 right-5">
-          <Info className="w-3 h-3 text-slate-400" title={
-            row.flags.recordedUnexplainedButFormOnFile
-              ? 'Recorded as an unjustified absence even though a form was filed.'
-              : row.flags.formEmailUnrecognised
-                ? 'Form submitted by a different email'
-                : 'Excused in payroll, no Monday request found'
-          } />
+          <Info className="w-3 h-3 text-slate-400" title={infoNote(row.flags)} />
         </span>
       )}
       {row.flags.multipleForms && (
         <span className="absolute bottom-1 right-1">
-          <Copy className="w-3 h-3 text-slate-400" title="Multiple forms submitted" />
+          <Copy className="w-3 h-3 text-slate-400" title={FLAG_NOTE.multiple} />
         </span>
       )}
     </div>
@@ -140,7 +146,7 @@ function DayTile({ row, thisYear }: { row: ReportRow; thisYear: string }) {
 }
 
 // ── Employee card ─────────────────────────────────────────────────────────────
-function EmployeeCard({ summary, rows, thisYear }: { summary: ReportSummary; rows: ReportRow[]; thisYear: string }) {
+function EmployeeCard({ summary, rows, thisYear, onPick }: { summary: ReportSummary; rows: ReportRow[]; thisYear: string; onPick?: (row: ReportRow) => void }) {
   const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
 
   const rateColor = summary.onTimeRate === null ? 'text-slate-400'
@@ -155,7 +161,7 @@ function EmployeeCard({ summary, rows, thisYear }: { summary: ReportSummary; row
     : null;
 
   return (
-    <div className="bg-white border border-border rounded-lg shadow-card p-4 mb-4">
+    <div className="bg-white border border-border rounded-lg shadow-card p-4 mb-4 phone:p-3">
       {/* Header */}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <div>
@@ -165,7 +171,7 @@ function EmployeeCard({ summary, rows, thisYear }: { summary: ReportSummary; row
             <span className="ml-2 text-xs text-slate-500">• {summary.manager}</span>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground phone:w-full phone:flex-wrap phone:gap-y-1">
           <span>{summary.expectedDays} days</span>
           {summary.lateDays > 0 && (
             <span className="text-status-yellow-ink font-medium">
@@ -189,14 +195,14 @@ function EmployeeCard({ summary, rows, thisYear }: { summary: ReportSummary; row
 
       {/* Tile grid */}
       <div className="flex flex-wrap gap-2">
-        {sorted.map(r => <DayTile key={r.date + r.employeeId} row={r} thisYear={thisYear} />)}
+        {sorted.map(r => <DayTile key={r.date + r.employeeId} row={r} thisYear={thisYear} onPick={onPick} />)}
       </div>
     </div>
   );
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export function AttendanceReportStrips({ rows, perEmployee }: Props) {
+export function AttendanceReportStrips({ rows, perEmployee, onPickDay }: Props) {
   const byEmp = useMemo(() => {
     const m = new Map<number, ReportRow[]>();
     for (const r of rows) {
@@ -221,6 +227,7 @@ export function AttendanceReportStrips({ rows, perEmployee }: Props) {
           summary={s}
           rows={byEmp.get(s.employeeId) ?? []}
           thisYear={thisYear}
+          onPick={onPickDay}
         />
       ))}
     </div>

@@ -27,6 +27,8 @@ import { reportRowsToKpis } from '@/app/lib/reportKpis';
 import { AttendanceKpis } from './AttendanceKpis';
 import { AttendanceReportStrips } from './AttendanceReportStrips';
 import { AttendanceReportTable }  from './AttendanceReportTable';
+import ReportDaySheet from './ReportDaySheet';
+import { useIsPhone } from '@/app/lib/useIsPhone';
 
 type View = 'strips' | 'table';
 
@@ -40,6 +42,10 @@ function daysAgo(n: number) {
 
 export default function AttendanceReport() {
   const [view, setView] = useState<View>('strips');
+  // A phone shows the Cards view only; tapping a day's tile opens that day in a sheet.
+  const isPhone = useIsPhone();
+  const [openDay, setOpenDay] = useState<ReportRow | null>(null);
+  const shown: View = isPhone ? 'strips' : view;
 
   const {
     dateFrom, dateTo,
@@ -184,8 +190,8 @@ export default function AttendanceReport() {
               </div>
             )}
 
-            {/* View toggle */}
-            <div className="flex justify-end mb-3">
+            {/* View toggle (not on a phone: Cards only there) */}
+            {!isPhone && <div className="flex justify-end mb-3">
               <div className="flex rounded-md border border-border overflow-hidden shadow-card">
                 <button onClick={() => setView('strips')} className={toggleCls(view === 'strips')}>
                   <LayoutGrid className="w-3.5 h-3.5" /> Cards
@@ -194,7 +200,7 @@ export default function AttendanceReport() {
                   <TableIcon className="w-3.5 h-3.5" /> Table
                 </button>
               </div>
-            </div>
+            </div>}
 
             {/* Unmatched forms notice */}
             {unmatchedForms > 0 && (
@@ -214,15 +220,16 @@ export default function AttendanceReport() {
             )}
 
             {/* Views */}
-            {rows.length > 0 && view === 'strips' && (
-              <AttendanceReportStrips rows={rows} perEmployee={perEmployee} />
+            {rows.length > 0 && shown === 'strips' && (
+              <AttendanceReportStrips rows={rows} perEmployee={perEmployee} onPickDay={isPhone ? setOpenDay : undefined} />
             )}
-            {rows.length > 0 && view === 'table' && (
+            {rows.length > 0 && shown === 'table' && (
               <AttendanceReportTable rows={rows} />
             )}
           </>
         )}
       </div>
+      {isPhone && <ReportDaySheet row={openDay} onClose={() => setOpenDay(null)} />}
     </div>
   );
 }

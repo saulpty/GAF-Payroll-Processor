@@ -5,6 +5,7 @@ import { fmtDay } from '@/app/lib/fmtDay';
 import { fmtTime } from '@/app/lib/fmtTime';
 import { VERDICT_LABEL } from './AttendanceReportStrips';
 import { fmtDuration } from '@/app/lib/teramindToday';
+import { FLAG_NOTE } from '@/app/lib/reportDayText';
 
 type Props = { rows: ReportRow[] };
 
@@ -186,7 +187,7 @@ export function AttendanceReportTable({ rows }: Props) {
                     {/* Subtle flags */}
                     {r.flags.recordedUnexplainedButFormOnFile && (
                       <Info className="w-3 h-3 inline ml-1 text-slate-400"
-                        title="Recorded as an unjustified absence even though a form was filed." />
+                        title={FLAG_NOTE.recorded} />
                     )}
                     {r.flags.formEmailUnrecognised && (
                       <Info className="w-3 h-3 inline ml-1 text-slate-400"
