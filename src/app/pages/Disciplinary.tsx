@@ -95,7 +95,7 @@ export default function Disciplinary() {
         href="https://uib.vitasya.cloud/share/PC3PsXDDa9"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors select-none"
+        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors select-none phone:w-full phone:h-11 phone:justify-center phone:text-[13px]"
         title="New Disciplinary Action"
       >
         <ExternalLink className="w-3.5 h-3.5" />
@@ -103,11 +103,11 @@ export default function Disciplinary() {
       </a>
 
       {countSummary !== null && (
-        <span className="text-[12px] text-slate-400 mr-1">{countSummary}</span>
+        <span className="text-[12px] text-slate-400 mr-1 phone:order-3 phone:flex-1 phone:mr-0 phone:text-slate-500">{countSummary}</span>
       )}
 
       <div
-        className="flex items-center gap-1"
+        className="flex items-center gap-1 no-scrollbar phone:order-2 phone:w-full phone:overflow-x-auto phone:p-0.5"
         role="group"
         aria-label="Filter by case status"
       >
@@ -120,7 +120,7 @@ export default function Disciplinary() {
               aria-pressed={isActive}
               onClick={() => setStatusFilter(isActive ? 'all' : opt.value)}
               className={[
-                'h-8 px-3 rounded-lg text-xs font-semibold border transition-colors select-none focus-visible:ring-2 focus-visible:ring-primary/30 focus:outline-none',
+                'h-8 px-3 rounded-lg text-xs font-semibold border transition-colors select-none focus-visible:ring-2 focus-visible:ring-primary/30 focus:outline-none phone:h-11 phone:min-w-11 phone:shrink-0',
                 activeClass(opt.value, statusFilter),
               ].join(' ')}
             >
@@ -135,7 +135,7 @@ export default function Disciplinary() {
         variant="outline"
         onClick={handleExport}
         disabled={rows.length === 0}
-        className="focus-visible:ring-2 focus-visible:ring-primary/30"
+        className="focus-visible:ring-2 focus-visible:ring-primary/30 phone:order-3 phone:h-11 phone:px-4"
       >
         <Download className="w-3.5 h-3.5 mr-1" />
         Export

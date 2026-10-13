@@ -29,7 +29,7 @@ export const DISCIPLINARY_COL_COUNT = 8;
 
 type LevelInfo = { label: string; tone: ChipTone };
 
-function levelInfo(rank: number, rawLevel: string | null): LevelInfo {
+export function levelInfo(rank: number, rawLevel: string | null): LevelInfo {
   switch (rank) {
     case 3:  return { label: 'Final Written',    tone: 'red' };
     case 2:  return { label: 'Second Written',   tone: 'amber' };
@@ -39,7 +39,7 @@ function levelInfo(rank: number, rawLevel: string | null): LevelInfo {
   }
 }
 
-function stateChip(row: DisciplinaryRowData, asOf: string): { label: string; tone: ChipTone } {
+export function stateChip(row: DisciplinaryRowData, asOf: string): { label: string; tone: ChipTone } {
   const { worstState, nextReval, actions } = row;
   if (actions.every(a => !!a.deleted_at)) {
     return { label: 'Deleted', tone: 'slate' };

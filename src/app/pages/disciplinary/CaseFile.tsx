@@ -25,7 +25,7 @@ interface Props {
 
 type LevelInfo = { label: string; tone: ChipTone };
 
-function levelInfo(row: DisciplinaryRow): LevelInfo {
+export function levelInfo(row: DisciplinaryRow): LevelInfo {
   const rank = levelRank(row.warning_level);
   switch (rank) {
     case 3:  return { label: 'Final Written',  tone: 'red' };
@@ -36,14 +36,14 @@ function levelInfo(row: DisciplinaryRow): LevelInfo {
   }
 }
 
-function stateTone(s: ReturnType<typeof caseState>): ChipTone {
+export function stateTone(s: ReturnType<typeof caseState>): ChipTone {
   if (s === 'closed')  return 'green';
   if (s === 'outcome') return 'red';
   if (s === 'overdue') return 'red';
   return 'amber';
 }
 
-function stateLabel(s: ReturnType<typeof caseState>): string {
+export function stateLabel(s: ReturnType<typeof caseState>): string {
   if (s === 'closed')  return 'Closed';
   if (s === 'outcome') return 'Outcome';
   if (s === 'overdue') return 'Overdue';
