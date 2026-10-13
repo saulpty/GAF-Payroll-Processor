@@ -224,7 +224,7 @@ export default function TopNav() {
           className="ml-3 shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
         >
           <Eye className="w-3.5 h-3.5" />
-          Viewing As {name || email}
+          <span><span className="hidden md:inline">Viewing As </span>{name || email}</span>
           <X className="w-3.5 h-3.5" />
         </button>
       ) : (
@@ -233,8 +233,8 @@ export default function TopNav() {
           className="ml-3 shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-white/10 text-white border border-white/20"
         >
           <UserCircle className="w-3.5 h-3.5" />
-          {name || email}
-          <span className="text-slate-300">· {isSuper ? 'Super User' : 'Manager'}</span>
+          <span className="hidden md:inline">{name || email}</span>
+          <span className="hidden md:inline text-slate-300">· {isSuper ? 'Super User' : 'Manager'}</span>
         </div>
       )}
     </header>

@@ -40,7 +40,7 @@ export default function RefreshButton() {
       className="ml-3 shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-white/10 text-white border border-white/20 hover:bg-white/20 disabled:opacity-70 disabled:cursor-wait"
     >
       <RefreshCw className={cn('w-3.5 h-3.5', busy && 'animate-spin')} />
-      {busy ? 'Refreshing…' : 'Refresh'}
+      <span className="hidden md:inline">{busy ? 'Refreshing…' : 'Refresh'}</span>
     </button>
   );
 }
