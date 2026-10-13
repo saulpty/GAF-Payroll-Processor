@@ -557,6 +557,9 @@ wording, the crowded chart labels, the narrow-window scroll and the hook's size 
 - **Log the conversation** (who, when, why) so the date does not live in someone's head.
 - **Weekly trends tab** (layout 3 of the mockup) to see whether an improvement holds.
 - **Away days as grey slots** in the day chart, so a short week does not look like a mistake.
+- **Split `ActivityByEmployee.tsx` before its next edit** (13.4 KB of 15): move `OpenedRow` to its
+  own file.
+- The Needs a Look chip does not remember being opened; it starts closed on every load.
 - `SourceBadge.tsx` is unused since the day lists moved to `ActivityDaysSideBySide.tsx`; the side
   panel computes trends it never shows.
 - Activity tab vs design system: `9:04 AM` / `45m` formats, left-aligned numbers, sort icon on

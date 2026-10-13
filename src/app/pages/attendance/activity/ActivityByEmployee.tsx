@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { EmployeeActivitySummary, ActivityDay, ActivitySettings } from '@/app/lib/activityDays';
 import { thresholdFor } from '@/app/lib/activityDays';
@@ -34,7 +34,7 @@ const TD = 'px-3 py-2 text-sm text-slate-700 align-top whitespace-nowrap';
 const MAX_BAR = 480;
 const MUTED = 'text-slate-400';
 
-function columns(tip: string): Col<EmployeeActivitySummary>[] {
+function columns(tip: string, lowTip: string): Col<EmployeeActivitySummary>[] {
   return [
     { key: 'employeeName', label: 'Employee' },
     { key: 'trend',        label: 'Trend', tip },
@@ -42,7 +42,7 @@ function columns(tip: string): Col<EmployeeActivitySummary>[] {
     { key: 'avgActiveMin', label: 'Avg Active' },
     { key: 'avgFirstMin',  label: 'Avg Entry' },
     { key: 'avgLastMin',   label: 'Avg Exit' },
-    { key: 'needsLook',    label: '⚠️ Days' },
+    { key: 'needsLook',    label: 'Low Activity Days', tip: lowTip },
     { key: 'missed',       label: 'Days Missed' },
     { key: 'awayDays',     label: 'Away Days' },
   ];
@@ -97,7 +97,7 @@ function OpenedRow({ emp, trend, p }: { emp: EmployeeActivitySummary; trend: Emp
   const total = before.length + emp.days.length;
   return (
     <div className="sticky left-0 p-4 bg-slate-50 border-b-2 border-slate-300" style={OPENED_WIDTH}>
-      <div className="grid grid-cols-1 xl:grid-cols-[480px_minmax(0,1fr)] gap-4 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[500px_minmax(0,1fr)] gap-4 items-start">
         <ActivityCompare trend={trend} beforeLabel={p.beforeLabel} afterLabel={p.afterLabel} />
         <ActivityDayChart
           before={before} after={emp.days}
@@ -131,10 +131,35 @@ type EmployeeRowProps = {
 function EmployeeRow({ emp, trend, p, onOpenPanel, expanded, onToggle }: EmployeeRowProps) {
   const shift = emp.days.length > 0 ? (emp.days[0]?.shiftMinutes ?? MAX_BAR) : MAX_BAR;
   const a = trend.after;
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  const detailRef = useRef<HTMLTableRowElement>(null);
+
+  // While a row is open it stays frozen under the column headers, and is pushed out by the end of
+  // its own detail. (A sticky <tr> on its own would stay pinned to the end of the whole table.)
+  useEffect(() => {
+    const row = rowRef.current, detail = detailRef.current;
+    if (!expanded || !row || !detail) return;
+    const scroller = row.closest('.overflow-auto') as HTMLElement | null;
+    const head = row.closest('table')?.querySelector('thead') as HTMLElement | null;
+    if (!scroller || !head) return;
+    const place = () => {
+      const headH = head.getBoundingClientRect().height;
+      const room = detail.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top - row.getBoundingClientRect().height;
+      row.style.top = `${Math.min(headH, room)}px`;
+    };
+    place();
+    scroller.addEventListener('scroll', place, { passive: true });
+    window.addEventListener('resize', place);
+    return () => {
+      scroller.removeEventListener('scroll', place);
+      window.removeEventListener('resize', place);
+      row.style.top = '';
+    };
+  }, [expanded]);
 
   return (
     <>
-      <tr className="hover:bg-slate-50 transition-colors">
+      <tr ref={rowRef} className={expanded ? 'sticky z-[5] bg-white shadow-sm' : 'hover:bg-slate-50 transition-colors'}>
         <td className={TD}>
           <div className="flex items-center gap-2">
             <button onClick={onToggle} className="shrink-0 text-slate-400 hover:text-slate-600"
@@ -143,7 +168,7 @@ function EmployeeRow({ emp, trend, p, onOpenPanel, expanded, onToggle }: Employe
             </button>
             <div>
               <button
-                className="font-medium text-slate-800 hover:text-warm-text hover:underline underline-offset-2 text-left transition-colors"
+                className="font-semibold text-slate-900 hover:text-warm-text hover:underline underline-offset-2 text-left transition-colors"
                 onClick={() => onOpenPanel(emp)}
               >
                 {emp.employeeName}
@@ -180,7 +205,7 @@ function EmployeeRow({ emp, trend, p, onOpenPanel, expanded, onToggle }: Employe
       </tr>
 
       {expanded && (
-        <tr>
+        <tr ref={detailRef}>
           <td colSpan={9} className="p-0">
             <OpenedRow emp={emp} trend={trend} p={p} />
           </td>
@@ -247,12 +272,13 @@ export default function ActivityByEmployee({ byEmployee, expandedId, onToggle, .
   const tip = p.prevDayCount > 0
     ? `Compares ${p.afterLabel} with the ${p.prevDayCount} ${p.prevDayCount === 1 ? 'day' : 'days'} right before it, ${p.beforeLabel}. Days off, PTO, permissions, sick days and holidays are left out of both. Change the dates above to compare a different period.`
     : 'Pick a date range above to compare it with the days right before it.';
+  const lowTip = `Days with work but under the minimum active time (${fmtDuration(p.settings.minActiveMinutes)} on a full shift).`;
   const sorted = sortEmployees(byEmployee, sortKey, sortDir, p.trends);
 
   return (
     <>
       <DataTable
-        columns={columns(tip)}
+        columns={columns(tip, lowTip)}
         sortKey={sortKey}
         sortDir={sortDir}
         onSort={handleSort}

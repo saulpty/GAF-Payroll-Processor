@@ -43,7 +43,7 @@ export default function ActivityCompare({ trend, beforeLabel, afterLabel }: Prop
         <tbody>
           <Row label="Avg Active" before={fmtDuration(b.avgActiveMin)} after={fmtDuration(a.avgActiveMin)} measure="active" change={trend.active} />
           <Row label="Avg Entry" before={fmtClock(b.avgEntryMin)} after={fmtClock(a.avgEntryMin)} measure="entry" change={trend.entry} />
-          <Row label="⚠️ Days" before={`${b.lowDays} of ${b.worked}`} after={`${a.lowDays} of ${a.worked}`} measure="low" change={trend.low} />
+          <Row label="Low Activity Days" before={`${b.lowDays} of ${b.worked}`} after={`${a.lowDays} of ${a.worked}`} measure="low" change={trend.low} />
           <Row label="Days Missed" before={`${b.missedDays} of ${b.scheduled}`} after={`${a.missedDays} of ${a.scheduled}`} measure="missed" change={trend.missed} />
         </tbody>
       </table>

@@ -90,7 +90,7 @@ function Period({ tag, label, days, sum, today, startDate, dark }: {
         <div className="grid grid-cols-4 border-b border-slate-200">
           <Figure label="Avg Active" value={fmtDuration(sum.avgActiveMin)} />
           <Figure label="Avg Entry" value={fmtClock(sum.avgEntryMin)} />
-          <Figure label="⚠️ Days" value={`${sum.lowDays} of ${sum.worked}`} />
+          <Figure label="Low Activity Days" value={`${sum.lowDays} of ${sum.worked}`} />
           <Figure label="Days Missed" value={`${sum.missedDays} of ${sum.scheduled}`} />
         </div>
       )}

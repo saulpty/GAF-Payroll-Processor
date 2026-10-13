@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import type { ActivityDay, ActivitySettings } from '@/app/lib/activityDays';
 import { fmtDayShort, addDays, thresholdFor } from '@/app/lib/activityDays';
@@ -51,6 +51,8 @@ function windowStartDate(dateTo: string): string {
 }
 
 export default function ActivityNeedsLook({ days, dateTo, settings, onPick }: Props) {
+  // Closed by default (Saul, 2026-10-13): a small chip the viewer opens when they want the list.
+  const [open, setOpen] = useState(false);
   const flagged = days.filter(d => d.needsLook);
   const totalFlagged = flagged.length;
 
@@ -67,6 +69,22 @@ export default function ActivityNeedsLook({ days, dateTo, settings, onPick }: Pr
 
   if (totalFlagged === 0) return null;
 
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-expanded={false}
+        className="inline-flex items-center gap-2 h-8 px-3 mb-4 rounded-full bg-status-yellow-tint border border-amber-200 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+      >
+        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+        Needs a Look
+        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-200 text-amber-900 tabular-nums">{totalFlagged}</span>
+        <span className="font-medium text-amber-700">Show</span>
+      </button>
+    );
+  }
+
   const headingStart = fmtDayShort(windowStartDate(dateTo));
   const headingEnd   = fmtDayShort(dateTo);
 
@@ -80,8 +98,11 @@ export default function ActivityNeedsLook({ days, dateTo, settings, onPick }: Pr
             Needs a Look — Worst 10, {headingStart} – {headingEnd}
           </span>
         </div>
-        <span className="text-xs text-amber-600 whitespace-nowrap">
+        <span className="flex items-center gap-3 text-xs text-amber-600 whitespace-nowrap">
           {totalFlagged} flagged {totalFlagged === 1 ? 'day' : 'days'} in the whole range
+          <button type="button" onClick={() => setOpen(false)} aria-expanded className="font-semibold text-amber-800 hover:underline underline-offset-2">
+            Hide
+          </button>
         </span>
       </div>
 
