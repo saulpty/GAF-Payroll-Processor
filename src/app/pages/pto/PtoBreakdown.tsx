@@ -8,6 +8,7 @@ import { useViewer } from '@/app/context/ViewerContext';
 import type { PtoRowData } from './PtoRow';
 import type { DialogMode, PendingRequest, LedgerRow } from './RecordApprovalDialog';
 import PtoSubRow, { type SubItem } from './PtoSubRow';
+import PtoRequestRows from './PtoRequestRows';
 import loadPtoEmployeeDetailAction from '@/actions/loadPtoEmployeeDetail';
 import updatePtoApprovalStatusAction from '@/actions/updatePtoApprovalStatus';
 import { matchPayroll, type DayRow, type PeriodRow, type PayrollMatch } from '@/app/lib/ptoPayrollMatch';
@@ -21,6 +22,8 @@ interface Props {
   onOpenDialog: (m: DialogMode) => void;
   onChanged: () => void;
   refreshToken: number;
+  /** Phone: the requests as rows instead of the small table. Only PtoRows passes it. */
+  phone?: boolean;
 }
 
 interface DetailRow {
@@ -51,7 +54,7 @@ const BASIC_COLS: [string, string][] = [
   ['Status', 'w-36'],
 ];
 
-export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, onChanged, refreshToken }: Props) {
+export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, onChanged, refreshToken, phone = false }: Props) {
   const { bumpPtoVersion } = useGlobalFilters();
   const { viewAs, isSuper } = useViewer();
   const cols = isSuper ? SUPER_COLS : BASIC_COLS;
@@ -87,9 +90,9 @@ export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, 
   }
   if (error) {
     return (
-      <div className="px-6 py-2 flex items-center gap-2 text-[12px] text-red-600">
+      <div className="px-6 py-2 flex items-center gap-2 text-[12px] text-red-600 phone:flex-col phone:items-stretch phone:px-4 phone:py-3 phone:text-[13px]">
         <span>Couldn&apos;t load details — loadPtoEmployeeDetail</span>
-        <Button size="sm" variant="outline" onClick={() => reload()}>
+        <Button size="sm" variant="outline" className="phone:min-h-11" onClick={() => reload()}>
           Retry
         </Button>
       </div>
@@ -163,6 +166,20 @@ export default function PtoBreakdown({ row, year, today, periods, onOpenDialog, 
     onChanged();
     bumpPtoVersion();
   };
+
+  // Phone: the same list as rows. Super-only parts are decided inside PtoRequestRows.
+  if (phone) {
+    return (
+      <PtoRequestRows
+        items={items}
+        today={today}
+        loading={loading}
+        onOpenDialog={onOpenDialog}
+        onWithdraw={handleWithdraw}
+        onRestore={handleRestore}
+      />
+    );
+  }
 
   return (
     <div className="px-6 py-3">

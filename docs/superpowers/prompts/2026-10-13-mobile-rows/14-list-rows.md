@@ -184,7 +184,7 @@ export default function AttendanceListRows({ stats, onRowClick, search, manager,
 
       {/* On a computer these two sentences are mouse-over notes on the column headers. */}
       <details className="mb-1 text-[12px] leading-4 text-slate-500">
-        <summary className="flex min-h-11 cursor-pointer items-center font-medium text-slate-600">
+        <summary className="cursor-pointer py-3.5 font-medium text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring">
           What Status and Reporting Mean
         </summary>
         <p className="pb-1"><span className="font-medium text-slate-700">Status.</span> {STATUS_TOOLTIP}</p>
