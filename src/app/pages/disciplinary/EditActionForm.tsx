@@ -105,7 +105,7 @@ export default function EditActionForm({ action, onCancel, onDone, onSaved }: Pr
         <span className="text-slate-400"> (these cannot be changed; to change who a warning is about, delete it and file a new one)</span>
       </p>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 phone:grid-cols-1 phone:[&_input]:h-11 phone:[&_select]:h-11">
         <Field label="Document date">
           <Input type="date" value={v.document_date} onChange={set('document_date')} disabled={saving} className="mt-1 h-8 text-sm" />
         </Field>
@@ -143,9 +143,9 @@ export default function EditActionForm({ action, onCancel, onDone, onSaved }: Pr
       <Field label={q[3]}><Textarea rows={2} value={v.q_impact} onChange={set('q_impact')} disabled={saving} className="mt-1 text-sm" /></Field>
 
       <Field label="Evidence reviewed">
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 phone:flex-col phone:flex-nowrap phone:gap-y-0">
           {evidence.map(opt => (
-            <label key={opt} className="inline-flex items-center gap-1.5 text-[13px] text-slate-700">
+            <label key={opt} className="inline-flex items-center gap-1.5 text-[13px] text-slate-700 phone:flex phone:min-h-11 phone:gap-3 phone:text-[14px] phone:[&>input]:h-5 phone:[&>input]:w-5 phone:[&>input]:shrink-0">
               <input type="checkbox" checked={v.evidence_types.includes(opt)} onChange={() => toggleEvidence(opt)} disabled={saving} />
               {opt}
             </label>
@@ -159,9 +159,9 @@ export default function EditActionForm({ action, onCancel, onDone, onSaved }: Pr
 
       {(error || invalid) && <p className="text-xs text-red-600">{error ?? invalid}</p>}
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-2 phone:flex-col-reverse phone:items-stretch phone:[&>button]:h-11 phone:[&>button]:text-[14px]">
         <Button variant="outline" size="sm" onClick={onCancel} disabled={saving}>Cancel</Button>
-        <Button size="sm" onClick={() => save(v)} disabled={saving || invalid !== null} className="bg-[#BE123C] hover:bg-[#9F1239] text-white">
+        <Button size="sm" onClick={() => save(v)} disabled={saving || invalid !== null} className="bg-[#BE123C] hover:bg-[#9F1239] text-white phone:bg-primary phone:hover:bg-primary">
           {saving
             ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Saving&hellip;</>
             : <><Save className="w-3.5 h-3.5 mr-1.5" />Save and email</>}

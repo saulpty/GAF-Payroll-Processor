@@ -29,7 +29,7 @@ export default function EditResultPanel({ result, sending, onRetry, onDone }: Pr
           : <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />}
         <span>{text}</span>
       </div>
-      <div className="flex items-center gap-2 mt-3 flex-wrap">
+      <div className="flex items-center gap-2 mt-3 flex-wrap phone:[&>button]:h-11 phone:[&>button]:px-4 phone:[&>button]:text-[13px]">
         <Button
           size="sm"
           variant="outline"

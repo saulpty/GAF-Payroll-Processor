@@ -26,10 +26,10 @@ function Fact({ label, value }: { label: string; value: string | null | undefine
   if (!value) return null;
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">
+      <div className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1 phone:text-[12px] phone:text-slate-500">
         {label}
       </div>
-      <p className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap">{value}</p>
+      <p className="text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap phone:text-[14px] phone:break-words">{value}</p>
     </div>
   );
 }
@@ -88,16 +88,16 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
     <div className="bg-white border border-slate-200 rounded-lg mx-2 my-1 overflow-hidden">
       {/* Status bar */}
       {action.deleted_at ? (
-        <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap">
-          <span className="text-[12px] text-slate-700">
+        <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap phone:flex-col phone:items-stretch">
+          <span className="text-[12px] text-slate-700 phone:text-[13px]">
             Deleted {fmtDate(action.deleted_at.slice(0, 10))} by {action.deleted_by}
             {action.deletion_note && (
               <span className="text-slate-500 ml-1">— {action.deletion_note}</span>
             )}
           </span>
           {isDisciplinaryAdmin && (
-            <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" size="sm" onClick={handleRestore} disabled={restoring} className="h-8 text-[12px]">
+            <div className="flex items-center gap-2 shrink-0 phone:w-full">
+              <Button variant="outline" size="sm" onClick={handleRestore} disabled={restoring} className="h-8 text-[12px] phone:h-11 phone:flex-1 phone:text-[13px]">
                 {restoring
                   ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
                   : <RotateCcw className="w-3.5 h-3.5 mr-1" />}
@@ -107,44 +107,44 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
           )}
         </div>
       ) : state === 'closed' ? (
-        <div className="px-4 py-2.5 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between gap-3 flex-wrap">
-          <span className="text-[12px] text-emerald-700">
+        <div className="px-4 py-2.5 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between gap-3 flex-wrap phone:flex-col phone:items-stretch">
+          <span className="text-[12px] text-emerald-700 phone:text-[13px]">
             Closed {fmtDate(action.closed_at)} by {action.closed_by}
             {action.closure_note && (
               <span className="text-emerald-600 ml-1">— {action.closure_note}</span>
             )}
           </span>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 phone:w-full">
             <button
               type="button"
               onClick={handleReopen}
               disabled={reopening}
-              className="text-[12px] text-emerald-700 underline underline-offset-2 hover:text-emerald-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded disabled:opacity-50"
+              className="text-[12px] text-emerald-700 underline underline-offset-2 hover:text-emerald-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded disabled:opacity-50 phone:inline-flex phone:h-11 phone:flex-1 phone:items-center phone:justify-center phone:rounded-md phone:border phone:border-emerald-300 phone:bg-white phone:px-4 phone:text-[13px] phone:font-medium phone:no-underline"
             >
               {reopening
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" />
                 : 'Reopen'}
             </button>
             {isDisciplinaryAdmin && (
-              <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="h-8 text-[12px] text-red-700 border-red-200 hover:bg-red-50">
+              <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="h-8 text-[12px] text-red-700 border-red-200 hover:bg-red-50 phone:h-11 phone:flex-1 phone:text-[13px]">
                 <Trash2 className="w-3.5 h-3.5 mr-1" />Delete
               </Button>
             )}
           </div>
         </div>
       ) : (
-        <div className="px-4 py-3 bg-rose-50 border-b border-rose-100 flex items-center justify-between gap-3 flex-wrap">
-          <span className="text-[12px] font-medium text-rose-800">This Case Is Open</span>
-          <div className="flex items-center gap-2 shrink-0">
+        <div className="px-4 py-3 bg-rose-50 border-b border-rose-100 flex items-center justify-between gap-3 flex-wrap phone:flex-col phone:items-stretch">
+          <span className="text-[12px] font-medium text-rose-800 phone:text-[13px]">This Case Is Open</span>
+          <div className="flex items-center gap-2 shrink-0 phone:w-full">
             <Button
               onClick={() => setDialogOpen(true)}
-              className="bg-[#BE123C] hover:bg-[#9F1239] text-white h-9 px-4 text-[13px] font-semibold shadow-sm"
+              className="bg-[#BE123C] hover:bg-[#9F1239] text-white h-9 px-4 text-[13px] font-semibold shadow-sm phone:h-11 phone:flex-1 phone:bg-primary phone:hover:bg-primary"
             >
               <CheckCircle2 className="w-4 h-4 mr-1.5" />
               Close Case
             </Button>
             {isDisciplinaryAdmin && (
-              <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="h-8 text-[12px] text-red-700 border-red-200 hover:bg-red-50">
+              <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} className="h-8 text-[12px] text-red-700 border-red-200 hover:bg-red-50 phone:h-11 phone:flex-1 phone:text-[13px]">
                 <Trash2 className="w-3.5 h-3.5 mr-1" />Delete
               </Button>
             )}
@@ -154,7 +154,7 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
 
       <ActionPdfBar action={action}>
         {isDisciplinaryAdmin && !action.deleted_at && !editing && (
-          <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="h-8 text-[12px]">
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="h-8 text-[12px] phone:h-11 phone:px-4 phone:text-[13px]">
             <Pencil className="w-3.5 h-3.5 mr-1" />Edit
           </Button>
         )}
@@ -181,7 +181,7 @@ export default function ActionDetail({ action, asOf, onChanged }: Props) {
 
           {/* Meta line */}
           {metaParts.length > 0 && (
-            <div className="px-4 py-2.5 border-t border-dashed border-slate-200 text-[11px] text-slate-400 leading-relaxed">
+            <div className="px-4 py-2.5 border-t border-dashed border-slate-200 text-[11px] text-slate-400 leading-relaxed phone:text-[13px] phone:text-slate-500 phone:break-words">
               {metaParts.join(' · ')}
             </div>
           )}

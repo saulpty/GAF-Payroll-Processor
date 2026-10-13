@@ -62,7 +62,7 @@ export default function ActionPdfBar({ action, children }: Props) {
           size="sm"
           onClick={() => download('current')}
           disabled={busy !== null}
-          className="h-8 text-[12px]"
+          className="h-8 text-[12px] phone:h-11 phone:px-4 phone:text-[13px]"
         >
           {busy === 'current'
             ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
@@ -75,7 +75,7 @@ export default function ActionPdfBar({ action, children }: Props) {
             size="sm"
             onClick={() => download('original')}
             disabled={busy !== null}
-            className="h-8 text-[12px]"
+            className="h-8 text-[12px] phone:h-11 phone:px-4 phone:text-[13px]"
           >
             {busy === 'original'
               ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
@@ -83,8 +83,8 @@ export default function ActionPdfBar({ action, children }: Props) {
             Download original PDF
           </Button>
         )}
-        {edited && <span className="text-[11px] text-slate-500">{edited}</span>}
-        {error && <span className="text-[11px] text-red-600">{error}</span>}
+        {edited && <span className="text-[11px] text-slate-500 phone:text-[12px]">{edited}</span>}
+        {error && <span className="text-[11px] text-red-600 phone:text-[12px]">{error}</span>}
       </div>
       {children && <div className="flex items-center gap-2 shrink-0">{children}</div>}
     </div>
