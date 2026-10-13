@@ -148,3 +148,10 @@ word, with this line added to them: "Follow the Phone section of `src/DESIGN.md`
 Lesson from stage 1: **small exact edits come back byte-identical; whole-file rewrites of existing
 files get paraphrased.** New files are given whole. Existing files get the smallest "replace X with
 Y" edits that work, each anchor unique in its file.
+
+## What was actually sent (2026-10-13)
+
+`08`, `09`, `10a`, `10b`, `10c`, `10d`, `16`, `11a`, `11b`, `11c`, `11d`, `12a`, `12b`, `13`, `14a`,
+`14b`, `15a`, `15b`, in that order. The unsplit `10`, `11`, `12`, `14`, `15` files are kept as the
+originals the parts were cut from; **do not send them** (UI Bakery rewrote the 28 KB `10` in its
+own words). `10d` and `11d` are one-line fixes found while checking on /dev.

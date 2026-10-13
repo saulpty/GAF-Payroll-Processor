@@ -1,6 +1,6 @@
 # Phone view: plan (2026-10-12, revision 2)
 
-**Status: FINAL DRAFT. Nothing executed.** Design:
+**Status: EXECUTED 2026-10-13.** M0–M5 released; M6–M14 on /dev. See `docs/HANDOFF-2026-10-13-mobile-rows.md`. Design:
 `docs/superpowers/specs/2026-10-12-mobile-view-design.md` (revision 2, after the design review).
 Evidence: `docs/findings/2026-10-12-mobile-baseline.md`.
 Mockup: https://claude.ai/artifact/REqmwzDbgqWauuHu4NCJLN
