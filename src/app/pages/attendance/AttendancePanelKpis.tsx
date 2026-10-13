@@ -11,7 +11,7 @@ function Tile({ label, value, accent }: { label: string; value: string | number;
   return (
     <div className="bg-muted/30 rounded-xl px-4 py-3 flex flex-col gap-1 min-w-[100px] flex-1">
       <span className={`text-xl font-bold tabular-nums ${accent ?? 'text-slate-800'}`}>{value}</span>
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground phone:text-[12px] phone:normal-case phone:tracking-normal">{label}</span>
     </div>
   );
 }
@@ -37,7 +37,7 @@ export default function AttendancePanelKpis({ days, stats }: Props) {
     : '—';
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2 phone:grid phone:grid-cols-2">
       <Tile
         label="Avg Active"
         value={avgActive !== null ? fmtDuration(avgActive) : '—'}

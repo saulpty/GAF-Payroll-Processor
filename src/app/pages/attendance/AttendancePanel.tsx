@@ -4,6 +4,7 @@ import type { ActivityDay } from '@/app/lib/activityDays';
 import { fmtDayShort } from '@/app/lib/activityDays';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useIsPhone } from '@/app/lib/useIsPhone';
+import MobileSheet from '@/app/components/mobile/MobileSheet';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { useActivityData } from './activity/useActivityData';
 import { useEmployeeStats } from './useEmployeeStats';
@@ -81,6 +82,34 @@ export function AttendancePanel({
   const subtitle = subtitleParts.join(' · ');
 
   const dateRangeLine = `${fmtDayShort(safeFrom)} – ${fmtDayShort(safeTo)}`;
+
+  // On a phone the panel is a full sheet: the four headline numbers, Day by Day as rows, then the
+  // seven small numbers. The charts are never rendered. The computer's panel below is unchanged.
+  if (isPhone) {
+    return (
+      <MobileSheet
+        size="full"
+        open
+        onClose={onClose}
+        title={name || 'Employee'}
+        subtitle={[subtitle, dateRangeLine].filter(Boolean).join(' · ')}
+      >
+        <div className="p-4 flex flex-col gap-6">
+          {activityError ? (
+            <p className="text-[13px] text-muted-foreground italic py-2">
+              Couldn't load activity data for this range.
+            </p>
+          ) : (
+            <>
+              <AttendancePanelKpis days={panelDays} stats={stats} />
+              <AttendancePanelDays days={panelDays} attendanceRows={stats?.rows ?? []} isPhone />
+              {stats && <AttendancePanelBody stats={stats} isPhone />}
+            </>
+          )}
+        </div>
+      </MobileSheet>
+    );
+  }
 
   return (
     <>

@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, ReferenceLine, Cell,
 } from 'recharts';
 
-type Props = { stats: EmpStats };
+type Props = { stats: EmpStats; isPhone?: boolean };
 
 export const STATUS_COLORS: Record<string, string> = {
   'On Time':                '#2AA876',
@@ -21,7 +21,7 @@ function MiniKpi({ label, value, color }: { label: string; value: string | numbe
   return (
     <div className="bg-muted/40 rounded-xl p-3 text-center">
       <div className="font-bold text-xl tracking-tight" style={{ color }}>{value}</div>
-      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mt-0.5">{label}</div>
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mt-0.5 phone:text-[12px] phone:normal-case phone:tracking-normal">{label}</div>
     </div>
   );
 }
@@ -74,7 +74,26 @@ function ArrivalTooltip({ active, payload }: ScatterTooltipProps) {
   );
 }
 
-export default function AttendancePanelBody({ stats }: Props) {
+/** The seven small numbers: seven across on a computer, three across on a phone. */
+function PanelNumbers({ stats }: { stats: EmpStats }) {
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 phone:grid-cols-3">
+      <MiniKpi label="Expected"         value={stats.days}                        color="#1B3A6B" />
+      <MiniKpi label="On Time"          value={stats.onTime}                      color="#2AA876" />
+      <MiniKpi label="Reported"         value={stats.reported}                    color="#FBBF24" />
+      <MiniKpi label="Unreported"       value={stats.unreported}                  color="#EF4444" />
+      <MiniKpi label="Absent"           value={stats.absent}                      color="#B91C1C" />
+      <MiniKpi label="Avg Min (worked)" value={stats.avgMinLate.toFixed(1)}       color="#94A3B8" />
+      <MiniKpi label="% On-Time"        value={`${stats.pctOnTime.toFixed(0)}%`}  color="#2AA876" />
+    </div>
+  );
+}
+
+export default function AttendancePanelBody({ stats, isPhone = false }: Props) {
+  // On a phone only the seven numbers are shown. Everything below this line (the arrival chart
+  // and the two ring charts) is never rendered there.
+  if (isPhone) return <PanelNumbers stats={stats} />;
+
   const scatterPoints = computeArrivalScatter(stats.rows).map(p => ({
     ...p,
     minutesSinceMidnight: p.minutesSinceMidnight ?? (
@@ -90,15 +109,7 @@ export default function AttendancePanelBody({ stats }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {/* Mini KPIs */}
-      <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
-        <MiniKpi label="Expected"         value={stats.days}                        color="#1B3A6B" />
-        <MiniKpi label="On Time"          value={stats.onTime}                      color="#2AA876" />
-        <MiniKpi label="Reported"         value={stats.reported}                    color="#FBBF24" />
-        <MiniKpi label="Unreported"       value={stats.unreported}                  color="#EF4444" />
-        <MiniKpi label="Absent"           value={stats.absent}                      color="#B91C1C" />
-        <MiniKpi label="Avg Min (worked)" value={stats.avgMinLate.toFixed(1)}       color="#94A3B8" />
-        <MiniKpi label="% On-Time"        value={`${stats.pctOnTime.toFixed(0)}%`}  color="#2AA876" />
-      </div>
+      <PanelNumbers stats={stats} />
 
       {/* Day-by-day arrival scatter */}
       <div>

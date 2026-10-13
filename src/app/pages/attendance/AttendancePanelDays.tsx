@@ -6,10 +6,13 @@ import { STATUS_COLORS } from './AttendancePanelBody';
 import WhyChipBadge from './activity/WhyChipBadge';
 import SourceBadge from './activity/SourceBadge';
 import GhostMark from './activity/GhostMark';
+import AttendancePanelDayRows from './AttendancePanelDayRows';
 
 type Props = {
   days: ActivityDay[];
   attendanceRows?: AttendanceRow[];
+  /** On a phone the days are rows (AttendancePanelDayRows), not a table. */
+  isPhone?: boolean;
 };
 
 const TH = 'px-3 py-2 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap';
@@ -29,7 +32,7 @@ function toDateKey(val: unknown): string {
   return String(val).slice(0, 10);
 }
 
-export default function AttendancePanelDays({ days, attendanceRows = [] }: Props) {
+export default function AttendancePanelDays({ days, attendanceRows = [], isPhone = false }: Props) {
   // Index attendance rows by YYYY-MM-DD for O(1) lookup
   const attByDate = new Map<string, AttendanceRow>();
   for (const r of attendanceRows) {
@@ -51,6 +54,8 @@ export default function AttendancePanelDays({ days, attendanceRows = [] }: Props
         <p className="text-xs text-muted-foreground py-4 text-center">
           No activity data for this range.
         </p>
+      ) : isPhone ? (
+        <AttendancePanelDayRows days={sorted} attByDate={attByDate} fmtMins={fmtMins} />
       ) : (
         <div className="bg-white border border-border rounded-lg shadow-card overflow-hidden">
           <div className="overflow-x-auto">
