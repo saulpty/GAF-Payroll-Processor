@@ -547,7 +547,7 @@ Full inventory: `docs/findings/2026-09-23-write-action-inventory.md`.
 
 ### 27. Activity trend follow-ups (2026-10-12, updated 2026-10-13)
 
-Built and on /dev (see `HANDOFF-2026-10-13.md`). The review minors, the pre-start days, the one-day
+Built and **released 2026-10-13** (see `HANDOFF-2026-10-13.md`). The review minors, the pre-start days, the one-day
 wording, the crowded chart labels, the narrow-window scroll and the hook's size were fixed on
 2026-10-13. Still open, all left out on purpose:
 
