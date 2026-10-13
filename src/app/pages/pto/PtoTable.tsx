@@ -180,7 +180,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Controls strip */}
-      <div className="flex flex-wrap items-center gap-2 px-6 pb-3 phone:flex-nowrap phone:overflow-x-auto phone:whitespace-nowrap phone:px-4">
+      <div className="flex flex-wrap items-center gap-2 px-6 pb-3 phone:flex-nowrap phone:overflow-x-auto phone:whitespace-nowrap phone:px-4 phone:shrink-0">
         <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[12px] font-medium text-primary">
           {sorted.length} {sorted.length === 1 ? 'Employee' : 'Employees'}
         </span>
