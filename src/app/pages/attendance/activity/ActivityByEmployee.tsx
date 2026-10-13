@@ -68,7 +68,7 @@ function OutOf({ n, of }: { n: number; of: number }) {
 
 // The opened row stays as wide as the visible table area and sticks to its left edge, so on a
 // narrow window it does not scroll sideways with the columns.
-const OPENED_WIDTH = { width: 'min(100%, calc(100vw - 50px))' };
+const OPENED_WIDTH = { width: 'min(100%, calc(100vw - 72px))' };
 
 function OpenedRow({ emp, trend, p }: { emp: EmployeeActivitySummary; trend: EmployeeTrend; p: TrendProps }) {
   const [showDays, setShowDays] = useState(false);
