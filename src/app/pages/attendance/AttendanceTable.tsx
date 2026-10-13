@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { EmpStats } from '@/app/lib/attendanceStats';
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import InfoTip from '@/app/components/InfoTip';
-
-type SortKey = keyof EmpStats | 'reporting';
+import { filterByName, sortEmployeeStats } from '@/app/lib/attendanceSort';
+import type { SortKey } from '@/app/lib/attendanceSort';
 
 function SortIcon({ col, sortKey, dir }: { col: SortKey; sortKey: SortKey; dir: 'asc' | 'desc' }) {
   if (col !== sortKey) return <ChevronsUpDown className="w-3 h-3 opacity-30 inline ml-0.5" />;
@@ -24,9 +24,9 @@ function PctBar({ pct }: { pct: number }) {
   );
 }
 
-const STATUS_TOOLTIP = 'Based on on-time rate alone: Good is 90% or above, Fair is 75–89%, At Risk is below 75%.';
+export const STATUS_TOOLTIP = 'Based on on-time rate alone: Good is 90% or above, Fair is 75–89%, At Risk is below 75%.';
 
-function StatusBadge({ pct, days }: { pct: number; days: number }) {
+export function StatusBadge({ pct, days }: { pct: number; days: number }) {
   if (days === 0) {
     return <span className="text-muted-foreground text-xs">—</span>;
   }
@@ -62,15 +62,9 @@ function StatusBadge({ pct, days }: { pct: number; days: number }) {
   );
 }
 
-const REPORTING_TOOLTIP = 'Of the days that needed an explanation — late or absent — how many had a GAF Attendance form on file.';
+export const REPORTING_TOOLTIP = 'Of the days that needed an explanation — late or absent — how many had a GAF Attendance form on file.';
 
-/** Ratio for sorting: -1 means needed=0 (always last in both directions) */
-function reportingRatio(s: EmpStats): number {
-  if (s.filing.needed === 0) return -1;
-  return s.filing.filed / s.filing.needed;
-}
-
-function ReportingBadge({ s }: { s: EmpStats }) {
+export function ReportingBadge({ s }: { s: EmpStats }) {
   const { filed, needed } = s.filing;
   if (needed === 0) {
     return <span className="text-muted-foreground text-xs tabular-nums">—</span>;
@@ -112,23 +106,7 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
     else { setSortKey(key); setSortDir('asc'); }
   };
 
-  const filtered = stats.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
-  const sorted = [...filtered].sort((a, b) => {
-    if (sortKey === 'reporting') {
-      const ar = reportingRatio(a), br = reportingRatio(b);
-      // needed=0 rows always last (ratio=-1) regardless of direction
-      if (ar === -1 && br === -1) return 0;
-      if (ar === -1) return 1;
-      if (br === -1) return -1;
-      return sortDir === 'asc' ? ar - br : br - ar;
-    }
-    const av = a[sortKey as keyof EmpStats], bv = b[sortKey as keyof EmpStats];
-    if (typeof av === 'string' && typeof bv === 'string')
-      return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
-    if (typeof av === 'number' && typeof bv === 'number')
-      return sortDir === 'asc' ? av - bv : bv - av;
-    return 0;
-  });
+  const sorted = sortEmployeeStats(filterByName(stats, search), sortKey, sortDir);
 
   const Th = ({ label, col, tooltip }: { label: string; col: SortKey; tooltip?: string }) => (
     <th
