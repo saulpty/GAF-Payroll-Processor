@@ -5,6 +5,8 @@ import DataTable, { Col } from '@/app/components/DataTable';
 import EmptyState from '@/app/components/EmptyState';
 import ContractRow, { ContractRowData } from './ContractRow';
 import ContractsChips from './ContractsChips';
+import ContractRows, { ContractRowsLoading } from './ContractRows';
+import { useIsPhone } from '@/app/lib/useIsPhone';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useViewer } from '@/app/context/ViewerContext';
 import loadContractMilestonesAction from '@/actions/loadContractMilestones';
@@ -59,6 +61,7 @@ function urgencyScore(row: ContractRowData): number {
 export default function ContractsTable({ asOf, onRowsChange, onCountsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
   const { viewAs } = useViewer();
+  const isPhone = useIsPhone();
 
   const [rawRows, loading, error, reload] = useLoadAction(
     loadContractMilestonesAction,
@@ -133,6 +136,8 @@ export default function ContractsTable({ asOf, onRowsChange, onCountsChange }: P
     onCountsChange?.({ employees: sorted.length, expiring: counts.end30, offBoard });
   }, [sorted, shown, counts, onRowsChange, onCountsChange]);
 
+  if (loading && isPhone) return <ContractRowsLoading />;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16 text-slate-400">
@@ -144,12 +149,12 @@ export default function ContractsTable({ asOf, onRowsChange, onCountsChange }: P
 
   if (error) {
     return (
-      <div className="mx-6 mb-6 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center gap-3">
+      <div className="mx-6 mb-6 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center gap-3 phone:mx-4 phone:flex-col phone:items-stretch">
         <span>Couldn&apos;t load contracts — loadContractMilestones</span>
         <button
           type="button"
           onClick={reload}
-          className="ml-auto rounded px-2 py-1 text-red-700 border border-red-300 hover:bg-red-100 focus-visible:ring-2 focus-visible:ring-warm-ring text-xs"
+          className="ml-auto rounded px-2 py-1 text-red-700 border border-red-300 hover:bg-red-100 focus-visible:ring-2 focus-visible:ring-warm-ring text-xs phone:ml-0 phone:min-h-11 phone:text-[13px]"
         >
           Retry
         </button>
@@ -167,6 +172,9 @@ export default function ContractsTable({ asOf, onRowsChange, onCountsChange }: P
         active={chip}
         onToggle={c => setChip(prev => (prev === c ? null : c))}
       />
+      {isPhone ? (
+        <ContractRows rows={shown} thisYear={thisYear} chip={chip} employee={employee} role={role} manager={manager} />
+      ) : (
       <DataTable
         columns={COLUMNS}
         sortKey={sortKey}
@@ -192,6 +200,7 @@ export default function ContractsTable({ asOf, onRowsChange, onCountsChange }: P
           ))
         )}
       </DataTable>
+      )}
     </div>
   );
 }
