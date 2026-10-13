@@ -63,8 +63,10 @@ More rules for this prompt:
   `new Date(str)` for date math. Nothing below needs to touch that.)
 - Every class added to an existing element is either inside a `stacked ? … : …` / `inline ? … : …`
   choice whose computer side is the old text, or starts with `phone:`, or is `no-scrollbar` on an
-  element that does not scroll on a computer. That is what keeps the computer view identical. Do
-  not add any other class.
+  element that does not scroll on a computer, or is the marker class `desktop-canvas` in edit 2d
+  (it has no styling of its own; it tells the touch rules in `index.css` to leave the Payroll and
+  Admin bar's text boxes at their computer size). That is what keeps the computer view identical.
+  Do not add any other class.
 - Text boxes keep their font size here (another prompt handles it).
 
 ## 1. New file `src/app/components/mobile/MobileFilters.tsx` — the whole file
@@ -239,7 +241,7 @@ with
 with
 
 ```tsx
-    <div className="shrink-0 bg-white border-b border-slate-200 px-5 min-h-[48px] flex flex-wrap items-center gap-x-3 z-30 no-scrollbar phone:flex-nowrap phone:overflow-x-auto">
+    <div className={cn('shrink-0 bg-white border-b border-slate-200 px-5 min-h-[48px] flex flex-wrap items-center gap-x-3 z-30 no-scrollbar phone:flex-nowrap phone:overflow-x-auto', (sec?.id === 'payroll' || sec?.id === 'admin') && 'desktop-canvas')}>
 ```
 
 **2e.** Replace
@@ -728,6 +730,13 @@ with
 
 The constants `BOX`, `IN_LABEL` and `BARE` at the top of the file, `addDaysStr`, `mondayOf` and
 the five quick ranges stay exactly as they are.
+
+## Known and accepted
+
+On a phone the filter bar is rebuilt when a super user moves between a manager section and Payroll
+or Admin (it lives in a different place there). When that happens, Attendance's Periods | Dates
+switch goes back to the page's usual choice. The chosen employee, title, manager and periods stay.
+A computer is not affected.
 
 ## Acceptance — visible facts
 

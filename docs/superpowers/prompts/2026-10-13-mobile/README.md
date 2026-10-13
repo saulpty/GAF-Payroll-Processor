@@ -3,7 +3,7 @@
 Design: `docs/superpowers/specs/2026-10-12-mobile-view-design.md`.
 Plan: `docs/superpowers/plans/2026-10-12-mobile-view.md`.
 
-**Nothing here has been sent to UI Bakery.** These were written against `main` at `204c348`.
+**Nothing here has been sent to UI Bakery.** These were written against `main` at `204c348` (this branch at `55f1d6a`, which is what `baseline.json` records).
 Before sending any prompt, run `node tools/check-baseline.mjs docs/superpowers/prompts/2026-10-13-mobile/baseline.json`:
 it lists every file a prompt edits that has changed since. A changed file means that prompt's
 "replace this text" anchors must be re-checked against the new code first.
@@ -43,6 +43,8 @@ and `useNavBadges(): NavBadges`. Called once, in `Shell` in `app.tsx`; `TopNav` 
 **`src/app/lib/mobileNav.ts`** (pure, no imports) exports
 `mobileNavItems(isSuper: boolean): { bar: string[]; more: string[] }` using section ids in desktop
 order: `attendance`, `disciplinary`, `contracts`, `pto`; super users also get `more: ['payroll', 'admin']`.
+It also exports `navBadge(id, badges, isSuper)`, the one rule for which count a section shows
+(a manager never sees the Disciplinary count); both bars use it.
 
 **`src/app/components/mobile/MobileSheet.tsx`** default export, props:
 `{ open: boolean; onClose: () => void; title: string; subtitle?: string; size?: 'partial' | 'full'; keepMounted?: boolean; children: ReactNode }`.
@@ -58,7 +60,8 @@ the screen size flips (Process Payroll keeps an unsaved run in page state). On a
 `desktop-canvas h-full min-w-[1024px]`; otherwise it is `desktop-canvas contents`
 (`display: contents`: no box, so the computer layout is unchanged). The `desktop-canvas` class is
 present at every size so the touch rule in `index.css` (16 px text boxes) leaves Payroll and Admin
-alone on tablets too.
+alone on tablets too. `SectionBar`'s Payroll/Admin bar carries the same class (prompt 03, edit 2d),
+so its Period and search boxes are left alone as well.
 
 **`app.tsx` after prompts 01–02** has a `Shell` component (inside `RefreshBoundary`) that calls
 `useNavBadges()` and renders `<TopNav badges={badges} />`, `<SectionBar />`, `<main …>`, and on a
@@ -79,3 +82,27 @@ Follow `docs/superpowers/prompts/2026-10-12-refresh/02-refresh-button.md` exactl
 - "## Acceptance — visible facts", numbered, phone first, then "On a computer nothing changes".
 - Last line: "When done, reply with a one-line summary per file."
 - Plain words in the prose parts; Saul reads these.
+
+## Send checklist (one prompt at a time, full change loop each)
+
+Before the first one: the other session's work is exported, synced and committed; this branch is
+merged into `main`; `node tools/check-baseline.mjs docs/superpowers/prompts/2026-10-13-mobile/baseline.json`
+says all files unchanged. Take the "before" screenshots (375 × 667, 667 × 375, 1440 wide).
+
+| Prompt | Just before sending | After the export, besides the usual loop |
+|---|---|---|
+| 00 | Move `tests/mobileShell.test.ts` to the repo's `tests/`; leave `SENT_THROUGH = 0`. | Phone: the sections slide in the navy bar and can be tapped. |
+| 01 | Set `SENT_THROUGH = 1`. In `tests/warmPto.test.ts` test WN3, change `/<TopNav \/>\s*<SectionBar \/>/` to `/<TopNav badges=\{badges\} \/>\s*<SectionBar \/>/`. | **Phone: the navy bar is 48 px tall.** If it is still 56, UI Bakery ignored the Tailwind change: stop, revert in UIB, and switch every later prompt to the `data-phone` fallback in the spec. Network tab: three count queries on load, not six. |
+| 02 | Step 0 said the bottom of the screen is visible (otherwise do not send; skip to 03). Set `SENT_THROUGH = 2`. | Phone: section bar at the bottom; manager under View As sees four sections and no Disciplinary count. |
+| 03 | Move `tests/mobileFilters.test.ts`. | Phone: open Attendance → List cold without opening Filters: this period's rows show. In the sheet, choose Dates, Done, reopen: still Dates. Tapping inside the sheet does not close it. |
+| 04 | Move `tests/mobileCanvas.test.ts`. | Computer: on Process, drag the window under 768 px and back: the step is still there. Phone: Rules & Config's Edit and Delete reachable. |
+| 05 | Move `tests/mobileTouch.test.ts`. | Touch rules do not switch on in a narrowed frame: use the browser's device mode. Real phone: no zoom on tapping a text box. |
+| 06 | Move `tests/mobileDialogs.test.ts`. | Phone: PTO, Contracts and Disciplinary scroll as one page. Open each dialog and **cancel; save nothing**. |
+
+03–06 can go in any order once 02 (or 01, if 02 is skipped) is in. Release A comes after all seven
+and a real-phone pass.
+
+Verified on 2026-10-13 without UI Bakery: all seven applied in order to a scratch copy pass every
+test, add no type errors (the same 21 that exist today), and every `phone:` class compiles.
+Not verified, and only UI Bakery or a real phone can: that UIB's build honours the Tailwind change,
+real rendering, the phone keyboard, iOS zoom, pull-to-refresh.

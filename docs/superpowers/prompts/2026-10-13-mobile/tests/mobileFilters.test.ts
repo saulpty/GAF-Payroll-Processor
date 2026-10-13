@@ -122,7 +122,7 @@ test('MR8: the computer side of every changed class string is the old text', () 
     "'flex items-center gap-1 text-[12px] text-slate-400 hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded px-1' + (stacked ? ",
   ]) assert.ok(fb.includes(old), `FilterBar.tsx lost or changed: ${old}`);
   const sb = read(BAR);
-  assert.ok(sb.includes('"shrink-0 bg-white border-b border-slate-200 px-5 min-h-[48px] flex flex-wrap items-center gap-x-3 z-30 no-scrollbar phone:flex-nowrap phone:overflow-x-auto"'));
+  assert.ok(sb.includes("cn('shrink-0 bg-white border-b border-slate-200 px-5 min-h-[48px] flex flex-wrap items-center gap-x-3 z-30 no-scrollbar phone:flex-nowrap phone:overflow-x-auto', (sec?.id === 'payroll' || sec?.id === 'admin') && 'desktop-canvas')"), 'the Payroll/Admin bar carries desktop-canvas so touch rules skip its text boxes');
   assert.ok(sb.includes('"flex items-center gap-2 h-12 min-w-0 max-w-full phone:shrink-0 phone:max-w-none"'));
   const arc = read(ARC);
   assert.ok(arc.includes("const box  = stacked ? BOX + ' phone:h-11 w-full' : BOX;"));

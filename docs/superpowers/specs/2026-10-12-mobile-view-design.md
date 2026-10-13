@@ -85,12 +85,12 @@ Normal page flow, top to bottom. Nothing in the frame uses `position: fixed`.
 | Row | Height | Contents |
 |---|---|---|
 | Top bar (navy) | 48 | Logo · current section name with its colour mark · Refresh (icon, 44 px) · person icon |
-| View As strip (amber) | 32, only while viewing as someone | "Viewing As Maria Lopez · Stop". Never hidden |
+| View As strip (amber) | 44, only while viewing as someone | "Viewing As Maria Lopez · Stop". Never hidden |
 | Row 2 (white) | 44, always one line | Left: the section's tabs, sliding sideways. In sections without tabs: the filters in use, as small chips ("Title: Intake 1"), or nothing. Right, pinned: **Filters** button (44 × 44) with a dot when any filter is on |
 | Page | the rest | Scrolls. Page headers (Today's Live line and day picker, PTO's As Of) scroll away with it |
 | Section bar (white) | 56 | One button per section: icon over a short name in the section's dark "ink" colour; orange count badges |
 
-Fixed chrome: **148 px** (was 233 on Today with no way to change section; first draft said 196
+Fixed chrome: **148 px** (192 while viewing as someone: the 44 px strip is extra) (was 233 on Today with no way to change section; first draft said 196
 but missed Today's own pinned header, which made it about 288).
 
 - **Bottom bar contents:** `mobileNavItems(isSuper)` in `src/app/lib/mobileNav.ts`. Manager:

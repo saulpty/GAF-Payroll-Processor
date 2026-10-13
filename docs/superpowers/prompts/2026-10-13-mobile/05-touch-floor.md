@@ -30,8 +30,8 @@ Already in the app from earlier prompts. **Use them; do not create, edit or rede
 - `src/tailwind.config.js` has a screen named `phone`, so a class written `phone:px-4` applies
   only on a phone-sized screen. Do not replace any `phone:` class below with `sm:`, `md:` or
   `max-md:`.
-- On a phone a 56 px section bar sits at the bottom of the screen, and Payroll and Admin pages
-  are wrapped in an element with the class `desktop-canvas`.
+- On a phone a 56 px section bar sits at the bottom of the screen. Payroll and Admin pages, and
+  the white bar above them, carry the class `desktop-canvas` at every screen size.
 
 If `src/app/lib/useIsPhone.ts` does not exist, stop and say so. Do not write it.
 
@@ -47,7 +47,7 @@ reorder, reformat or re-indent anything. Add the block below **after the last li
    (pointer: coarse), so nothing in this block reaches it. */
 @media (pointer: coarse) {
   /* Text boxes at 16px: below that, a phone zooms the whole page in when one is tapped.
-     Not inside .desktop-canvas: Payroll and Admin on a phone keep their computer sizing.
+     Not inside .desktop-canvas: Payroll and Admin keep their computer sizing on every touch screen.
      Each :not(...) makes the selector more specific than a single Tailwind class
      (text-sm, text-xs, text-[12px] ...), so this wins without !important. */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not(.desktop-canvas *),
@@ -289,7 +289,7 @@ export function clampPopup(
 
 This file must stay free of imports.
 
-## 6. `src/app/components/ds/Combobox.tsx`: four edits, nothing else
+## 6. `src/app/components/ds/Combobox.tsx`: steps 6a to 6d, nothing else
 
 On a computer every line below behaves exactly as today, because `isPhone` is false there.
 
