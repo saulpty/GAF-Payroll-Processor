@@ -1,4 +1,4 @@
-# Activity: pending fixes, part 2 (screens) — tooltip wording, screen readers, crowded chart labels, whole numbers
+# Activity: pending fixes, part 2 (screens) — tooltip wording, screen readers, narrow windows, crowded chart labels, whole numbers
 
 **Make exactly the edits below, character for character. These are small, targeted edits: do not
 rewrite, reformat, reorder or "improve" anything else in any file. If your context is compacted
@@ -33,6 +33,29 @@ with
         <span aria-hidden="true">{showDays ? '▲' : '▼'}</span>
         {showDays ? `Hide the ${total} Days` : `Show All ${total} Days`}
 ```
+
+Edit 3. Directly above the line `function OpenedRow(` add:
+
+```tsx
+// The opened row stays as wide as the visible table area and sticks to its left edge, so on a
+// narrow window it does not scroll sideways with the columns.
+const OPENED_WIDTH = { width: 'min(100%, calc(100vw - 50px))' };
+
+```
+
+Edit 4. This line appears **twice** in `OpenedRow`. Replace **both** occurrences of
+
+```tsx
+      <div className="p-4 bg-slate-50 border-b-2 border-slate-300">
+```
+
+with
+
+```tsx
+      <div className="sticky left-0 p-4 bg-slate-50 border-b-2 border-slate-300" style={OPENED_WIDTH}>
+```
+
+(the second occurrence is indented by four spaces instead of six; keep its own indentation).
 
 ## 2. `src/app/pages/attendance/activity/ActivityDayChart.tsx`
 
@@ -109,6 +132,7 @@ with
 ## Acceptance
 1. The Trend tooltip mentions permissions and says "1 day" for a one-day comparison.
 2. On a 90-day range the chart labels no longer overlap (Mondays only).
-3. Thresholds: typing 2.5 in a days field and saving shows an error instead of storing 3.
+3. On a window narrower than the table, an opened row stays in view instead of scrolling sideways.
+4. Thresholds: typing 2.5 in a days field and saving shows an error instead of storing 3.
 
 When done, reply with a one-line summary per file.

@@ -100,6 +100,9 @@ test('TW6 (prompt 04): the Thresholds dialog saves the four minimums as typed', 
 test('TW7 (prompt 07): long ranges thin the chart labels; minutes and days are whole numbers', () => {
   const chart = read(DIR + 'ActivityDayChart.tsx');
   assert.match(chart, /const show = bars\.length <= 26 \|\| dow === 'Mon' \|\| i === 0;/);
+  // Narrow windows: the opened row sticks to the left edge at the visible width (both branches).
+  const be = read(DIR + 'ActivityByEmployee.tsx');
+  assert.equal((be.match(/className="sticky left-0 p-4 bg-slate-50 border-b-2 border-slate-300" style=\{OPENED_WIDTH\}/g) ?? []).length, 2);
   const dlg = read(DIR + 'ActivityThresholds.tsx');
   assert.match(dlg, /if \(field\.unit !== 'hours' && !Number\.isInteger\(n\)\) return null;/);
   assert.match(dlg, /The minimum active time is scaled for a shorter shift\./);
