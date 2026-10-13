@@ -6,12 +6,14 @@ import type { EmployeeTrend } from '@/app/lib/activityTrend';
 import { VERDICT_ORDER } from '@/app/lib/activityTrend';
 import { fmtClock, fmtDuration } from '@/app/lib/teramindToday';
 import { AttendancePanel } from '@/app/pages/attendance/AttendancePanel';
+import { useIsPhone } from '@/app/lib/useIsPhone';
 import DataTable from '@/app/components/DataTable';
 import type { Col } from '@/app/components/DataTable';
 import { TrendPill, ChangeArrow } from './TrendPill';
 import ActivityCompare from './ActivityCompare';
 import ActivityDayChart from './ActivityDayChart';
 import ActivityDaysSideBySide from './ActivityDaysSideBySide';
+import { EmployeeRows } from './ActivityRows';
 
 type SortKey = 'employeeName' | 'trend' | 'daysWorked' | 'avgActiveMin' | 'avgFirstMin' | 'avgLastMin' | 'needsLook' | 'missed' | 'awayDays';
 
@@ -246,6 +248,7 @@ export default function ActivityByEmployee({ byEmployee, expandedId, onToggle, .
   const [panelEmp, setPanelEmp] = useState<EmployeeActivitySummary | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('employeeName');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const isPhone = useIsPhone();
 
   // local expanded state fallback when parent doesn't control it
   const [localExpandedId, setLocalExpandedId] = useState<number | null>(null);
@@ -278,7 +281,7 @@ export default function ActivityByEmployee({ byEmployee, expandedId, onToggle, .
 
   return (
     <>
-      <DataTable
+      {isPhone ? <EmployeeRows list={sorted} trends={p.trends} openId={effectiveExpandedId} onClosePicked={handleToggle} /> : <DataTable
         columns={columns(tip, lowTip)}
         sortKey={sortKey}
         sortDir={sortDir}
@@ -301,7 +304,7 @@ export default function ActivityByEmployee({ byEmployee, expandedId, onToggle, .
             />
           );
         })}
-      </DataTable>
+      </DataTable>}
 
       {panelEmp && (
         <AttendancePanel

@@ -8,6 +8,8 @@ import SourceBadge from './SourceBadge';
 import GhostMark from './GhostMark';
 import DataTable from '@/app/components/DataTable';
 import type { Col } from '@/app/components/DataTable';
+import { useIsPhone } from '@/app/lib/useIsPhone';
+import { DayRows } from './ActivityRows';
 
 type SortKey = 'employeeName' | 'date' | 'shownFirstMin' | 'shownLastMin' | 'activeMin' | 'breaksMin';
 
@@ -73,6 +75,7 @@ const TD = 'px-3 py-2 text-sm text-slate-700';
 export default function ActivityByDay({ days, dateFrom, dateTo }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const isPhone = useIsPhone();
 
   function handleSort(key: string) {
     const k = key as SortKey;
@@ -95,14 +98,14 @@ export default function ActivityByDay({ days, dateFrom, dateTo }: Props) {
       <div className="flex justify-end mb-2">
         <button
           onClick={() => exportCsv(days, dateFrom, dateTo)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm phone:min-h-11"
         >
           <Download className="w-3.5 h-3.5" />
           Export CSV
         </button>
       </div>
 
-      <DataTable
+      {isPhone ? <DayRows days={sorted} /> : <DataTable
         columns={COLUMNS}
         sortKey={sortKey}
         sortDir={sortDir}
@@ -153,7 +156,7 @@ export default function ActivityByDay({ days, dateFrom, dateTo }: Props) {
             </tr>
           );
         })}
-      </DataTable>
+      </DataTable>}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Activity, AlertCircle, Info } from 'lucide-react';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useViewer } from '@/app/context/ViewerContext';
+import { useIsPhone } from '@/app/lib/useIsPhone';
 import { fmtDuration } from '@/app/lib/teramindToday';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { rangeLabel, fmtMinutes } from '@/app/lib/activityTrend';
@@ -10,6 +11,7 @@ import ActivityNeedsLook from './ActivityNeedsLook';
 import ActivityByEmployee from './ActivityByEmployee';
 import ActivityByDay from './ActivityByDay';
 import ActivityThresholds from './ActivityThresholds';
+import { RowsLoading } from './ActivityRows';
 
 type ViewMode = 'byEmployee' | 'byDay';
 
@@ -22,14 +24,14 @@ type TileNote = { note?: string; noteTone?: 'good' | 'bad' | '' };
 // note (2026-10-12): one line comparing with the period right before the selected dates.
 function SummaryTile({ label, value, accent, dot, note, noteTone }: { label: string; value: string | number; accent?: string; dot?: string } & TileNote) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 flex flex-col gap-0.5 min-w-[110px] shadow-card">
+    <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 flex flex-col gap-0.5 min-w-[110px] shadow-card phone:w-[calc(50%-6px)] phone:min-w-0 phone:px-3">
       <span className={`text-[22px] leading-7 font-bold tabular-nums ${accent ?? 'text-slate-900'}`}>{value}</span>
       <span className="text-[12px] text-slate-600 font-medium flex items-center gap-1.5 whitespace-nowrap">
         <span className={`w-2 h-2 rounded-full ${dot ?? 'bg-slate-300'}`} aria-hidden="true" />
         {label}
       </span>
       {note && (
-        <span className={`text-[12px] mt-1 pt-1 border-t border-slate-100 whitespace-nowrap tabular-nums ${noteTone === 'good' ? 'text-status-green-ink' : noteTone === 'bad' ? 'text-status-red-ink' : 'text-slate-500'}`}>
+        <span className={`text-[12px] mt-1 pt-1 border-t border-slate-100 whitespace-nowrap phone:whitespace-normal tabular-nums ${noteTone === 'good' ? 'text-status-green-ink' : noteTone === 'bad' ? 'text-status-red-ink' : 'text-slate-500'}`}>
           {note}
         </span>
       )}
@@ -40,6 +42,7 @@ function SummaryTile({ label, value, accent, dot, note, noteTone }: { label: str
 export default function AttendanceActivity() {
   const { dateFrom, dateTo, attendanceMode, setAttendanceMode, setDateFrom, setDateTo } = useGlobalFilters();
   const { isSuper } = useViewer();
+  const isPhone = useIsPhone();
 
   // On first mount: ensure we are in Dates mode with last 14 days
   const initDone = useRef(false);
@@ -126,7 +129,7 @@ export default function AttendanceActivity() {
             </div>
             <button
               onClick={retry}
-              className="ml-6 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-800 hover:bg-red-200 transition-colors border border-red-200"
+              className="ml-6 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-800 hover:bg-red-200 transition-colors border border-red-200 phone:ml-0 phone:w-full phone:min-h-11"
             >
               Retry
             </button>
@@ -134,7 +137,8 @@ export default function AttendanceActivity() {
         )}
 
         {/* Loading */}
-        {loading && (
+        {loading && isPhone && <RowsLoading />}
+        {loading && !isPhone && (
           <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
             <Activity className="w-5 h-5 animate-pulse" />
             Loading activity data…
@@ -150,13 +154,13 @@ export default function AttendanceActivity() {
               <SummaryTile label="Days With Work"   value={totals.daysWorked} note={workedNote} />
               <SummaryTile label="Needs a Look"     value={totals.needsLook}  accent={totals.needsLook > 0 ? 'text-status-yellow-ink' : undefined} dot="bg-yellow-500" note={lookNote.note} noteTone={lookNote.noteTone} />
               <SummaryTile label="Late Arrivals"    value={totals.lateArrivals} accent={totals.lateArrivals > 0 ? 'text-status-red-ink' : undefined} dot="bg-red-600" note={lateNote.note} noteTone={lateNote.noteTone} />
-              <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+              <div className="flex flex-wrap items-center justify-end gap-2 ml-auto no-scrollbar phone:ml-0 phone:w-full phone:flex-nowrap phone:justify-start phone:overflow-x-auto">
                 <ActivityNeedsLook part="chip" open={lookOpen} onToggle={toggleLook} days={filteredNeedsLook} dateTo={safeTo} settings={settings} onPick={handlePickEmployee} />
-                <div className="flex rounded-md border border-slate-300 overflow-hidden">
+                <div className="flex rounded-md border border-slate-300 overflow-hidden phone:shrink-0">
                   <button
                     onClick={() => setViewMode('byEmployee')}
                     className={[
-                      'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors',
+                      'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors phone:min-h-11 phone:px-4 phone:whitespace-nowrap',
                       viewMode === 'byEmployee' ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
                     ].join(' ')}
                   >
@@ -165,7 +169,7 @@ export default function AttendanceActivity() {
                   <button
                     onClick={() => setViewMode('byDay')}
                     className={[
-                      'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors border-l',
+                      'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors border-l phone:min-h-11 phone:px-4 phone:whitespace-nowrap',
                       viewMode === 'byDay' ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
                     ].join(' ')}
                   >
