@@ -82,7 +82,7 @@ test('TW5 (prompt 03): the four cards carry a comparison line; By Day and the si
   const page = read(DIR + 'AttendanceActivity.tsx');
   assert.equal((page.match(/note=\{/g) ?? []).length, 4, 'each of the four cards gets a note');
   assert.match(page, /<ActivityByDay days=\{days\} dateFrom=\{safeFrom\} dateTo=\{safeTo\} \/>/);
-  assert.match(page, /<ActivityNeedsLook days=\{filteredNeedsLook\} dateTo=\{safeTo\} settings=\{settings\} onPick=\{handlePickEmployee\} \/>/);
+  assert.match(page, /<ActivityNeedsLook part="box" open=\{lookOpen\} onToggle=\{toggleLook\} days=\{filteredNeedsLook\} dateTo=\{safeTo\} settings=\{settings\} onPick=\{handlePickEmployee\} \/>/);
   assert.match(page, /compare: true,/);
   // The tooltip and panels name the dates actually compared (up to yesterday), not the raw range.
   assert.match(page, /const afterLabel = rangeLabel\(safeFrom, compareTo\);/);
@@ -120,15 +120,16 @@ test('TW7 (prompt 07): long ranges thin the chart labels; minutes and days are w
 
 test('TW8 (prompt 08): Needs a Look starts closed; the open row freezes; names are bold; no bare warning-sign labels', () => {
   const nl = read(DIR + 'ActivityNeedsLook.tsx');
-  assert.match(nl, /const \[open, setOpen\] = useState\(false\);/);
-  assert.match(nl, /if \(!open\) \{/);
-  assert.match(nl, /onClick=\{\(\) => setOpen\(false\)\}/);
+  // The page owns open/closed (prompt 09); the component renders a chip or the box.
+  assert.match(nl, /if \(part === 'chip'\) \{/);
+  assert.match(nl, /if \(!open\) return null;/);
+  assert.match(nl, /\{open \? 'Hide' : 'Show'\}/);
+  assert.doesNotMatch(nl, /useState/);
   // Hooks stay above every early return.
-  assert.ok(nl.indexOf('useState(false)') < nl.indexOf('if (totalFlagged === 0) return null;'));
   assert.ok(nl.indexOf('useMemo(') < nl.indexOf('if (totalFlagged === 0) return null;'));
 
   const be = read(DIR + 'ActivityByEmployee.tsx');
-  assert.match(be, /<tr ref=\{rowRef\} className=\{expanded \? 'sticky z-\[5\] bg-white shadow-sm' : 'hover:bg-slate-50 transition-colors'\}>/);
+  assert.match(be, /<tr ref=\{rowRef\} onClick=\{onToggle\} className=\{expanded \? 'sticky z-\[5\] bg-white shadow-sm cursor-pointer' : 'hover:bg-slate-50 transition-colors cursor-pointer'\}>/);
   assert.match(be, /<tr ref=\{detailRef\}>/);
   assert.match(be, /row\.style\.top = `\$\{Math\.min\(headH, room\)\}px`;/);
   assert.match(be, /scroller\.removeEventListener\('scroll', place\);/);
@@ -139,4 +140,22 @@ test('TW8 (prompt 08): Needs a Look starts closed; the open row freezes; names a
   }
   assert.match(read(DIR + 'ActivityCompare.tsx'), /<Row label="Low Activity Days"/);
   assert.match(read(DIR + 'ActivityDaysSideBySide.tsx'), /<Figure label="Low Activity Days"/);
+});
+
+test('TW9 (prompt 09): one toolbar row; a click anywhere on a row opens it, the name still opens the panel', () => {
+  const page = read(DIR + 'AttendanceActivity.tsx');
+  assert.match(page, /const \[lookOpen, setLookOpen\] = useState\(false\);/);
+  assert.match(page, /<ActivityNeedsLook part="chip" open=\{lookOpen\} onToggle=\{toggleLook\}/);
+  // Chip, switch and Thresholds share the right-hand cluster of the tiles row.
+  const row = page.slice(page.indexOf('<ActivityNeedsLook part="chip"'), page.indexOf('<ActivityNeedsLook part="box"'));
+  assert.match(row, /By Employee/);
+  assert.match(row, /By Day/);
+  assert.match(row, /<ActivityThresholds settings=\{settings\} minimums=\{minimums\} onSaved=\{reloadConfig\} \/>/);
+  assert.equal((page.match(/<SummaryTile /g) ?? []).length, 4);
+
+  const be = read(DIR + 'ActivityByEmployee.tsx');
+  // The arrow and the name sit inside the clickable row: each must stop the click from reaching it.
+  assert.match(be, /<button onClick=\{e => \{ e\.stopPropagation\(\); onToggle\(\); \}\}/);
+  assert.match(be, /onClick=\{e => \{ e\.stopPropagation\(\); onOpenPanel\(emp\); \}\}/);
+  assert.ok(Buffer.byteLength(be, 'utf8') < 15 * 1024, 'ActivityByEmployee.tsx is over 15 KB');
 });
