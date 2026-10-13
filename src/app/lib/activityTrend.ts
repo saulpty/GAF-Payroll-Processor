@@ -28,7 +28,7 @@ export type EmployeeTrend = {
 export type TotalsChange = { avgActiveMin: number | null; daysWorkedBefore: number; needsLook: number; lateArrivals: number };
 
 export const VERDICT_LABEL: Record<Verdict, string> = {
-  improved: 'Improved', worse: 'Worse', mixed: 'Mixed', steady: 'Steady', nodata: 'Not enough data',
+  improved: 'Improved', worse: 'Worse', mixed: 'Mixed', steady: 'Steady', nodata: 'Not Enough Data',
 };
 /** Sort order for the Trend column: the people to look at first come first. */
 export const VERDICT_ORDER: Record<Verdict, number> = { worse: 0, mixed: 1, steady: 2, improved: 3, nodata: 4 };
@@ -58,8 +58,10 @@ export function subDays(date: string, n: number): string {
 /** The same number of calendar days, ending the day before dateFrom. days = 0 when the range is not valid. */
 export function previousRange(dateFrom: string, dateTo: string): { from: string; to: string; days: number } {
   if (!YMD.test(dateFrom) || !YMD.test(dateTo) || dateFrom > dateTo) return { from: dateFrom, to: dateFrom, days: 0 };
-  let days = 1;
-  for (let cur = dateFrom; cur < dateTo && days < 1000; cur = step(cur, 1)) days += 1;
+  let days = 1, cur = dateFrom;
+  for (; cur < dateTo && days < 1000; cur = step(cur, 1)) days += 1;
+  // Longer than the 1000-day cap: no comparison, never a mismatched earlier period.
+  if (cur < dateTo) return { from: dateFrom, to: dateFrom, days: 0 };
   return { from: subDays(dateFrom, days), to: subDays(dateFrom, 1), days };
 }
 
@@ -78,11 +80,12 @@ export function comparisonRanges(dateFrom: string, dateTo: string, today: string
   return { after: { from: dateFrom, to, days: before.days }, before };
 }
 
-/** 'Sep 5 – Sep 23'; years are added only when the two ends are in different years. */
+/** 'Sep 5 – Sep 23', or 'Oct 7' for a single day; years are added only when the two ends are in different years. */
 export function rangeLabel(from: string, to: string): string {
   const part = (s: string, withYear: boolean) =>
     `${MON[Number(s.slice(5, 7)) - 1] ?? ''} ${Number(s.slice(8, 10))}${withYear ? ', ' + s.slice(0, 4) : ''}`;
   if (!YMD.test(from) || !YMD.test(to)) return '';
+  if (from === to) return part(from, false);
   const years = from.slice(0, 4) !== to.slice(0, 4);
   return `${part(from, years)} – ${part(to, years)}`;
 }
@@ -162,9 +165,9 @@ export function fmtMinutes(minutes: number): string {
   return h === 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-/** The Change cell: '+1h 11m', '12m earlier', '5 fewer', or 'About the same' under the minimum. */
+/** The Change cell: '+1h 11m', '12m earlier', '5 fewer', or 'No Change' under the minimum. */
 export function changeText(measure: Measure, c: MeasureChange): string {
-  if (c.tone === '') return 'About the same';
+  if (c.tone === '') return 'No Change';
   const n = Math.abs(c.delta);
   if (measure === 'active') return `${c.delta > 0 ? '+' : '−'}${fmtMinutes(n)}`;
   if (measure === 'entry') return `${fmtMinutes(n)} ${c.delta < 0 ? 'earlier' : 'later'}`;

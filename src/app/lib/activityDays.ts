@@ -186,6 +186,7 @@ export function buildActivityDays(input: {
     const shiftMinutes = shiftMinutesOf(emp.schedule_start, emp.schedule_end);
     const threshold = thresholdFor(shiftMinutes, settings);
     const empDays: ActivityDay[] = [];
+    const startDate = ymd10(emp.start_date);
 
     let date = ymd10(input.dateFrom);
     while (date !== '' && date <= lastDate) {
@@ -204,6 +205,8 @@ export function buildActivityDays(input: {
 
       // Not scheduled, nothing happened: no row.
       if (!scheduled && !hasActivity) continue;
+      // Not hired yet, nothing happened: no row either (and so never Needs A Look).
+      if (startDate !== '' && cur < startDate && !hasActivity) continue;
 
       const lastYmd = row ? toYmd(row.last_ymd) : '';
       const lastMin = toMin(row?.last_min);
