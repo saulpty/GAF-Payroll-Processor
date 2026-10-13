@@ -1,6 +1,6 @@
 // Attendance Periods | Dates segmented switch rendered in FilterBar.
 // Reads GlobalFilterContext directly; receives processed/all periods as props.
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
 import { fmtDate } from '@/app/lib/fmtDate';
@@ -64,6 +64,15 @@ export default function AttendanceRangeControls({
     dateFrom, setDateFrom,
     dateTo, setDateTo,
   } = useGlobalFilters();
+
+  // Back in Periods mode (by the switch, or by arriving from a page that works in Dates): the
+  // chosen periods' own dates apply again. Dates mode may have left another range behind.
+  useEffect(() => {
+    if (attendanceMode !== 'periods' || attendancePeriods.length === 0) return;
+    const range = rangeOf(attendancePeriods);
+    if (range && (range.from !== dateFrom || range.to !== dateTo)) setAttendancePeriods(attendancePeriods, range);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attendanceMode, periods.length]);
 
 
   // `stacked` only happens on a phone, so phone:h-11 (which always wins over h-8) is enough.

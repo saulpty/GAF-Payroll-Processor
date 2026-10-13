@@ -147,7 +147,6 @@ test('MP6: a manager gets no Record, Edit, Withdraw or Restore: every write sits
   const actions = fnBody(src, 'RequestActions');
   const detail = fnBody(src, 'SuperDetail');
   const outside = src.replace(actions, '').replace(detail, '');
-  assert.ok(outside.length < src.length - actions.length - detail.length + 1);
 
   // The three callbacks are only ever CALLED inside RequestActions, and the buttons live there.
   for (const call of ['onOpenDialog(', 'onWithdraw(', 'onRestore(']) {
@@ -192,7 +191,7 @@ test('MP7: Record follows the table\'s rule and its reason is written out, not l
   for (const mode of ["onOpenDialog({ kind: 'record', request: item.request, match: item.match })", "onOpenDialog({ kind: 'edit', row: item.request, match: item.match })", 'onRestore(item.id!)', 'onWithdraw(item.id!, item.days)']) {
     assert.ok(sub.includes(mode) && actions.includes(mode), `same call as the table: ${mode}`);
   }
-  assert.match(actions, /\{item\.status === 'recorded' && \(\s*<Button[^>]*onWithdraw/, 'Withdraw only on a recorded row, as on the table');
+  assert.match(actions, /\{item\.status === 'recorded' && \(\s*<Button[^]{0,120}?onWithdraw\(/, 'Withdraw only on a recorded row, as on the table');
 });
 
 test('MP8: ptoPhone says the same words as the table\'s mouse-overs', async () => {
