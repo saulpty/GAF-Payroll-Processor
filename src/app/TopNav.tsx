@@ -8,13 +8,7 @@ import {
   Palmtree, FileSignature, ShieldAlert, FileText,
   Eye, X, KeyRound, UserCircle,
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
-import { useLoadAction } from '@uibakery/data';
-import loadContractsExpiringCountAction from '@/actions/loadContractsExpiringCount';
-import loadDisciplinaryDueCountAction from '@/actions/loadDisciplinaryDueCount';
-import loadPtoReviewCountAction from '@/actions/loadPtoReviewCount';
-import { toLocalYMD } from '@/app/lib/classificationEngine';
-import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
+import type { NavBadges } from '@/app/lib/useNavBadges';
 import BrandLogo from '@/app/components/BrandLogo';
 import RefreshButton from '@/app/components/RefreshButton';
 import { useViewer } from '@/app/context/ViewerContext';
@@ -120,29 +114,16 @@ export const BADGE = 'bg-warm text-warm-ink text-[10px] font-bold rounded-full m
 
 // ── TopNav ─────────────────────────────────────────────────────────────────────
 
-export default function TopNav() {
+export default function TopNav({ badges }: { badges: NavBadges }) {
   const location  = useLocation();
   const navigate  = useNavigate();
-  const { ptoVersion } = useGlobalFilters();
-  const { isSuper, isViewingAs, name, email, setViewAs, viewAs } = useViewer();
+  const { isSuper, isViewingAs, name, email, setViewAs } = useViewer();
   const visibleSections = SECTIONS.filter(s => canSeeSection(isSuper, s.id));
 
-  const [expiringData]    = useLoadAction(loadContractsExpiringCountAction, [] as { count: number }[], { viewAs });
-  const expiringCount     = (expiringData as { count: number }[])[0]?.count ?? 0;
-  const asOf              = toLocalYMD(new Date());
-  const [dueData]         = useLoadAction(loadDisciplinaryDueCountAction, [] as { count: number }[], { asOf });
-  const dueCount          = (dueData as { count: number }[])[0]?.count ?? 0;
-  const [reviewData, , , reloadReview] = useLoadAction(loadPtoReviewCountAction, [] as { count: number }[], { today: asOf, manager: null, viewAs });
-  const reviewCount       = (reviewData as { count: number }[])[0]?.count ?? 0;
-
-  // Reload PTO review count whenever a PTO record is written anywhere in the app
-  const ptoVersionRef = useRef(ptoVersion);
-  useEffect(() => {
-    if (ptoVersionRef.current !== ptoVersion) {
-      ptoVersionRef.current = ptoVersion;
-      reloadReview();
-    }
-  }, [ptoVersion, reloadReview]);
+  // The three counts are loaded once, in Shell (app.tsx), by the useNavBadges hook.
+  const expiringCount = badges.contracts;
+  const dueCount      = badges.disciplinary;
+  const reviewCount   = badges.pto;
 
   function sectionBadge(id: string): { count: number; label: string } | null {
     if (!isSuper && id === 'disciplinary') return null;
@@ -170,7 +151,7 @@ export default function TopNav() {
   const activeSection = getActiveSection(location.pathname);
 
   return (
-    <header className="topnav-dark shrink-0 h-14 bg-[var(--topnav)] text-[var(--topnav-foreground)] shadow-sm flex items-center px-4 gap-0 z-40 overflow-hidden">
+    <header className="topnav-dark shrink-0 h-14 bg-[var(--topnav)] text-[var(--topnav-foreground)] shadow-sm flex items-center px-4 gap-0 z-40 overflow-hidden phone:h-12">
       {/* Brand */}
       <div
         className="flex items-center gap-2.5 mr-3 pr-4 border-r border-white/20 cursor-pointer select-none shrink-0"
@@ -184,7 +165,7 @@ export default function TopNav() {
       </div>
 
       {/* Sections: each keeps its colour; the active one is lit with an underline in its colour */}
-      <nav aria-label="Sections" className="flex items-center h-14 flex-1 min-w-0 overflow-x-auto no-scrollbar">
+      <nav aria-label="Sections" className="flex items-center h-14 flex-1 min-w-0 overflow-x-auto no-scrollbar phone:h-12">
         {visibleSections.map(s => {
           const isActive = activeSection === s.id;
           return (
@@ -194,7 +175,7 @@ export default function TopNav() {
               aria-current={isActive ? 'page' : undefined}
               style={isActive ? { borderBottomColor: s.color.icon } : undefined}
               className={cn(
-                'flex items-center gap-2 px-3 h-14 border-b-[3px] text-[13px] font-medium whitespace-nowrap shrink-0 transition-colors duration-150 select-none focus:outline-none',
+                'flex items-center gap-2 px-3 h-14 border-b-[3px] text-[13px] font-medium whitespace-nowrap shrink-0 transition-colors duration-150 select-none focus:outline-none phone:h-12',
                 isActive
                   ? 'bg-white/10 text-white'
                   : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'
@@ -224,7 +205,7 @@ export default function TopNav() {
           className="ml-3 shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200"
         >
           <Eye className="w-3.5 h-3.5" />
-          <span><span className="hidden md:inline">Viewing As </span>{name || email}</span>
+          <span><span className="phone:hidden">Viewing As </span>{name || email}</span>
           <X className="w-3.5 h-3.5" />
         </button>
       ) : (
@@ -233,8 +214,8 @@ export default function TopNav() {
           className="ml-3 shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-white/10 text-white border border-white/20"
         >
           <UserCircle className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">{name || email}</span>
-          <span className="hidden md:inline text-slate-300">· {isSuper ? 'Super User' : 'Manager'}</span>
+          <span className="phone:hidden">{name || email}</span>
+          <span className="text-slate-300 phone:hidden">· {isSuper ? 'Super User' : 'Manager'}</span>
         </div>
       )}
     </header>

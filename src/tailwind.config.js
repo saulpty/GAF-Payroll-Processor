@@ -8,6 +8,9 @@ module.exports = {
       },
     },
     extend: {
+      screens: {
+        phone: { raw: '(max-width: 767px), (max-height: 500px) and (pointer: coarse)' },
+      },
       fontFamily: {
         sans: [
           'var(--layout-text-font-family)',

@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import TopNav from '@/app/TopNav';
 import SectionBar from '@/app/SectionBar';
+import { useNavBadges } from '@/app/lib/useNavBadges';
 import { GlobalFilterProvider, useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { ViewerProvider } from '@/app/context/ViewerContext';
 import AccessGate from '@/app/components/AccessGate';
@@ -41,6 +42,19 @@ function RefreshBoundary({ children }: { children: ReactNode }) {
   );
 }
 
+// The frame inside the refresh boundary. The three nav counts are loaded here, once, and handed
+// to the bars as a prop: loading them inside each bar would run every count query twice.
+function Shell({ children }: { children: ReactNode }) {
+  const badges = useNavBadges();
+  return (
+    <>
+      <TopNav badges={badges} />
+      <SectionBar />
+      <main className="flex-1 overflow-auto">{children}</main>
+    </>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -51,9 +65,7 @@ function App() {
             <TeramindAutoSync />
             <MondayAutoSync />
             <RefreshBoundary>
-              <TopNav />
-              <SectionBar />
-              <main className="flex-1 overflow-auto">
+              <Shell>
                 <Routes>
                   <Route path="/" element={<HomeRedirect />} />
                   <Route path="/process" element={<RequireSuper><ProcessPayroll /></RequireSuper>} />
@@ -79,7 +91,7 @@ function App() {
                   <Route path="/attendance/*" element={<Attendance />} />
                   <Route path="/hrk-summary" element={<RequireSuper><HrkSummary /></RequireSuper>} />
                 </Routes>
-              </main>
+              </Shell>
             </RefreshBoundary>
           </GlobalFilterProvider>
         </AccessGate>

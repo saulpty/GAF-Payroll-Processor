@@ -37,10 +37,10 @@ export default function RefreshButton() {
       disabled={busy}
       title={busy ? 'Refreshing data…' : 'Refresh data now'}
       aria-label="Refresh data"
-      className="ml-3 shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-white/10 text-white border border-white/20 hover:bg-white/20 disabled:opacity-70 disabled:cursor-wait"
+      className="ml-3 shrink-0 flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium bg-white/10 text-white border border-white/20 hover:bg-white/20 disabled:opacity-70 disabled:cursor-wait phone:ml-1 phone:h-11 phone:w-11 phone:px-0 phone:justify-center phone:border-transparent phone:bg-transparent"
     >
-      <RefreshCw className={cn('w-3.5 h-3.5', busy && 'animate-spin')} />
-      <span className="hidden md:inline">{busy ? 'Refreshing…' : 'Refresh'}</span>
+      <RefreshCw className={cn('w-3.5 h-3.5 phone:w-5 phone:h-5', busy && 'animate-spin')} />
+      <span className="phone:hidden">{busy ? 'Refreshing…' : 'Refresh'}</span>
     </button>
   );
 }

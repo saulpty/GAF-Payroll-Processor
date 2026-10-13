@@ -1106,6 +1106,19 @@ the page remount and every loader refetches. The three `*AutoSync` components re
 click runs no sync at all — it only reloads saved data. On `/process` the button never remounts
 (an unsaved payroll run lives in page state). Never `window.location.reload()`.
 
+**Phone layout (added 2026-10-13)** — two switches, never mixed up. *Phone-sized screen* (decides
+layout): one media query, `(max-width: 767px), (max-height: 500px) and (pointer: coarse)`, written
+in two places that must stay identical (`tests/mobileShell.test.ts` compares them): the Tailwind
+screen `phone` under `theme.extend.screens` in `tailwind.config.js`, for styling-only differences
+(`phone:hidden`, `phone:h-12`), and `PHONE_QUERY` / `useIsPhone()` in `src/app/lib/useIsPhone.ts`,
+for a different structure, so only one of the two layouts is ever rendered. Never use `sm:` or
+`md:` as the phone switch. Because `phone` is a raw screen, Tailwind switches off its `max-*:` and
+`min-*:` variants for the whole app: never write `max-md:` or `min-[…]:`. *Touch screen* (decides
+touch comfort, at any width): `@media (pointer: coarse)` rules in `src/index.css`. A computer with
+a mouse matches neither and must look exactly as before. The three orange nav counts are loaded
+once, by `useNavBadges()` (`src/app/lib/useNavBadges.ts`), called in `Shell` in `app.tsx` and
+passed to the bars as the `badges` prop: never load them inside a bar.
+
 **Payroll Master `'__all__'` rule**: the period dropdown on `/payroll-master` gets one extra option,
 **All Periods**, which stores the sentinel `'__all__'`. Every other Attendance/Payroll route treats
 `'__all__'` as invalid and collapses it back to `''` (see `FilterBar.tsx:107` and
