@@ -65,12 +65,16 @@ test('T4: a bad or backwards range gives days 0 instead of throwing', () => {
   assert.equal(previousRange('2026-10-12', '2026-10-01').days, 0);
   assert.equal(previousRange('garbage', 'more').days, 0);
   assert.equal(subDays('garbage', 3), 'garbage');
+  // Longer than the 1000-day cap: no comparison, instead of a silently mismatched earlier period.
+  assert.equal(previousRange('2020-01-01', '2026-10-01').days, 0);
+  assert.equal(previousRange('2024-01-06', '2026-10-01').days, 1000);
 });
 
 test('T5: rangeLabel adds years only when the ends differ', () => {
   assert.equal(rangeLabel('2026-09-05', '2026-09-23'), 'Sep 5 – Sep 23');
   assert.equal(rangeLabel('2026-12-22', '2027-01-10'), 'Dec 22, 2026 – Jan 10, 2027');
   assert.equal(rangeLabel('', '2026-09-23'), '');
+  assert.equal(rangeLabel('2026-10-07', '2026-10-07'), 'Oct 7');
 });
 
 test('T6: dayKind sorts a day into worked, low, missed, away or skip', () => {
@@ -173,7 +177,7 @@ test('T19: changeText reads like the mockup', () => {
   assert.equal(changeText('entry', { delta: 14, tone: 'bad' }), '14m later');
   assert.equal(changeText('low', { delta: -5, tone: 'good' }), '5 fewer');
   assert.equal(changeText('missed', { delta: 3, tone: 'bad' }), '3 more');
-  assert.equal(changeText('active', { delta: 12, tone: '' }), 'About the same');
+  assert.equal(changeText('active', { delta: 12, tone: '' }), 'No Change');
   assert.equal(fmtMinutes(120), '2h');
 });
 
@@ -202,5 +206,5 @@ test('T22: nothing elapsed yet, or a bad range, switches the comparison off', ()
 test('T20: Trend sorts Worse first and Not enough data last; every verdict has a label', () => {
   const order = (['improved', 'nodata', 'steady', 'worse', 'mixed'] as const).slice().sort((x, y) => VERDICT_ORDER[x] - VERDICT_ORDER[y]);
   assert.deepEqual(order, ['worse', 'mixed', 'steady', 'improved', 'nodata']);
-  assert.equal(VERDICT_LABEL.nodata, 'Not enough data');
+  assert.equal(VERDICT_LABEL.nodata, 'Not Enough Data');
 });

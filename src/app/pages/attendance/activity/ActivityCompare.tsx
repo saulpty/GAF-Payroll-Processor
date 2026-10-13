@@ -6,7 +6,7 @@ import { TrendPill, toneClass } from './TrendPill';
 type Props = { trend: EmployeeTrend; beforeLabel: string; afterLabel: string };
 
 const TH = 'px-3 py-2 text-right text-[12px] font-semibold text-slate-500 whitespace-nowrap';
-const TD = 'px-3 py-2 text-right text-sm tabular-nums whitespace-nowrap border-t border-slate-100';
+const TD = 'px-3 py-2 text-right text-[13px] tabular-nums whitespace-nowrap border-t border-slate-100';
 
 function Row({ label, before, after, measure, change }: {
   label: string; before: string; after: string; measure: Measure; change: MeasureChange;
@@ -43,7 +43,7 @@ export default function ActivityCompare({ trend, beforeLabel, afterLabel }: Prop
         <tbody>
           <Row label="Avg Active" before={fmtDuration(b.avgActiveMin)} after={fmtDuration(a.avgActiveMin)} measure="active" change={trend.active} />
           <Row label="Avg Entry" before={fmtClock(b.avgEntryMin)} after={fmtClock(a.avgEntryMin)} measure="entry" change={trend.entry} />
-          <Row label="⚠️ Days" before={`${b.lowDays} of ${b.worked}`} after={`${a.lowDays} of ${a.worked}`} measure="low" change={trend.low} />
+          <Row label="Low Activity Days" before={`${b.lowDays} of ${b.worked}`} after={`${a.lowDays} of ${a.worked}`} measure="low" change={trend.low} />
           <Row label="Days Missed" before={`${b.missedDays} of ${b.scheduled}`} after={`${a.missedDays} of ${a.scheduled}`} measure="missed" change={trend.missed} />
         </tbody>
       </table>

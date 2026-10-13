@@ -460,3 +460,29 @@ test('two employees keep their own days and summaries', () => {
   assert.equal(days.length, 10);
   assert.equal(totals.daysWorked, 2);
 });
+
+// ── Start date (2026-10-13): AGENTS.md has always said "not hired yet → no row" ─────────────
+
+test('a scheduled day before the start date with no work gets no row and is never Needs a Look', () => {
+  const { days, byEmployee, totals } = run({ employees: [mkEmp({ start_date: WED })], rows: [mkRow(WED), mkRow(THU)] });
+  assert.deepEqual(days.map((d) => d.date).sort(), [WED, THU, FRI]);
+  assert.equal(totals.needsLook, 0);
+  assert.equal(byEmployee[0]!.scheduledDays, 3);
+  assert.equal(byEmployee[0]!.needsLook, 0);
+});
+
+test('the start date may arrive as a full timestamp, and a missing one changes nothing', () => {
+  const stamped = run({ employees: [mkEmp({ start_date: WED + 'T00:00:00.000Z' })], rows: [mkRow(WED)] });
+  assert.equal(dayOn(stamped.days, MON), undefined);
+  assert.ok(dayOn(stamped.days, WED));
+  for (const start_date of [null, '', undefined]) {
+    const open = run({ employees: [mkEmp({ start_date })], rows: [mkRow(WED)] });
+    assert.equal(dayOn(open.days, MON)?.needsLook, true);
+  }
+});
+
+test('work recorded before the start date still shows (the date in the directory can be late)', () => {
+  const { days } = run({ employees: [mkEmp({ start_date: WED })], rows: [mkRow(MON), mkRow(WED)] });
+  assert.ok(dayOn(days, MON));
+  assert.equal(dayOn(days, TUE), undefined);
+});

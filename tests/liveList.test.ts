@@ -258,9 +258,10 @@ test('LP4: List files use the Warm look and stay under 15 KB', () => {
 
 // 2026-10-12 (Saul): the By Employee column is headed with the warning sign to save width.
 // The top card and the amber box still read "Needs a Look".
-test('LP5: Activity By Employee heads the low-day column "⚠️ Days"; the card still reads "Needs a Look"', () => {
+// 2026-10-13 (Saul): "⚠️ Days" said nothing; the column is "Low Activity Days" with a tooltip.
+test('LP5: Activity By Employee heads the low-day column "Low Activity Days"; the card still reads "Needs a Look"', () => {
   const src = read(`${A}activity/ActivityByEmployee.tsx`);
-  assert.match(src, /\{ key: 'needsLook',\s+label: '(Needs a Look|⚠️ Days)' \}/);
+  assert.match(src, /\{ key: 'needsLook',\s+label: '(⚠️ Days|Low Activity Days)'[^}]*\}/);
   assert.match(read(`${A}activity/AttendanceActivity.tsx`), /label="Needs a Look"/);
 });
 

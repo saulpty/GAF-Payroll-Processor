@@ -56,6 +56,8 @@ function startValues(settings: ActivitySettings, minimums: TrendMinimums): Recor
 function toStored(field: Field, typed: string): number | null {
   const n = parseFloat(typed);
   if (!Number.isFinite(n) || n <= 0) return null;
+  // Minutes and days are stored as typed: 2.5 days must not silently become 3.
+  if (field.unit !== 'hours' && !Number.isInteger(n)) return null;
   const stored = field.unit === 'hours' ? Math.round(n * 60) : Math.round(n);
   return stored > 0 ? stored : null;
 }
@@ -79,7 +81,7 @@ export default function ActivityThresholds({ settings, minimums, onSaved }: Prop
     for (const field of ALL_FIELDS) {
       const stored = toStored(field, values[field.key] ?? '');
       if (stored === null) {
-        setError('All values must be positive numbers.');
+        setError('All values must be positive numbers. Minutes and days must be whole numbers.');
         return;
       }
       toSave.push({ field, stored });
@@ -142,7 +144,7 @@ export default function ActivityThresholds({ settings, minimums, onSaved }: Prop
           </DialogHeader>
 
           <p className="text-xs text-slate-500 mb-4">
-            Applies to everyone. A shorter shift is scaled proportionally.
+            Applies to everyone. The minimum active time is scaled for a shorter shift.
           </p>
 
           <div className="space-y-4">{DAY_FIELDS.map(renderField)}</div>

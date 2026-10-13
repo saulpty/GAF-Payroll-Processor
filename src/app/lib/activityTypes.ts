@@ -20,6 +20,7 @@ export type ActivityDayRow = {
 export type ActivityEmployee = {
   id: number; name: string; role: string; manager: string;
   work_days: string; schedule_start: string; schedule_end: string;
+  start_date?: string | null;   // 'YYYY-MM-DD' or a timestamp; days before it with no work get no row
 };
 
 export type ActivityDay = {

@@ -62,6 +62,9 @@ export default function AttendanceActivity() {
 
   // Lifted expanded employee state (for Needs A Look → expand row)
   const [expandedEmployeeId, setExpandedEmployeeId] = useState<number | null>(null);
+  // Needs a Look starts closed: a chip in the toolbar opens the list under it.
+  const [lookOpen, setLookOpen] = useState(false);
+  const toggleLook = () => setLookOpen(v => !v);
 
   function handlePickEmployee(employeeId: number) {
     setViewMode('byEmployee');
@@ -140,45 +143,41 @@ export default function AttendanceActivity() {
 
         {!loading && !error && (
           <>
-            {/* KPI tiles + Thresholds button */}
-            <div className="flex flex-wrap items-start gap-3 mb-4">
+            {/* One row (Saul, 2026-10-13): KPI tiles on the left; the Needs a Look chip, the view switch
+                and Thresholds on the right. The Needs a Look list opens underneath. */}
+            <div className="flex flex-wrap items-center gap-3 mb-4">
               <SummaryTile label="Avg Active Time"  value={avgActiveLabel}    accent="text-status-green-ink" dot="bg-green-600" note={activeNote.note} noteTone={activeNote.noteTone} />
               <SummaryTile label="Days With Work"   value={totals.daysWorked} note={workedNote} />
               <SummaryTile label="Needs a Look"     value={totals.needsLook}  accent={totals.needsLook > 0 ? 'text-status-yellow-ink' : undefined} dot="bg-yellow-500" note={lookNote.note} noteTone={lookNote.noteTone} />
               <SummaryTile label="Late Arrivals"    value={totals.lateArrivals} accent={totals.lateArrivals > 0 ? 'text-status-red-ink' : undefined} dot="bg-red-600" note={lateNote.note} noteTone={lateNote.noteTone} />
-              {isSuper && (
-                <div className="flex items-center self-center ml-auto">
-                  <ActivityThresholds settings={settings} minimums={minimums} onSaved={reloadConfig} />
+              <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+                <ActivityNeedsLook part="chip" open={lookOpen} onToggle={toggleLook} days={filteredNeedsLook} dateTo={safeTo} settings={settings} onPick={handlePickEmployee} />
+                <div className="flex rounded-md border border-slate-300 overflow-hidden">
+                  <button
+                    onClick={() => setViewMode('byEmployee')}
+                    className={[
+                      'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors',
+                      viewMode === 'byEmployee' ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
+                    ].join(' ')}
+                  >
+                    By Employee
+                  </button>
+                  <button
+                    onClick={() => setViewMode('byDay')}
+                    className={[
+                      'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors border-l',
+                      viewMode === 'byDay' ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
+                    ].join(' ')}
+                  >
+                    By Day
+                  </button>
                 </div>
-              )}
-            </div>
-
-            {/* By Employee / By Day switch */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex rounded-md border border-slate-300 overflow-hidden">
-                <button
-                  onClick={() => setViewMode('byEmployee')}
-                  className={[
-                    'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors',
-                    viewMode === 'byEmployee' ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
-                  ].join(' ')}
-                >
-                  By Employee
-                </button>
-                <button
-                  onClick={() => setViewMode('byDay')}
-                  className={[
-                    'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors border-l',
-                    viewMode === 'byDay' ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:bg-slate-50',
-                  ].join(' ')}
-                >
-                  By Day
-                </button>
+                {isSuper && <ActivityThresholds settings={settings} minimums={minimums} onSaved={reloadConfig} />}
               </div>
             </div>
 
             {/* Needs A Look list */}
-            <ActivityNeedsLook days={filteredNeedsLook} dateTo={safeTo} settings={settings} onPick={handlePickEmployee} />
+            <ActivityNeedsLook part="box" open={lookOpen} onToggle={toggleLook} days={filteredNeedsLook} dateTo={safeTo} settings={settings} onPick={handlePickEmployee} />
 
             {/* Main table */}
             {viewMode === 'byEmployee'
