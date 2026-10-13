@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup: Activity trend (2026-10-12)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  /* Mockup only. Colours and sizes copied from src/index.css and the Activity components. Invented numbers. */
+  :root {
+    --bg: rgb(247 249 252); --navy: rgb(27 58 107); --border: #e2e8f0;
+    --s50:#f8fafc; --s100:#f1f5f9; --s200:#e2e8f0; --s300:#cbd5e1; --s400:#94a3b8; --s500:#64748b; --s600:#475569; --s700:#334155; --s800:#1e293b; --s900:#0f172a;
+    --green-fill:#C6EFCE; --green-ink:#006100; --green-tint:#EDF7EE;
+    --yellow-fill:#FFEB9C; --yellow-ink:#9C6500; --yellow-tint:#FFFBEB;
+    --red-fill:#FFC7CE; --red-ink:#9C0006; --red-tint:#FFF0F0;
+    --card: 0 1px 2px rgb(15 23 42 / .04), 0 1px 3px rgb(15 23 42 / .06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--s900); font-family: Inter, system-ui, sans-serif; font-size: 13px; letter-spacing: -0.015em; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .mock-note { background: #fff7ed; border-bottom: 1px solid #fed7aa; color: #9a3412; font-size: 12px; padding: 6px 16px; }
+
+  .topnav { height: 56px; background: var(--navy); color: #fff; display: flex; align-items: center; padding: 0 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-right: 12px; padding-right: 16px; border-right: 1px solid rgb(255 255 255 / .2); }
+  .brand .logo { width: 28px; height: 28px; border-radius: 6px; background: #fff; color: var(--navy); font-weight: 700; font-size: 11px; display: grid; place-items: center; }
+  .brand b { display: block; font-size: 14px; } .brand small { display: block; font-size: 10px; color: var(--s300); }
+  .sec { height: 56px; padding: 0 12px; display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--s300); border-bottom: 3px solid transparent; white-space: nowrap; }
+  .sec i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .sec.on { background: rgb(255 255 255 / .1); color: #fff; border-bottom-color: #6EE7B7; }
+  .who { margin-left: auto; height: 28px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: rgb(255 255 255 / .1); border: 1px solid rgb(255 255 255 / .2); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .who span { color: var(--s300); }
+
+  .secbar { background: #fff; border-bottom: 1px solid var(--border); padding: 0 20px; min-height: 48px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; }
+  .secname { display: flex; align-items: center; gap: 8px; padding-right: 12px; border-right: 1px solid var(--border); font-weight: 700; color: #047857; }
+  .secname i { width: 8px; height: 8px; border-radius: 2px; background: #059669; }
+  .tab { height: 48px; padding: 0 10px; display: flex; align-items: center; font-weight: 500; color: var(--s500); border-bottom: 2px solid transparent; }
+  .tab.on { font-weight: 600; color: var(--s900); border-bottom-color: #059669; }
+  .filters { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; }
+  .filters label { font-size: 12px; color: var(--s500); }
+  .inp { height: 32px; border: 1px solid var(--s300); border-radius: 8px; padding: 0 10px; background: #fff; display: flex; align-items: center; font-size: 12px; color: var(--s700); white-space: nowrap; }
+  .inp.search { width: 150px; color: var(--s400); }
+
+  main { padding: 16px; }
+  .tiles { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .tile { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; min-width: 150px; box-shadow: var(--card); }
+  .tile .v { font-size: 22px; line-height: 28px; font-weight: 700; }
+  .tile .l { font-size: 12px; color: var(--s600); font-weight: 500; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .tile .l i { width: 8px; height: 8px; border-radius: 50%; }
+  .tile .d { font-size: 12px; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--s100); white-space: nowrap; }
+  .good { color: var(--green-ink); } .bad { color: var(--red-ink); } .flat { color: var(--s500); }
+
+  .switch { display: inline-flex; border: 1px solid var(--s300); border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
+  .switch span { padding: 6px 12px; font-size: 12px; font-weight: 600; background: #fff; color: var(--s600); }
+  .switch span.on { background: var(--navy); color: #fff; }
+
+  .look { background: var(--yellow-tint); border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .look b { font-size: 14px; font-weight: 600; color: #92400e; } .look span { font-size: 12px; color: #d97706; }
+
+  .tablewrap { overflow: auto; border: 1px solid var(--border); border-radius: 12px; background: #fff; box-shadow: var(--card); }
+  table { width: 100%; border-collapse: collapse; }
+  thead.main th { background: #fff; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--s600); text-align: left; padding: 8px 12px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  thead.main th .sort { opacity: .4; font-size: 10px; margin-left: 4px; }
+  thead.main th.sorted { color: var(--s900); } thead.main th.sorted .sort { opacity: 1; }
+  td.c { padding: 8px 12px; font-size: 14px; color: var(--s700); vertical-align: top; white-space: nowrap; border-top: 1px solid var(--s100); }
+  tr.emp:hover td { background: var(--s50); }
+  .name { display: flex; align-items: flex-start; gap: 8px; }
+  .chev { color: var(--s400); width: 16px; display: inline-block; text-align: center; font-size: 11px; line-height: 20px; }
+  .name b { font-weight: 500; color: var(--s800); } .name small { display: block; font-size: 12px; color: var(--s400); }
+  .of { color: var(--s400); }
+  .bar { display: inline-block; width: 64px; height: 6px; background: var(--s100); border-radius: 999px; overflow: hidden; vertical-align: middle; margin-left: 8px; }
+  .bar i { display: block; height: 100%; background: var(--navy); border-radius: 999px; }
+  .arrow { font-size: 12px; font-weight: 700; margin-left: 4px; }
+  .pill { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid transparent; }
+  .t-improved { background: var(--green-tint); color: var(--green-ink); border-color: var(--green-fill); }
+  .t-worse    { background: var(--red-tint); color: var(--red-ink); border-color: var(--red-fill); }
+  .t-mixed    { background: var(--yellow-tint); color: var(--yellow-ink); border-color: var(--yellow-fill); }
+  .t-steady   { background: var(--s100); color: var(--s600); border-color: var(--s200); }
+  .t-nodata   { background: #fff; color: var(--s400); border-color: var(--s200); }
+  .amber { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+
+  .tip { position: relative; display: inline-block; margin-left: 4px; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--s400); color: var(--s500); font-size: 10px; line-height: 12px; text-align: center; font-weight: 600; cursor: help; }
+  .tip .box { display: none; position: absolute; top: 20px; left: -8px; z-index: 5; width: 290px; padding: 10px 12px; border-radius: 8px; background: var(--s900); color: #fff; font-size: 12px; line-height: 1.45; font-weight: 400; letter-spacing: 0; text-align: left; white-space: normal; }
+  .tip:hover .box, .tip.show .box { display: block; }
+
+  td.exp { padding: 0; }
+  table.days th { background: var(--s50); font-size: 12px; font-weight: 600; color: var(--s500); text-align: left; padding: 6px 12px; white-space: nowrap; }
+  table.days td { padding: 6px 12px; font-size: 12px; color: var(--s600); background: var(--s50); border-top: 1px solid var(--s100); white-space: nowrap; }
+  table.days tr.flag td { background: #fffbeb; }
+  table.days tr.old td { color: var(--s500); }
+  table.days tr.old.flag td { background: #fffdf3; }
+  tr.divider td { background: #fff; border-top: 2px solid var(--s300); border-bottom: 1px solid var(--s200); padding: 8px 12px; color: var(--s600); }
+  .divider .lbl { font-weight: 600; color: var(--s700); margin-right: 10px; }
+  .divider .fig { margin-right: 14px; } .divider .fig b { font-weight: 600; color: var(--s800); }
+  .divider button { float: right; color: #C2410C; font-weight: 600; }
+  .divider button:hover { text-decoration: underline; }
+  .foot { font-size: 12px; color: var(--s400); text-align: center; margin: 24px 0 8px; }
+</style>
+</head>
+<body>
+
+<div class="mock-note">Mockup with invented numbers. Click the arrow beside a name to open a row, "Show earlier days" inside it, and hover the ⓘ beside Trend.</div>
+
+<header class="topnav">
+  <div class="brand"><div class="logo">GAF</div><div><b>GAF Panama</b><small>HR Hub</small></div></div>
+  <div class="sec"><i style="background:#7DD3FC"></i>Payroll</div>
+  <div class="sec on"><i style="background:#6EE7B7"></i>Attendance</div>
+  <div class="sec"><i style="background:#FDA4AF"></i>Disciplinary</div>
+  <div class="sec"><i style="background:#FCD34D"></i>Contracts</div>
+  <div class="sec"><i style="background:#C4B5FD"></i>PTO Tracker</div>
+  <div class="sec"><i style="background:#CBD5E1"></i>Admin</div>
+  <div class="who">Saul <span>· Super User</span></div>
+</header>
+
+<div class="secbar">
+  <div class="secname"><i></i>Attendance</div>
+  <div class="tab">Today</div><div class="tab on">Activity</div><div class="tab">List</div><div class="tab">Reports</div>
+  <div class="filters">
+    <label>From</label><div class="inp num">09/24/2026</div>
+    <label>To</label><div class="inp num">10/12/2026</div>
+    <div class="inp search">Search employee</div>
+    <div class="inp">Manager: All</div>
+    <div class="inp">Title: All</div>
+  </div>
+</div>
+
+<main>
+  <div class="tiles">
+    <div class="tile"><div class="v num" style="color:var(--green-ink)">6h 54m</div><div class="l"><i style="background:#16a34a"></i>Avg Active Time</div><div class="d good">↑ 14m vs Sep 5 – Sep 23</div></div>
+    <div class="tile"><div class="v num">512</div><div class="l"><i style="background:var(--s300)"></i>Days With Work</div><div class="d flat">498 in Sep 5 – Sep 23</div></div>
+    <div class="tile"><div class="v num" style="color:var(--yellow-ink)">41</div><div class="l"><i style="background:#eab308"></i>Needs a Look</div><div class="d good">↓ 9 vs Sep 5 – Sep 23</div></div>
+    <div class="tile"><div class="v num" style="color:var(--red-ink)">63</div><div class="l"><i style="background:#dc2626"></i>Late Arrivals</div><div class="d bad">↑ 7 vs Sep 5 – Sep 23</div></div>
+  </div>
+
+  <div class="switch"><span class="on">By Employee</span><span>By Day</span></div>
+
+  <div class="look"><b>⚠ Needs a Look — Worst 10, Oct 6 – Oct 12</b><span>41 flagged days in the whole range</span></div>
+
+  <div class="tablewrap">
+    <table>
+      <thead class="main"><tr>
+        <th>Employee<span class="sort">⇅</span></th>
+        <th class="sorted">Trend<span class="tip" id="tip">i<span class="box">Compares <b>Sep 24 – Oct 12</b> with the 19 days right before it, <b>Sep 5 – Sep 23</b>. Days off, PTO, sick days and holidays are left out of both. Change the dates above to compare a different period.</span></span><span class="sort">↑</span></th>
+        <th>Days With Work<span class="sort">⇅</span></th>
+        <th>Avg Active<span class="sort">⇅</span></th>
+        <th>Avg Entry<span class="sort">⇅</span></th>
+        <th>Avg Exit<span class="sort">⇅</span></th>
+        <th>Needs a Look<span class="sort">⇅</span></th>
+        <th>Days Missed<span class="sort">⇅</span></th>
+        <th>Away Days<span class="sort">⇅</span></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <p class="foot">Data Updates Every 5 Minutes · Times In US Eastern</p>
+</main>
+
+<script>
+  var UP = '<span class="arrow %c">↑</span>', DOWN = '<span class="arrow %c">↓</span>';
+  function arrow(dir, tone) { return dir ? (dir === 'up' ? UP : DOWN).replace('%c', tone) : ''; }
+  var TREND = { improved: 'Improved', worse: 'Worse', mixed: 'Mixed', steady: 'Steady', nodata: 'Not enough data' };
+
+  // tone: good | bad. dir: up | down | '' (no change past the minimum)
+  var EMPS = [
+    { n: 'Employee B', r: 'Closer', t: 'worse', dw: '12', sd: 13, act: '5h 30m', pct: 69, a: ['down','bad'], ent: '9:21 AM', e: ['up','bad'], ex: '5:12 PM', nl: '6 of 12', l: ['up','bad'], dm: '1 of 13', m: ['', ''], away: '—',
+      prev: { days: 13, act: '6h 20m', ent: '9:07 AM', nl: '2 of 13', dm: '0 of 13' } },
+    { n: 'Employee F', r: 'Processor', t: 'worse', dw: '10', sd: 13, act: '6h 02m', pct: 75, a: ['', ''], ent: '9:02 AM', e: ['', ''], ex: '5:30 PM', nl: '3 of 10', l: ['', ''], dm: '3 of 13', m: ['up','bad'], away: '—',
+      prev: { days: 13, act: '6h 15m', ent: '9:00 AM', nl: '2 of 13', dm: '0 of 13' } },
+    { n: 'Employee C', r: 'Processor', t: 'mixed', dw: '11', sd: 11, act: '7h 10m', pct: 90, a: ['up','good'], ent: '9:18 AM', e: ['up','bad'], ex: '6:02 PM', nl: '1 of 11', l: ['', ''], dm: '0 of 11', m: ['', ''], away: '2 · PTO',
+      prev: { days: 13, act: '6h 35m', ent: '9:06 AM', nl: '2 of 13', dm: '0 of 13' } },
+    { n: 'Luis Abad', r: 'Processor', t: 'improved', open: true, dw: '13', sd: 13, act: '6h 48m', pct: 85, a: ['up','good'], ent: '9:04 AM', e: ['down','good'], ex: '5:31 PM', nl: '2 of 13', l: ['down','good'], dm: '0 of 13', m: ['', ''], away: '—',
+      prev: { days: 12, act: '5h 36m', ent: '9:13 AM', nl: '7 of 12', dm: '1 of 13' } },
+    { n: 'Employee G', r: 'Assistant', t: 'improved', dw: '13', sd: 13, act: '7h 31m', pct: 94, a: ['up','good'], ent: '8:55 AM', e: ['', ''], ex: '5:44 PM', nl: '0 of 13', l: ['down','good'], dm: '0 of 13', m: ['', ''], away: '—',
+      prev: { days: 13, act: '6h 50m', ent: '8:58 AM', nl: '3 of 13', dm: '0 of 13' } },
+    { n: 'Employee D', r: 'Assistant', t: 'steady', dw: '13', sd: 13, act: '7h 22m', pct: 92, a: ['', ''], ent: '8:57 AM', e: ['', ''], ex: '5:40 PM', nl: '0 of 13', l: ['', ''], dm: '0 of 13', m: ['', ''], away: '—',
+      prev: { days: 13, act: '7h 18m', ent: '8:59 AM', nl: '0 of 13', dm: '0 of 13' } },
+    { n: 'Employee H', r: 'Closer', t: 'steady', dw: '9', sd: 9, act: '6h 58m', pct: 87, a: ['', ''], ent: '9:01 AM', e: ['', ''], ex: '5:36 PM', nl: '1 of 9', l: ['', ''], dm: '0 of 9', m: ['', ''], away: '4 · PTO, Sick',
+      prev: { days: 13, act: '7h 04m', ent: '8:59 AM', nl: '1 of 13', dm: '0 of 13' } },
+    { n: 'Employee E', r: 'Processor · started Oct 7', t: 'nodata', dw: '4', sd: 4, act: '7h 02m', pct: 88, a: ['', ''], ent: '8:58 AM', e: ['', ''], ex: '5:35 PM', nl: '0 of 4', l: ['', ''], dm: '0 of 4', m: ['', ''], away: '—', prev: null }
+  ];
+
+  var NOW = [['Mon, Oct 12','9:01 AM','5:34 PM','7h 05m','48m',0],['Fri, Oct 9','9:06 AM','5:30 PM','6h 52m','55m',0],['Thu, Oct 8','9:10 AM','5:28 PM','5h 58m','1h 40m',1],['Wed, Oct 7','8:59 AM','5:33 PM','7h 12m','44m',0],['Tue, Oct 6','9:03 AM','5:31 PM','7h 01m','50m',0],['Mon, Oct 5','9:02 AM','5:35 PM','6h 55m','58m',0],['Fri, Oct 2','9:05 AM','5:29 PM','6h 47m','1h 01m',0],['Thu, Oct 1','9:00 AM','5:32 PM','7h 08m','46m',0],['Wed, Sep 30','9:07 AM','5:30 PM','6h 50m','57m',0],['Tue, Sep 29','9:04 AM','5:31 PM','6h 58m','52m',0],['Mon, Sep 28','9:09 AM','5:27 PM','6h 05m','1h 32m',1],['Fri, Sep 25','9:02 AM','5:33 PM','7h 00m','51m',0],['Thu, Sep 24','9:01 AM','5:30 PM','6h 53m','56m',0]];
+  var OLD = [['Wed, Sep 23','9:15 AM','5:20 PM','5h 10m','2h 05m',1],['Tue, Sep 22','9:20 AM','5:15 PM','4h 55m','2h 10m',1],['Mon, Sep 21','9:08 AM','5:31 PM','6h 40m','1h 02m',0],['Fri, Sep 18','9:17 AM','5:18 PM','5h 02m','2h 01m',1],['Thu, Sep 17','9:11 AM','5:25 PM','5h 44m','1h 39m',1],['Wed, Sep 16','9:06 AM','5:30 PM','6h 38m','1h 04m',0],['Tue, Sep 15','9:19 AM','5:14 PM','4h 48m','2h 14m',1],['Mon, Sep 14','9:12 AM','5:26 PM','6h 31m','1h 08m',0],['Thu, Sep 10','9:16 AM','5:19 PM','5h 15m','1h 58m',1],['Wed, Sep 9','9:10 AM','5:28 PM','6h 36m','1h 05m',0],['Tue, Sep 8','9:14 AM','5:21 PM','5h 21m','1h 52m',1],['Mon, Sep 7','9:09 AM','5:29 PM','6h 34m','1h 06m',0]];
+
+  function dayRow(d, cls) {
+    var flag = d[5] ? '<span class="pill amber">Needs A Look</span>' : '';
+    return '<tr class="' + cls + (d[5] ? ' flag' : '') + '"><td>' + d[0] + '</td><td class="num">' + d[1] + '</td><td class="num">' + d[2] + '</td><td class="num">' + d[3] + '</td><td class="num">' + d[4] + '</td><td>' + flag + '</td><td>Teramind</td></tr>';
+  }
+
+  function expanded(emp, i) {
+    var h = '<tr class="x" id="x' + i + '"' + (emp.open ? '' : ' hidden') + '><td class="exp" colspan="9"><table class="days"><thead><tr><th>Date</th><th>Entry</th><th>Exit</th><th>Active</th><th>Breaks</th><th>Why</th><th>Source</th></tr></thead><tbody>';
+    h += NOW.slice(0, Number(emp.dw)).map(function (d) { return dayRow(d, ''); }).join('');
+    if (emp.prev) {
+      var p = emp.prev;
+      h += '<tr class="divider"><td colspan="7"><span class="lbl">Earlier period · Sep 5 – Sep 23</span>'
+        + '<span class="fig">Avg active <b class="num">' + p.act + '</b></span><span class="fig">Avg entry <b class="num">' + p.ent + '</b></span>'
+        + '<span class="fig">Needs a look <b class="num">' + p.nl + '</b></span><span class="fig">Days missed <b class="num">' + p.dm + '</b></span>'
+        + '<button type="button" data-old="' + i + '">Show ' + p.days + ' earlier days</button></td></tr>';
+      h += OLD.slice(0, p.days).map(function (d) { return dayRow(d, 'old o' + i + '" hidden data-x="'); }).join('');
+    } else {
+      h += '<tr class="divider"><td colspan="7"><span class="lbl">Earlier period · Sep 5 – Sep 23</span>No days with work in the earlier period, so there is nothing to compare.</td></tr>';
+    }
+    return h + '</tbody></table></td></tr>';
+  }
+
+  document.getElementById('rows').innerHTML = EMPS.map(function (e, i) {
+    return '<tr class="emp"><td class="c"><div class="name"><button type="button" class="chev" data-row="' + i + '" aria-label="Expand">' + (e.open ? '▼' : '▶') + '</button><div><b>' + e.n + '</b><small>' + e.r + '</small></div></div></td>'
+      + '<td class="c"><span class="pill t-' + e.t + '">' + TREND[e.t] + '</span></td>'
+      + '<td class="c num"><b style="font-weight:500">' + e.dw + '</b><span class="of"> / ' + e.sd + '</span></td>'
+      + '<td class="c num"><b style="font-weight:500">' + e.act + '</b><span class="bar"><i style="width:' + e.pct + '%"></i></span>' + arrow(e.a[0], e.a[1]) + '</td>'
+      + '<td class="c num">' + e.ent + arrow(e.e[0], e.e[1]) + '</td>'
+      + '<td class="c num">' + e.ex + '</td>'
+      + '<td class="c num">' + (e.nl.charAt(0) === '0' ? '<span class="of">' + e.nl + '</span>' : '<span class="pill amber">' + e.nl + '</span>') + arrow(e.l[0], e.l[1]) + '</td>'
+      + '<td class="c num">' + (e.dm.charAt(0) === '0' ? '<span class="of">' + e.dm + '</span>' : e.dm) + arrow(e.m[0], e.m[1]) + '</td>'
+      + '<td class="c">' + (e.away === '—' ? '<span class="of">—</span>' : e.away) + '</td></tr>' + expanded(e, i);
+  }).join('');
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (t.dataset.row !== undefined) {
+      var x = document.getElementById('x' + t.dataset.row);
+      x.hidden = !x.hidden; t.textContent = x.hidden ? '▶' : '▼';
+    } else if (t.dataset.old !== undefined) {
+      var rows = document.querySelectorAll('.o' + t.dataset.old), hide = !rows[0].hidden;
+      rows.forEach(function (r) { r.hidden = hide; });
+      t.textContent = (hide ? 'Show ' : 'Hide ') + rows.length + ' earlier days';
+    } else if (t.id === 'tip') { t.classList.toggle('show'); }
+  });
+</script>
+</body>
+</html>

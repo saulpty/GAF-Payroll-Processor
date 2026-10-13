@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup: Activity trend, 3 layouts (2026-10-12)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  /* Mockup only. Colours and sizes copied from src/index.css and the Activity components. Invented numbers. */
+  :root {
+    --bg: rgb(247 249 252); --navy: rgb(27 58 107); --border: #e2e8f0;
+    --s50:#f8fafc; --s100:#f1f5f9; --s200:#e2e8f0; --s300:#cbd5e1; --s400:#94a3b8; --s500:#64748b; --s600:#475569; --s700:#334155; --s800:#1e293b; --s900:#0f172a;
+    --green-fill:#C6EFCE; --green-ink:#006100; --green-tint:#EDF7EE;
+    --yellow-fill:#FFEB9C; --yellow-ink:#9C6500; --yellow-tint:#FFFBEB;
+    --red-fill:#FFC7CE; --red-ink:#9C0006; --red-tint:#FFF0F0;
+    --card: 0 1px 2px rgb(15 23 42 / .04), 0 1px 3px rgb(15 23 42 / .06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--s900); font-family: Inter, system-ui, sans-serif; font-size: 13px; letter-spacing: -0.015em; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .pick { position: sticky; top: 0; z-index: 20; background: #fff7ed; border-bottom: 1px solid #fed7aa; color: #9a3412; font-size: 13px; padding: 8px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pick button { padding: 6px 12px; border-radius: 6px; border: 1px solid #fdba74; background: #fff; font-weight: 600; color: #9a3412; }
+  .pick button.on { background: #C2410C; border-color: #C2410C; color: #fff; }
+  .pick small { font-size: 12px; }
+
+  .topnav { height: 56px; background: var(--navy); color: #fff; display: flex; align-items: center; padding: 0 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-right: 12px; padding-right: 16px; border-right: 1px solid rgb(255 255 255 / .2); }
+  .brand .logo { width: 28px; height: 28px; border-radius: 6px; background: #fff; color: var(--navy); font-weight: 700; font-size: 11px; display: grid; place-items: center; }
+  .brand b { display: block; font-size: 14px; } .brand small { display: block; font-size: 10px; color: var(--s300); }
+  .sec { height: 56px; padding: 0 12px; display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--s300); border-bottom: 3px solid transparent; white-space: nowrap; }
+  .sec i { width: 8px; height: 8px; border-radius: 50%; }
+  .sec.on { background: rgb(255 255 255 / .1); color: #fff; border-bottom-color: #6EE7B7; }
+  .who { margin-left: auto; height: 28px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: rgb(255 255 255 / .1); border: 1px solid rgb(255 255 255 / .2); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .who span { color: var(--s300); }
+  .secbar { background: #fff; border-bottom: 1px solid var(--border); padding: 0 20px; min-height: 48px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; }
+  .secname { display: flex; align-items: center; gap: 8px; padding-right: 12px; border-right: 1px solid var(--border); font-weight: 700; color: #047857; }
+  .secname i { width: 8px; height: 8px; border-radius: 2px; background: #059669; }
+  .tab { height: 48px; padding: 0 10px; display: flex; align-items: center; font-weight: 500; color: var(--s500); border-bottom: 2px solid transparent; }
+  .tab.on { font-weight: 600; color: var(--s900); border-bottom-color: #059669; }
+  .filters { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; }
+  .filters label { font-size: 12px; color: var(--s500); }
+  .inp { height: 32px; border: 1px solid var(--s300); border-radius: 8px; padding: 0 10px; background: #fff; display: flex; align-items: center; font-size: 12px; color: var(--s700); white-space: nowrap; }
+
+  main { padding: 16px; }
+  .tiles { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .tile { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; min-width: 150px; box-shadow: var(--card); }
+  .tile .v { font-size: 22px; line-height: 28px; font-weight: 700; }
+  .tile .l { font-size: 12px; color: var(--s600); font-weight: 500; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .tile .l i { width: 8px; height: 8px; border-radius: 50%; }
+  .tile .d { font-size: 12px; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--s100); white-space: nowrap; }
+  .good { color: var(--green-ink); } .bad { color: var(--red-ink); } .flat { color: var(--s500); }
+
+  .tablewrap { overflow: auto; border: 1px solid var(--border); border-radius: 8px; background: #fff; box-shadow: var(--card); }
+  table { width: 100%; border-collapse: collapse; }
+  thead.main th { background: #fff; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--s600); text-align: left; padding: 8px 12px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  td.c { padding: 8px 12px; font-size: 14px; color: var(--s700); vertical-align: top; white-space: nowrap; border-top: 1px solid var(--s100); }
+  tr.emp:hover td { background: var(--s50); }
+  .name { display: flex; align-items: flex-start; gap: 8px; }
+  .chev { color: var(--s400); width: 16px; text-align: center; font-size: 11px; line-height: 20px; }
+  .name b { font-weight: 500; color: var(--s800); } .name small { display: block; font-size: 12px; color: var(--s400); }
+  .of { color: var(--s400); }
+  .bar { display: inline-block; width: 64px; height: 6px; background: var(--s100); border-radius: 999px; overflow: hidden; vertical-align: middle; margin-left: 8px; }
+  .bar i { display: block; height: 100%; background: var(--navy); border-radius: 999px; }
+  .arrow { font-size: 12px; font-weight: 700; margin-left: 4px; }
+  .pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; }
+  .t-improved { background: var(--green-tint); color: var(--green-ink); border-color: var(--green-fill); }
+  .t-worse    { background: var(--red-tint); color: var(--red-ink); border-color: var(--red-fill); }
+  .t-mixed    { background: var(--yellow-tint); color: var(--yellow-ink); border-color: var(--yellow-fill); }
+  .t-steady   { background: var(--s100); color: var(--s600); border-color: var(--s200); }
+  .t-nodata   { background: #fff; color: var(--s500); border-color: var(--s200); }
+
+  /* ── expanded area, shared ── */
+  td.exp { padding: 16px; background: var(--s50); border-top: 1px solid var(--s200); border-bottom: 2px solid var(--s300); }
+  .panel { background: #fff; border: 1px solid var(--s200); border-radius: 8px; box-shadow: var(--card); overflow: hidden; }
+  .phead { padding: 10px 14px; border-bottom: 1px solid var(--s200); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .phead b { font-size: 13px; font-weight: 700; color: var(--s800); } .phead span { font-size: 12px; color: var(--s500); }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+  .tag.b { background: var(--s100); color: var(--s600); } .tag.a { background: var(--navy); color: #fff; }
+  table.d th { font-size: 12px; font-weight: 600; color: var(--s500); text-align: left; padding: 6px 14px; white-space: nowrap; background: #fff; }
+  table.d th:not(:first-child), table.d td.num { text-align: right; }
+  table.d td { padding: 6px 12px; font-size: 13px; color: var(--s700); border-top: 1px solid var(--s100); white-space: nowrap; }
+  table.d tr.flag td { background: var(--yellow-tint); }
+  table.d tr.miss td { background: var(--red-tint); color: var(--red-ink); }
+  .link { color: #C2410C; font-weight: 600; font-size: 13px; } .link:hover { text-decoration: underline; }
+  .none { padding: 14px; color: var(--s500); }
+
+  /* layout 1 */
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .figs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--s200); }
+  .figs div { padding: 10px 14px; border-right: 1px solid var(--s100); } .figs div:last-child { border-right: 0; }
+  .figs small { display: block; font-size: 12px; color: var(--s500); } .figs b { font-size: 16px; font-weight: 600; color: var(--s900); }
+  .figs em { display: block; font-style: normal; font-size: 12px; font-weight: 600; min-height: 17px; }
+
+  /* layout 2 */
+  .sum { display: grid; grid-template-columns: 430px minmax(0, 1fr); gap: 16px; align-items: stretch; }
+  table.cmp th { white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--s500); text-align: right; padding: 8px 14px; }
+  table.cmp th:first-child, table.cmp td:first-child { text-align: left; color: var(--s600); }
+  table.cmp td { padding: 9px 14px; font-size: 14px; text-align: right; border-top: 1px solid var(--s100); white-space: nowrap; }
+  table.cmp td.now { font-weight: 600; color: var(--s900); } table.cmp td.chg { font-weight: 600; font-size: 13px; }
+  .chart { padding: 12px 14px 12px; }
+  .chart .how { font-size: 13px; color: var(--s600); margin: 0 0 12px; }
+  .groups { display: flex; gap: 22px; margin-left: 46px; }
+  .grp { min-width: 0; }
+  .ghead { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 6px 10px; border-radius: 6px 6px 0 0; background: var(--s100); font-size: 12px; color: var(--s600); }
+  .ghead b { font-size: 13px; color: var(--s800); } .ghead strong { margin-left: auto; font-size: 14px; font-weight: 700; color: var(--s900); white-space: nowrap; }
+  .grp.aft .ghead { background: rgb(27 58 107 / .08); }
+  .plot { position: relative; height: 160px; display: flex; align-items: flex-end; gap: 4px; padding: 0 6px; border-bottom: 1px solid var(--s400); border-left: 1px solid var(--s200); border-right: 1px solid var(--s200); }
+  .plot .grid { position: absolute; left: 0; right: 0; border-top: 1px solid var(--s100); }
+  .plot .ylab { position: absolute; left: -46px; width: 40px; text-align: right; font-size: 11px; color: var(--s500); transform: translateY(50%); }
+  .plot .ylab.min { color: #b45309; font-weight: 600; }
+  .plot .col { position: relative; flex: 1; height: 100%; display: flex; align-items: flex-end; }
+  .plot .col i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: var(--navy); }
+  .plot .col.flag i { background: var(--yellow-fill); box-shadow: inset 0 0 0 1px var(--yellow-ink); }
+  .plot .col.miss { background: var(--red-tint); align-items: center; justify-content: center; color: var(--red-ink); font-weight: 700; font-size: 14px; border-radius: 3px 3px 0 0; }
+  .plot .thr { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--yellow-ink); z-index: 2; }
+  .plot .avg { position: absolute; left: 0; right: 0; border-top: 2px solid var(--s900); z-index: 3; }
+  .plot .avg span { position: absolute; right: 4px; bottom: 3px; font-size: 11px; font-weight: 700; color: var(--s900); background: rgb(255 255 255 / .92); padding: 0 5px; border-radius: 3px; white-space: nowrap; }
+  .axis { display: flex; gap: 4px; padding: 4px 6px 0; }
+  .axis span { flex: 1; min-width: 0; text-align: center; font-size: 11px; line-height: 1.25; color: var(--s500); }
+  .axis span b { display: block; font-weight: 600; color: var(--s700); }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--s600); margin: 12px 0 0 46px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .legend u { display: inline-block; width: 18px; margin-right: 5px; vertical-align: 3px; text-decoration: none; }
+  .more { margin-top: 12px; }
+  .morebtn { width: 100%; height: 36px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; background: #fff; border: 1px solid var(--s300); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--s800); }
+  .morebtn:hover { background: var(--s50); border-color: var(--s400); }
+  .morebtn span { color: var(--s500); font-weight: 500; }
+
+  /* layout 3 */
+  table.w th { font-size: 12px; font-weight: 600; color: var(--s500); text-align: left; padding: 8px 14px; white-space: nowrap; }
+  table.w td { padding: 8px 14px; font-size: 13px; color: var(--s700); border-top: 1px solid var(--s100); white-space: nowrap; }
+  table.w tr.per td { background: var(--s100); font-size: 14px; font-weight: 600; color: var(--s900); border-top: 2px solid var(--s300); }
+  table.w tr.wk { cursor: pointer; } table.w tr.wk:hover td { background: var(--s50); }
+  table.w tr.wk td:first-child { padding-left: 30px; }
+  table.w tr.day td { background: var(--s50); font-size: 12px; color: var(--s600); padding-top: 5px; padding-bottom: 5px; } table.w tr.day td:first-child { padding-left: 52px; }
+  table.w tr.day.flag td { background: var(--yellow-tint); } table.w tr.day.miss td { background: var(--red-tint); color: var(--red-ink); }
+  .foot { font-size: 12px; color: var(--s400); text-align: center; margin: 24px 0 8px; }
+</style>
+</head>
+<body>
+
+<div class="pick">
+  <b>Mockup. Pick a layout for the opened row:</b>
+  <button type="button" data-layout="1">1 · Side by Side</button>
+  <button type="button" data-layout="2" class="on">2 · Summary and Chart</button>
+  <button type="button" data-layout="3">3 · Week by Week</button>
+  <small>Invented numbers. Click the arrow beside any name to open or close it.</small>
+</div>
+
+<header class="topnav">
+  <div class="brand"><div class="logo">GAF</div><div><b>GAF Panama</b><small>HR Hub</small></div></div>
+  <div class="sec"><i style="background:#7DD3FC"></i>Payroll</div>
+  <div class="sec on"><i style="background:#6EE7B7"></i>Attendance</div>
+  <div class="sec"><i style="background:#FDA4AF"></i>Disciplinary</div>
+  <div class="sec"><i style="background:#FCD34D"></i>Contracts</div>
+  <div class="sec"><i style="background:#C4B5FD"></i>PTO Tracker</div>
+  <div class="sec"><i style="background:#CBD5E1"></i>Admin</div>
+  <div class="who">Saul <span>· Super User</span></div>
+</header>
+<div class="secbar">
+  <div class="secname"><i></i>Attendance</div>
+  <div class="tab">Today</div><div class="tab on">Activity</div><div class="tab">List</div><div class="tab">Reports</div>
+  <div class="filters">
+    <label>From</label><div class="inp num">09/24/2026</div>
+    <label>To</label><div class="inp num">10/12/2026</div>
+    <div class="inp" style="width:150px;color:var(--s400)">Search employee</div>
+    <div class="inp">Manager: All</div><div class="inp">Title: All</div>
+  </div>
+</div>
+
+<main>
+  <div class="tiles">
+    <div class="tile"><div class="v num" style="color:var(--green-ink)">6h 54m</div><div class="l"><i style="background:#16a34a"></i>Avg Active Time</div><div class="d good">↑ 14m vs Sep 5 – Sep 23</div></div>
+    <div class="tile"><div class="v num">512</div><div class="l"><i style="background:var(--s300)"></i>Days With Work</div><div class="d flat">498 in Sep 5 – Sep 23</div></div>
+    <div class="tile"><div class="v num" style="color:var(--yellow-ink)">41</div><div class="l"><i style="background:#eab308"></i>Needs a Look</div><div class="d good">↓ 9 vs Sep 5 – Sep 23</div></div>
+    <div class="tile"><div class="v num" style="color:var(--red-ink)">63</div><div class="l"><i style="background:#dc2626"></i>Late Arrivals</div><div class="d bad">↑ 7 vs Sep 5 – Sep 23</div></div>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead class="main"><tr>
+        <th>Employee</th><th>Trend ⓘ</th><th>Days With Work</th><th>Avg Active</th><th>Avg Entry</th><th>Avg Exit</th>
+        <th title="Days under the low-activity threshold">⚠️ Days</th><th>Days Missed</th><th>Away Days</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p class="foot">Data Updates Every 5 Minutes · Times In US Eastern</p>
+</main>
+
+<script>
+  var THR = 390, DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  function span(mon, start, count, dow, wk) {
+    var out = [];
+    for (var i = 0; i < count; i++) out.push({ label: DOW[dow + i] + ' ' + mon + ' ' + (start + i), short: mon + ' ' + (start + i), d: start + i, wk: wk });
+    return out;
+  }
+  var BEFORE = span('Sep', 7, 5, 0, 'a').concat(span('Sep', 14, 5, 0, 'b'), span('Sep', 21, 3, 0, 'c'));
+  var AFTER  = span('Sep', 24, 2, 3, 'd').concat(span('Sep', 28, 3, 0, 'e'), span('Oct', 1, 2, 3, 'e'), span('Oct', 5, 5, 0, 'f'), span('Oct', 12, 1, 0, 'g'));
+
+  function dur(m) { m = Math.round(m); var h = Math.floor(m / 60), r = m % 60; return h === 0 ? r + 'm' : r === 0 ? h + 'h' : h + 'h ' + r + 'm'; }
+  function clock(m) { m = Math.round(m); var h = Math.floor(m / 60), p = h >= 12 ? 'PM' : 'AM'; return ((h + 11) % 12 + 1) + ':' + ('0' + (m % 60)).slice(-2) + ' ' + p; }
+
+  // Build one period's days from a short spec, so every number on the page comes from the same rows.
+  function gen(dates, s) {
+    var worked = dates.filter(function (_, i) { return s.miss.indexOf(i) < 0; }), n = worked.length, k = s.flags;
+    var isFlag = worked.map(function (_, i) { return k > 0 && (i * k) % n < k; });
+    var lows = worked.map(function (_, i) { return THR - 80 - (i * 37) % 60; });
+    var lowSum = lows.reduce(function (t, v, i) { return t + (isFlag[i] ? v : 0); }, 0);
+    var rest = Math.max(THR + 8, (s.avg * n - lowSum) / Math.max(1, n - k)), wi = 0;
+    return dates.map(function (dt, i) {
+      if (s.miss.indexOf(i) >= 0) return { dt: dt, miss: true };
+      var j = wi++, act = isFlag[j] ? lows[j] : rest + ((j % 3) - 1) * 9;
+      var ent = s.entry + ((j * 7) % 9) - 4, ext = 17 * 60 + 30 + ((j * 5) % 11) - 5;
+      return { dt: dt, act: act, ent: ent, ext: ext, brk: ext - ent - act, flag: act < THR };
+    });
+  }
+  function sum(days) {
+    var w = days.filter(function (d) { return !d.miss; }), n = w.length;
+    function avg(key) { return n ? w.reduce(function (t, d) { return t + d[key]; }, 0) / n : null; }
+    return { n: n, sd: days.length, avg: avg('act'), entry: avg('ent'), exit: avg('ext'), flags: w.filter(function (d) { return d.flag; }).length, missed: days.length - n };
+  }
+  // Minimums: 30 min active, 10 min entry, 2 days for flagged and missed.
+  function compare(b, a) {
+    if (!b || b.n < 5 || a.n < 5) return null;
+    function tone(delta, min, lowerIsBetter) { if (Math.abs(delta) < min) return ''; return (delta < 0) === lowerIsBetter ? 'good' : 'bad'; }
+    var c = { act: a.avg - b.avg, ent: a.entry - b.entry, fl: a.flags - b.flags, ms: a.missed - b.missed };
+    c.tAct = tone(c.act, 30, false); c.tEnt = tone(c.ent, 10, true); c.tFl = tone(c.fl, 2, true); c.tMs = tone(c.ms, 2, true);
+    var t = [c.tAct, c.tEnt, c.tFl, c.tMs], g = t.indexOf('good') >= 0, bad = t.indexOf('bad') >= 0;
+    c.trend = g && bad ? 'mixed' : g ? 'improved' : bad ? 'worse' : 'steady';
+    return c;
+  }
+  function arrow(delta, tone) { return tone ? '<span class="arrow ' + tone + '">' + (delta > 0 ? '↑' : '↓') + '</span>' : ''; }
+  var TREND = { improved: 'Improved', worse: 'Worse', mixed: 'Mixed', steady: 'Steady', nodata: 'Not enough data' };
+  var CHG = {
+    act: function (c) { return c.tAct ? (c.act > 0 ? '+' : '−') + dur(Math.abs(c.act)) : 'About the same'; },
+    ent: function (c) { return c.tEnt ? Math.round(Math.abs(c.ent)) + 'm ' + (c.ent < 0 ? 'earlier' : 'later') : 'About the same'; },
+    fl:  function (c) { return c.tFl ? Math.abs(c.fl) + (c.fl < 0 ? ' fewer' : ' more') : 'About the same'; },
+    ms:  function (c) { return c.tMs ? Math.abs(c.ms) + (c.ms < 0 ? ' fewer' : ' more') : 'About the same'; }
+  };
+
+  var EMPS = [
+    { n: 'Employee B', r: 'Closer', away: '—', b: { avg: 392, flags: 2, entry: 547, miss: [] }, a: { avg: 345, flags: 6, entry: 561, miss: [8] } },
+    { n: 'Employee F', r: 'Processor', away: '—', b: { avg: 398, flags: 2, entry: 540, miss: [] }, a: { avg: 392, flags: 3, entry: 542, miss: [3, 7, 11] } },
+    { n: 'Employee C', r: 'Processor', away: '2 · PTO', aDates: AFTER.slice(2), b: { avg: 396, flags: 2, entry: 546, miss: [] }, a: { avg: 432, flags: 1, entry: 558, miss: [] } },
+    { n: 'Luis Abad', r: 'Processor', away: '—', open: true, b: { avg: 336, flags: 7, entry: 556, miss: [4] }, a: { avg: 408, flags: 2, entry: 544, miss: [] } },
+    { n: 'Employee D', r: 'Assistant', away: '—', b: { avg: 438, flags: 0, entry: 539, miss: [] }, a: { avg: 442, flags: 0, entry: 537, miss: [] } },
+    { n: 'Employee E', r: 'Processor · started Oct 7', away: '—', aDates: AFTER.slice(9), a: { avg: 422, flags: 0, entry: 538, miss: [] } }
+  ];
+  EMPS.forEach(function (e) {
+    e.after = gen(e.aDates || AFTER, e.a); e.sa = sum(e.after);
+    e.before = e.b ? gen(BEFORE, e.b) : []; e.sb = e.b ? sum(e.before) : null;
+    e.cmp = compare(e.sb, e.sa);
+  });
+
+  // ── pieces shared by the layouts ──
+  function dayRows(days, cls) {
+    return days.slice().reverse().map(function (d) {
+      if (d.miss) return '<tr class="' + cls + ' miss"><td>' + d.dt.label + '</td><td colspan="4">No work and no approved reason</td></tr>';
+      return '<tr class="' + cls + (d.flag ? ' flag' : '') + '"><td>' + d.dt.label + '</td><td class="num">' + clock(d.ent) + '</td><td class="num">' + clock(d.ext) + '</td><td class="num">' + dur(d.act) + (d.flag ? ' <span title="Needs a look">⚠️</span>' : '') + '</td><td class="num">' + dur(d.brk) + '</td></tr>';
+    }).join('');
+  }
+  var DAYHEAD = '<thead><tr><th>Date</th><th>Entry</th><th>Exit</th><th>Active</th><th>Breaks</th></tr></thead>';
+  function figs(s, c) {
+    function f(label, val, chg, tone) { return '<div><small>' + label + '</small><b class="num">' + val + '</b><em class="' + (tone || 'flat') + '">' + (chg || '') + '</em></div>'; }
+    return '<div class="figs">' + f('Avg Active', dur(s.avg), c && CHG.act(c), c && c.tAct) + f('Avg Entry', clock(s.entry), c && CHG.ent(c), c && c.tEnt)
+      + f('⚠️ Days', s.flags + ' of ' + s.n, c && CHG.fl(c), c && c.tFl) + f('Days Missed', s.missed + ' of ' + s.sd, c && CHG.ms(c), c && c.tMs) + '</div>';
+  }
+  function sideBySide(e) {
+    function col(tag, cls, title, s, c, days) {
+      return '<div class="panel"><div class="phead"><span class="tag ' + cls + '">' + tag + '</span><b>' + title + '</b><span>' + s.n + ' days with work</span></div>' + figs(s, c) + '<table class="d">' + DAYHEAD + '<tbody>' + dayRows(days, '') + '</tbody></table></div>';
+    }
+    return '<div class="two">' + col('Before', 'b', 'Sep 5 – Sep 23', e.sb, null, e.before) + col('After', 'a', 'Sep 24 – Oct 12', e.sa, e.cmp, e.after) + '</div>';
+  }
+
+  function layout1(e) { return sideBySide(e); }
+
+  function layout2(e, i) {
+    var b = e.sb, a = e.sa, c = e.cmp;
+    function row(label, bv, av, chg, tone) { return '<tr><td>' + label + '</td><td class="num">' + bv + '</td><td class="num now">' + av + '</td><td class="chg ' + (tone || 'flat') + '">' + chg + '</td></tr>'; }
+    var cmp = '<div class="panel"><div class="phead"><b>Before and After</b><span class="pill t-' + c.trend + '">' + TREND[c.trend] + '</span></div><table class="cmp"><thead><tr><th></th><th>Before<br>Sep 5 – 23</th><th>After<br>Sep 24 – Oct 12</th><th>Change</th></tr></thead><tbody>'
+      + row('Avg Active', dur(b.avg), dur(a.avg), CHG.act(c), c.tAct) + row('Avg Entry', clock(b.entry), clock(a.entry), CHG.ent(c), c.tEnt)
+      + row('⚠️ Days', b.flags + ' of ' + b.n, a.flags + ' of ' + a.n, CHG.fl(c), c.tFl) + row('Days Missed', b.missed + ' of ' + b.sd, a.missed + ' of ' + a.sd, CHG.ms(c), c.tMs) + '</tbody></table></div>';
+    var DL = ['M', 'T', 'W', 'T', 'F'], DN = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4 };
+    function pct(m) { return Math.round(m / 480 * 1000) / 10; }
+    function bars(days) { return days.map(function (d) { return d.miss ? '<div class="col miss" title="' + d.dt.label + ': missed">✕</div>' : '<div class="col' + (d.flag ? ' flag' : '') + '" title="' + d.dt.label + ': ' + dur(d.act) + ' active"><i style="height:' + pct(d.act) + '%"></i></div>'; }).join(''); }
+    function ticks(days) { return days.map(function (d) { return '<span>' + DL[DN[d.dt.label.slice(0, 3)]] + '<b>' + d.dt.d + '</b></span>'; }).join(''); }
+    function group(cls, tag, tagCls, title, days, s, withY) {
+      var y = '';
+      [0, 2, 4, 6, 8].forEach(function (h) { y += '<div class="grid" style="bottom:' + pct(h * 60) + '%"></div>' + (withY ? '<div class="ylab" style="bottom:' + pct(h * 60) + '%">' + h + 'h</div>' : ''); });
+      return '<div class="grp ' + cls + '" style="flex:' + days.length + '"><div class="ghead"><span class="tag ' + tagCls + '">' + tag + '</span><b>' + title + '</b><strong>' + dur(s.avg) + ' a day on average</strong></div>'
+        + '<div class="plot">' + y + '<div class="thr" style="bottom:' + pct(THR) + '%"></div><div class="avg" style="bottom:' + pct(s.avg) + '%"><span>Average ' + dur(s.avg) + '</span></div>' + bars(days) + '</div>'
+        + '<div class="axis">' + ticks(days) + '</div></div>';
+    }
+    var chart = '<div class="panel"><div class="phead"><b>Hours Active Each Day</b></div><div class="chart">'
+      + '<p class="how">Each bar is one work day. A taller bar means more active time. The black line is the average for that period.</p>'
+      + '<div class="groups">' + group('bef', 'Before', 'b', 'Sep 5 – Sep 23', e.before, b, true) + group('aft', 'After', 'a', 'Sep 24 – Oct 12', e.after, a, false) + '</div>'
+      + '<div class="legend"><span><i style="background:var(--navy)"></i>Normal day</span><span><i style="background:var(--yellow-fill);border:1px solid var(--yellow-ink)"></i>⚠️ Under the 6h 30m minimum</span><span><i style="background:var(--red-tint);border:1px solid var(--red-fill)"></i>✕ Missed, no approved reason</span><span><u style="border-top:2px solid var(--s900)"></u>Average</span><span><u style="border-top:2px dashed var(--yellow-ink)"></u>6h 30m minimum</span></div></div></div>';
+    var total = e.before.length + e.after.length;
+    return '<div class="sum">' + cmp + chart + '</div><div class="more"><button type="button" class="morebtn" data-more="' + i + '" data-n="' + total + '">▼ Show All ' + total + ' Days <span>entry, exit, active and breaks for each day</span></button><div id="more' + i + '" hidden style="margin-top:12px">' + sideBySide(e) + '</div></div>';
+  }
+
+  function layout3(e, i) {
+    function weeks(days) { var m = {}, order = []; days.forEach(function (d) { if (!m[d.dt.wk]) { m[d.dt.wk] = []; order.push(d.dt.wk); } m[d.dt.wk].push(d); }); return order.map(function (k) { return m[k]; }); }
+    function cells(s, c) {
+      return '<td class="num">' + s.n + ' / ' + s.sd + '</td><td class="num">' + (s.n ? dur(s.avg) + '<span class="bar"><i style="width:' + Math.round(s.avg / 480 * 100) + '%"></i></span>' : '—') + (c ? arrow(c.act, c.tAct) : '') + '</td><td class="num">' + (s.n ? clock(s.entry) : '—') + (c ? arrow(c.ent, c.tEnt) : '')
+        + '</td><td class="num">' + (s.flags ? '⚠️ ' + s.flags : '<span class="of">0</span>') + (c ? arrow(c.fl, c.tFl) : '') + '</td><td class="num">' + (s.missed ? '<span class="bad">' + s.missed + '</span>' : '<span class="of">0</span>') + (c ? arrow(c.ms, c.tMs) : '') + '</td>';
+    }
+    function block(tag, cls, title, days, s, c) {
+      var h = '<tr class="per"><td><span class="tag ' + cls + '">' + tag + '</span> ' + title + '</td>' + cells(s, c) + '</tr>';
+      weeks(days).forEach(function (w, j) {
+        var id = i + cls + j, first = w[0].dt.short, last = w[w.length - 1].dt.short;
+        h += '<tr class="wk" data-week="' + id + '"><td><span class="chev">▶</span> ' + (w.length > 1 ? first + ' – ' + last : first) + '</td>' + cells(sum(w), null) + '</tr>';
+        w.forEach(function (d) {
+          h += d.miss ? '<tr class="day miss k' + id + '" hidden><td>' + d.dt.label + '</td><td colspan="5">No work and no approved reason</td></tr>'
+            : '<tr class="day k' + id + (d.flag ? ' flag' : '') + '" hidden><td>' + d.dt.label + '</td><td></td><td class="num">' + dur(d.act) + (d.flag ? ' ⚠️' : '') + '</td><td class="num">' + clock(d.ent) + ' – ' + clock(d.ext) + '</td><td></td><td></td></tr>';
+        });
+      });
+      return h;
+    }
+    return '<div class="panel"><table class="w"><thead><tr><th>Period / Week</th><th>Days With Work</th><th>Avg Active</th><th>Avg Entry</th><th>⚠️ Days</th><th>Days Missed</th></tr></thead><tbody>'
+      + block('After', 'a', 'Sep 24 – Oct 12', e.after, e.sa, e.cmp) + block('Before', 'b', 'Sep 5 – Sep 23', e.before, e.sb, null) + '</tbody></table></div>';
+  }
+
+  var LAYOUTS = { 1: layout1, 2: layout2, 3: layout3 }, current = 2;
+  function body(e, i) {
+    if (!e.cmp) return '<div class="panel"><div class="none">Nothing to compare yet: ' + e.n + ' has fewer than 5 days with work in one of the two periods.</div><table class="d">' + DAYHEAD + '<tbody>' + dayRows(e.after, '') + '</tbody></table></div>';
+    return LAYOUTS[current](e, i);
+  }
+  function render() {
+    document.getElementById('rows').innerHTML = EMPS.map(function (e, i) {
+      var s = e.sa, c = e.cmp, t = c ? c.trend : 'nodata';
+      return '<tr class="emp"><td class="c"><div class="name"><button type="button" class="chev" data-row="' + i + '" aria-label="Expand">' + (e.open ? '▼' : '▶') + '</button><div><b>' + e.n + '</b><small>' + e.r + '</small></div></div></td>'
+        + '<td class="c"><span class="pill t-' + t + '">' + TREND[t] + '</span></td>'
+        + '<td class="c num"><b style="font-weight:500">' + s.n + '</b><span class="of"> / ' + s.sd + '</span></td>'
+        + '<td class="c num"><b style="font-weight:500">' + dur(s.avg) + '</b><span class="bar"><i style="width:' + Math.round(s.avg / 480 * 100) + '%"></i></span>' + (c ? arrow(c.act, c.tAct) : '') + '</td>'
+        + '<td class="c num">' + clock(s.entry) + (c ? arrow(c.ent, c.tEnt) : '') + '</td><td class="c num">' + clock(s.exit) + '</td>'
+        + '<td class="c num">' + (s.flags ? s.flags + ' of ' + s.n : '<span class="of">0 of ' + s.n + '</span>') + (c ? arrow(c.fl, c.tFl) : '') + '</td>'
+        + '<td class="c num">' + (s.missed ? s.missed + ' of ' + s.sd : '<span class="of">0 of ' + s.sd + '</span>') + (c ? arrow(c.ms, c.tMs) : '') + '</td>'
+        + '<td class="c">' + (e.away === '—' ? '<span class="of">—</span>' : e.away) + '</td></tr>'
+        + '<tr' + (e.open ? '' : ' hidden') + '><td class="exp" colspan="9">' + body(e, i) + '</td></tr>';
+    }).join('');
+  }
+  render();
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('button') || ev.target, wk = t.closest('tr.wk');
+    if (t.dataset.layout) {
+      current = Number(t.dataset.layout);
+      document.querySelectorAll('.pick button').forEach(function (b) { b.classList.toggle('on', b === t); });
+      render();
+    } else if (t.dataset.row !== undefined) {
+      EMPS[t.dataset.row].open = !EMPS[t.dataset.row].open; render();
+    } else if (t.dataset.more !== undefined) {
+      var m = document.getElementById('more' + t.dataset.more); m.hidden = !m.hidden; t.firstChild.textContent = m.hidden ? '▼ Show All ' + t.dataset.n + ' Days ' : '▲ Hide the ' + t.dataset.n + ' Days ';
+    } else if (wk) {
+      var rows = document.querySelectorAll('.k' + wk.dataset.week), hide = !rows[0].hidden;
+      rows.forEach(function (r) { r.hidden = hide; }); wk.querySelector('.chev').textContent = hide ? '▶' : '▼';
+    }
+  });
+</script>
+</body>
+</html>

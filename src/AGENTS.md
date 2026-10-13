@@ -1116,3 +1116,13 @@ page can silently inherit "every period, unfiltered." Payroll Master itself now 
 **Unchanged**: time conversion still lives only in `src/app/lib/teramindTime.ts` — nothing added by
 this feature does its own timezone math; every Activity/Today time is US Eastern via `easternDate`/
 `easternMinutes` from that file.
+
+**Activity trend (added 2026-10-12).** `src/app/lib/activityTrend.ts` (pure, `import type` only)
+compares the selected range with the same number of calendar days right before it.
+`useActivityData({ ..., compare: true })` loads both periods in the same queries and builds each
+on its own payroll rows and forms, so the selected range's numbers never depend on the earlier
+one. A day counts only if it is scheduled, before today, on or after the employee's start date
+and has no approved reason. Day with work → `worked` or `low` (under the existing threshold);
+no work → `missed`. Minimums for "changed" are the four `activity_trend_min_*` rows in
+`classification_config` (30 min active, 10 min entry, 2 days, 5 days with work). The side panel
+calls the hook without `compare` and loads its own range only.

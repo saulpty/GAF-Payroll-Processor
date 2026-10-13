@@ -4,6 +4,7 @@ import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useViewer } from '@/app/context/ViewerContext';
 import { fmtDuration } from '@/app/lib/teramindToday';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
+import { rangeLabel, fmtMinutes } from '@/app/lib/activityTrend';
 import { useActivityData } from './useActivityData';
 import ActivityNeedsLook from './ActivityNeedsLook';
 import ActivityByEmployee from './ActivityByEmployee';
@@ -15,8 +16,11 @@ type ViewMode = 'byEmployee' | 'byDay';
 function todayYmd() { return toLocalYMD(new Date()); }
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return toLocalYMD(d); }
 
+type TileNote = { note?: string; noteTone?: 'good' | 'bad' | '' };
+
 // Warm look (2026-10-06): same tile as Attendance → Today — Title Case label with a dot.
-function SummaryTile({ label, value, accent, dot }: { label: string; value: string | number; accent?: string; dot?: string }) {
+// note (2026-10-12): one line comparing with the period right before the selected dates.
+function SummaryTile({ label, value, accent, dot, note, noteTone }: { label: string; value: string | number; accent?: string; dot?: string } & TileNote) {
   return (
     <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 flex flex-col gap-0.5 min-w-[110px] shadow-card">
       <span className={`text-[22px] leading-7 font-bold tabular-nums ${accent ?? 'text-slate-900'}`}>{value}</span>
@@ -24,6 +28,11 @@ function SummaryTile({ label, value, accent, dot }: { label: string; value: stri
         <span className={`w-2 h-2 rounded-full ${dot ?? 'bg-slate-300'}`} aria-hidden="true" />
         {label}
       </span>
+      {note && (
+        <span className={`text-[12px] mt-1 pt-1 border-t border-slate-100 whitespace-nowrap tabular-nums ${noteTone === 'good' ? 'text-status-green-ink' : noteTone === 'bad' ? 'text-status-red-ink' : 'text-slate-500'}`}>
+          {note}
+        </span>
+      )}
     </div>
   );
 }
@@ -63,14 +72,35 @@ export default function AttendanceActivity() {
     setExpandedEmployeeId(prev => prev === employeeId ? null : employeeId);
   }
 
-  const { days, byEmployee, totals, settings, loading, error, configFallbacks, reloadConfig, retry } = useActivityData({
+  const {
+    days, byEmployee, totals, settings, loading, error, configFallbacks, reloadConfig, retry,
+    prev, today, trends, prevDays, startDates, totalsChange, minimums, compareTo,
+  } = useActivityData({
     dateFrom: safeFrom,
     dateTo: safeTo,
+    compare: true,
   });
 
   const filteredNeedsLook = useMemo(() => days.filter(d => d.needsLook), [days]);
 
   const avgActiveLabel = totals.avgActiveMin !== null ? fmtDuration(totals.avgActiveMin) : '—';
+
+  const beforeLabel = rangeLabel(prev.from, prev.to);
+  const afterLabel = rangeLabel(safeFrom, compareTo);
+  // One line under each card: these dates against the same number of days right before them.
+  // The raw difference; the minimums only apply to each employee's Trend.
+  const versus = (delta: number | null, lowerIsBetter: boolean, fmt: (n: number) => string): TileNote => {
+    if (delta === null || prev.days === 0) return {};
+    if (delta === 0) return { note: `Same as ${beforeLabel}`, noteTone: '' };
+    return {
+      note: `${delta > 0 ? '↑' : '↓'} ${fmt(Math.abs(delta))} vs ${beforeLabel}`,
+      noteTone: (delta < 0) === lowerIsBetter ? 'good' : 'bad',
+    };
+  };
+  const activeNote = versus(totalsChange ? totalsChange.avgActiveMin : null, false, fmtMinutes);
+  const lookNote = versus(totalsChange ? totalsChange.needsLook : null, true, String);
+  const lateNote = versus(totalsChange ? totalsChange.lateArrivals : null, true, String);
+  const workedNote = totalsChange && prev.days > 0 ? `${totalsChange.daysWorkedBefore} in ${beforeLabel}` : undefined;
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -112,13 +142,13 @@ export default function AttendanceActivity() {
           <>
             {/* KPI tiles + Thresholds button */}
             <div className="flex flex-wrap items-start gap-3 mb-4">
-              <SummaryTile label="Avg Active Time"  value={avgActiveLabel}    accent="text-status-green-ink" dot="bg-green-600" />
-              <SummaryTile label="Days With Work"   value={totals.daysWorked} />
-              <SummaryTile label="Needs a Look"     value={totals.needsLook}  accent={totals.needsLook > 0 ? 'text-status-yellow-ink' : undefined} dot="bg-yellow-500" />
-              <SummaryTile label="Late Arrivals"    value={totals.lateArrivals} accent={totals.lateArrivals > 0 ? 'text-status-red-ink' : undefined} dot="bg-red-600" />
+              <SummaryTile label="Avg Active Time"  value={avgActiveLabel}    accent="text-status-green-ink" dot="bg-green-600" note={activeNote.note} noteTone={activeNote.noteTone} />
+              <SummaryTile label="Days With Work"   value={totals.daysWorked} note={workedNote} />
+              <SummaryTile label="Needs a Look"     value={totals.needsLook}  accent={totals.needsLook > 0 ? 'text-status-yellow-ink' : undefined} dot="bg-yellow-500" note={lookNote.note} noteTone={lookNote.noteTone} />
+              <SummaryTile label="Late Arrivals"    value={totals.lateArrivals} accent={totals.lateArrivals > 0 ? 'text-status-red-ink' : undefined} dot="bg-red-600" note={lateNote.note} noteTone={lateNote.noteTone} />
               {isSuper && (
                 <div className="flex items-center self-center ml-auto">
-                  <ActivityThresholds settings={settings} onSaved={reloadConfig} />
+                  <ActivityThresholds settings={settings} minimums={minimums} onSaved={reloadConfig} />
                 </div>
               )}
             </div>
@@ -156,6 +186,14 @@ export default function AttendanceActivity() {
                   byEmployee={byEmployee}
                   expandedId={expandedEmployeeId}
                   onToggle={handleToggleEmployee}
+                  trends={trends}
+                  prevDays={prevDays}
+                  startDates={startDates}
+                  beforeLabel={beforeLabel}
+                  afterLabel={afterLabel}
+                  prevDayCount={prev.days}
+                  today={today}
+                  settings={settings}
                 />
               : <ActivityByDay days={days} dateFrom={safeFrom} dateTo={safeTo} />
             }

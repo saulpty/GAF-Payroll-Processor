@@ -256,9 +256,12 @@ test('LP4: List files use the Warm look and stay under 15 KB', () => {
   assert.match(d, /const fmtMins = \(m: number\): string => \(m < 60 \? `\$\{m\} min` : fmtDuration\(m\)\);/);
 });
 
-test('LP5: Activity header reads "Needs a Look"', () => {
+// 2026-10-12 (Saul): the By Employee column is headed with the warning sign to save width.
+// The top card and the amber box still read "Needs a Look".
+test('LP5: Activity By Employee heads the low-day column "⚠️ Days"; the card still reads "Needs a Look"', () => {
   const src = read(`${A}activity/ActivityByEmployee.tsx`);
-  assert.match(src, /\{ key: 'needsLook',\s+label: 'Needs a Look' \}/);
+  assert.match(src, /\{ key: 'needsLook',\s+label: '(Needs a Look|⚠️ Days)' \}/);
+  assert.match(read(`${A}activity/AttendanceActivity.tsx`), /label="Needs a Look"/);
 });
 
 test('LP6: List rows wait for the window\'s own data, and loading says so', () => {
