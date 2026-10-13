@@ -405,11 +405,11 @@ The four entries under it stay exactly as they are.
 with
 
 ```tsx
-    `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring phone:relative phone:shrink-0 phone:before:absolute phone:before:inset-x-0 phone:before:-inset-y-2.5 phone:before:content-[''] ${on ? 'border-warm bg-warm-tint text-warm-text' : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50'}`;
+    `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring phone:relative phone:shrink-0 phone:before:absolute phone:before:inset-x-0 phone:before:-inset-y-3 phone:before:content-[''] ${on ? 'border-warm bg-warm-tint text-warm-text' : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50'}`;
 ```
 
-(On a phone each chip keeps its pill shape, 24 px tall, and gets an invisible area 10 px above and
-below it, so the part a finger can hit is 44 px tall.)
+(On a phone each chip keeps its pill shape, 24 px tall, and gets an invisible area 11 px above and
+below it, so the part a finger can hit is 46 px tall.)
 
 **3c.** Replace
 
@@ -420,11 +420,11 @@ below it, so the part a finger can hit is 44 px tall.)
 with
 
 ```tsx
-    <div className="flex flex-wrap items-center gap-2 px-6 pb-3 no-scrollbar phone:flex-nowrap phone:overflow-x-auto phone:px-4 phone:-mt-2.5 phone:pt-2.5">
+    <div className="flex flex-wrap items-center gap-2 px-6 pb-3 no-scrollbar phone:flex-nowrap phone:overflow-x-auto phone:px-4 phone:-mt-3 phone:pt-3">
 ```
 
-(One line that slides sideways. The 10 px of room above the chips is what the taller hit area
-sits in; the negative margin takes the same 10 px back, so nothing moves down.)
+(One line that slides sideways. The 12 px of room above the chips is what the taller hit area
+sits in; the negative margin takes the same 12 px back, so nothing moves down.)
 
 **3d.** Replace
 

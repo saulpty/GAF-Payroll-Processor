@@ -298,7 +298,8 @@ test('MC11: the chips keep every class the computer had; only phone: classes (an
   };
   const reach = step(chip, /^phone:before:-inset-y-([\d.]+)$/, 'chip: a hit area that reaches past the pill');
   const room = step(line, /^phone:pt-([\d.]+)$/, 'chip line: room above the chips');
-  assert.ok(24 + reach * 4 * 2 >= 44, `a 24px pill plus ${reach * 4}px each side is under 44px`);
+  // The pill is 24px tall with a 1px border; the hit area is measured from inside the border.
+  assert.ok(22 + reach * 4 * 2 >= 44, `22px inside the pill's border plus ${reach * 4}px each side is under 44px`);
   assert.ok(room >= reach, 'the room above the chips must cover the hit area');
   assert.ok(3 >= reach, 'pb-3 below the chips must cover the hit area');
   // Still toggles.
