@@ -20,7 +20,7 @@ test('WN1: the top bar is navy; each section keeps its own colour (nav option A)
 
 test('WN3: row 2 (SectionBar) holds the section pages and the compact filters', () => {
   const app = read('src/app/app.tsx');
-  assert.match(app, /<TopNav \/>\s*<SectionBar \/>/);
+  assert.match(app, /<TopNav badges=\{badges\} \/>\s*<SectionBar \/>/);
   assert.doesNotMatch(app, /<FilterBar \/>/);
   const sb = read('src/app/SectionBar.tsx');
   assert.match(sb, /import \{ SECTIONS, getActiveSection, BADGE \} from '@\/app\/TopNav';/);
