@@ -4,6 +4,8 @@ import { useLoadAction } from '@uibakery/data';
 import DataTable, { Col } from '@/app/components/DataTable';
 import EmptyState from '@/app/components/EmptyState';
 import DisciplinaryRow, { DisciplinaryRowData, DISCIPLINARY_COL_COUNT } from './DisciplinaryRow';
+import DisciplinaryRows from './DisciplinaryRows';
+import { useIsPhone } from '@/app/lib/useIsPhone';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useViewer } from '@/app/context/ViewerContext';
 import { useDisciplinaryAdmin } from './useDisciplinaryAdmin';
@@ -68,6 +70,7 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
   const { employee, role, manager } = useGlobalFilters();
   const { viewAs, allEmployees } = useViewer();
   const { isDisciplinaryAdmin } = useDisciplinaryAdmin();
+  const isPhone = useIsPhone();
 
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
@@ -264,6 +267,17 @@ export default function DisciplinaryTable({ asOf, statusFilter, onRowsChange, on
   }, [sorted, asOf, onRowsChange, onCountsChange]);
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  // Phone: rows instead of the table, from the same list. Only one of the two is ever rendered.
+  if (isPhone) {
+    return (
+      <DisciplinaryRows
+        rows={sorted} asOf={asOf} statusFilter={statusFilter}
+        loading={loading || !scopeReady} failed={!!error} onRetry={reload}
+        openName={expandedName} onOpen={setExpandedName} onChanged={reload}
+      />
+    );
+  }
 
   if (loading || !scopeReady) {
     return (
