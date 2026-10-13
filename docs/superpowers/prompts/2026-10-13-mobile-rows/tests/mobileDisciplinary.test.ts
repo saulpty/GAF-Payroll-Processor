@@ -39,7 +39,7 @@ const BEFORE: Record<string, string> = {
 function phoneBranch(src: string): { start: number; end: number; body: string } {
   const at = src.indexOf('  if (isPhone) {\n');
   assert.ok(at >= 0, 'DisciplinaryTable has no `if (isPhone) {` branch');
-  assert.equal(src.indexOf('if (isPhone)', at + 1), -1, 'exactly one phone branch');
+  assert.equal(src.indexOf('if (isPhone)', at + 3), -1, 'exactly one phone branch');
   let depth = 0;
   let i = src.indexOf('{', at);
   for (; i < src.length; i++) {
@@ -63,7 +63,7 @@ function propsOf(src: string, name: string): Record<string, string> {
   return Object.fromEntries([...m[1].matchAll(/(\w+)=\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g)].map(p => [p[1], p[2].trim()]));
 }
 
-test('MR1: DisciplinaryTable is the 2026-10-13 file plus two imports, one hook line and one phone branch', () => {
+test('MDR1: DisciplinaryTable is the 2026-10-13 file plus two imports, one hook line and one phone branch', () => {
   let src = read(TABLE);
   const b = phoneBranch(src);
   const after = src.slice(b.end);
@@ -81,7 +81,7 @@ test('MR1: DisciplinaryTable is the 2026-10-13 file plus two imports, one hook l
     'DisciplinaryTable changed somewhere other than the phone branch: loaders, scoping, filters, sort and the table must be untouched');
 });
 
-test('MR2: the rows are rendered only under the phone flag, from the same list; the table branch is still there', () => {
+test('MDR2: the rows are rendered only under the phone flag, from the same list; the table branch is still there', () => {
   const src = read(TABLE);
   const b = phoneBranch(src);
   assert.match(b.body, /^\s*if \(isPhone\) \{\s*return \(\s*<DisciplinaryRows\b[\s\S]*\/>\s*\);\s*\}$/, 'the branch only returns <DisciplinaryRows … />');
@@ -110,7 +110,7 @@ test('MR2: the rows are rendered only under the phone flag, from the same list; 
   assert.equal((src.match(/useIsPhone\(\)/g) ?? []).length, 1, 'useIsPhone() is called once');
 });
 
-test('MR3: no loader and no new state were added for the phone', () => {
+test('MDR3: no loader and no new state were added for the phone', () => {
   const src = read(TABLE);
   assert.equal((src.match(/useLoadAction\(/g) ?? []).length, 5, 'DisciplinaryTable still has its five loads and no more');
   assert.equal((src.match(/useState[<(]/g) ?? []).length, 3, 'no new useState in DisciplinaryTable');
@@ -124,7 +124,7 @@ test('MR3: no loader and no new state were added for the phone', () => {
 // The field is `scenario` (DisciplinaryRow.scenario in src/app/lib/disciplinary.ts): the table
 // shows `latest.scenario` under the Latest date. The q_* answers, expectations and consequences
 // are the rest of the narrative. None of it may be reachable from the list file.
-test('MR4: the phone list cannot show what an action is about', () => {
+test('MDR4: the phone list cannot show what an action is about', () => {
   const src = read(ROWS);
   for (const field of ['scenario', 'q_expected', 'q_happened', 'q_when', 'q_impact', 'expectations', 'consequences',
     'evidence_description', 'prior_warnings', 'closure_note', 'deletion_note']) {
@@ -139,7 +139,7 @@ test('MR4: the phone list cannot show what an action is about', () => {
   assert.doesNotMatch(src, /<ActionDetail|<CaseFile\b/, 'the list itself renders no action detail');
 });
 
-test('MR5: the list reuses the table\'s chip rules instead of copying them', () => {
+test('MDR5: the list reuses the table\'s chip rules instead of copying them', () => {
   const rows = read(ROWS);
   assert.match(rows, /import \{ levelInfo, stateChip \} from '\.\/DisciplinaryRow';/);
   assert.match(rows, /stateChip\(row, asOf\)/);
@@ -158,7 +158,7 @@ test('MR5: the list reuses the table\'s chip rules instead of copying them', () 
   assert.notEqual(sha(read(CASE_FILE)), BEFORE[CASE_FILE]);
 });
 
-test('MR6: the case file sheet opens actions in place and hands ActionDetail exactly what CaseFile hands it', () => {
+test('MDR6: the case file sheet opens actions in place and hands ActionDetail exactly what CaseFile hands it', () => {
   const sheet = read(SHEET);
   const desktop = propsOf(read(CASE_FILE), 'ActionDetail');
   assert.deepEqual(desktop, { action: 'a', asOf: 'asOf', onChanged: 'onChanged' }, 'CaseFile itself changed what it passes');
@@ -181,19 +181,19 @@ test('MR6: the case file sheet opens actions in place and hands ActionDetail exa
   assert.doesNotMatch(sheet, /scenario[^\n]*(?:slice|truncate|substring)|truncate/, 'never cut off');
 });
 
-test('MR7: the page header changed by class strings only', () => {
+test('MDR7: the page header changed by class strings only', () => {
   const now = read(PAGE);
   const undone = now.replace(/ (?:phone:[^\s"'`]+|no-scrollbar)(?=[\s"'`])/g, '');
   assert.equal(sha(undone), BEFORE[PAGE], 'Disciplinary.tsx changed beyond added phone: classes');
   assert.notEqual(sha(now), BEFORE[PAGE], 'no phone: class has been added yet');
 });
 
-test('MR8: the two pop-ups are untouched', () => {
+test('MDR8: the two pop-ups are untouched', () => {
   assert.equal(sha(read(CLOSE)), BEFORE[CLOSE], 'CloseCaseDialog.tsx changed');
   assert.equal(sha(read(DELETE)), BEFORE[DELETE], 'DeleteActionDialog.tsx changed');
 });
 
-test('MR9: every new or edited file stays under 15,000 bytes and follows the standing rules', () => {
+test('MDR9: every new or edited file stays under 15,000 bytes and follows the standing rules', () => {
   for (const f of [ROWS, SHEET, TABLE, ROW, CASE_FILE, PAGE]) {
     assert.ok(exists(f), `${f} is missing`);
     const size = Buffer.byteLength(readFileSync(new URL(`../${f}`, import.meta.url)));

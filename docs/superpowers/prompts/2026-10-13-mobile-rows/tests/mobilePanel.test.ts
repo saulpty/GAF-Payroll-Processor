@@ -54,7 +54,7 @@ function rechartsNames(src: string): string[] {
   return m[1].split(',').map(s => s.trim()).filter(Boolean);
 }
 
-test('MP1: on a phone the panel is a MobileSheet; the computer\'s panel is the old code', () => {
+test('MPS1: on a phone the panel is a MobileSheet; the computer\'s panel is the old code', () => {
   const src = read(PANEL);
   assert.equal((src.match(/useIsPhone\(\)/g) ?? []).length, 1, 'one phone-or-not question for the whole panel');
   assert.match(src, /import MobileSheet from '@\/app\/components\/mobile\/MobileSheet';/);
@@ -96,7 +96,7 @@ test('MP1: on a phone the panel is a MobileSheet; the computer\'s panel is the o
   }
 });
 
-test('MP2: on a phone the panel body returns before any chart can be rendered', () => {
+test('MPS2: on a phone the panel body returns before any chart can be rendered', () => {
   const src = read(BODY);
   const charts = [...rechartsNames(src), 'AttendanceDonuts'];
   const fn = src.slice(src.indexOf('export default function AttendancePanelBody('));
@@ -129,7 +129,7 @@ test('MP2: on a phone the panel body returns before any chart can be rendered', 
   assert.equal(sha(read(DONUTS)), DONUTS_SHA256, 'AttendanceDonuts.tsx is not edited: a phone simply never renders it');
 });
 
-test('MP3: Day by Day is rows on a phone and the same table on a computer', () => {
+test('MPS3: Day by Day is rows on a phone and the same table on a computer', () => {
   const src = read(DAYS);
   assert.match(src, /export default function AttendancePanelDays\(\{ days, attendanceRows = \[\], isPhone = false \}: Props\) \{/);
   assert.match(
@@ -151,7 +151,6 @@ test('MP3: Day by Day is rows on a phone and the same table on a computer', () =
   assert.match(rows, /title=\{fmtDayShort\(d\.date\)\}/);
   // Reading only: a day row opens nothing.
   assert.doesNotMatch(rows, /onClick|chevron=/);
-  // The table's facts are all there.
   // The table's facts are all there, written the way the table writes them.
   for (const fact of ['fmtClock(d.shownFirstMin)', "fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')", 'fmtMins(att.minutes_late)', 'fmtDuration(d.activeMin)', '<WhyChipBadge chip={d.why} />', 'Needs a Look', 'Long Break', 'STATUS_COLORS[att.status]', "d.flag === 'long_break'", 'att.minutes_late > 0']) {
     assert.ok(src.includes(fact), `the table no longer has: ${fact}`);
@@ -159,7 +158,7 @@ test('MP3: Day by Day is rows on a phone and the same table on a computer', () =
   }
 });
 
-test('MP4: the three places that open the panel pass only props it still takes', () => {
+test('MPS4: the three places that open the panel pass only props it still takes', () => {
   const panel = read(PANEL);
   const props = [...block(panel, 'type Props = {').matchAll(/^\s+([A-Za-z]+)\??:/gm)].map(m => m[1]);
   assert.deepEqual(props, ['stats', 'onClose', 'employeeId', 'days', 'displayName', 'displayRole', 'displayManager'], 'the panel\'s props are unchanged');
@@ -175,7 +174,7 @@ test('MP4: the three places that open the panel pass only props it still takes',
   }
 });
 
-test('MP5: house rules for the panel files, and every file under 15 KB', () => {
+test('MPS5: house rules for the panel files, and every file under 15 KB', () => {
   for (const f of [PANEL, BODY, DAYS, DAY_ROWS, KPIS, DONUTS]) {
     const src = read(f);
     const size = Buffer.byteLength(src, 'utf8');
