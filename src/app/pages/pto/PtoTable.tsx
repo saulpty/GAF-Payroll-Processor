@@ -5,6 +5,7 @@ import DataTable, { Col } from '@/app/components/DataTable';
 import EmptyState from '@/app/components/EmptyState';
 import PtoRow, { PtoRowData } from './PtoRow';
 import PtoBreakdown from './PtoBreakdown';
+import PtoRows from './PtoRows';
 import type { DialogMode } from './RecordApprovalDialog';
 import { useGlobalFilters } from '@/app/context/GlobalFilterContext';
 import { useViewer } from '@/app/context/ViewerContext';
@@ -12,6 +13,8 @@ import loadPtoBalancesInputsAction from '@/actions/loadPtoBalancesInputs';
 import loadPeriodsAction from '@/actions/loadPeriods';
 import { accruedPto, fhEligibleDate, fhRemaining } from '@/app/lib/ptoAccrual';
 import { sortRows, nextSortDir } from '@/app/lib/ptoSort';
+import { nothingFoundText } from '@/app/lib/ptoPhone';
+import { useIsPhone } from '@/app/lib/useIsPhone';
 import type { SortDir } from '@/app/lib/ptoSort';
 import type { PeriodRow } from '@/app/lib/ptoPayrollMatch';
 
@@ -59,6 +62,7 @@ const COLUMNS: Col<PtoRowData>[] = [
 export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRowsChange, onCountsChange }: Props) {
   const { employee, role, manager } = useGlobalFilters();
   const { viewAs, isSuper } = useViewer();
+  const isPhone = useIsPhone();
   // Review is a superuser task: everyone else gets the table without it (Saul, 2026-10-06).
   const columns = isSuper ? COLUMNS : COLUMNS.filter(c => c.key !== 'review');
 
@@ -157,7 +161,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
   const reviewTotal = base.reduce((s, r) => s + r.review, 0);
   const waitingTotal = base.reduce((s, r) => s + r.waiting, 0);
   const chipCls = (on: boolean) =>
-    `inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[12px] font-medium transition-colors ${on ? 'border-warm bg-warm-tint text-warm-text' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`;
+    `inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[12px] font-medium transition-colors phone:min-h-11 phone:px-3.5 ${on ? 'border-warm bg-warm-tint text-warm-text' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`;
 
   const sorted = useMemo(
     () => sortRows(filtered, sortKey as keyof PtoRowData | null, sortDir, 'display_name'),
@@ -176,7 +180,7 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Controls strip */}
-      <div className="flex flex-wrap items-center gap-2 px-6 pb-3">
+      <div className="flex flex-wrap items-center gap-2 px-6 pb-3 phone:flex-nowrap phone:overflow-x-auto phone:whitespace-nowrap phone:px-4">
         <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[12px] font-medium text-primary">
           {sorted.length} {sorted.length === 1 ? 'Employee' : 'Employees'}
         </span>
@@ -207,8 +211,22 @@ export default function PtoTable({ asOf, today, refreshKey, onOpenDialog, onRows
         )}
       </div>
 
-      {/* Table */}
-      {loading && (rawRows as RawRow[]).length === 0 ? (
+      {/* Rows on a phone, the table everywhere else: one of the two, never both */}
+      {isPhone && !error ? (
+        <PtoRows
+          rows={sorted}
+          loading={loading && (rawRows as RawRow[]).length === 0}
+          emptyText={nothingFoundText({ employee, role, manager, chip: isSuper ? chip : null })}
+          expanded={expanded}
+          onToggle={handleToggle}
+          year={year}
+          today={today}
+          periods={periods as PeriodRow[]}
+          onOpenDialog={onOpenDialog}
+          onChanged={handleChanged}
+          refreshToken={detailKey}
+        />
+      ) : loading && (rawRows as RawRow[]).length === 0 ? (
         <div className="flex items-center justify-center py-16 text-slate-400">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
           <span className="text-sm">Loading…</span>

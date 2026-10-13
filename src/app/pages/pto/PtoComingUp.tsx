@@ -124,7 +124,7 @@ export default function PtoComingUp({ today, refreshKey }: { today: string; refr
         )}
       </div>
       {loading && rows.length === 0 ? (
-        <div className="flex gap-2" aria-hidden="true">
+        <div className="flex gap-2 phone:overflow-hidden" aria-hidden="true">
           {[0, 1, 2, 3].map(i => (
             <div key={i} className="shrink-0 w-56 h-[104px] rounded-lg border border-slate-200 bg-slate-50 animate-pulse" />
           ))}
