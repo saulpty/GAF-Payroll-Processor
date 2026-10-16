@@ -2,7 +2,9 @@ vibeAppConnectedDatasources:
   - Email Passiontocare
   - GAF Planilla DB
   - GA Offer Letter DB v2
+  - Microsoft API
   - Monday.com API
   - Monday.com API v2
+  - My Data 2
   - Teramind API
 vibeAppPrimaryHostedDatasourceId: GAF Planilla DB
