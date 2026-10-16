@@ -21,6 +21,7 @@ import AttendanceActivity   from '@/app/pages/attendance/activity/AttendanceActi
 import { matchesManager }   from '@/app/lib/managerFilter';
 import type { ReportEmployee } from '@/app/lib/attendanceReportTypes';
 import { useLiveListRows } from '@/app/pages/attendance/useLiveListRows';
+import { useFormReported } from '@/app/pages/attendance/useFormReported';
 import { useState } from 'react';
 
 type Tab = 'list' | 'reports' | 'today' | 'activity';
@@ -84,9 +85,11 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
     dateFrom: safeFrom, dateTo: safeTo, viewAs,
     employees: empList as unknown as ReportEmployee[], official: rows,
   });
+  // "Reported" = a form on file for that person and day, as on Reports (2026-10-16).
+  const reported = useFormReported({ rows, employees: emps, dateFrom: safeFrom, dateTo: safeTo, viewAs });
   const allRows = useMemo(
-    () => (live.rows.length > 0 ? [...rows, ...live.rows] : rows),
-    [rows, live.rows],
+    () => (live.rows.length > 0 ? [...reported.rows, ...live.rows] : reported.rows),
+    [reported.rows, live.rows],
   );
 
   const empMap = useMemo(() => {
@@ -124,7 +127,7 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
   const panelStats = panelEmail ? empStats.find(s => s.email === panelEmail) ?? null : null;
   const panelEmpId = panelEmail ? Number((empMap.get(panelEmail) as { id?: number } | undefined)?.id) : NaN;
   // Wait for those days too, so the numbers never flash without them.
-  const loading = loadingRows || loadingEmps || live.loading;
+  const loading = loadingRows || loadingEmps || live.loading || reported.loading;
 
   return (
     <div className="flex flex-col h-full bg-background phone:h-auto phone:min-h-full">

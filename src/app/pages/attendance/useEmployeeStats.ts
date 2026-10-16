@@ -7,6 +7,7 @@ import { AttendanceRow, EmpInfo, computeEmployeeStats, rowsInRange } from '@/app
 import type { EmpStats } from '@/app/lib/attendanceStats';
 import type { ReportEmployee } from '@/app/lib/attendanceReportTypes';
 import { useLiveListRows } from './useLiveListRows';
+import { useFormReported } from './useFormReported';
 
 type Params = {
   email?: string;
@@ -63,15 +64,18 @@ export function useEmployeeStats({ email, employeeId, dateFrom, dateTo }: Params
     employees: oneEmp as unknown as ReportEmployee[], official: rows,
   });
 
-  const loading = loadingEmps || loadingRows || live.loading;
+  // "Reported" = a form on file for that person and day, as on Reports (2026-10-16).
+  const reported = useFormReported({ rows, employees: oneEmp, dateFrom, dateTo, viewAs });
+
+  const loading = loadingEmps || loadingRows || live.loading || reported.loading;
 
   const stats = useMemo<EmpStats | null>(() => {
     // Don't compute until we have a resolved email — avoids whole-company numbers
     if (!resolvedEmail) return null;
     // Wait for the not-yet-processed days, so the numbers never show without them.
-    if (live.loading) return null;
+    if (live.loading || reported.loading) return null;
 
-    const allRows = live.rows.length > 0 ? [...rows, ...live.rows] : rows;
+    const allRows = live.rows.length > 0 ? [...reported.rows, ...live.rows] : reported.rows;
 
     const empMap = new Map<string, EmpInfo>();
     emps.forEach(e => empMap.set(e.email, e));
@@ -80,7 +84,7 @@ export function useEmployeeStats({ email, employeeId, dateFrom, dateTo }: Params
 
     const results = computeEmployeeStats(allRows, empMap, matchEmails);
     return results[0] ?? null;
-  }, [rows, live.rows, live.loading, emps, resolvedEmail]);
+  }, [reported.rows, reported.loading, live.rows, live.loading, emps, resolvedEmail]);
 
   return { stats, loading };
 }

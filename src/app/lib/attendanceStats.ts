@@ -153,9 +153,10 @@ export function computeCompanyKpis(rows: AttendanceRow[]): CompanyKpis {
   const daysTracked   = active.length;   // expected (includes absent)
   const totalRows     = rows.length;
   const workDays      = totalRows;
-  // List only knows unexplained absences, so every absence here is unreported
-  const reported      = lateReported;
-  const unreported    = lateUnreported + absent;
+  // An absence is reported when a form is on file (filed_gaf, from the forms since 2026-10-16).
+  const absentFiled   = active.filter(r => isAbsent(r.status) && r.filed_gaf).length;
+  const reported      = lateReported + absentFiled;
+  const unreported    = lateUnreported + absent - absentFiled;
   const avgMinLate    = lateRows.length > 0 ? sumLate / lateRows.length : 0;
   const onTimeRate    = daysTracked > 0 ? (onTime / daysTracked) * 100 : 0;
   const lateRate      = daysTracked > 0 ? (lateDays / daysTracked) * 100 : 0;
