@@ -1,124 +1,121 @@
-# GAF HR Hub for the whole company — proposal to the Committee (draft, 2026-10-16)
+# GAF HR Hub for the whole company — proposal to the Committee (draft v2, 2026-10-16)
 
-*Prepared for Saul Fallembaum. Draft: the pricing numbers marked ❓ need a written answer from UI Bakery
-before this goes to the Committee.*
+*Prepared for Saul Fallembaum. **Draft for Saul's review.** Items marked ❓ need a written answer
+from UI Bakery before this goes to the Committee.*
+
+**Scope: HR, not accounting.** This proposal does **not** include payroll. US payroll and other
+countries' payroll work differently from Panama's and stay with their current providers and
+processes. Panama's payroll module stays exactly as it is, Panama-only.
 
 ---
 
 ## 1. What exists today
 
-The **GAF Panama HR Hub** runs Panama HR and payroll for ~45 employees in one place:
+The **GAF Panama HR Hub** is one place where Panama HR runs day to day for about 45 employees:
 
-- **Payroll:** pulls Teramind punches and Monday forms, classifies every employee-day, builds the
-  quincena, exports to the payroll provider (HRK).
-- **Attendance:** a live Today board, Activity and trends from Teramind, a Needs a Look list,
-  attendance reports.
-- **PTO, Contracts and tenure milestones, Disciplinary actions** (with a separate filing app for
-  managers, PDF letters and emails).
-- **Manager access:** each manager signs in and sees only their own people. Their access is built
-  automatically from the Monday Directory.
-- Works on phones (manager screens).
+- **Attendance**:
+  - a live **Today** board: who is in, who is late, active time
+  - **Activity** and trends from Teramind
+  - a **Needs a Look** list of days to check
+  - attendance reports
+- **Employee directory** synced automatically from Monday.
+- **Manager access**: each manager signs in and sees only their own people. That access is built
+  automatically from the Monday directory's Manager column.
+- **Contracts and tenure milestones**: 1 month, 3 months, 6 months, 1 year, contract end dates.
+- **Disciplinary actions**: a filing form for managers, PDF letters, email notices and a case
+  history.
+- **PTO tracking.**
+- **Phone views** for managers.
+- *(Panama only: payroll. Out of scope for this proposal.)*
 
-It is built on **UI Bakery** (self-hosted), **Monday.com** and **Teramind**, with 800+ automated checks
-guarding the payroll rules.
+It runs on **UI Bakery** (self-hosted), **Monday.com** and **Teramind**, the tools the company
+already uses. More than 800 automated checks guard it.
 
 ## 2. The ask
 
-Use what was built for Panama across the company: other countries and brands (Passion to Care,
-Momba Ohio / Michigan / Arizona, Avondale…), starting with the 16 international Intake 1 agents that
-Marcela and Yankel have asked for.
+Make the HR side of the Hub available to the rest of the company: other countries and the US brands
+(Passion to Care, Momba Ohio / Michigan / Arizona, Avondale…).
 
-## 3. What carries over and what doesn't
+**First step, already requested:** Marcela and Yankel want their **16 international Intake 1
+agents** on the Attendance tab. That step is designed and costs about one working session. It also
+builds exactly what everything after it needs.
 
-Most of the app is **not** Panama-specific. The parts that are Panama-specific are exactly the parts
-where every country differs by law anyway.
+## 3. What carries over company-wide
 
-| Module | Works company-wide? | Why |
+| HR module | Ready for the company? | What it takes |
 |---|---|---|
-| Employee directory sync from Monday | ✅ with config | Board and column ids already live in settings, not code |
-| Manager access (each manager sees only their people) | ✅ as is | Built from Monday's Manager columns |
-| Attendance: Today, Activity, Needs a Look, trends | ✅ if on Teramind | Thresholds already configurable |
-| Contracts and tenure milestones | ✅ as is | Generic milestones |
-| Disciplinary viewer and filing app | 🟡 small work | Letterhead says "GAF Healthcare Services Panama"; the filing app has Panama board ids in code |
-| Phone views | ✅ as is | |
-| **PTO accrual** | 🔴 rebuild per country | Panama's rule (1 day per 11, about 30 days/yr) is written into the code |
-| **Payroll engine, Action Required, HRK export** | 🔴 rebuild per country | Panama labour terms (Tardanza, Ausencia, Incapacidad…), discount minutes, the provider's export format |
-| Holidays | 🟡 small work | One holiday list for everyone today |
+| Attendance: Today, Activity, Needs a Look, trends | ✅ for anyone on Teramind | Nothing but the employee on Teramind and on a Monday directory |
+| Manager access (each manager sees only their people) | ✅ | Comes from each Monday directory's Manager column |
+| Employee directory from Monday | ✅ | One Monday directory board per country or brand, registered in settings |
+| Contracts and tenure milestones | 🟡 | Milestones are generic; needs each team's start dates on Monday |
+| Disciplinary actions | 🟡 | Letterhead per company entity (today it says "GAF Healthcare Services Panama"); the filing form needs to read more than the Panama board |
+| PTO tracking | 🔴 per country | Today it calculates balances with Panama's accrual rule. Other teams either get their own rule, or a "tracked elsewhere" mode with requests only |
+| Holidays | 🟡 | One list today (Panama's); needs a list per country |
+| Payroll | ⛔ out of scope | Stays Panama-only |
 
-**In short: about 70% of the screens carry over with configuration. Payroll and PTO need rebuilding
-for each country.** That matches how HR works: every country has its own payroll provider and labour
-law, and a shared tool should not pretend otherwise.
+**In short: the core HR screens (Attendance, Directory, Access) work company-wide almost as they
+are. Disciplinary, Contracts and Holidays need small changes. PTO needs a decision per country.**
 
-## 4. Three ways to do it
+## 4. Two ways to do it
 
-### A. Duplicate the app per country or brand
-Copy the Hub and rewire each copy to that country's Monday boards.
-- ➕ Panama is never at risk; each country can differ freely.
-- ➖ Every fix and feature must be made N times. The copies drift apart within months.
-- ➖ UI Bakery's docs do not confirm that AI-built ("vibe") projects can be duplicated. Export and
-  import carries the app's model but **not the database or its migration history**. ❓
-- ➖ N databases, so there is no company-wide view.
+### A. Duplicate the app for each country or brand
+- ➕ Each copy can differ, and Panama is never affected.
+- ➖ Every improvement must be made once per copy, and copies drift apart within months.
+- ➖ UI Bakery's documentation does not confirm that AI-built ("vibe") apps can be duplicated.
+  Export and import carries the app's design but **not its database**. ❓
+- ➖ There's no company-wide view: N separate rosters.
 
-### B. One app, everything shared, including payroll
-- ➕ One system and one roster.
-- ➖ Rewriting the payroll engine so it handles several countries is the riskiest change possible
-  to the part that pays people. It is large, and it would put Panama payroll at risk.
+### B. ✅ Recommended: one HR Hub for the whole company
+- One app, one roster, and a **Country** on every employee.
+- **Each country or brand keeps its own Monday directory board**, so its HR keeps ownership of
+  its people. The Hub reads all the boards.
+- **Every manager sees only their own people**, whichever board they're on. This already works
+  today.
+- **Panama payroll stays switched on for Panama only** and is never touched by company-wide work.
+- ➕ Fix once, everyone benefits. Leadership gets one view of attendance across the company.
+- ➖ It needs a few changes so the app understands multiple boards and countries (below). The pilot
+  makes the first two.
 
-### C. ✅ Recommended: one Hub that knows each employee's country, with payroll per country
-- One app, one database and one roster, with a **Country** on every employee.
-- **Shared modules** serve everyone: Directory, Access, Attendance and Activity, Contracts and
-  Disciplinary.
-- **Country modules** are switched on per country: Panama keeps its Payroll and PTO untouched.
-  Another country gets its own payroll or leave module only if it wants one; otherwise it keeps
-  its current provider and uses the Hub for everything else.
-- Each country keeps **its own Monday Directory board**, registered in settings with its country.
-  That country's HR keeps ownership of its data.
-- ➕ Fix once, everyone benefits. There is one company-wide view for leadership, and Panama payroll
-  is never touched.
-- ➖ Needs a short design phase for the multi-board Directory and per-country holidays and letterheads.
-
-**The first brick of option C is already designed and costs about one working session:** the 16
-Intake 1 agents. It adds a Country to every employee and keeps non-Panama people out of Panama
-payroll. That makes it a low-risk pilot that proves the model.
-
-## 5. Roadmap for option C
+## 5. Roadmap
 
 | Phase | What | Who benefits | Size |
 |---|---|---|---|
-| 0. Pilot | Country on employees; the 16 international Intake 1 agents go live for Marcela and Yankel | Intake team | ~1 session (designed) |
-| 1. Company directory | Several Monday Directory boards (one per country/brand), per-country holidays, a country filter, letterhead per entity, filing app reads settings | All managers | ~1–2 weeks |
-| 2. Company attendance | Teramind for every country on the Teramind account; Activity and Needs a Look for all managers | Operations | Depends on Teramind coverage |
-| 3. Leave per country | Leave rules per country (or a "tracked elsewhere" mode) | Country HR | ~1 week per country |
-| 4. Payroll per country (optional) | Only for countries that want it, built as that country's own module | Country payroll | ~3–6 weeks per country |
+| **0. Pilot** | A Country on every employee; a second Monday directory board; the 16 international Intake 1 agents on Attendance for Marcela and Yankel | Intake team | ~1 session (designed) |
+| **1. Any team, Attendance** | More directory boards added through settings only; a Country filter on Attendance; holidays per country | All managers whose teams use Teramind | ~1 week |
+| **2. Disciplinary for everyone** | Letterhead per entity; the filing form reads every directory board | All managers | ~1 week |
+| **3. Leave per country** | Each country's rule, or requests-only tracking | Country HR | ~1 week per country |
 
 ## 6. What it needs from the company
 
-1. **UI Bakery licence.** Published pricing caps every plan below Enterprise at **50 viewers**
-   (people who use the app without building it). Employees themselves never log in; only managers
-   and HR do. Today that is about 25 people. Company-wide managers will very likely pass 50, which
-   means an **Enterprise quote**. ❓ Ask UI Bakery:
-   - the price on self-hosted Enterprise
-   - whether SSO is included
-   - whether sign-in can be limited to company email domains
-   - whether vibe projects can be duplicated
-2. **One owner per country** for that country's Monday Directory board and settings.
-3. **Teramind coverage** if a country wants Attendance and Activity.
-4. **Time.** Today the app is built and maintained by one person (Saul) with AI assistance, through a
-   strict change process: every change is written down, checked against 800+ automated tests and
-   verified on screen. Company scale means either protected time for this, or a second person
-   trained on the process.
+1. **UI Bakery licence.** Published pricing caps every plan below Enterprise at **50 viewers**.
+   Viewers are the people who use the app without building it. Employees themselves never log in;
+   only managers and HR do, about 25 people today. Company-wide managers will likely pass 50, which
+   means an **Enterprise quote**.
+   ❓ Questions for UI Bakery:
+   - What does self-hosted Enterprise cost?
+   - Is SSO included?
+   - Can sign-in be limited to company email domains?
+   - Can vibe apps be duplicated?
+2. **One HR owner per country or brand** to keep its Monday directory board accurate. The board is
+   the source of truth.
+3. **Teramind coverage** for any team that wants Attendance.
+4. **Time.** One person (Saul) builds and maintains the Hub today, with AI assistance and a strict
+   change process: every change is written down first, checked by more than 800 automated tests,
+   and verified on screen. A company rollout needs protected time, or a second person trained on
+   the process.
 
-## 7. Risks and how they're handled
+## 7. Risks
 
-| Risk | Mitigation |
+| Risk | How it's handled |
 |---|---|
-| Panama payroll breaks | Payroll files are locked by rule; the country filter sits outside the engine; automated guards fail the build if the filter is removed |
-| A manager sees employees who aren't theirs | Every employee query is scoped to the signed-in manager, enforced by tests |
-| Data quality on Monday (blank country, duplicates) | Blank country is treated as Panama on purpose, so nothing leaks *out* of Panama. The sync refuses to add more than 3 new people at once without review |
-| UI Bakery cost or lock-in | The full code is exported and backed up to GitHub after every change, so the app is never trapped |
+| Company-wide changes break Panama payroll | Payroll is out of scope; its files are locked by rule; payroll only loads Panama employees, and an automated check fails if that filter is removed |
+| A manager sees someone else's employees | Every employee query is scoped to the signed-in manager, enforced by tests |
+| A wrong or messy Monday board | The sync matches the new boards by email only, refuses to touch Panama employees, and won't add more than 3 new people at once without review |
+| Cost or lock-in with UI Bakery | The full app is exported and backed up after every change; it is never trapped |
 
 ## 8. The decision we're asking for
 
-1. Approve the **pilot** (phase 0) now: no cost, about one session.
-2. Approve **option C** as the direction, subject to the UI Bakery Enterprise quote.
-3. Name an **owner per country** for phase 1.
+1. Approve the **pilot** (phase 0) now: no new cost, about one session.
+2. Approve **one company-wide HR Hub, HR only and no payroll**, as the direction, subject to the
+   UI Bakery quote.
+3. Name **one HR owner per country or brand** for phase 1.

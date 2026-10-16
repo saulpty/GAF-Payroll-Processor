@@ -1,127 +1,114 @@
-# International Intake 1 agents — design (2026-10-16)
+# International Intake 1 agents — design v2 (2026-10-16)
 
-**Status: proposed, not built.** Nothing in UIB has changed. The prompts that build it are drafted in
-`docs/superpowers/prompts/2026-10-16-international-agents/` and wait for (a) the other UIB session to
-finish and be exported, and (b) Saul's answers to the questions at the bottom.
+**Status: proposed, not built.** Nothing in UIB has changed. Prompts are drafted in
+`docs/superpowers/prompts/2026-10-16-international-agents/` and wait for the gates in that folder's
+README (Teramind check first).
 
-Requested by Marcela Gordon and Yankel: add their 16 Intake 1 agents who work outside Panama.
+Requested by Marcela Gordon and Yankel: their 16 Intake 1 agents who work outside Panama.
+
+**v2 changes after Saul's answers:**
+- The agents go on **their own Monday board**, not the Panama Employee Directory (too much is
+  attached to that board).
+- They get **only the Attendance tab**: no payroll, PTO, contracts or disciplinary.
+- They work **9–5 US Eastern, Monday to Friday**. That is the existing "Standard" schedule.
+- None are in the app today. Yankel is already an app user.
 
 ---
 
 ## The answer in plain language
 
-**Give every employee a Country, read from Monday, and let the app treat "Panama" as one country
-among others.** Payroll and PTO keep working only for Panama. Everything else (Attendance, Activity,
-Disciplinary, Contracts, access for managers) works for everyone, scoped to their managers as usual.
+1. **Every employee gets a Country.** Everyone in the app today is Panama.
+2. **Payroll, PTO and Contracts only look at Panama.** Anyone else is invisible to those screens.
+   The filter sits in the loaders, so the payroll files themselves are not touched.
+3. **The international agents live on a new Monday board, the International Employee Directory.**
+   The app reads it every few minutes, the same way it reads the Panama board:
+   - who is in Current Employees (active),
+   - their role,
+   - their country,
+   - their manager.
+4. **Their manager on that board decides who sees them**, exactly like Panama. The access sync
+   learns to read both boards. Without that it would delete Marcela's and Yankel's new groups,
+   because today it removes any group the Panama board didn't produce.
+5. **The first 16 are added once by a data migration.** The automatic sync refuses more than 3 new
+   people at a time on purpose. After that first load, the board keeps them up to date.
 
-How the agents get in: **they go on the same Monday Panama Employee Directory board, in the
-Current Employees group, with a new "Country" column filled in and Marcela or Yankel in the Manager
-Email column.** From there the existing automation does the rest: the employee row, Marcela's and
-Yankel's access, the Disciplinary form's employee list, the Contracts start dates.
+Two safety rails in the new sync:
+- It matches people **by email only, never by name**, so it can never grab a Panama employee.
+- It **refuses to touch anyone whose country is Panama.**
 
-Why this is the long-term way and not a shortcut:
+## What Marcela and Yankel will see
 
-| Option | What happens | Verdict |
+| Screen | International agents | Why |
 |---|---|---|
-| **A. Add them as normal employees** (no change) | They land in Panama payroll: every day with no Teramind punch becomes RED, 420 min docked, Action Required floods. Panama PTO balances get invented for them. | ❌ Breaks payroll |
-| **B. Add them with "Excluded from payroll" ticked** | Out of payroll, but that same tick also hides them from Attendance, Activity and the Today board — the very screens Marcela wants. | ❌ Hides them from their managers |
-| **C. Separate manual group in Admin → Access** | The access sync rebuilds groups from Monday every ~15 minutes and **deletes any group Monday didn't produce**. A hand-made group would vanish. | ❌ Gets wiped |
-| **D. A second app for them** | Copies everything, doubles every future fix, needs its own Monday wiring. For 16 people. | ❌ Too heavy |
-| **E. Country column (recommended)** | One new field. Payroll and PTO filter to Panama; everything else shows everyone. Monday stays the single source of truth, so it stays automatic. | ✅ Also the foundation for the company-wide pitch |
+| Attendance → Today | ✅ | Reads Teramind directly |
+| Attendance → Activity, Needs a Look, trend | ✅ | Reads Teramind directly |
+| Attendance → List, Reports | ⚠️ **check on /dev** | Parts of these read payroll classification rows, which international agents won't have. If they show empty or zero rows, a small follow-up prompt makes them Teramind-only for non-Panama staff |
+| Payroll (all pages), PTO, Contracts | ❌ by design | Country filter |
+| Disciplinary | ❌ | Not on the Panama board, so the filing app never lists them; the viewer has no cases for them |
 
-Option E is the same first step the committee pitch needs. If the company later grows into the app,
-"country" is already there; if the committee picks duplication instead, nothing is wasted.
+"Leave rules" (your question 4): the app has a **PTO Tracker tab** that calculates vacation
+balances with Panama's rule (about 30 days a year). If the agents appeared there they would show
+a made-up Panama balance. They simply won't appear on that tab. For them the app is only what
+Teramind shows, which is what you described.
 
----
+Holidays: the holiday list is Panama's. On a Panama holiday the Today board may say "Holiday" for
+them too, and on their own country's holiday Activity may flag a missed day. Minor; fixable later
+with per-country holidays if it bothers Marcela.
 
-## What each screen will do for an international agent
+## The build — 5 prompts, order matters
 
-| Screen | After the change | Notes |
+| # | What | Risk |
 |---|---|---|
-| Process Payroll, Action Required, Payroll Master, HRK | **Not included.** | Filter is in `loadEmployees` (an action), so `ProcessPayroll.tsx` is not touched. |
-| PTO Tracker | **Not included** (draft default). | Panama accrual (DAYS360/11) would show a made-up balance. Saul to confirm — see Q4. |
-| Attendance → Today | Included, if they are on our Teramind. | Reads Teramind sessions directly. |
-| Attendance → Activity / Needs a Look | Included, if on our Teramind. | Their public holidays (not Panama's) will look like missed days until per-country holidays exist (phase 2). |
-| Attendance → List, Reports | **Probably empty for them.** | Both read payroll classification rows, which won't exist. Check on /dev after rollout. |
-| Disciplinary viewer + Form app | Included. | Form reads the same Monday board, Current group — no change needed. **But the PDF letterhead says "GAF Healthcare Services Panama"** — see Q6. |
-| Contracts | Included. | Start dates from the Onboarding board, if they're on it. |
-| Manager access | Automatic. | The access sync builds Marcela's/Yankel's groups from the Manager Email columns. |
+| 01 | Migration: `employees.country` (default Panama) and the config keys for the new board (empty = off) | None: nothing reads them yet |
+| 02 | Payroll, PTO, Contracts loaders filter to `payroll_country` | Low. With everyone Panama, the counts must stay identical (checked on /dev) |
+| 03 | New `syncIntlDirectory.ts`, run inside the existing automatic Monday sync | Off until the board's config is filled |
+| 04 | Access sync also reads the new board's Manager Email column | Off until configured |
+| 05 | Data migration: the 16 agents, Teramind emails, Standard schedule, country International | Only after 02 is live |
 
----
+No prompt touches `ProcessPayroll.tsx`, `classificationEngine.ts`, `syncDirectory.ts`,
+`MondayTab.tsx` (at its 15 KB limit) or any other untouchable file.
 
-## The build (4 prompts, ~1 session)
+## Saul's Monday and app steps (between prompts 04 and 05)
 
-| # | What | Files |
-|---|---|---|
-| 01 | Migration: `employees.country` (text, default `'Panama'`, never null) + 2 config keys: `monday_col_directory_country` (empty until Saul adds the column) and `payroll_country` = `Panama`. | 1 new migration |
-| 02 | The Directory sync reads the Country column and writes it (blank = Panama). New employees created by the sync get it too. | `syncDirectory.ts`, `updateEmployeeRoleManager.ts`, `upsertEmployee.ts`, `loadAllEmployees.ts` |
-| 03 | Payroll and PTO only load employees whose country = `payroll_country`. | `loadEmployees.ts`, `loadPtoBalancesInputs.ts`, `loadPtoUpcoming.ts` |
-| 04 | Roster shows a small Country badge for anyone not in Panama (read-only; Monday owns it). | `RosterTab.tsx` |
+1. **Monday:** create the board **International Employee Directory** with two groups (Current
+   Employees, Past Employees) and these columns:
+   - Email: the email they use in **Teramind**
+   - Role
+   - Country
+   - Manager (name)
+   - Manager Email: Marcela's or Yankel's app email
+2. Add the 16 rows to Current Employees.
+3. **App → Admin → Rules & Config:** paste these ids into the matching `monday_…intl…` keys:
+   - the board id
+   - the Current Employees group id
+   - the five column ids
 
-Nothing touches `ProcessPayroll.tsx`, `classificationEngine.ts` or any other untouchable file.
-`MondayTab.tsx` (14.9 KB, at the limit) and `MondayAutoSync.tsx` are **not** edited: they hand the
-action functions straight to `syncDirectory`, so an action that accepts one more field needs no
-change in them.
+   I can read the ids off Monday for you.
+4. After prompt 05: **Admin → Employees → Teramind**. Check that each of the 16 is linked to their
+   Teramind agent.
+5. **View As Marcela** and **View As Yankel** → Attendance. Then **Process Payroll** on a past
+   period: none of the 16 may appear.
 
-Safety property: **until someone types a country on Monday, the app behaves exactly as today.**
-Everyone defaults to Panama.
+Seats: the agents never log in, so they cost no UI Bakery seats. Yankel already has access.
 
----
+## Tests to write with the prompts (`tests/`)
 
-## Saul's non-code steps (in this order, after the 4 prompts are exported and checked)
+- `loadEmployees`, both PTO loaders and `loadContractMilestones` contain the `payroll_country` line
+  (payroll guard, most important).
+- `syncIntlDirectory`:
+  - matches by email only
+  - skips payroll-country employees
+  - brake above 3 new people
+  - blank country becomes International
+  - no-op while the board key is empty
+- `syncAccessFromMonday` appends international Current rows when configured, and is unchanged
+  when not.
+- Diff check: `ProcessPayroll.tsx`, `classificationEngine.ts`, `syncDirectory.ts` untouched.
+- Baseline 752 plus the new ones.
 
-1. **Monday:** add a column "Country" (Status or Dropdown) to the Panama Employee Directory board.
-   Copy its column id into Admin → Rules & Config → `monday_col_directory_country`.
-2. **Monday:** add the 16 rows in the **Current Employees** group with Name, Email, Role = Intake 1,
-   Country = e.g. South Africa, Manager Email = Marcela's or Yankel's.
-   ⚠️ Fill Country *before* moving a row into Current Employees — a row there with a blank Country
-   counts as Panama and would enter the next payroll run.
-3. **App:** Admin → Employees → Monday → **Sync now**, tick the 16. (The automatic sync refuses
-   more than 3 new people at once on purpose — that's the brake, not a bug.)
-4. **App:** Admin → Schedules — create their schedule (US Eastern pairs; South Africa has no DST, so
-   summer and winter times differ) and assign it in Roster. New people otherwise get the most common
-   Panama schedule.
-5. **App:** Admin → Employees → Teramind — check each one is linked to a Teramind agent.
-6. **UIB:** invite Yankel to the workspace (Users & Permissions) — one more seat. The access sync
-   creates his app user automatically once his email is in a Manager column.
-7. Check on /dev with **View As Marcela** and **View As Yankel**, then run Process Payroll on a past
-   period and confirm none of the 16 appear.
+## Later, only if wanted
 
-The agents themselves never log in, so **they cost no UIB seats.** Only Yankel does.
-
----
-
-## Questions for Saul (answers change the prompts)
-
-1. **Teramind:** are these 16 on *our* Teramind account? If not, Attendance and Activity will be
-   empty for them and the main value becomes Disciplinary + Contracts + a roster.
-2. **What do Marcela and Yankel want to see?** Attendance/Activity? Disciplinary? Leave?
-3. **Yankel's email**, and does he already have a UIB login?
-4. **Leave/PTO:** whose rules apply to them? Draft default: hide them from PTO.
-5. **Hours:** do they work US Eastern hours (like Panama) or local hours?
-6. **Disciplinary PDF:** is "GAF Healthcare Services Panama" wrong on their letters? Which entity
-   employs them? (Separate small prompt if so.)
-7. **Same board or their own board?** Recommended: the same Directory board (everything is
-   automatic today). A separate board per country is cleaner on Monday but needs the sync, the
-   access sync and the form app taught to read several boards — that's the company-wide step, not
-   this one.
-8. Some of these emails share domains with Panama staff (`passiontocarehc.com`, `mombaoh.com`), so
-   the domain can't tell countries apart — which is why it has to be an explicit Country column.
-   Is any of the 16 already in the app? (Check Admin → Roster by email before step 2.)
-
----
-
-## Phase 2 (only if needed)
-
-- **Per-country holidays** (`holidays.country`), so a South African holiday stops looking like a
-  missed day in Activity.
-- **Country filter** on Attendance pages for super users.
-- **Letterhead per entity** on the disciplinary PDF.
-
-## Tests to add with the prompts (hand-written, `tests/`)
-
-- `loadEmployees` SQL contains the `payroll_country` filter (payroll guard — the most important one).
-- Both PTO loaders contain it.
-- `syncDirectory` passes `country` to both `updateRoleManager` and `upsertEmp`; blank → `Panama`.
-- `ProcessPayroll.tsx` and `classificationEngine.ts` unchanged by the four prompts (diff check).
-- Baseline stays 752 + the new ones.
+- Per-country holidays.
+- A Teramind-only Attendance List and Reports for non-Panama staff, if the /dev check shows gaps.
+- A manual "Sync now" for the international board in Admin. The Monday tab has no room left,
+  so it would need splitting first.

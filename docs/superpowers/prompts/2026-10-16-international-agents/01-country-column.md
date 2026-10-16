@@ -1,11 +1,12 @@
-# Employees get a Country (migration only)
+# Employees get a Country, and settings for the International Directory board (migration only)
 
 **Copy every edit exactly, character for character. Do not rewrite, reformat or "improve" anything
 else. If your context is compacted mid-task, re-read this prompt before writing.**
 
-Some employees are about to be added who work outside Panama. They must never enter Panama payroll.
-This prompt only adds the data: one column on `employees` and two config keys. No screen changes.
-Every existing employee becomes `Panama`, so nothing behaves differently after this prompt.
+Employees who work outside Panama are about to be added from a second Monday board, the
+International Employee Directory. They must never enter Panama payroll, PTO or Contracts; they only
+use the Attendance tab. This prompt adds only the data: one column on `employees` and the config
+keys. No screen changes. Every existing employee becomes `Panama`, so nothing behaves differently.
 
 **Only this file may change:** one new migration,
 `src/migrations/1782018000_employee_country.sql`, plus its line in `src/migrations/applied.txt`
@@ -22,28 +23,40 @@ Rules:
 The whole file:
 
 ```sql
--- Employee country (Saul, 2026-10-16). Everyone existing is Panama. Safe to run twice.
--- Payroll and PTO only load employees whose country equals config key payroll_country.
--- The Monday Directory sync fills it from the column named in monday_col_directory_country;
--- a blank Monday value means Panama.
+-- Employee country + International Directory board settings (Saul, 2026-10-16). Safe to run twice.
+-- Everyone existing is Panama. Payroll, PTO and Contracts only load employees whose country
+-- equals config key payroll_country. People from the International Directory board get the
+-- board's Country column value, or 'International' when it is blank.
 
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS country text NOT NULL DEFAULT 'Panama';
 
-INSERT INTO classification_config (key, value, label, description, value_type, category)
-VALUES ('payroll_country', 'Panama', 'Payroll Country',
-  'Only employees whose Country equals this are included in payroll and the PTO tracker. Everyone else still shows in Attendance, Activity, Disciplinary and Contracts.',
-  'text', 'internal')
-ON CONFLICT (key) DO NOTHING;
-
-INSERT INTO classification_config (key, value, label, description, value_type, category)
-VALUES ('monday_col_directory_country', '', 'Directory: Country Column',
-  'Column id of the Country column on the Panama Employee Directory board. Empty means everyone is Panama.',
-  'text', 'monday_columns')
+INSERT INTO classification_config (key, value, label, description, value_type, category) VALUES
+  ('payroll_country', 'Panama', 'Payroll Country',
+   'Only employees whose Country equals this are included in payroll, PTO and Contracts. Everyone else only shows in Attendance.',
+   'text', 'internal'),
+  ('monday_board_directory_intl', '', 'International Directory: Board',
+   'Board id of the International Employee Directory. Empty switches the international sync off.',
+   'text', 'monday_boards'),
+  ('monday_group_intl_current', '', 'International Directory: Current Group',
+   'Group id of Current Employees on the International Directory board. Only rows in this group are active.',
+   'text', 'monday_boards'),
+  ('monday_col_intl_email', '', 'International Directory: Email Column',
+   'Column id of the Email column (must be the email the person uses in Teramind).',
+   'text', 'monday_columns'),
+  ('monday_col_intl_role', '', 'International Directory: Role Column', 'Column id of the Role column. Optional.',
+   'text', 'monday_columns'),
+  ('monday_col_intl_country', '', 'International Directory: Country Column', 'Column id of the Country column. Optional; blank means International.',
+   'text', 'monday_columns'),
+  ('monday_col_intl_manager', '', 'International Directory: Manager Column', 'Column id of the Manager (name) column.',
+   'text', 'monday_columns'),
+  ('monday_col_intl_manager_email', '', 'International Directory: Manager Email Column',
+   'Column id of the Manager Email column. This decides which manager sees the person.',
+   'text', 'monday_columns')
 ON CONFLICT (key) DO NOTHING;
 
 -- ROLLBACK
 -- ALTER TABLE employees DROP COLUMN country;
--- DELETE FROM classification_config WHERE key IN ('payroll_country', 'monday_col_directory_country');
+-- DELETE FROM classification_config WHERE key = 'payroll_country' OR key LIKE 'monday_%intl%';
 ```
 
 Run it. Then reply with the result of:
