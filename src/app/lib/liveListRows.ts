@@ -139,3 +139,19 @@ export function liveListRows(input: {
   }
   return out;
 }
+
+/**
+ * 2026-10-16 (international agents): employees outside payroll (in_payroll === false) take their
+ * List rows from `wide`, the whole range (payroll never processes their days). Everyone else
+ * gets exactly what liveListRows gives today.
+ */
+export function liveListRowsWithOutside(
+  input: Parameters<typeof liveListRows>[0] & { wide: LiveWindow | null },
+): AttendanceRow[] {
+  const others = (input.employees ?? []).filter(e => e.in_payroll === false);
+  const base = liveListRows(input);
+  if (!input.wide || others.length === 0) return base;
+  const emails = new Set(others.map(e => String(e.email ?? '').trim().toLowerCase()));
+  const mine = (r: AttendanceRow) => emails.has(String(r.email ?? '').trim().toLowerCase());
+  return [...base.filter(r => !mine(r)), ...liveListRows({ ...input, employees: others, window: input.wide })];
+}

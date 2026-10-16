@@ -16,6 +16,8 @@ export function loadAttendanceEmployees() {
         s.standard_end,
         COALESCE(e.start_date::text, '')                              AS start_date,
         COALESCE(NULLIF(TRIM(s.work_days), ''), 'Mon,Tue,Wed,Thu,Fri') AS work_days,
+        COALESCE(e.country, 'Panama') AS country,
+        (COALESCE(e.country, 'Panama') = COALESCE(NULLIF((SELECT c.value FROM classification_config c WHERE c.key = 'payroll_country'), ''), 'Panama')) AS in_payroll,
         s.dst_start,
         s.dst_end,
         COALESCE(s.grace_minutes, 10)                                 AS grace_minutes

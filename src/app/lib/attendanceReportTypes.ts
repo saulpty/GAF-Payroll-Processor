@@ -9,6 +9,8 @@ export type ReportEmployee = {
   standard_start: string; standard_end: string;
   dst_start: string; dst_end: string;
   grace_minutes: number;
+  /** false = outside payroll (country is not payroll_country): every date is live for them. */
+  in_payroll?: boolean;
 };
 
 export type ReportPayrollRow = {

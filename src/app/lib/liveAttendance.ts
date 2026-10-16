@@ -213,3 +213,39 @@ export function liveReport(a: {
   rows.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : x.employeeName.localeCompare(y.employeeName)));
   return { rows, perEmployee: summarizeRows(rows, a.input.employees), unmatchedForms: a.main.unmatchedForms };
 }
+
+// 2026-10-16 (international agents): employees outside payroll (in_payroll === false, their
+// country is not payroll_country) never get a payroll row, so EVERY date in the range is live
+// for them. `wide` is that range: liveWindow([], dateFrom, dateTo, today).
+
+/** Ids of the employees outside payroll. */
+export function outsidePayrollIds(employees: ReportEmployee[]): Set<string> {
+  return new Set((employees ?? []).filter(e => e.in_payroll === false).map(e => String(e.id)));
+}
+
+/**
+ * liveReport exactly as before for everyone, then the outside-payroll employees' rows and totals
+ * are replaced by a liveReport over `wide`. Payroll employees' rows and totals are untouched.
+ */
+export function liveReportWithOutside(a: {
+  input: ReportInput; main: ReportOutput; window: LiveWindow | null; wide: LiveWindow | null;
+  today: string; tmRows: ActivityDayRow[]; build(input: ReportInput): ReportOutput;
+}): ReportOutput {
+  const base = liveReport(a);
+  const ids = outsidePayrollIds(a.input.employees);
+  if (!a.wide || ids.size === 0) return base;
+  const mine = (id: unknown) => ids.has(String(id));
+  const input: ReportInput = {
+    ...a.input,
+    employees: (a.input.employees ?? []).filter(e => mine(e.id)),
+    payrollRows: (a.input.payrollRows ?? []).filter(p => mine(p.employee_id)),
+  };
+  const out = liveReport({
+    input, main: a.build(input), window: a.wide, today: a.today, tmRows: a.tmRows, build: a.build,
+  });
+  const rows = [...base.rows.filter(r => !mine(r.employeeId)), ...out.rows];
+  rows.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : x.employeeName.localeCompare(y.employeeName)));
+  const theirs = new Map(out.perEmployee.map(s => [String(s.employeeId), s]));
+  const perEmployee = base.perEmployee.map(s => theirs.get(String(s.employeeId)) ?? s);
+  return { rows, perEmployee, unmatchedForms: base.unmatchedForms };
+}
