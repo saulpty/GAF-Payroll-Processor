@@ -1,8 +1,3 @@
-<!--
-DRAFT for Saul. Not sent. DELETE THIS COMMENT BLOCK BEFORE PASTING.
-Part 2 of 3. Send after 03a is exported and checked. Open questions Q5 and Q8 (in 03a) apply here.
--->
-
 # Attendance → List: the On-Time pill, and the phone rows say each fact once (part 2 of 3)
 
 **Copy every edit exactly, character for character. Do not rewrite, reformat or "improve" anything

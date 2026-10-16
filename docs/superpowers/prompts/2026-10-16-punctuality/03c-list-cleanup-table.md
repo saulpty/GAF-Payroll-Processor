@@ -1,9 +1,3 @@
-<!--
-DRAFT for Saul. Not sent. DELETE THIS COMMENT BLOCK BEFORE PASTING.
-Part 3 of 3. Send only after 03b is exported and checked: its anchors include text 03b adds.
-Open questions Q5, Q6 and Q7 (in 03a) apply here.
--->
-
 # Attendance → List: eight columns instead of seventeen (part 3 of 3)
 
 **Copy every edit exactly, character for character. Do not rewrite, reformat or "improve" anything
