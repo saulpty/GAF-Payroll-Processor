@@ -9,7 +9,7 @@ import { toLocalYMD,
 import { buildAttendanceReport } from '@/app/lib/attendanceReport';
 import type { ReportEmployee, ReportPayrollRow, ReportForm, ReportRequest, ReportInput,
   ReportPeriod, ReportHoliday, ReportRow, ReportSummary } from '@/app/lib/attendanceReportTypes';
-import { liveWindow, liveReport } from '@/app/lib/liveAttendance';
+import { liveWindow, liveReportWithOutside } from '@/app/lib/liveAttendance';
 import type { ActivityDayRow } from '@/app/lib/activityDays';
 import { easternDate } from '@/app/lib/teramindTime';
 
@@ -92,14 +92,22 @@ export default function AttendanceReport() {
       : liveWindow((rawPeriods as ReportPeriod[]) ?? [], safeFrom, safeTo, tmToday)),
     [loadingPeriods, rawPeriods, safeFrom, safeTo, tmToday],
   );
+  // 2026-10-16: employees outside payroll never get payroll rows, so the whole range is live
+  // for them (wide). Teramind is loaded for the wide range; payroll employees still use `win`.
+  const anyOutside = ((rawEmps as ReportEmployee[]) ?? []).some(e => e.in_payroll === false);
+  const wide = useMemo(
+    () => (anyOutside ? liveWindow([], safeFrom, safeTo, tmToday) : null),
+    [anyOutside, safeFrom, safeTo, tmToday],
+  );
+  const tmWin = wide ?? win;
   const [rawTm,       loadingTm,      errTm]      = useLoadAction(
     loadTeramindActivityDaysAction, [] as ActivityDayRow[],
-    { dateFrom: win?.from ?? NO_LIVE.from, dateTo: win?.to ?? NO_LIVE.to, viewAs },
+    { dateFrom: tmWin?.from ?? NO_LIVE.from, dateTo: tmWin?.to ?? NO_LIVE.to, viewAs },
   );
 
   // Which window the loaded Teramind rows belong to. Until the load for the current window has
   // finished the page keeps loading, so the numbers never flash without the unprocessed days.
-  const winKey = win ? `${win.from}|${win.to}` : '';
+  const winKey = tmWin ? `${tmWin.from}|${tmWin.to}` : '';
   const [tmFor, setTmFor] = useState('');
   const tmWasLoading = useRef(false);
   useEffect(() => {
@@ -109,7 +117,7 @@ export default function AttendanceReport() {
 
   const loading = loadingDays || loadingForms || loadingReqs || loadingEmps ||
                   loadingHols || loadingPeriods || loadingDst ||
-                  (win !== null && (loadingTm || (!errTm && tmFor !== winKey)));
+                  (tmWin !== null && (loadingTm || (!errTm && tmFor !== winKey)));
   const anyError = errDays || errForms || errReqs || errEmps;
 
   // ── Build report ───────────────────────────────────────────────────────────
@@ -142,13 +150,13 @@ export default function AttendanceReport() {
       helpers: { isScheduledWorkDay, getSchedule, parseTimeToMinutes },
     };
     const main = buildAttendanceReport(input);
-    if (!win || errTm) return main;
-    return liveReport({
-      input, main, window: win, today: tmToday,
+    if (!tmWin || errTm) return main;
+    return liveReportWithOutside({
+      input, main, window: win, wide, today: tmToday,
       tmRows: (rawTm as ActivityDayRow[]) ?? [], build: buildAttendanceReport,
     });
   }, [loading, rawEmps, rawDays, rawForms, rawRequests, rawHolidays, rawPeriods, rawDst,
-      safeFrom, safeTo, manager, role, globalEmployee, win, errTm, rawTm, tmToday]);
+      safeFrom, safeTo, manager, role, globalEmployee, win, errTm, wide, tmWin, rawTm, tmToday]);
 
   // ── Summary strip KPIs: every counted day, processed or not.
   const kpis = useMemo(() => reportRowsToKpis(rows), [rows]);

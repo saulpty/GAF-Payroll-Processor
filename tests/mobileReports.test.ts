@@ -125,6 +125,14 @@ const EDITS: Record<string, { before: string; undo: Array<[string, string]> }> =
       [' onPickDay={isPhone ? setOpenDay : undefined} />', ' />'],
       ["shown === 'table' && (", "view === 'table' && ("],
       ['      {isPhone && <ReportDaySheet row={openDay} onClose={() => setOpenDay(null)} />}\n', ''],
+      // 2026-10-16, international-agents 06b: employees outside payroll use the wide window.
+      ["import { liveWindow, liveReportWithOutside } from '@/app/lib/liveAttendance';", "import { liveWindow, liveReport } from '@/app/lib/liveAttendance';"],
+      ["  // 2026-10-16: employees outside payroll never get payroll rows, so the whole range is live\n  // for them (wide). Teramind is loaded for the wide range; payroll employees still use `win`.\n  const anyOutside = ((rawEmps as ReportEmployee[]) ?? []).some(e => e.in_payroll === false);\n  const wide = useMemo(\n    () => (anyOutside ? liveWindow([], safeFrom, safeTo, tmToday) : null),\n    [anyOutside, safeFrom, safeTo, tmToday],\n  );\n  const tmWin = wide ?? win;\n", ''],
+      ['{ dateFrom: tmWin?.from ?? NO_LIVE.from, dateTo: tmWin?.to ?? NO_LIVE.to, viewAs }', '{ dateFrom: win?.from ?? NO_LIVE.from, dateTo: win?.to ?? NO_LIVE.to, viewAs }'],
+      ["const winKey = tmWin ? `${tmWin.from}|${tmWin.to}` : '';", "const winKey = win ? `${win.from}|${win.to}` : '';"],
+      ['(tmWin !== null && (loadingTm', '(win !== null && (loadingTm'],
+      ['if (!tmWin || errTm) return main;\n    return liveReportWithOutside({\n      input, main, window: win, wide, today: tmToday,', 'if (!win || errTm) return main;\n    return liveReport({\n      input, main, window: win, today: tmToday,'],
+      ['win, errTm, wide, tmWin, rawTm', 'win, errTm, rawTm'],
     ],
   },
   [TABLE]: {

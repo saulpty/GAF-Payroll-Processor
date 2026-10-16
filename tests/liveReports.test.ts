@@ -11,7 +11,8 @@ const REPORT = `${A}AttendanceReport.tsx`;
 test('LR1: one extra Teramind loader, flat params with viewAs, only for the live window', () => {
   const src = read(REPORT);
   assert.match(src, /import loadTeramindActivityDaysAction\s+from '@\/actions\/loadTeramindActivityDays';/);
-  assert.match(src, /useLoadAction\(\s*loadTeramindActivityDaysAction, \[\] as ActivityDayRow\[\],\s*\{ dateFrom: win\?\.from \?\? NO_LIVE\.from, dateTo: win\?\.to \?\? NO_LIVE\.to, viewAs \},\s*\)/);
+  // 2026-10-16 (06b): the range is tmWin = wide ?? win (wide when someone outside payroll is on the page).
+  assert.match(src, /useLoadAction\(\s*loadTeramindActivityDaysAction, \[\] as ActivityDayRow\[\],\s*\{ dateFrom: tmWin\?\.from \?\? NO_LIVE\.from, dateTo: tmWin\?\.to \?\? NO_LIVE\.to, viewAs \},\s*\)/);
   assert.doesNotMatch(src, /\{\s*params:\s*\{/, 'params go flat, never wrapped');
   assert.match(src, /const NO_LIVE = \{ from: '9999-12-31', to: '1970-01-01' \};/, 'no window = a range that ends before it starts');
   assert.equal((src.match(/useLoadAction\(/g) ?? []).length, 8, 'seven official loaders + one Teramind loader');

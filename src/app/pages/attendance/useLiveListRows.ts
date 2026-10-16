@@ -3,7 +3,7 @@ import { useLoadAction } from '@uibakery/data';
 import { isScheduledWorkDay, getSchedule, parseTimeToMinutes } from '@/app/lib/classificationEngine';
 import { buildAttendanceReport } from '@/app/lib/attendanceReport';
 import { liveWindow, liveReport } from '@/app/lib/liveAttendance';
-import { liveListRows, NO_LIVE_WINDOW } from '@/app/lib/liveListRows';
+import { liveListRowsWithOutside, NO_LIVE_WINDOW } from '@/app/lib/liveListRows';
 import type { ActivityDayRow } from '@/app/lib/activityDays';
 import type { ReportEmployee, ReportForm, ReportRequest, ReportHoliday, ReportPeriod } from '@/app/lib/attendanceReportTypes';
 import type { AttendanceRow } from '@/app/lib/attendanceStats';
@@ -36,7 +36,15 @@ export function useLiveListRows({ dateFrom, dateTo, viewAs, employees, official 
     () => (loadingPeriods ? null : liveWindow((rawPeriods as ReportPeriod[]) ?? [], dateFrom, dateTo, today)),
     [loadingPeriods, rawPeriods, dateFrom, dateTo, today],
   );
-  const range = win ?? NO_LIVE_WINDOW;
+  // 2026-10-16: employees outside payroll never get payroll rows, so the whole range is live
+  // for them (wide). The loaders load the wide range; payroll employees still use `win`.
+  const anyOutside = (employees ?? []).some(e => e.in_payroll === false);
+  const wide = useMemo(
+    () => (anyOutside ? liveWindow([], dateFrom, dateTo, today) : null),
+    [anyOutside, dateFrom, dateTo, today],
+  );
+  const hasLive = win !== null || wide !== null;
+  const range = wide ?? win ?? NO_LIVE_WINDOW;
 
   const [rawTm,    loadingTm,    errTm]    = useLoadAction(
     loadTeramindActivityDaysAction, [] as ActivityDayRow[],
@@ -53,11 +61,11 @@ export function useLiveListRows({ dateFrom, dateTo, viewAs, employees, official 
   const [rawHols,  loadingHols]  = useLoadAction(loadHolidaysAction, [] as ReportHoliday[]);
   const [rawDst,   loadingDst]   = useLoadAction(loadDstCalendarAction, [] as DstRow[]);
 
-  const error = !!(errPeriods || (win !== null && (errTm || errForms || errReqs)));
+  const error = !!(errPeriods || (hasLive && (errTm || errForms || errReqs)));
 
   // Build rows only once the window's own data has arrived (no one-render flash with the
   // previous, empty results).
-  const winKey = win ? `${win.from}|${win.to}` : '';
+  const winKey = hasLive ? `${range.from}|${range.to}` : '';
   const busy = loadingTm || loadingForms || loadingReqs;
   const [dataFor, setDataFor] = useState('');
   const wasBusy = useRef(false);
@@ -66,13 +74,14 @@ export function useLiveListRows({ dateFrom, dateTo, viewAs, employees, official 
     else if (wasBusy.current) { wasBusy.current = false; setDataFor(winKey); }
   }, [busy, winKey]);
 
-  const loading = loadingPeriods || (win !== null && !error &&
+  const loading = loadingPeriods || (hasLive && !error &&
     (loadingTm || loadingForms || loadingReqs || loadingHols || loadingDst || dataFor !== winKey));
 
   const rows = useMemo(() => {
-    if (loading || error || !win || dataFor !== winKey) return [] as AttendanceRow[];
-    return liveListRows({
+    if (loading || error || !hasLive || dataFor !== winKey) return [] as AttendanceRow[];
+    return liveListRowsWithOutside({
       window: win,
+      wide,
       today,
       employees: employees ?? [],
       forms: (rawForms as ReportForm[]) ?? [],
@@ -87,7 +96,7 @@ export function useLiveListRows({ dateFrom, dateTo, viewAs, employees, official 
         reportHelpers: { isScheduledWorkDay, getSchedule, parseTimeToMinutes },
       },
     });
-  }, [loading, error, win, winKey, dataFor, today, employees, rawForms, rawReqs, rawHols, rawPeriods, rawDst, rawTm, official]);
+  }, [loading, error, win, wide, hasLive, winKey, dataFor, today, employees, rawForms, rawReqs, rawHols, rawPeriods, rawDst, rawTm, official]);
 
   return { rows, loading, error };
 }
