@@ -49,7 +49,7 @@ export const SECTIONS = [
     links: [
       { to: '/attendance/today',    label: 'Today',    icon: Clock },
       { to: '/attendance/activity', label: 'Activity', icon: Activity },
-      { to: '/attendance/list',     label: 'List',     icon: Users },
+      { to: '/attendance/list',     label: 'Punctuality', icon: Users },
       { to: '/attendance/reports',  label: 'Reports',  icon: FileText },
     ],
   },

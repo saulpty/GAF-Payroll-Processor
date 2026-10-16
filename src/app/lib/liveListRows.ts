@@ -87,8 +87,8 @@ export function reportRowToList(r: ReportRow): AttendanceRow | null {
         bucket: bucketOf(r.minutesLate), filed_gaf: reported, minutes_late: r.minutesLate,
       };
     }
-    default:   // unexplained_absence, absent_reported_* — the List only knows unexplained
-      return { ...base, status: 'Absent - Unexplained', bucket: 'absent' };
+    default:   // unexplained_absence, absent_reported_* — one status; a form on file sets filed_gaf
+      return { ...base, status: 'Absent - Unexplained', bucket: 'absent', filed_gaf: r.verdict !== 'unexplained_absence' };
   }
 }
 

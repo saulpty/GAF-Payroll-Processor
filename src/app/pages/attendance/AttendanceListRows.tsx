@@ -4,11 +4,11 @@ import {
   PHONE_SORTS, filterByName, listNothingFound, phoneSort, sortEmployeeStats,
 } from '@/app/lib/attendanceSort';
 import MobileRow from '@/app/components/mobile/MobileRow';
-import { REPORTING_TOOLTIP, ReportingBadge, STATUS_TOOLTIP, StatusBadge } from './AttendanceTable';
+import { ON_TIME_TOOLTIP, OnTimePill, REPORTING_TOOLTIP, ReportingBadge } from './AttendanceTable';
 
 // Attendance → List on a phone: one row per employee, built from the same list, the same search
 // and the same ordering rule as AttendanceTable. The page renders this OR the table, never both.
-// The Good / Fair / At Risk pill and the Reporting pill are the table's own, imported.
+// The On-Time pill and the Reporting pill are the table's own, imported.
 
 type Props = {
   stats: EmpStats[];
@@ -59,9 +59,9 @@ export default function AttendanceListRows({ stats, onRowClick, search, manager,
       {/* On a computer these two sentences are mouse-over notes on the column headers. */}
       <details className="mb-1 text-[12px] leading-4 text-slate-500">
         <summary className="cursor-pointer py-3.5 font-medium text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ring">
-          What Status and Reporting Mean
+          What On-Time and Reporting Mean
         </summary>
-        <p className="pb-1"><span className="font-medium text-slate-700">Status.</span> {STATUS_TOOLTIP}</p>
+        <p className="pb-1"><span className="font-medium text-slate-700">On-Time.</span> {ON_TIME_TOOLTIP}</p>
         <p className="pb-3"><span className="font-medium text-slate-700">Reporting.</span> {REPORTING_TOOLTIP}</p>
       </details>
 
@@ -76,14 +76,15 @@ export default function AttendanceListRows({ stats, onRowClick, search, manager,
               key={s.email}
               title={s.name}
               sub={s.role || undefined}
-              right={<StatusBadge pct={s.pctOnTime} days={s.days} />}
+              right={<OnTimePill pct={s.pctOnTime} days={s.days} />}
               chevron="right"
               onClick={() => onRowClick(s.email)}
               facts={
                 <>
-                  <span><span className="font-medium text-slate-700">{s.pctOnTime.toFixed(0)}%</span> on time</span>
-                  <span>Late {s.totalLate}</span>
-                  <span>Unreported {s.unreported}</span>
+                  <span>
+                    Late {s.totalLate}
+                    {s.unreported > 0 && <span className="text-status-red-ink"> ({s.unreported} Not Reported)</span>}
+                  </span>
                   <span>Absent {s.absent}</span>
                   <span className="inline-flex items-center gap-1.5">Reporting <ReportingBadge s={s} /></span>
                 </>

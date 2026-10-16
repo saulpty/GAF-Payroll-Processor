@@ -13,7 +13,7 @@ import { managerOptions } from '@/app/lib/managerFilter';
 import loadAttendanceEmployeesAction from '@/actions/loadAttendanceEmployees';
 import loadActionRequiredCountsAction from '@/actions/loadActionRequiredCounts';
 import type { EmpInfo } from '@/app/lib/attendanceStats';
-import { getConfig, ATTENDANCE_SWITCH_ROUTES, hasVisibleFilter } from '@/app/lib/filterRoutes';
+import { getConfig, hasVisibleFilter } from '@/app/lib/filterRoutes';
 import { attendancePeriodOptions } from '@/app/lib/attendancePeriods';
 import { nextPeriod } from '@/app/lib/periodName';
 import { toLocalYMD } from '@/app/lib/classificationEngine';
@@ -46,7 +46,7 @@ export default function FilterBar({ stacked = false, onDefaultPeriod }: Props) {
   const {
     periodsVersion,
     arVersion,
-    attendanceMode, setAttendanceMode,
+    attendanceMode,
     period, setPeriod,
     dateFrom, setDateFrom,
     dateTo, setDateTo,
@@ -131,19 +131,8 @@ export default function FilterBar({ stacked = false, onDefaultPeriod }: Props) {
     if (periodPick.defaultName) onDefaultPeriod?.(periodPick.defaultName);
   }, [periodPick.defaultName, onDefaultPeriod]);
 
-  // Reset mode to route default on attendance sub-route change
-  const prevRouteRef = useRef<string | null>(null);
-  useEffect(() => {
-    const matchKey = Object.keys(ATTENDANCE_SWITCH_ROUTES)
-      .filter(k => location.pathname === k || location.pathname.startsWith(k + '/'))
-      .sort((a, b) => b.length - a.length)[0];
-    const routeKey = matchKey ?? null;
-    if (routeKey !== null && routeKey !== prevRouteRef.current) {
-      prevRouteRef.current = routeKey;
-      setAttendanceMode(ATTENDANCE_SWITCH_ROUTES[routeKey]!);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+  // Periods | Dates and the range are one choice across Attendance: changing tab keeps them
+  // (Saul, 2026-10-16). Activity alone picks Dates · last 14 days when nothing is chosen yet.
 
   const emps = empsRaw as EmpInfo[];
   const managers = useMemo(() => managerOptions(emps), [emps]);

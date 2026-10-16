@@ -50,10 +50,10 @@ export type PhoneSort = { key: SortKey; dir: SortDir; label: string };
  */
 export const PHONE_SORTS: readonly PhoneSort[] = [
   { key: 'name', dir: 'asc', label: 'Name (A to Z)' },
-  { key: 'pctOnTime', dir: 'asc', label: '% On-Time (Lowest First)' },
-  { key: 'unreported', dir: 'desc', label: 'Unreported (Most First)' },
+  { key: 'pctOnTime', dir: 'asc', label: 'On-Time (Lowest First)' },
+  { key: 'unreported', dir: 'desc', label: 'Late, Not Reported (Most First)' },
   { key: 'absent', dir: 'desc', label: 'Absent (Most First)' },
-  { key: 'totalLate', dir: 'desc', label: 'Total Late (Most First)' },
+  { key: 'totalLate', dir: 'desc', label: 'Late (Most First)' },
 ];
 
 /** The choice with that key; anything unknown falls back to Name. */

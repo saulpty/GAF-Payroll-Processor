@@ -401,7 +401,9 @@ test('away days are counted and labelled', () => {
 
 test('a Tardiness form on a worked day is context: not away, and it does not excuse low activity', () => {
   // Worked THU with a Tardiness form but only 3 h active (threshold 6.5 h) -> still flagged.
-  const rr = mkReport(THU, { form: mkForm('Tardiness'), verdict: 'late_reported_on_time', entryTime: null, exitTime: null });
+  // Late by payroll's count (minutesLate > 0): a Tardiness form on an on-time day shows no tag
+  // since 2026-10-16 (tests/whyTags.test.ts), so this fixture must really be late.
+  const rr = mkReport(THU, { form: mkForm('Tardiness'), verdict: 'late_reported_on_time', minutesLate: 20, entryTime: null, exitTime: null });
   const { days, byEmployee } = run({ reportRows: [rr], rows: [mkRow(THU, { active_s: 180 * 60 })] });
   const d = dayOn(days, THU)!;
   assert.equal(d.why?.label, 'Tardiness');

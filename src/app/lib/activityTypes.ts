@@ -1,8 +1,8 @@
 // Activity days — shared types, split out of activityDays.ts to keep it under the 15 KB cap.
 // Pure: no runtime imports, no Date maths. Contract 2026-09-18 (ghost records).
 
-export type WhyKind = 'pto' | 'permission' | 'sick' | 'form' | 'holiday' | 'wfh' | 'day_off' | 'none';
-export type WhyChip = { kind: WhyKind; label: string; tone: 'blue' | 'amber' | 'gray' };
+export type WhyKind = 'pto' | 'permission' | 'sick' | 'form' | 'holiday' | 'wfh' | 'day_off' | 'none' | 'unreported';
+export type WhyChip = { kind: WhyKind; label: string; tone: 'blue' | 'amber' | 'gray' | 'red' };
 
 export type ActivitySettings = {
   minActiveMinutes: number;   // 390 on a 480-min shift

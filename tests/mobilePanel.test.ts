@@ -3,11 +3,9 @@
 // reaches a chart. Lives in tests/ once the prompt is sent.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
 const A = 'src/app/pages/attendance/';
 const PANEL = `${A}AttendancePanel.tsx`;
@@ -15,11 +13,11 @@ const BODY = `${A}AttendancePanelBody.tsx`;
 const DAYS = `${A}AttendancePanelDays.tsx`;
 const DAY_ROWS = `${A}AttendancePanelDayRows.tsx`;
 const KPIS = `${A}AttendancePanelKpis.tsx`;
-const DONUTS = `${A}AttendanceDonuts.tsx`;
 const OPENERS = [`${A}AttendanceToday.tsx`, 'src/app/pages/Attendance.tsx', `${A}activity/ActivityByEmployee.tsx`];
 
-// AttendanceDonuts.tsx as it stood on 2026-10-13: the prompt does not edit it.
-const DONUTS_SHA256 = 'e063a752291b43a1266dd25e18045d11d8c0e6d56b0fe49883ad803118d16568';
+// 2026-10-16 re-pin (prompt 2026-10-16-punctuality/02-employee-panel-trim-and-live-days.md):
+// AttendanceDonuts.tsx is deleted (the two ring charts are gone) and Day by Day loses its Status
+// column. Fails until that prompt is exported. The new guards are in tests/employeePanel.test.ts.
 
 /** Source of the block that starts at `open` (which must end with `{` or `(`), up to its matching close. */
 function block(src: string, open: string): string {
@@ -98,7 +96,7 @@ test('MPS1: on a phone the panel is a MobileSheet; the computer\'s panel is the 
 
 test('MPS2: on a phone the panel body returns before any chart can be rendered', () => {
   const src = read(BODY);
-  const charts = [...rechartsNames(src), 'AttendanceDonuts'];
+  const charts = rechartsNames(src);
   const fn = src.slice(src.indexOf('export default function AttendancePanelBody('));
   assert.match(fn, /^export default function AttendancePanelBody\(\{ stats, isPhone = false \}: Props\) \{/);
   const exit = /^\s*if \(isPhone\) return (<[^;]+);$/m.exec(fn);
@@ -123,10 +121,9 @@ test('MPS2: on a phone the panel body returns before any chart can be rendered',
   assert.equal((src.match(/<MiniKpi\s/g) ?? []).length, 7, 'the seven numbers are written once');
   assert.equal((fn.match(/<PanelNumbers stats=\{stats\} \/>/g) ?? []).length, 2, 'used by the phone return and by the computer layout');
   desktopClassesKept(src, 'grid grid-cols-3 sm:grid-cols-7 gap-2', 'seven numbers');
-  // The computer layout still holds the chart and the donuts.
+  // The computer layout still holds the arrival chart (the ring charts were removed 2026-10-16).
   assert.match(fn, /<ResponsiveContainer width="100%" height="100%">/);
-  assert.match(fn, /<AttendanceDonuts stats=\{stats\} \/>/);
-  assert.equal(sha(read(DONUTS)), DONUTS_SHA256, 'AttendanceDonuts.tsx is not edited: a phone simply never renders it');
+  assert.doesNotMatch(fn, /AttendanceDonuts/);
 });
 
 test('MPS3: Day by Day is rows on a phone and the same table on a computer', () => {
@@ -138,7 +135,7 @@ test('MPS3: Day by Day is rows on a phone and the same table on a computer', () 
     'rows OR the table, from the same sorted days and the same payroll rows',
   );
   assert.equal((src.match(/<table\b/g) ?? []).length, 1, 'the table is still there, once');
-  assert.equal((src.match(/<th className=\{TH\}>/g) ?? []).length, 8, 'eight columns, as before');
+  assert.equal((src.match(/<th className=\{TH\}>/g) ?? []).length, 7, 'seven columns: Status removed 2026-10-16');
   assert.doesNotMatch(src, /useIsPhone/, 'the panel decides; this file is told');
 
   const rows = read(DAY_ROWS);
@@ -152,7 +149,7 @@ test('MPS3: Day by Day is rows on a phone and the same table on a computer', () 
   // Reading only: a day row opens nothing.
   assert.doesNotMatch(rows, /onClick|chevron=/);
   // The table's facts are all there, written the way the table writes them.
-  for (const fact of ['fmtClock(d.shownFirstMin)', "fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')", 'fmtMins(att.minutes_late)', 'fmtDuration(d.activeMin)', '<WhyChipBadge chip={d.why} />', 'Needs a Look', 'Long Break', 'STATUS_COLORS[att.status]', "d.flag === 'long_break'", 'att.minutes_late > 0']) {
+  for (const fact of ['fmtClock(d.shownFirstMin)', "fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')", 'fmtMins(att.minutes_late)', 'fmtDuration(d.activeMin)', '<WhyChipBadge chip={d.why} />', 'Needs a Look', 'Long Break',"d.flag === 'long_break'", 'att.minutes_late > 0']) {
     assert.ok(src.includes(fact), `the table no longer has: ${fact}`);
     assert.ok(rows.includes(fact), `day row is missing: ${fact}`);
   }
@@ -175,7 +172,7 @@ test('MPS4: the three places that open the panel pass only props it still takes'
 });
 
 test('MPS5: house rules for the panel files, and every file under 15 KB', () => {
-  for (const f of [PANEL, BODY, DAYS, DAY_ROWS, KPIS, DONUTS]) {
+  for (const f of [PANEL, BODY, DAYS, DAY_ROWS, KPIS]) {
     const src = read(f);
     const size = Buffer.byteLength(src, 'utf8');
     assert.ok(size < 15000, `${f} is ${size} bytes`);

@@ -40,16 +40,17 @@ function SummaryTile({ label, value, accent, dot, note, noteTone }: { label: str
 }
 
 export default function AttendanceActivity() {
-  const { dateFrom, dateTo, attendanceMode, setAttendanceMode, setDateFrom, setDateTo } = useGlobalFilters();
+  const { dateFrom, dateTo, setAttendanceMode, setDateFrom, setDateTo } = useGlobalFilters();
   const { isSuper } = useViewer();
   const isPhone = useIsPhone();
 
-  // On first mount: ensure we are in Dates mode with last 14 days
+  // On first mount, only when no range is chosen yet: Dates mode with the last 14 days.
+  // A range picked on another Attendance tab is kept (Saul, 2026-10-16).
   const initDone = useRef(false);
   useEffect(() => {
     if (initDone.current) return;
     initDone.current = true;
-    if (attendanceMode !== 'dates' || !dateFrom || !dateTo) {
+    if (!dateFrom || !dateTo) {
       setAttendanceMode('dates');
       setDateTo(todayYmd());
       setDateFrom(daysAgo(14));

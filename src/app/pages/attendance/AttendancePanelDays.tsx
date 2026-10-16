@@ -2,7 +2,6 @@ import type { ActivityDay } from '@/app/lib/activityDays';
 import { fmtDayShort } from '@/app/lib/activityDays';
 import { fmtClock, fmtDuration } from '@/app/lib/teramindToday';
 import type { AttendanceRow } from '@/app/lib/attendanceStats';
-import { STATUS_COLORS } from './AttendancePanelBody';
 import WhyChipBadge from './activity/WhyChipBadge';
 import SourceBadge from './activity/SourceBadge';
 import GhostMark from './activity/GhostMark';
@@ -66,7 +65,6 @@ export default function AttendancePanelDays({ days, attendanceRows = [], isPhone
                   <th className={TH}>Entry</th>
                   <th className={TH}>Exit</th>
                   <th className={TH}>Active</th>
-                  <th className={TH}>Status</th>
                   <th className={TH}>Late</th>
                   <th className={TH}>Why</th>
                   <th className={TH}>Source</th>
@@ -89,19 +87,6 @@ export default function AttendancePanelDays({ days, attendanceRows = [], isPhone
                           : '—'}
                       </td>
                       <td className={`${TD} tabular-nums`}>{fmtDuration(d.activeMin)}</td>
-                      <td className={TD}>
-                        {att ? (
-                          <span className="inline-flex items-center gap-1">
-                            <span
-                              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                              style={{ background: STATUS_COLORS[att.status] ?? '#ccc' }}
-                            />
-                            <span className="whitespace-nowrap">{att.status}</span>
-                          </span>
-                        ) : (
-                          <span className="text-slate-300">—</span>
-                        )}
-                      </td>
                       <td className={`${TD} tabular-nums whitespace-nowrap`}>
                         {att && att.minutes_late > 0
                           ? <span className="text-status-yellow-ink">{fmtMins(att.minutes_late)}</span>

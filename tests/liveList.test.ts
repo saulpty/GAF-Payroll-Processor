@@ -206,9 +206,10 @@ test('LP1: the List loads unprocessed days through useLiveListRows and appends t
   const page = read('src/app/pages/Attendance.tsx');
   assert.match(page, /import \{ useLiveListRows \} from '@\/app\/pages\/attendance\/useLiveListRows';/);
   assert.match(page, /useLiveListRows\(\{\s+dateFrom: safeFrom, dateTo: safeTo, viewAs,/);
-  assert.match(page, /\[\.\.\.rows, \.\.\.live\.rows\]/);
+  // 2026-10-16 (punctuality 05): the payroll rows may first go through the forms (reported.rows).
+  assert.match(page, /\[\.\.\.(reported\.)?rows, \.\.\.live\.rows\]/);
   assert.match(page, /allRows\.filter\(r => matchEmails\.has\(r\.email\)\)/);
-  assert.match(page, /const loading = loadingRows \|\| loadingEmps \|\| live\.loading;/, 'numbers wait for those days');
+  assert.match(page, /const loading = loadingRows \|\| loadingEmps \|\| live\.loading( \|\| reported\.loading)?;/, 'numbers wait for those days');
 });
 
 test('LP2: the hook loads only the live window, flat params with viewAs, and uses the libs', () => {
@@ -272,10 +273,16 @@ test('LP6: List rows wait for the window\'s own data, and loading says so', () =
   assert.match(hook, /const loading = loadingPeriods \|\| \(win !== null && !error &&\s+\(loadingTm \|\| loadingForms \|\| loadingReqs \|\| loadingHols \|\| loadingDst \|\| dataFor !== winKey\)\);/);
 });
 
-test('LP7: List keeps its column headers and % On-Time stays sortable (UIB once renamed them)', () => {
+// 2026-10-16: prompt 03c (2026-10-16-punctuality) cuts the table to eight columns on purpose;
+// listCleanup.test.ts LC3 pins the new set and order. Either set is checked here until it lands.
+test('LP7: List keeps its column headers and the on-time rate stays sortable (UIB once renamed them)', () => {
   const t = read(`${A}AttendanceTable.tsx`);
-  assert.match(t, /<Th label="% On-Time"\s+col="pctOnTime"/);
-  for (const label of ['Reported', 'Unreported', 'Avg Min (Worked)', '1–10m', '11–30m', '31+m']) {
+  const cleaned = !t.includes('<Th label="Total Late"');
+  assert.match(t, cleaned ? /<Th label="On-Time"\s+col="pctOnTime"/ : /<Th label="% On-Time"\s+col="pctOnTime"/);
+  const labels = cleaned
+    ? ['Late', 'Absent', 'Avg Min (Worked)', 'Reporting']
+    : ['Reported', 'Unreported', 'Avg Min (Worked)', '1–10m', '11–30m', '31+m'];
+  for (const label of labels) {
     assert.ok(t.includes(`<Th label="${label}"`), `header ${label}`);
   }
   assert.doesNotMatch(t, /On-Time %/);

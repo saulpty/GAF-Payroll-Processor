@@ -166,6 +166,12 @@ export default function AttendanceToday() {
     return m;
   }, [allRows]);
 
+  const entryMinById = useMemo(() => {
+    const m = new Map<number, number | null>();
+    for (const r of allRows) m.set(r.employeeId, r.entryMin);
+    return m;
+  }, [allRows]);
+
   // employees cast to ReportEmployee for useTodayWhy
   const reportEmployees = useMemo(() =>
     employees.map(e => e as unknown as ReportEmployee),
@@ -177,6 +183,7 @@ export default function AttendanceToday() {
     employees: reportEmployees,
     scheduledById,
     hasActivityById,
+    entryMinById,
   });
 
   const loading = loadingEmps || loadingPunches || loadingHols || loadingDst;

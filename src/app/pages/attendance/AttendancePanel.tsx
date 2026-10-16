@@ -158,7 +158,7 @@ export function AttendancePanel({
               {/* Activity KPI tiles */}
               <AttendancePanelKpis days={panelDays} stats={stats} />
 
-              {/* Attendance KPIs + arrival chart + Donuts */}
+              {/* Attendance KPIs + arrival chart */}
               {stats && <AttendancePanelBody stats={stats} />}
 
               {/* Day By Day — single merged table */}

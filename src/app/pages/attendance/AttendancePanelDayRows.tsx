@@ -3,7 +3,6 @@ import type { ActivityDay } from '@/app/lib/activityDays';
 import { fmtDayShort } from '@/app/lib/activityDays';
 import { fmtClock, fmtDuration } from '@/app/lib/teramindToday';
 import type { AttendanceRow } from '@/app/lib/attendanceStats';
-import { STATUS_COLORS } from './AttendancePanelBody';
 import WhyChipBadge from './activity/WhyChipBadge';
 
 type Props = {
@@ -25,7 +24,6 @@ export default function AttendancePanelDayRows({ days, attByDate, fmtMins }: Pro
     <div className="-mx-4 bg-white border-t border-slate-200">
       {days.map(d => {
         const att = attByDate.get(d.date);
-        const dot = att ? STATUS_COLORS[att.status] : undefined;
         const first = d.shownFirstMin !== null ? fmtClock(d.shownFirstMin) : '—';
         const last = d.shownLastMin !== null
           ? fmtClock(d.shownLastMin) + (d.crossesMidnight ? ' +1d' : '')
@@ -35,12 +33,6 @@ export default function AttendancePanelDayRows({ days, attByDate, fmtMins }: Pro
             key={d.date}
             title={fmtDayShort(d.date)}
             tone={d.needsLook ? 'yellow' : 'none'}
-            right={att ? (
-              <span className="inline-flex items-center gap-1 text-[12px] text-slate-700 whitespace-nowrap">
-                <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-slate-300" style={dot ? { background: dot } : undefined} />
-                {att.status}
-              </span>
-            ) : undefined}
             facts={(
               <>
                 <span className="whitespace-nowrap">{first} → {last}</span>

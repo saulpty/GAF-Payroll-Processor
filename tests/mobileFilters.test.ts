@@ -42,11 +42,10 @@ test('MR3: FilterBar keeps its three loaders and both period effects, and only g
   // The default-period effect, word for word.
   assert.match(fb, /if \(cfg\?\.periods && attendanceMode === 'periods' && attendancePeriods\.length === 0 && def\) \{\s*setAttendancePeriods\(\[def\], rangeOf\(\[def\]\)\);\s*\}/);
   assert.match(fb, /\}, \[cfg\?\.periods, attendanceMode, periodPick\.defaultName, attendancePeriods\.length\]\);/);
-  // The Periods/Dates reset per route.
-  assert.match(fb, /if \(routeKey !== null && routeKey !== prevRouteRef\.current\) \{\s*prevRouteRef\.current = routeKey;\s*setAttendanceMode\(ATTENDANCE_SWITCH_ROUTES\[routeKey\]!\);/);
+  // 2026-10-16 (punctuality 04): no Periods/Dates reset per route; the range is kept across tabs.
+  assert.doesNotMatch(fb, /ATTENDANCE_SWITCH_ROUTES|prevRouteRef|setAttendanceMode/);
   assert.match(fb, /\{hasVisibleFilter\(cfg, \{/, 'Clear Filters still uses the rule');
-  assert.match(fb, /const prevRouteRef = useRef<string \| null>\(null\);/);
-  assert.equal(count(fb, /useEffect\(/g), 6, 'the five effects it had, plus the one that reports the default period');
+  assert.equal(count(fb, /useEffect\(/g), 5, 'six effects until 2026-10-16, minus the per-route Periods/Dates reset');
   assert.match(fb, /export default function FilterBar\(\{ stacked = false, onDefaultPeriod \}: Props\)/);
   assert.match(fb, /stacked\?: boolean;/);
   assert.match(fb, /onDefaultPeriod\?: \(name: string\) => void;/);

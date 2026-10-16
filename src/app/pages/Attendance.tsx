@@ -21,6 +21,7 @@ import AttendanceActivity   from '@/app/pages/attendance/activity/AttendanceActi
 import { matchesManager }   from '@/app/lib/managerFilter';
 import type { ReportEmployee } from '@/app/lib/attendanceReportTypes';
 import { useLiveListRows } from '@/app/pages/attendance/useLiveListRows';
+import { useFormReported } from '@/app/pages/attendance/useFormReported';
 import { useState } from 'react';
 
 type Tab = 'list' | 'reports' | 'today' | 'activity';
@@ -84,9 +85,11 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
     dateFrom: safeFrom, dateTo: safeTo, viewAs,
     employees: empList as unknown as ReportEmployee[], official: rows,
   });
+  // "Reported" = a form on file for that person and day, as on Reports (2026-10-16).
+  const reported = useFormReported({ rows, employees: emps, dateFrom: safeFrom, dateTo: safeTo, viewAs });
   const allRows = useMemo(
-    () => (live.rows.length > 0 ? [...rows, ...live.rows] : rows),
-    [rows, live.rows],
+    () => (live.rows.length > 0 ? [...reported.rows, ...live.rows] : reported.rows),
+    [reported.rows, live.rows],
   );
 
   const empMap = useMemo(() => {
@@ -124,7 +127,7 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
   const panelStats = panelEmail ? empStats.find(s => s.email === panelEmail) ?? null : null;
   const panelEmpId = panelEmail ? Number((empMap.get(panelEmail) as { id?: number } | undefined)?.id) : NaN;
   // Wait for those days too, so the numbers never flash without them.
-  const loading = loadingRows || loadingEmps || live.loading;
+  const loading = loadingRows || loadingEmps || live.loading || reported.loading;
 
   return (
     <div className="flex flex-col h-full bg-background phone:h-auto phone:min-h-full">
@@ -146,6 +149,9 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
 
           {!loading && (
             <>
+              <p className="mb-3 px-1 text-sm text-slate-600">
+                How often each employee arrives on time for their schedule, and whether late or absent days were reported with a GAF Attendance form.
+              </p>
               <AttendanceKpis kpis={kpis} />
               {live.error && (
                 <div className="-mt-2 mb-4 px-1 text-xs text-slate-500">
@@ -156,7 +162,7 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <span className="text-base font-semibold">Employee Directory</span>
+                    <span className="text-base font-semibold">Punctuality by Employee</span>
                     <span className="bg-muted text-muted-foreground text-xs font-medium px-2.5 py-1 rounded-full">
                       {empStats.length} employees
                     </span>

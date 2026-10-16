@@ -33,39 +33,35 @@ function Kpi({
 }
 
 export function AttendanceKpis({ kpis }: Props) {
-  const totalCheck = kpis.onTime + kpis.lateDays + kpis.absent + kpis.excused + kpis.permission;
+  // Absences with and without a form: each total minus its late days. No new counting.
+  const absentReported = kpis.reported - kpis.lateReported;
+  const absentNot = kpis.unreported - kpis.lateUnreported;
   return (
     <div className="mb-4">
-      <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-10 gap-2 mb-1">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         <Kpi
           label="On-Time Rate"
           value={`${kpis.onTimeRate.toFixed(1)}%`}
-          sub={`${kpis.onTime} of ${kpis.daysTracked} Expected`}
+          sub={`${kpis.onTime} of ${kpis.daysTracked} Expected Days`}
           tone="lead"
           color="text-secondary"
           tooltip="On-time days divided by expected days (on time + late + absent). Time off and permissions are not counted either way."
         />
         <Kpi
-          label="Late Rate"
-          value={`${kpis.lateRate.toFixed(1)}%`}
-          sub={`${kpis.lateDays} of ${kpis.daysTracked} Expected`}
-          tone="alert"
-          color="text-status-yellow-ink"
-          tooltip="Late days divided by expected days (on time + late + absent)."
-        />
-        <Kpi
-          label="Work Days"
-          value={`${kpis.workDays}`}
-          sub="Scheduled Shifts"
-          tone="plain"
-          tooltip="Every day someone was scheduled on their shift in this range, including time off and permissions."
-        />
-        <Kpi
           label="Late Days"
           value={`${kpis.lateDays}`}
           sub={`${kpis.lateReported} Reported · ${kpis.lateUnreported} Not`}
-          tone="plain"
-          tooltip="Days someone clocked in after their shift start."
+          tone="alert"
+          color="text-status-yellow-ink"
+          tooltip="Days someone clocked in after their shift start. Reported means a GAF Attendance form is on file for the day."
+        />
+        <Kpi
+          label="Absent Days"
+          value={`${kpis.absent}`}
+          sub={`${absentReported} Reported · ${absentNot} Not`}
+          tone="alert"
+          color="text-status-red-ink"
+          tooltip="Scheduled to work with no clock-in and no time off or permission covering the day. Reported means a GAF Attendance form is on file for the day."
         />
         <Kpi
           label="Avg Min Late"
@@ -75,45 +71,12 @@ export function AttendanceKpis({ kpis }: Props) {
           tooltip="Average minutes late across the late days only. On-time days and absences are not included."
         />
         <Kpi
-          label="Absent Days"
-          value={`${kpis.absent}`}
-          sub="Reported or Not"
-          tone="alert"
-          color="text-status-red-ink"
-          tooltip="Scheduled to work with no clock-in and no time off or permission covering the day, whether or not a form was filed."
-        />
-        <Kpi
-          label="Reported"
-          value={`${kpis.reported}`}
-          sub="Late/Absent, Form Filed"
+          label="Time Off & Permission"
+          value={`${kpis.excused + kpis.permission}`}
+          sub={`${kpis.excused} Time Off · ${kpis.permission} Permission`}
           tone="plain"
-          tooltip="Late or absent days with an attendance form on file."
+          tooltip="Approved days away (PTO, company holidays, birthday and compensatory days) and approved permissions. These never count for or against the score."
         />
-        <Kpi
-          label="Unreported"
-          value={`${kpis.unreported}`}
-          sub="Late/Absent, No Form"
-          tone="alert"
-          color="text-status-red-ink"
-          tooltip="Late or absent days with no attendance form on file."
-        />
-        <Kpi
-          label="Time Off"
-          value={`${kpis.excused}`}
-          sub="PTO, Holidays"
-          tone="plain"
-          tooltip="Approved days away: PTO, company holidays, birthday and compensatory days. These never affect the score."
-        />
-        <Kpi
-          label="Permission"
-          value={`${kpis.permission}`}
-          sub="Approved"
-          tone="plain"
-          tooltip="An approved permission covered the day. Does not affect the score."
-        />
-      </div>
-      <div className="text-[11px] text-muted-foreground px-1">
-        On Time ({kpis.onTime}) + Late ({kpis.lateDays}) + Absent ({kpis.absent}) + Time Off ({kpis.excused}) + Permission ({kpis.permission}) = {totalCheck} = Work Days ({kpis.workDays})
       </div>
     </div>
   );
