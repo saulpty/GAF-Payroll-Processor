@@ -6,17 +6,15 @@ Prompts: `superpowers/prompts/2026-10-16-international-agents/01–05, 04b`. Des
 punctuality handoff). Screenshots: `assets/2026-10-16-international/`.
 Committee pitch draft (HR only, no payroll): `committee/2026-10-16-company-wide-hr-hub.md`. Not sent.
 
-## ⚠️ NOT RELEASED: read before anyone runs payroll on prod
-The **migrations ran on the shared database**: `employees.country`, the config keys, and the 16 rows.
-The **code that filters by country is only on /dev.** Until Saul presses Release:
-- **Prod Process Payroll would include the 16** (prod `loadEmployees` has no country filter), and every
-  day of theirs would come out RED. **Do not run Process Payroll on prod before the release.** The
-  next run (Q2-Oct, Oct 11–25) is due around Oct 26.
-- Prod PTO and Contracts list the 16 (no harm, just noise).
-- The prod access sync (old code, Panama board only) may drop the 16 from Marcela's group, and the /dev
-  sync puts them back. Their access flickers on prod until the release. Panama access is unaffected.
+## RELEASED by Saul, 2026-10-16 (prod v8.28.0)
+Everything below, including 06a/06b, is on prod. Checked on prod after the release:
+- **PTO 44 and Contracts 44**: none of the 16 (both read 60 just before the release).
+- Process Payroll loads with no fallback banner.
+- Access: 19 groups, 60 placed, 0 unassigned.
+- **View As Marcela** → Attendance → Today: all 16 listed, 24 scheduled, no Payroll tab
+  (screenshot 07).
 
-## What's live on /dev
+## What was built (first on /dev)
 | What | How |
 |---|---|
 | Monday board **🌍 International Employee Directory** (Saul - Management → HR), id `18435831051` | Made through the API playground. Current `group_mm86g7pv`, Past `group_mm86fp50`, columns Email, Role, Country, Manager, Manager Email, Manager 2, Manager 2 Email. 16 rows: Intake 1, Marcela Gordon / Yankel Raskin, Country blank (= International). An empty "Group Title" group may remain; the app ignores it. |
@@ -71,8 +69,8 @@ Filled on the Monday board, and copied to `employees.country` by the internation
 2. **"Not Reported" on every late day** for the 16: they don't file GAF Attendance forms on Monday.
    Ask Marcela whether they should, or whether that column should be hidden for them.
 3. **Holidays**: they follow Panama's list. Ask Marcela.
-4. Optional: **Backfill All Periods** on the Teramind tab, so Activity has a comparison period for the 16.
-5. Release (Saul).
+4. Optional: **Backfill All Periods** on the Teramind tab. Sep 1 – Oct 16 is already pulled, so Activity
+   comparisons before September need it.
 
 ## Traps seen today
 - The Teramind card and the Punctuality page each showed all zeros once ("Teramind could not be
