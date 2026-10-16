@@ -68,7 +68,7 @@ export async function syncAccessFromMonday(deps: AccessSyncDeps): Promise<Access
     [k.monday_col_directory_email, ...MANAGER_SLOT_KEYS.flat().map(key => k[key])],
     deps.pull,
   );
-  const people = items
+  let people = items
     .filter(it => it.group?.id === k.monday_group_directory_current)
     .map(it => ({
       name: it.name,
@@ -77,6 +77,31 @@ export async function syncAccessFromMonday(deps: AccessSyncDeps): Promise<Access
         name: colText(it, k[nameKey]), email: norm(colText(it, k[emailKey])),
       })),
     }));
+
+  // International Employee Directory: two manager slots (Manager, Manager 2). Off while unset.
+  const ic = (key: string) => (deps.cfg[key] ?? '').trim();
+  const intlBoard = ic('monday_board_directory_intl');
+  const intlEmailCol = ic('monday_col_intl_email');
+  const intlGroup = ic('monday_group_intl_current');
+  const intlSlots = [
+    [ic('monday_col_intl_manager'), ic('monday_col_intl_manager_email')],
+    [ic('monday_col_intl_manager2'), ic('monday_col_intl_manager2_email')],
+  ] as const;
+  if (intlBoard && intlEmailCol && intlGroup && intlSlots[0][1]) {
+    const intlCols = [intlEmailCol, ...intlSlots.flat().filter(Boolean)];
+    const intlItems = await pullAllItems(intlBoard, intlCols, deps.pull);
+    const read = (it: Parameters<typeof colText>[0], col: string) => (col ? colText(it, col) : '');
+    people = people.concat(intlItems
+      .filter(it => it.group?.id === intlGroup)
+      .map(it => ({
+        name: it.name,
+        email: norm(colText(it, intlEmailCol)),
+        managers: [
+          ...intlSlots.map(([nameCol, emailCol]) => ({ name: read(it, nameCol), email: norm(read(it, emailCol)) })),
+          { name: '', email: '' }, { name: '', email: '' },
+        ],
+      })));
+  }
 
   const idByEmail = new Map<string, string>();
   for (const r of deps.employees) {
