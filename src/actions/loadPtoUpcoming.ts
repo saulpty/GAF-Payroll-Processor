@@ -27,6 +27,7 @@ function loadPtoUpcoming() {
           AND r.start_date <= {{params.until}}::date
           AND r.return_date >= r.start_date
           AND e.active = true
+          AND COALESCE(e.country, 'Panama') = COALESCE(NULLIF((SELECT c.value FROM classification_config c WHERE c.key = 'payroll_country'), ''), 'Panama')
           AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.id IN (SELECT vm.employee_id FROM public.v_employee_managers vm WHERE vm.manager_name = {{params.manager}}::text))
           AND e.id IN (SELECT va.employee_id FROM public.v_employee_access va
                         WHERE va.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))
@@ -43,6 +44,7 @@ function loadPtoUpcoming() {
           AND a.leave_on <= {{params.until}}::date
           AND a.return_on >= a.leave_on
           AND e.active = true
+          AND COALESCE(e.country, 'Panama') = COALESCE(NULLIF((SELECT c.value FROM classification_config c WHERE c.key = 'payroll_country'), ''), 'Panama')
           AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.id IN (SELECT vm.employee_id FROM public.v_employee_managers vm WHERE vm.manager_name = {{params.manager}}::text))
           AND e.id IN (SELECT va.employee_id FROM public.v_employee_access va
                         WHERE va.email = access_viewer({{ user.email }}::text, {{params.viewAs}}::text))

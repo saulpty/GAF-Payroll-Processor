@@ -25,6 +25,7 @@ function loadContractMilestones() {
         LIMIT 1
       ) c ON true
       WHERE e.active = true
+        AND COALESCE(e.country, 'Panama') = COALESCE(NULLIF((SELECT c.value FROM classification_config c WHERE c.key = 'payroll_country'), ''), 'Panama')
         AND ({{params.manager}} IS NULL OR {{params.manager}} = '' OR e.id IN (SELECT vm.employee_id FROM public.v_employee_managers vm WHERE vm.manager_name = {{params.manager}}::text))
         AND ({{params.employeeId}} IS NULL OR {{params.employeeId}} = '' OR e.id::text = {{params.employeeId}}::text)
         AND e.id IN (SELECT a.employee_id FROM public.v_employee_access a

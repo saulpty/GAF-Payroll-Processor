@@ -11,6 +11,7 @@ function loadEmployees() {
       FROM employees e
       LEFT JOIN schedules s ON s.id = e.schedule_id
       WHERE e.active = TRUE AND e.excluded_from_payroll = FALSE
+        AND COALESCE(e.country, 'Panama') = COALESCE(NULLIF((SELECT c.value FROM classification_config c WHERE c.key = 'payroll_country'), ''), 'Panama')
       ORDER BY e.display_name;
     `,
   });
