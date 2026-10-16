@@ -1,21 +1,10 @@
 import { EmpStats, computeArrivalScatter, ArrivalPoint } from '@/app/lib/attendanceStats';
-
-import { AttendanceDonuts } from './AttendanceDonuts';
 import {
   ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Cell,
 } from 'recharts';
 
 type Props = { stats: EmpStats; isPhone?: boolean };
-
-export const STATUS_COLORS: Record<string, string> = {
-  'On Time':                '#2AA876',
-  'Late - Reported':        '#FBBF24',
-  'Late - Unreported':      '#EF4444',
-  'Excused (PTO/FH/Perm)':  '#94A3B8',
-  'Permission':             '#6366F1',
-  'Absent - Unexplained':   '#B91C1C',
-};
 
 function MiniKpi({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
@@ -90,8 +79,8 @@ function PanelNumbers({ stats }: { stats: EmpStats }) {
 }
 
 export default function AttendancePanelBody({ stats, isPhone = false }: Props) {
-  // On a phone only the seven numbers are shown. Everything below this line (the arrival chart
-  // and the two ring charts) is never rendered there.
+  // On a phone only the seven numbers are shown. Everything below this line (the arrival chart)
+  // is never rendered there.
   if (isPhone) return <PanelNumbers stats={stats} />;
 
   const scatterPoints = computeArrivalScatter(stats.rows).map(p => ({
@@ -176,9 +165,6 @@ export default function AttendancePanelBody({ stats, isPhone = false }: Props) {
           </ResponsiveContainer>
         </div>
       </div>
-
-      {/* Donuts */}
-      <AttendanceDonuts stats={stats} />
     </div>
   );
 }
