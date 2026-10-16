@@ -140,7 +140,8 @@ test('LC7: house rules for the List files', () => {
 });
 
 test('LC8: presentation only — the calculations are byte for byte what they were on 2026-10-16', () => {
-  assert.equal(sha(read(STATS)), '426809074516a05d3d6dff0e367e2617e4a24f04697994c23e737b76311ac386', `${STATS} changed`);
+  // Re-pinned 2026-10-16 for punctuality 05 (an absence with a form on file counts as reported).
+  assert.equal(sha(read(STATS)), 'dfbe3c40e654a98552a9c36e0d0d992511e1540c847a0c9118666604e4dbe3ed', `${STATS} changed`);
   assert.equal(sha(read(REPORT_KPIS)), 'b865c46cabcd6c1ad2166d753da95d1fea58c371a3f81d9fe82a0d691acc448d', `${REPORT_KPIS} changed`);
 });
 

@@ -206,9 +206,10 @@ test('LP1: the List loads unprocessed days through useLiveListRows and appends t
   const page = read('src/app/pages/Attendance.tsx');
   assert.match(page, /import \{ useLiveListRows \} from '@\/app\/pages\/attendance\/useLiveListRows';/);
   assert.match(page, /useLiveListRows\(\{\s+dateFrom: safeFrom, dateTo: safeTo, viewAs,/);
-  assert.match(page, /\[\.\.\.rows, \.\.\.live\.rows\]/);
+  // 2026-10-16 (punctuality 05): the payroll rows may first go through the forms (reported.rows).
+  assert.match(page, /\[\.\.\.(reported\.)?rows, \.\.\.live\.rows\]/);
   assert.match(page, /allRows\.filter\(r => matchEmails\.has\(r\.email\)\)/);
-  assert.match(page, /const loading = loadingRows \|\| loadingEmps \|\| live\.loading;/, 'numbers wait for those days');
+  assert.match(page, /const loading = loadingRows \|\| loadingEmps \|\| live\.loading( \|\| reported\.loading)?;/, 'numbers wait for those days');
 });
 
 test('LP2: the hook loads only the live window, flat params with viewAs, and uses the libs', () => {

@@ -308,6 +308,14 @@ test('ML9: the page calls useIsPhone() once and renders the rows OR the table, w
       ['              <p className="mb-3 px-1 text-sm text-slate-600">\n                How often each employee arrives on time for their schedule, and whether late or absent days were reported with a GAF Attendance form.\n              </p>\n', ''],
       ['Punctuality by Employee', 'Employee Directory'],
     ] as Array<[string, string]> : []),
+    // 2026-10-16 (punctuality 05): "Reported" taken from the forms.
+    ...(src.includes('useFormReported') ? [
+      ["import { useFormReported } from '@/app/pages/attendance/useFormReported';\n", ''],
+      ['  // "Reported" = a form on file for that person and day, as on Reports (2026-10-16).\n  const reported = useFormReported({ rows, employees: emps, dateFrom: safeFrom, dateTo: safeTo, viewAs });\n', ''],
+      ['    () => (live.rows.length > 0 ? [...reported.rows, ...live.rows] : reported.rows),\n    [reported.rows, live.rows],\n',
+        '    () => (live.rows.length > 0 ? [...rows, ...live.rows] : rows),\n    [rows, live.rows],\n'],
+      [' || reported.loading;', ';'],
+    ] as Array<[string, string]> : []),
   ]);
   assert.equal(sha(before), '7fefce77009fc44ba8e4d731f19f5e98b168f0b4f71916e4f9862e795cb3cc02',
     'with the edits taken out, Attendance.tsx is byte for byte what it was');

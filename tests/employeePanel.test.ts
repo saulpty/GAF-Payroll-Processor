@@ -95,10 +95,11 @@ test('EP5: useEmployeeStats adds the not-yet-processed days, as Attendance.tsx d
   }
   assert.equal((src.match(/useLiveListRows\(/g) ?? []).length, 1);
   // Its rows are appended before the numbers are counted, and the numbers wait for them.
-  assert.match(src, /\[\.\.\.rows, \.\.\.live\.rows\]/);
+  // 2026-10-16 (punctuality 05): the payroll rows may first go through the forms (reported.*).
+  assert.match(src, /\[\.\.\.(reported\.)?rows, \.\.\.live\.rows\]/);
   assert.match(src, /computeEmployeeStats\(allRows, empMap, matchEmails\)/);
-  assert.match(src, /if \(live\.loading\) return null;/);
-  assert.match(src, /const loading = loadingEmps \|\| loadingRows \|\| live\.loading;/);
+  assert.match(src, /if \(live\.loading( \|\| reported\.loading)?\) return null;/);
+  assert.match(src, /const loading = loadingEmps \|\| loadingRows \|\| live\.loading( \|\| reported\.loading)?;/);
   // Both loaders unchanged: flat params, viewer-scoped.
   assert.match(src, /loadAttendanceEmployeesAction,\s*\[\] as EmpInfo\[\],\s*\{ viewAs \},/);
   assert.match(src, /loadAttendanceDailyAction,\s*\[\] as AttendanceRow\[\],\s*\{ dateFrom, dateTo, email: resolvedEmail, viewAs \},/);
