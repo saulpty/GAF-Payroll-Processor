@@ -216,12 +216,12 @@ test('LP2: the hook loads only the live window, flat params with viewAs, and use
   const hook = read(`${A}useLiveListRows.ts`);
   assert.doesNotMatch(hook, /\{\s*params:\s*\{/, 'params go flat, never wrapped');
   assert.match(hook, /liveWindow\(/);
-  assert.match(hook, /const range = win \?\? NO_LIVE_WINDOW;/);
+  assert.match(hook, /const range = wide \?\? win \?\? NO_LIVE_WINDOW;/, '2026-10-16: wide window for employees outside payroll');
   assert.match(hook, /useLoadAction\(\s*loadTeramindActivityDaysAction, \[\] as ActivityDayRow\[\],\s*\{ dateFrom: range\.from, dateTo: range\.to, viewAs \},/);
   assert.match(hook, /loadMondayAttendanceFormsRangeAction, \[\] as ReportForm\[\],\s*\{ dateFrom: range\.from, dateTo: range\.to, manager: '', viewAs \}/);
   assert.match(hook, /loadMondayRequestsRangeAction, \[\] as ReportRequest\[\],\s*\{ dateFrom: range\.from, dateTo: range\.to, manager: '', viewAs \}/);
   assert.match(hook, /easternDate\(Date\.now\(\)\)/, "Teramind's today is US Eastern");
-  assert.match(hook, /liveListRows\(\{/);
+  assert.match(hook, /liveListRowsWithOutside\(\{/);
   assert.match(hook, /buildAttendanceReport, liveReport,/);
   assert.doesNotMatch(hook, /applyLiveDays|liveToAttendanceRows|whyFor/);
   assert.doesNotMatch(hook, /loadAttendanceReportDays/, 'payroll rows come from the List itself');
@@ -268,9 +268,9 @@ test('LP5: Activity By Employee heads the low-day column "Low Activity Days"; th
 
 test('LP6: List rows wait for the window\'s own data, and loading says so', () => {
   const hook = read(`${A}useLiveListRows.ts`);
-  assert.match(hook, /if \(loading \|\| error \|\| !win \|\| dataFor !== winKey\) return \[\] as AttendanceRow\[\];/);
+  assert.match(hook, /if \(loading \|\| error \|\| !hasLive \|\| dataFor !== winKey\) return \[\] as AttendanceRow\[\];/);
   assert.match(hook, /else if \(wasBusy\.current\) \{ wasBusy\.current = false; setDataFor\(winKey\); \}/);
-  assert.match(hook, /const loading = loadingPeriods \|\| \(win !== null && !error &&\s+\(loadingTm \|\| loadingForms \|\| loadingReqs \|\| loadingHols \|\| loadingDst \|\| dataFor !== winKey\)\);/);
+  assert.match(hook, /const loading = loadingPeriods \|\| \(hasLive && !error &&\s+\(loadingTm \|\| loadingForms \|\| loadingReqs \|\| loadingHols \|\| loadingDst \|\| dataFor !== winKey\)\);/);
 });
 
 // 2026-10-16: prompt 03c (2026-10-16-punctuality) cuts the table to eight columns on purpose;

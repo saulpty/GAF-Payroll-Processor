@@ -22,13 +22,14 @@ test('LR2: liveWindow waits for periods, uses Eastern today; liveReport runs on 
   assert.match(src, /const tmToday\s+= easternDate\(Date\.now\(\)\);/);
   assert.match(src, /loadingPeriods \? null\s*: liveWindow\(\(rawPeriods as ReportPeriod\[\]\) \?\? \[\], safeFrom, safeTo, tmToday\)/);
   const build = src.indexOf('const main = buildAttendanceReport(input);');
-  const live = src.indexOf('return liveReport({');
+  // 2026-10-16 (06b): employees outside payroll get the wide window too (liveReportWithOutside).
+  const live = src.indexOf('return liveReportWithOutside({');
   assert.ok(build > 0 && live > build, 'liveReport takes the built report');
-  assert.match(src, /if \(!win \|\| errTm\) return main;/, 'a Teramind error counts processed days only');
+  assert.match(src, /if \(!tmWin \|\| errTm\) return main;/, 'a Teramind error counts processed days only');
   assert.match(src, /tmRows: \(rawTm as ActivityDayRow\[\]\) \?\? \[\], build: buildAttendanceReport,/);
   // The page keeps loading until THIS window's Teramind rows have arrived: no flash of numbers
   // without the unprocessed days.
-  assert.match(src, /\(win !== null && \(loadingTm \|\| \(!errTm && tmFor !== winKey\)\)\)/);
+  assert.match(src, /\(tmWin !== null && \(loadingTm \|\| \(!errTm && tmFor !== winKey\)\)\)/);
   assert.match(src, /else if \(tmWasLoading\.current\) \{ tmWasLoading\.current = false; setTmFor\(winKey\); \}/);
   assert.doesNotMatch(src, /applyLiveDays|liveSummary|whyFor/);
 });
