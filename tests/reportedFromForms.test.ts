@@ -75,6 +75,21 @@ test('RF6: the Absent card counts an absence with a form as reported', () => {
   assert.equal(k.unreported - k.lateUnreported, 1, 'absent not reported');
 });
 
+test('RF8: a live absence with a form on file is reported (prompt 05b, Jennette Torrano Oct 15)', async () => {
+  const { reportRowToList } = await import('../src/app/lib/liveListRows.ts');
+  const base = {
+    employeeId: 1, employeeName: 'Ana', email: 'ana@x.com', role: '', manager: '', date: '2026-10-15',
+    scheduledStart: '9:00 AM', entryTime: null, exitTime: null, minutesLate: 0, earlyLeaveMinutes: 0,
+    form: null, allForms: [], coveredBy: null, countsToScore: true,
+    flags: { multipleForms: false, recordedUnexplainedButFormOnFile: false, formEmailUnrecognised: false, excusedInPayrollNoRequest: false },
+  };
+  const as = (verdict: string) => reportRowToList({ ...base, verdict } as never)!;
+  assert.equal(as('absent_reported_on_time').filed_gaf, true);
+  assert.equal(as('absent_reported_late').filed_gaf, true);
+  assert.equal(as('unexplained_absence').filed_gaf, false);
+  assert.equal(as('absent_reported_on_time').status, 'Absent - Unexplained');
+});
+
 test('RF7: the List and the panel both run their payroll rows through the forms, and wait for them', () => {
   const list = read('src/app/pages/Attendance.tsx');
   assert.match(list, /const reported = useFormReported\(\{ rows, employees: emps, dateFrom: safeFrom, dateTo: safeTo, viewAs \}\);/);
