@@ -37,12 +37,37 @@ Teramind Roster** linked them, and Sophia Prieto too, by email. October 1–16 r
   Teramind times. Activity lists all 16, 10 days each (trend "Not Enough Data": no history before Oct 1).
   Punctuality and Reports work for the **open** period. No Payroll or Admin tabs.
 
+## Later the same day: Punctuality and Reports in processed periods (prompts 06a, 06b)
+Before, in a payroll-processed period (Q1-Oct), every day of the 16 read "Not Run Yet · No punches"
+(screenshot 05). Now employees outside payroll (`in_payroll = false` from `loadAttendanceEmployees`)
+get every date from Teramind (the "wide" window, `liveWindow([], from, to, today)`). Payroll
+employees are computed exactly as before: `liveReportWithOutside` and `liveListRowsWithOutside` run
+the old code unchanged and only replace the outside employees' rows. Screenshot 06.
+- 06a (helpers, loader, type) and 06b (wiring): both byte-exact. Tests OP0–OP7
+  (`tests/liveOutsidePayroll.test.ts`). LR1, LR2, LP2 and LP6 were updated, and MR4's undo list gained
+  06b's edits; undoing them restores the 2026-10-13 hash. Suite **951/952** (L2 known).
+- **Checked against snapshots taken before 06a:** Panama rows identical on Punctuality Q2-Oct
+  (44/44) and Reports Q2-Oct (216/216) and Q1-Oct (468/468, before and after the September pull).
+- Teramind September pulled by hand (17,023 saved). Q1-Oct for the 16: 90 on time, 65 late, 21 absent.
+- **Company KPIs now include the 16** when a super user looks at everyone (Q1-Oct absent days 0 → 21).
+  That's by design; filter by Manager to see Panama-only teams.
+
+## Countries (Saul, 2026-10-16)
+Filled on the Monday board, and copied to `employees.country` by the international sync:
+- **South Africa** (10): Anna, Lee, Sam, Lisa, Pumi, Stacey, Angela, Canicia, Riley, Malcolm.
+- **United States** (6), with a new **State** column `text_mm86rek0` that the app doesn't read yet:
+  - Saeed GA
+  - Reesie FL
+  - Shmuli GA
+  - Caitlin IN
+  - Bekki AL
+  - Dee AL
+
 ## Open
-1. **Punctuality and Reports in payroll-processed periods** show the 16 as "Not Run Yet · No punches"
-   (screenshot 05). The live Teramind path only covers days after the newest processed period. Fix
-   designed (split by `in_payroll`, wide live window for non-payroll employees): see the follow-up
-   session brief. It touches `liveAttendance.ts`, `useLiveListRows.ts`, `AttendanceReport.tsx`,
-   `loadAttendanceEmployees.ts` and the source-text tests LR2, LP2 and LP6.
+1. **Start dates are missing for the 16.** Days before someone joined count as absences: Caitlin Fry
+   is absent Sep 25 – Oct 2 and Shmuli Lavner Sep 28 – Oct 5. Fix: add a Start Date column to the
+   international board and have the international sync write it (the Panama sync takes start dates
+   from the Onboarding board), or set them in Admin → Roster.
 2. **"Not Reported" on every late day** for the 16: they don't file GAF Attendance forms on Monday.
    Ask Marcela whether they should, or whether that column should be hidden for them.
 3. **Holidays**: they follow Panama's list. Ask Marcela.
