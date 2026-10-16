@@ -179,8 +179,9 @@ test('ML5: Sort By has five choices; names A to Z, every number worst first', as
   );
   for (const o of PHONE_SORTS) assert.ok(o.label.length > 0 && o.label !== o.label.toUpperCase(), 'Title Case label');
   assert.ok(PHONE_SORTS[0].label.startsWith('Name'));
-  assert.ok(PHONE_SORTS[1].label.startsWith('% On-Time'));
-  assert.ok(PHONE_SORTS[4].label.startsWith('Total Late'));
+  // 2026-10-16 (punctuality 03b): '% On-Time' became 'On-Time', 'Total Late' became 'Late'.
+  assert.match(PHONE_SORTS[1].label, /^(% )?On-Time/);
+  assert.match(PHONE_SORTS[4].label, /^(Total )?Late/);
 
   // The phone starts on Name ascending: the order the computer's table starts in.
   const table = read(TABLE);
@@ -217,8 +218,8 @@ test('ML7: attendanceSort.ts stays a pure module', () => {
 });
 
 /** Take the prompt's edits back out: [now, before] pairs, each of which must be there exactly once. */
-function undone(file: string, undo: Array<[string, string]>): string {
-  let src = read(file);
+function undone(file: string, undo: Array<[string, string]>, srcIn?: string): string {
+  let src = srcIn ?? read(file);
   for (const [now, before] of undo) {
     assert.equal(count(src, now), 1, `${file}: expected exactly once:\n${now}`);
     src = src.replace(now, () => before);
@@ -260,17 +261,24 @@ test('ML8: the table orders its rows with the shared rule and is otherwise untou
   assert.doesNotMatch(src, /useIsPhone|phone:/, 'the table is the computer layout; the page chooses');
   assert.match(src, /style=\{\{ maxHeight: 'calc\(100vh - 220px\)' \}\}/, 'the table keeps its own scrolling box');
 
-  const before = undone(TABLE, [
-    ["import { filterByName, sortEmployeeStats } from '@/app/lib/attendanceSort';\nimport type { SortKey } from '@/app/lib/attendanceSort';\n",
-      "\ntype SortKey = keyof EmpStats | 'reporting';\n"],
-    ['export const STATUS_TOOLTIP = ', 'const STATUS_TOOLTIP = '],
-    ['export function StatusBadge(', 'function StatusBadge('],
-    ['export const REPORTING_TOOLTIP = ', 'const REPORTING_TOOLTIP = '],
-    ['export function ReportingBadge(', `${OLD_RATIO}function ReportingBadge(`],
-    ['  const sorted = sortEmployeeStats(filterByName(stats, search), sortKey, sortDir);\n', OLD_SORT],
-  ]);
-  assert.equal(sha(before), '6b47bac7efbcf2b893a8f6b8c9b67c5afdfd418b68d7aebf5cc2511333e79d35',
-    'with the edits taken out, AttendanceTable.tsx is byte for byte what it was');
+  // 2026-10-16: prompts 03b and 03c (2026-10-16-punctuality) change the table on purpose and
+  // listCleanup.test.ts pins the new one. Until 03c lands, the old columns stay byte-pinned here,
+  // with the On-Time helpers that 03b adds above PctBar taken back out first.
+  if (src.includes('<Th label="Total Late"')) {
+    const a = src.indexOf("type Tone = 'green'"), b = src.indexOf('function PctBar(');
+    const pre = a !== -1 && a < b ? src.slice(0, a) + src.slice(b) : src;
+    const before = undone(TABLE, [
+      ["import { filterByName, sortEmployeeStats } from '@/app/lib/attendanceSort';\nimport type { SortKey } from '@/app/lib/attendanceSort';\n",
+        "\ntype SortKey = keyof EmpStats | 'reporting';\n"],
+      ['export const STATUS_TOOLTIP = ', 'const STATUS_TOOLTIP = '],
+      ['export function StatusBadge(', 'function StatusBadge('],
+      ['export const REPORTING_TOOLTIP = ', 'const REPORTING_TOOLTIP = '],
+      ['export function ReportingBadge(', `${OLD_RATIO}function ReportingBadge(`],
+      ['  const sorted = sortEmployeeStats(filterByName(stats, search), sortKey, sortDir);\n', OLD_SORT],
+    ], pre);
+    assert.equal(sha(before), '6b47bac7efbcf2b893a8f6b8c9b67c5afdfd418b68d7aebf5cc2511333e79d35',
+      'with the edits taken out, AttendanceTable.tsx is byte for byte what it was');
+  }
 });
 
 test('ML9: the page calls useIsPhone() once and renders the rows OR the table, with the same data', () => {
@@ -295,25 +303,37 @@ test('ML9: the page calls useIsPhone() once and renders the rows OR the table, w
     ['          {loading && isPhone && <AttendanceListLoading />}\n          {loading && !isPhone && (\n', '          {loading && (\n'],
     ['                {isPhone\n                  ? <AttendanceListRows stats={empStats} onRowClick={setPanelEmail} search={globalEmployee} manager={manager} role={role} />\n                  : <AttendanceTable stats={empStats} onRowClick={setPanelEmail} search={globalEmployee} />}\n',
       '                <AttendanceTable stats={empStats} onRowClick={setPanelEmail} search={globalEmployee} />\n'],
+    // 2026-10-16 (punctuality 03a): the sentence above the cards and the renamed heading.
+    ...(src.includes('Punctuality by Employee') ? [
+      ['              <p className="mb-3 px-1 text-sm text-slate-600">\n                How often each employee arrives on time for their schedule, and whether late or absent days were reported with a GAF Attendance form.\n              </p>\n', ''],
+      ['Punctuality by Employee', 'Employee Directory'],
+    ] as Array<[string, string]> : []),
   ]);
   assert.equal(sha(before), '7fefce77009fc44ba8e4d731f19f5e98b168f0b4f71916e4f9862e795cb3cc02',
     'with the edits taken out, Attendance.tsx is byte for byte what it was');
 });
 
-test('ML10: the cards change by phone-only classes on one line and nothing else', () => {
-  const before = undone(KPIS, [[' truncate phone:whitespace-normal phone:text-xs">{sub}', ' truncate">{sub}']]);
-  assert.equal(sha(before), 'ce37fbebc825b6c0974c0fb9799ce15fc215cc6a1c60b69d8de761cf2f70bfa8',
-    'with the edit taken out, AttendanceKpis.tsx is byte for byte what it was');
-  assert.equal(count(read(KPIS), 'phone:'), 2);
+// 2026-10-16: prompt 03a (2026-10-16-punctuality) rewrites the AttendanceKpis function on purpose
+// (ten cards to five; pinned by listCleanup.test.ts). What stays pinned here is the card itself.
+test('ML10: the card (Kpi) changes by phone-only classes on one line and nothing else', () => {
+  const src = read(KPIS);
+  const start = src.indexOf('function Kpi(');
+  assert.ok(start !== -1, 'the Kpi card is still there');
+  const kpi = src.slice(start, src.indexOf('\n}\n', start) + 3);
+  const before = undone(KPIS, [[' truncate phone:whitespace-normal phone:text-xs">{sub}', ' truncate">{sub}']], kpi);
+  assert.equal(sha(before), 'edb16a514c372dc62864fb16cc7947d5186784a1f38bc7de331f694ddd967e95',
+    'with the edit taken out, the Kpi card is byte for byte what it was');
+  assert.equal(count(src, 'phone:'), 2);
 });
 
 test('ML11: the phone rows use the same rule and the same pills (imported, not copied)', () => {
   const src = read(ROWS);
   assert.match(src, /import \{\s*PHONE_SORTS, filterByName, listNothingFound, phoneSort, sortEmployeeStats,\s*\} from '@\/app\/lib\/attendanceSort';/);
-  assert.match(src, /import \{ REPORTING_TOOLTIP, ReportingBadge, STATUS_TOOLTIP, StatusBadge \} from '\.\/AttendanceTable';/);
+  // 2026-10-16 (punctuality 03b): the Good / Fair / At Risk pill became the On-Time pill.
+  assert.match(src, /import \{ (REPORTING_TOOLTIP, ReportingBadge, STATUS_TOOLTIP, StatusBadge|ON_TIME_TOOLTIP, OnTimePill, REPORTING_TOOLTIP, ReportingBadge) \} from '\.\/AttendanceTable';/);
   assert.match(src, /import MobileRow from '@\/app\/components\/mobile\/MobileRow';/);
   assert.match(src, /const sorted = sortEmployeeStats\(filterByName\(stats, search\), sort\.key, sort\.dir\);/);
-  assert.match(src, /<StatusBadge pct=\{s\.pctOnTime\} days=\{s\.days\} \/>/, 'the pill is decided from the same two numbers as the table');
+  assert.match(src, /<(StatusBadge|OnTimePill) pct=\{s\.pctOnTime\} days=\{s\.days\} \/>/, 'the pill is decided from the same two numbers as the table');
   assert.match(src, /<ReportingBadge s=\{s\} \/>/);
   assert.match(src, /onClick=\{\(\) => onRowClick\(s\.email\)\}/, 'a tap opens the panel as a table click does');
 

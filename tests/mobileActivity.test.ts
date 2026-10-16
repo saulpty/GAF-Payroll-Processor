@@ -65,6 +65,12 @@ const EDITS: Record<string, { before: string; undo: Array<[string, string]> }> =
       [HOOK_LINE, ''],
       ['        {loading && isPhone && <RowsLoading />}\n        {loading && !isPhone && (\n', '        {loading && (\n'],
       [' no-scrollbar', ''],
+      // 2026-10-16 punctuality 04 (the range is kept across tabs), taken back out too.
+      ['  const { dateFrom, dateTo, setAttendanceMode, setDateFrom, setDateTo } = useGlobalFilters();\n',
+        '  const { dateFrom, dateTo, attendanceMode, setAttendanceMode, setDateFrom, setDateTo } = useGlobalFilters();\n'],
+      ['  // On first mount, only when no range is chosen yet: Dates mode with the last 14 days.\n  // A range picked on another Attendance tab is kept (Saul, 2026-10-16).\n',
+        '  // On first mount: ensure we are in Dates mode with last 14 days\n'],
+      ['    if (!dateFrom || !dateTo) {\n', "    if (attendanceMode !== 'dates' || !dateFrom || !dateTo) {\n"],
     ],
   },
 };

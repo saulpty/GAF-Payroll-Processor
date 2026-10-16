@@ -272,10 +272,16 @@ test('LP6: List rows wait for the window\'s own data, and loading says so', () =
   assert.match(hook, /const loading = loadingPeriods \|\| \(win !== null && !error &&\s+\(loadingTm \|\| loadingForms \|\| loadingReqs \|\| loadingHols \|\| loadingDst \|\| dataFor !== winKey\)\);/);
 });
 
-test('LP7: List keeps its column headers and % On-Time stays sortable (UIB once renamed them)', () => {
+// 2026-10-16: prompt 03c (2026-10-16-punctuality) cuts the table to eight columns on purpose;
+// listCleanup.test.ts LC3 pins the new set and order. Either set is checked here until it lands.
+test('LP7: List keeps its column headers and the on-time rate stays sortable (UIB once renamed them)', () => {
   const t = read(`${A}AttendanceTable.tsx`);
-  assert.match(t, /<Th label="% On-Time"\s+col="pctOnTime"/);
-  for (const label of ['Reported', 'Unreported', 'Avg Min (Worked)', '1–10m', '11–30m', '31+m']) {
+  const cleaned = !t.includes('<Th label="Total Late"');
+  assert.match(t, cleaned ? /<Th label="On-Time"\s+col="pctOnTime"/ : /<Th label="% On-Time"\s+col="pctOnTime"/);
+  const labels = cleaned
+    ? ['Late', 'Absent', 'Avg Min (Worked)', 'Reporting']
+    : ['Reported', 'Unreported', 'Avg Min (Worked)', '1–10m', '11–30m', '31+m'];
+  for (const label of labels) {
     assert.ok(t.includes(`<Th label="${label}"`), `header ${label}`);
   }
   assert.doesNotMatch(t, /On-Time %/);
