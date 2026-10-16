@@ -4,7 +4,14 @@
 `superpowers/prompts/2026-10-16-punctuality/` (decisions in `00-decisions.md`). Screenshots:
 `docs/assets/2026-10-16-punctuality/`.
 
-## On /dev, NOT released (waiting on Saul)
+## RELEASED to prod 2026-10-16 11:10 (v8.27.0, Saul's go-ahead)
+
+Checked on prod after release: tabs Today · Activity · Punctuality · Reports, "Punctuality by
+Employee", five cards. The release also carries everything else that was on /dev since the
+10/13 1:29 PM release (the 2026-10-13 phone rows and list-range fixes) and the unused Outlook
+calendar action (`loadEmployeeCalendar.ts`, nothing calls it).
+
+## What went out
 
 | What | Prompt |
 |---|---|
@@ -33,7 +40,4 @@ instead of "3 Not Reported"); 03d put the exact text back and the file is now id
 - Not Reported fires on 1 minute late (72 days in Oct 2–16, e.g. 9:01, 9:02). Accepted by Saul as
   how payroll counts lateness; revisit if managers find it noisy.
 
-## Before releasing
-
-1. Saul looks at /dev: List, Reports, Activity → a person, Today. Phone too.
-2. Saul's go-ahead.
+Also: prompt 06 renamed the "List" tab to "Punctuality" (address still `/attendance/list`).
