@@ -146,6 +146,9 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
 
           {!loading && (
             <>
+              <p className="mb-3 px-1 text-sm text-slate-600">
+                How often each employee arrives on time for their schedule, and whether late or absent days were reported with a GAF Attendance form.
+              </p>
               <AttendanceKpis kpis={kpis} />
               {live.error && (
                 <div className="-mt-2 mb-4 px-1 text-xs text-slate-500">
@@ -156,7 +159,7 @@ function AttendanceInner({ tab }: { tab: 'list' }) {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <span className="text-base font-semibold">Employee Directory</span>
+                    <span className="text-base font-semibold">Punctuality by Employee</span>
                     <span className="bg-muted text-muted-foreground text-xs font-medium px-2.5 py-1 rounded-full">
                       {empStats.length} employees
                     </span>

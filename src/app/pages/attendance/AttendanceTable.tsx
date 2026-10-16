@@ -12,52 +12,48 @@ function SortIcon({ col, sortKey, dir }: { col: SortKey; sortKey: SortKey; dir: 
     : <ChevronDown className="w-3 h-3 inline ml-0.5 text-warm-text" />;
 }
 
-function PctBar({ pct }: { pct: number }) {
-  const color = pct >= 90 ? 'bg-status-green-ink' : pct >= 75 ? 'bg-status-yellow-ink' : 'bg-status-red-ink';
+type Tone = 'green' | 'yellow' | 'red';
+
+/** Green 90% or above, amber 75–89%, red below 75%. The only place these limits are written. */
+function onTimeTone(pct: number): Tone {
+  if (pct >= 90) return 'green';
+  if (pct >= 75) return 'yellow';
+  return 'red';
+}
+
+const BAR: Record<Tone, string> = {
+  green: 'bg-status-green-ink',
+  yellow: 'bg-status-yellow-ink',
+  red: 'bg-status-red-ink',
+};
+
+const PILL: Record<Tone, string> = {
+  green: 'bg-status-green-fill text-status-green-ink',
+  yellow: 'bg-status-yellow-fill text-status-yellow-ink',
+  red: 'bg-status-red-fill text-status-red-ink',
+};
+
+export const ON_TIME_TOOLTIP = 'On-time days divided by expected days (on time + late + absent). Green is 90% or above, amber 75–89%, red below 75%. Time off and permissions are not counted either way.';
+
+/** Computer table: a bar and the rate, coloured by the limits above. A dash when no day was expected. */
+export function OnTimeBar({ pct, days }: { pct: number; days: number }) {
+  if (days === 0) return <span className="text-muted-foreground text-xs">—</span>;
   return (
     <div className="flex items-center gap-1.5">
       <div className="flex-1 h-1 bg-border rounded-full min-w-10">
-        <div className={`h-1 rounded-full ${color}`} style={{ width: `${Math.min(100, pct)}%` }} />
+        <div className={`h-1 rounded-full ${BAR[onTimeTone(pct)]}`} style={{ width: `${Math.min(100, pct)}%` }} />
       </div>
       <span className="text-xs font-medium tabular-nums w-10 text-right">{pct.toFixed(0)}%</span>
     </div>
   );
 }
 
-export const STATUS_TOOLTIP = 'Based on on-time rate alone: Good is 90% or above, Fair is 75–89%, At Risk is below 75%.';
-
-export function StatusBadge({ pct, days }: { pct: number; days: number }) {
-  if (days === 0) {
-    return <span className="text-muted-foreground text-xs">—</span>;
-  }
-  if (pct >= 90) return (
-    <span
-      title={STATUS_TOOLTIP}
-      tabIndex={0}
-      aria-label={`Good — ${STATUS_TOOLTIP}`}
-      className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-status-green-fill text-status-green-ink cursor-default"
-    >
-      Good
-    </span>
-  );
-  if (pct >= 75) return (
-    <span
-      title={STATUS_TOOLTIP}
-      tabIndex={0}
-      aria-label={`Fair — ${STATUS_TOOLTIP}`}
-      className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-status-yellow-fill text-status-yellow-ink cursor-default"
-    >
-      Fair
-    </span>
-  );
+/** Phone rows: the same rate as a pill, in the same colours. A dash when no day was expected. */
+export function OnTimePill({ pct, days }: { pct: number; days: number }) {
+  if (days === 0) return <span className="text-muted-foreground text-xs">—</span>;
   return (
-    <span
-      title={STATUS_TOOLTIP}
-      tabIndex={0}
-      aria-label={`At Risk — ${STATUS_TOOLTIP}`}
-      className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-status-red-fill text-status-red-ink cursor-default"
-    >
-      At Risk
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold tabular-nums whitespace-nowrap ${PILL[onTimeTone(pct)]}`}>
+      {pct.toFixed(0)}% On Time
     </span>
   );
 }
@@ -124,55 +120,37 @@ export function AttendanceTable({ stats, onRowClick, search }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead className="sticky top-0 z-10">
             <tr>
-              <Th label="Employee"         col="name"      tooltip="Name from the roster. Click a row to open the viewer." />
-              <Th label="Role"             col="role"      tooltip="Role from the Employee Directory." />
-              <Th label="Manager"          col="manager"   tooltip="Manager from the Employee Directory." />
-              <Th label="Schedule"         col="schedule"  tooltip="The shift assigned in Admin → Schedules; lateness is measured against its start time." />
-              <th
-                className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 bg-slate-50 border-b border-border whitespace-nowrap cursor-default"
-                title={STATUS_TOOLTIP}
-              >
-                Status<InfoTip text={STATUS_TOOLTIP} />
-              </th>
-              <Th label="Reporting" col="reporting" tooltip={REPORTING_TOOLTIP} />
-              <Th label="Expected"         col="days"        tooltip="Scheduled work days in range, excluding time off and permissions." />
-              <Th label="On Time"          col="onTime"      tooltip="Days clocked in at or before the scheduled start." />
-              <Th label="Total Late"       col="totalLate"   tooltip="Days clocked in after the scheduled start (Reported + Unreported)." />
-              <Th label="Reported"         col="reported"    tooltip="Late days that had a GAF Attendance form on file." />
-              <Th label="Unreported"       col="unreported"  tooltip="Late days with no GAF Attendance form." />
+              <Th label="Employee"         col="name"        tooltip="Name from the roster. Click a row to open the viewer." />
+              <Th label="Manager"          col="manager"     tooltip="Manager from the Employee Directory." />
+              <Th label="Schedule"         col="schedule"    tooltip="The shift assigned in Admin → Schedules; lateness is measured against its start time." />
+              <Th label="On-Time"          col="pctOnTime"   tooltip={ON_TIME_TOOLTIP} />
+              <Th label="Late"             col="totalLate"   tooltip="Days clocked in after the scheduled start. The red line under the number counts the late days with no GAF Attendance form." />
               <Th label="Absent"           col="absent"      tooltip="Scheduled days with no clock-in and no time off or permission." />
-              <Th label="Avg Min (Worked)" col="avgMinLate"  tooltip="Average minutes late across the days someone actually worked." />
-              <Th label="% On-Time"        col="pctOnTime"   tooltip="On Time ÷ Expected. Green 90%+, amber 75–89%, red below 75%." />
-              <Th label="1–10m"            col="b1to10"      tooltip="Late days where the delay was 1 to 10 minutes." />
-              <Th label="11–30m"           col="b11to30"     tooltip="Late days where the delay was 11 to 30 minutes." />
-              <Th label="31+m"             col="b31plus"     tooltip="Late days where the delay was more than 30 minutes." />
+              <Th label="Avg Min (Worked)" col="avgMinLate"  tooltip="Average minutes late across every day someone actually worked, on-time days included." />
+              <Th label="Reporting"        col="reporting"   tooltip={REPORTING_TOOLTIP} />
             </tr>
           </thead>
           <tbody>
             {sorted.length === 0 && (
-              <tr><td colSpan={17} className="px-4 py-12 text-center text-muted-foreground">No employees match these filters.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">No employees match these filters.</td></tr>
             )}
             {sorted.map(s => (
               <tr key={s.email}
                 className="border-b border-border/60 hover:bg-slate-50 cursor-pointer transition-colors"
                 onClick={() => onRowClick(s.email)}>
                 <td className="px-3 py-2.5 font-semibold text-foreground whitespace-nowrap">{s.name}</td>
-                <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.role || <span className="text-slate-300">—</span>}</td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.manager || <span className="text-slate-300">—</span>}</td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{s.schedule}</td>
-                <td className="px-3 py-2.5"><StatusBadge pct={s.pctOnTime} days={s.days} /></td>
-                <td className="px-3 py-2.5"><ReportingBadge s={s} /></td>
-                <td className="px-3 py-2.5 text-right tabular-nums">{s.days}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-status-green-ink font-medium">{s.onTime}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-status-yellow-ink font-medium">{s.totalLate}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-status-yellow-ink">{s.reported}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-status-red-ink">{s.unreported}</td>
+                <td className="px-3 py-2.5 min-w-[120px]"><OnTimeBar pct={s.pctOnTime} days={s.days} /></td>
+                <td className="px-3 py-2.5 text-right tabular-nums">
+                  <div className="text-status-yellow-ink font-medium">{s.totalLate}</div>
+                  {s.unreported > 0 && (
+                    <div className="text-[11px] text-status-red-ink whitespace-nowrap">{s.unreported} Not Reported</div>
+                  )}
+                </td>
                 <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-status-red-ink">{s.absent}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{s.avgMinLate.toFixed(1)}</td>
-                <td className="px-3 py-2.5 min-w-[120px]"><PctBar pct={s.pctOnTime} /></td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-xs">{s.b1to10}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-xs">{s.b11to30}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-xs">{s.b31plus}</td>
+                <td className="px-3 py-2.5"><ReportingBadge s={s} /></td>
               </tr>
             ))}
           </tbody>
