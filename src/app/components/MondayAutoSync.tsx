@@ -6,6 +6,7 @@ import { useAccessSync } from '@/app/pages/admin/access/useAccessSync';
 import { buildResolver } from '@/app/lib/mondayResolve';
 import { normalizeName } from '@/app/lib/classificationEngine';
 import { syncDirectory } from '@/app/pages/admin/employees/syncDirectory';
+import { syncIntlDirectory } from '@/app/pages/admin/employees/syncIntlDirectory';
 import { syncRequests } from '@/app/pages/admin/employees/syncRequests';
 import { syncAttendanceForms } from '@/app/pages/admin/employees/syncAttendanceForms';
 import { syncContracts } from '@/app/pages/admin/employees/syncContracts';
@@ -187,6 +188,19 @@ export default function MondayAutoSync() {
               updated = result.matched ?? 0;
               items = result.items;
               unmatched = result.unmatched;
+
+              // International Directory board (a second board; off while its config is empty)
+              try {
+                const intl = await syncIntlDirectory({
+                  cfg, pull: (p) => pullBoard(p),
+                  emps: emps as unknown as Parameters<typeof syncIntlDirectory>[0]['emps'],
+                  updateRoleManager, updateFlag, upsertEmp, defaultScheduleId,
+                });
+                created += intl.created;
+                if (intl.created || intl.updated || intl.held) console.info(intl.summary);
+              } catch (e) {
+                console.warn('Monday auto-sync (international directory) failed:', e);
+              }
 
               // Also sync access groups, best-effort
               try { await syncAccess(true); } catch (e) {

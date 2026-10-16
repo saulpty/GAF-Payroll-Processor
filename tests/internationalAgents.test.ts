@@ -52,7 +52,10 @@ test('IA4: the country is written by the role/manager action and the upsert, nev
     /country = COALESCE\(NULLIF\(\{\{params\.country\}\}, ''\), country\)/);
   const up = read('src/actions/upsertEmployee.ts');
   assert.match(up, /COALESCE\(NULLIF\(\{\{params\.country\}\}, ''\), 'Panama'\)/);
-  assert.match(up, /country = COALESCE\(NULLIF\(\{\{params\.country\}\}, ''\), employees\.country\)/);
+  assert.match(up, /country\s+= COALESCE\(NULLIF\(\{\{params\.country\}\}, ''\), employees\.country\)/);
+  // EXCLUDED.country is never empty (the insert half makes it 'Panama'), so a Roster save
+  // that sends no country would move an international employee into payroll. Caught 2026-10-16.
+  assert.doesNotMatch(up, /EXCLUDED\.country/);
   assert.match(read('src/actions/loadAllEmployees.ts'), /e\.country,/);
 });
 

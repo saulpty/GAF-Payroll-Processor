@@ -6,7 +6,8 @@ function updateEmployeeRoleManager() {
     query: `
       UPDATE employees
          SET role    = {{params.role}},
-             manager = {{params.manager}}
+             manager = {{params.manager}},
+             country = COALESCE(NULLIF({{params.country}}, ''), country)
        WHERE id = {{params.id}}::bigint
          AND public.assert_super({{ user.email }}::text);
     `,
