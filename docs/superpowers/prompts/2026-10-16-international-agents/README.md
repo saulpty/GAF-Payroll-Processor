@@ -5,11 +5,9 @@ Attendance only).
 
 **Do not send yet.** Gates, in order:
 
-1. **Teramind check** (Saul asked for it before anything): run `00-teramind-check.sql` (read-only) in UIB → Database once the other session is done. Are the 16 on Teramind, and under
-   which emails? Their Teramind email becomes `teramind_email` in prompt 05.
+1. ✅ **Teramind check done 2026-10-16**: all 16 are on Teramind, emails match the list (see 05). `00-teramind-check.sql` kept for re-checks.
 2. Saul has reviewed the design and the committee pitch.
-3. The other UIB session has finished, exported and committed. Rebase this branch on `main` and
-   re-check every "before" snippet against the fresh `src/` (drafts written against `ec86696`).
+3. ✅ Other UIB session done; branch merged with main (ca51c32). None of the target files changed since the drafts.
 4. Tests from the design doc written first (they fail until the export).
 
 **Order matters: 01 → 02 → 03 → 04 → 05.** One export + sync + `git status` + tests per prompt

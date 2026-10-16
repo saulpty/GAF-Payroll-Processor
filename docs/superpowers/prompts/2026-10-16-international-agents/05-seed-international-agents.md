@@ -1,11 +1,9 @@
 # Add the international Intake 1 agents (data migration)
 
-> **DRAFT: cannot be sent yet.** The `teramind_email` of each person must be the email Teramind
-> knows them by, because it is how their punches find them. Fill the table from the Teramind check
-> (Teramind → Employees, or the app's Admin → Employees → Teramind tab) and drop anyone who is
-> not on Teramind. The emails below are the ones Marcela and Yankel sent, **not yet checked**.
-> Manager: fill from Marcela/Yankel (who manages whom). Check `role` spelling matches Panama's
-> "Intake 1".
+> **Teramind checked 2026-10-16** (app Admin → Employees → Teramind, unlinked-agent list = the API's full roster):
+> all 16 are on Teramind and every email below matches Teramind exactly. Surnames follow Teramind's
+> spelling (Ndlovu, Ndebele, Sweeting). **Still open:** display names for Reesie (Teramind: Richadria
+> Robinson, list: Reesie Richardson) and Dee (Teramind: Damira Sweeting), and Saul's go-ahead.
 
 **Copy every edit exactly, character for character.**
 
@@ -26,19 +24,19 @@ SELECT v.name, lower(v.email), split_part(lower(v.email), '@', 2),
        false, false, true, 'International agent (seed 2026-10-16)', 'Intake 1', 'International'
 FROM (VALUES
   ('Anna Lubemba',      'Anna.L@passiontocarehc.com'),
-  ('Lee Ndlvu',         'Lee.N@passiontocarehc.com'),
+  ('Lee Ndlovu',        'Lee.N@passiontocarehc.com'),
   ('Sam Mdiza',         'Sam.M@passiontocarehc.com'),
   ('Saeed Rassoull',    'Ibn-Saeed.R@passiontocarehc.com'),
   ('Lisa Mlangeni',     'Lisa.M@passiontocarehc.com'),
   ('Pumi Bunjwa',       'Pumi.B@mombaoh.com'),
-  ('Reesie Richardson', 'Richadria.R@mombaoh.com'),
+  ('Reesie Robinson',   'Richadria.R@mombaoh.com'),
   ('Shmuli Lavner',     'Shmuli.L@mombaoh.com'),
   ('Caitlin Fry',       'Caitlin.F@mombaoh.com'),
-  ('Stacey Ndeble',     'Stacey.N@mombaoh.com'),
+  ('Stacey Ndebele',    'Stacey.N@mombaoh.com'),
   ('Angela Phulula',    'Angela.p@passiontocarehc.com'),
   ('Bekki Cooper',      'Bekki.C@passiontocarehc.com'),
   ('Canicia Pauwels',   'Canicia.P@passiontocarehc.com'),
-  ('Dee Sweating',      'Damira.S@passiontocarehc.com'),
+  ('Dee Sweeting',      'Damira.S@passiontocarehc.com'),
   ('Riley Molostane',   'Riley.M@passiontocarehc.com'),
   ('Malcolm Mooka',     'Malcolm.M@mombami.com')
 ) AS v(name, email)
