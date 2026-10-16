@@ -107,10 +107,19 @@ const AWAY: WhyKind[] = ['pto', 'permission', 'sick', 'holiday'];
 const awayKind = (w: WhyChip | null, hasActivity: boolean, list: WhyKind[]): boolean =>
   w !== null && (list.indexOf(w.kind) >= 0 || (w.kind === 'form' && !hasActivity));
 const chip = (kind: WhyKind, label: string, tone: WhyChip['tone'] = 'blue'): WhyChip => ({ kind, label, tone });
+const TARDINESS_FORM = /tardiness|tardanza/;
+// Minutes late as payroll counts them (entry - start; grace is pay). Payroll row: its minutes.
+// Live day: first Teramind record vs scheduled start, as liveAttendance.livePayrollRows.
+export function minutesLateFor(rr: ReportRow | null, firstMin: number | null, scheduleStart = ''): number {
+  if (rr && (rr.verdict !== 'not_processed' || rr.entryTime != null)) return Math.max(0, Number(rr.minutesLate) || 0);
+  const start = parseClock(rr ? rr.scheduledStart : '') ?? parseClock(scheduleStart);
+  return firstMin !== null && start !== null ? Math.max(0, firstMin - start) : 0;
+}
 
 export function whyFor(args: {
   reportRow: ReportRow | null; requests: ReportRequest[];
   scheduled: boolean; hasActivity: boolean;
+  firstMin?: number | null; scheduleStart?: string;   // live days: first record, own start
 }): WhyChip | null {
   const rr = args.reportRow;
   const reqs = args.requests ?? [];
@@ -131,11 +140,15 @@ export function whyFor(args: {
     if (en === 'Sick') return chip('sick', 'Sick');
     return en === 'Holiday' ? chip('holiday', 'Holiday', 'gray') : chip('pto', 'PTO');
   }
+  const late = args.hasActivity && minutesLateFor(rr, args.firstMin ?? null, args.scheduleStart ?? '') > 0;
   if (rr && rr.form) {
     const type = String(rr.form.type ?? '').trim();
     // "Absence" with reason "Sick" is a sick day: the reason is the why.
     if (SICK_FORM.test(`${type} ${rr.form.reason ?? ''}`.toLowerCase())) return chip('sick', 'Sick');
-    return chip('form', titleCase(type) || 'Form');
+    // On time with a Tardiness form: no tag (2026-10-16).
+    if (!(args.hasActivity && !late && TARDINESS_FORM.test(type.toLowerCase()))) return chip('form', titleCase(type) || 'Form');
+  } else if (args.scheduled && late) {
+    return chip('unreported', 'Not Reported', 'red');   // was "Late - Unreported"
   }
   if (args.scheduled && args.hasActivity && date
     && reqs.some((r) => mine(r) && /work from home|wfh/i.test(String(r.request_type ?? '')) && coversDate(r, date))) {
@@ -219,7 +232,7 @@ export function buildActivityDays(input: {
       const breaksMin = span !== null ? Math.max(0, span - activeMin) : 0;
       const ghostMin = row && Number(row.ghost_min) >= 0 ? Number(row.ghost_min) : null;
 
-      const why = whyFor({ reportRow: rr, requests: empRequests, scheduled, hasActivity });
+      const why = whyFor({ reportRow: rr, requests: empRequests, scheduled, hasActivity, firstMin, scheduleStart: emp.schedule_start });
       const excused = awayKind(why, hasActivity, EXCUSED);
       let flag: 'low_activity' | 'long_break' | null = null;
       if (scheduled && cur < todayYmd && !excused) {

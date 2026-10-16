@@ -21,6 +21,7 @@ const WHY_CHIP_CLS: Record<WhyChip['tone'], string> = {
   blue:  'bg-blue-50 text-blue-700 border-blue-200',
   amber: 'bg-amber-50 text-amber-700 border-amber-200',
   gray:  'bg-slate-100 text-slate-500 border-slate-200',
+  red:   'bg-status-red-fill text-status-red-ink border-transparent',
 };
 
 export function isOnLeave(status: TodayStatus, why: WhyChip | null | undefined): boolean {

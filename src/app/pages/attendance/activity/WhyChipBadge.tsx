@@ -4,6 +4,7 @@ const TONE: Record<WhyChip['tone'], string> = {
   blue:  'bg-blue-50 text-blue-700 border-blue-200',
   amber: 'bg-amber-50 text-amber-700 border-amber-200',
   gray:  'bg-slate-100 text-slate-600 border-slate-200',
+  red:   'bg-status-red-fill text-status-red-ink border-transparent',
 };
 
 export default function WhyChipBadge({ chip }: { chip: WhyChip }) {

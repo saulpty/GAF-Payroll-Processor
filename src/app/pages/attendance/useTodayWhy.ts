@@ -23,9 +23,11 @@ export function useTodayWhy(args: {
   /** rows already built by AttendanceToday — used for scheduled/hasActivity per employee */
   scheduledById: Map<number, boolean>;
   hasActivityById: Map<number, boolean>;
+  /** First record per employee (minutes since midnight), so whyFor can tell late from on time. */
+  entryMinById?: Map<number, number | null>;
 }): { whyById: Map<number, WhyChip | null>; loading: boolean } {
   const { viewAs } = useViewer();
-  const { day, employees, scheduledById, hasActivityById } = args;
+  const { day, employees, scheduledById, hasActivityById, entryMinById } = args;
 
   const [rawDays, loadingDays] = useLoadAction(
     loadAttendanceReportDaysAction, [] as ReportPayrollRow[],
@@ -85,10 +87,10 @@ export function useTodayWhy(args: {
       const scheduled = scheduledById.get(eid) ?? false;
       const hasActivity = hasActivityById.get(eid) ?? false;
       const empReqs = reqByEmp.get(eid) ?? [];
-      result.set(eid, whyFor({ reportRow, requests: empReqs, scheduled, hasActivity }));
+      result.set(eid, whyFor({ reportRow, requests: empReqs, scheduled, hasActivity, firstMin: entryMinById?.get(eid) ?? null }));
     }
     return result;
-  }, [loading, day, employees, rawDays, rawForms, rawRequests, rawHolidays, rawPeriods, rawDst, scheduledById, hasActivityById]);
+  }, [loading, day, employees, rawDays, rawForms, rawRequests, rawHolidays, rawPeriods, rawDst, scheduledById, hasActivityById, entryMinById]);
 
   return { whyById, loading };
 }
