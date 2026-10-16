@@ -5,7 +5,7 @@ Attendance only).
 
 **Do not send yet.** Gates, in order:
 
-1. **Teramind check** (Saul asked for it before anything): are the 16 on vitasya.teramind.co, and under
+1. **Teramind check** (Saul asked for it before anything): run `00-teramind-check.sql` (read-only) in UIB → Database once the other session is done. Are the 16 on Teramind, and under
    which emails? Their Teramind email becomes `teramind_email` in prompt 05.
 2. Saul has reviewed the design and the committee pitch.
 3. The other UIB session has finished, exported and committed. Rebase this branch on `main` and
