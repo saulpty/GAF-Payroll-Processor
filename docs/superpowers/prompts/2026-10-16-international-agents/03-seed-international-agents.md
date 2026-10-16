@@ -1,13 +1,12 @@
 # Add the international Intake 1 agents (data migration)
 
-> **Teramind checked 2026-10-16** (app Admin → Employees → Teramind, unlinked-agent list = the API's full roster):
-> all 16 are on Teramind and every email below matches Teramind exactly. Surnames follow Teramind's
-> spelling (Ndlovu, Ndebele, Sweeting). **Still open:** display names for Reesie (Teramind: Richadria
-> Robinson, list: Reesie Richardson) and Dee (Teramind: Damira Sweeting), and Saul's go-ahead.
+> Teramind checked 2026-10-16: all 16 are on Teramind and every email below matches Teramind exactly.
+> Names are the ones Marcela and Yankel sent (Saul, 2026-10-16: emails are what matter). The same 16
+> rows are on the Monday International Employee Directory, Current Employees.
 
 **Copy every edit exactly, character for character.**
 
-Why a migration and not the sync: the automatic sync refuses to create more than 3 new employees in
+Why a migration and not the sync: the international sync (next prompt) refuses to create more than 3 new employees in
 one run (a safety brake). This adds the first group once; after that the International Directory
 board keeps them up to date (active, role, manager, country).
 
@@ -15,28 +14,28 @@ board keeps them up to date (active, role, manager, country).
 its line in `applied.txt`. **No other file may be touched.** Untouchable files as usual.
 
 ```sql
--- International Intake 1 agents (Marcela Gordon / Yankel, 2026-10-16). Insert-only, safe to run twice.
+-- International Intake 1 agents (managers Marcela Gordon, Yankel Raskin; 2026-10-16). Insert-only, safe to run twice.
 -- country is not Panama, so payroll, PTO and Contracts never load them. Schedule: Standard (9-5 ET, Mon-Fri).
 INSERT INTO employees (display_name, teramind_email, company_domain, schedule_id,
-                       is_grace_list, excluded_from_payroll, active, notes, role, country)
+                       is_grace_list, excluded_from_payroll, active, notes, role, manager, country)
 SELECT v.name, lower(v.email), split_part(lower(v.email), '@', 2),
        (SELECT id FROM schedules WHERE schedule_name = 'Standard'),
-       false, false, true, 'International agent (seed 2026-10-16)', 'Intake 1', 'International'
+       false, false, true, 'International agent (seed 2026-10-16)', 'Intake 1', 'Marcela Gordon', 'International'
 FROM (VALUES
   ('Anna Lubemba',      'Anna.L@passiontocarehc.com'),
-  ('Lee Ndlovu',        'Lee.N@passiontocarehc.com'),
+  ('Lee Ndlvu',         'Lee.N@passiontocarehc.com'),
   ('Sam Mdiza',         'Sam.M@passiontocarehc.com'),
   ('Saeed Rassoull',    'Ibn-Saeed.R@passiontocarehc.com'),
   ('Lisa Mlangeni',     'Lisa.M@passiontocarehc.com'),
   ('Pumi Bunjwa',       'Pumi.B@mombaoh.com'),
-  ('Reesie Robinson',   'Richadria.R@mombaoh.com'),
+  ('Reesie Richardson', 'Richadria.R@mombaoh.com'),
   ('Shmuli Lavner',     'Shmuli.L@mombaoh.com'),
   ('Caitlin Fry',       'Caitlin.F@mombaoh.com'),
-  ('Stacey Ndebele',    'Stacey.N@mombaoh.com'),
+  ('Stacey Ndeble',     'Stacey.N@mombaoh.com'),
   ('Angela Phulula',    'Angela.p@passiontocarehc.com'),
   ('Bekki Cooper',      'Bekki.C@passiontocarehc.com'),
   ('Canicia Pauwels',   'Canicia.P@passiontocarehc.com'),
-  ('Dee Sweeting',      'Damira.S@passiontocarehc.com'),
+  ('Dee Sweating',      'Damira.S@passiontocarehc.com'),
   ('Riley Molostane',   'Riley.M@passiontocarehc.com'),
   ('Malcolm Mooka',     'Malcolm.M@mombami.com')
 ) AS v(name, email)
