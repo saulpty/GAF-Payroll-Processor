@@ -746,3 +746,13 @@ on the first load, and dim + block clicks during later reloads.
 A prompt line with `` `AT TIME ZONE 'America/Panama'` `` executed Windows' `AT` scheduler (it only
 printed "Invalid command"; nothing was scheduled) and pasted its help text into the prompt. Use
 `<<'EOF'` for prose and append variables separately, and grep the generated prompt before sending.
+
+### Typing a date fires a query per keystroke, and a half-typed answer can win
+
+**2026-10-19.** Reports showed ~40 people "Absent · Unexplained" every day Oct 2–10 while the
+database had all their punches. Typing `10/18/2026` into To briefly holds `10/01/2026` (and years
+0002/0020/0202); each sends a query, the burst hits `too many connections`, and the stale
+"up to Oct 1" payroll answer arrived last — no error banner. Days inside a processed period with
+no row on screen render as unexplained absences. **Before calling a stretch a data gap, reload
+cleanly (Quick menu or calendar picker) and check the loader's row count per day.** See
+`findings/2026-10-19-oct2-10-absences-are-a-display-glitch.md`.
