@@ -45,7 +45,7 @@ test('MR3: FilterBar keeps its three loaders and both period effects, and only g
   // 2026-10-16 (punctuality 04): no Periods/Dates reset per route; the range is kept across tabs.
   assert.doesNotMatch(fb, /ATTENDANCE_SWITCH_ROUTES|prevRouteRef|setAttendanceMode/);
   assert.match(fb, /\{hasVisibleFilter\(cfg, \{/, 'Clear Filters still uses the rule');
-  assert.equal(count(fb, /useEffect\(/g), 5, 'six effects until 2026-10-16, minus the per-route Periods/Dates reset');
+  assert.equal(count(fb, /useEffect\(/g), 6, 'six until 2026-10-16, minus the per-route Periods/Dates reset, plus the period-list retry (2026-10-19)');
   assert.match(fb, /export default function FilterBar\(\{ stacked = false, onDefaultPeriod \}: Props\)/);
   assert.match(fb, /stacked\?: boolean;/);
   assert.match(fb, /onDefaultPeriod\?: \(name: string\) => void;/);

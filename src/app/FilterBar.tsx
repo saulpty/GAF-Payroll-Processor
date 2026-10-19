@@ -61,7 +61,21 @@ export default function FilterBar({ stacked = false, onDefaultPeriod }: Props) {
 
   const { viewAs, isSuper } = useViewer();
 
-  const [periodsRaw, , , refetchPeriods] = useLoadAction(loadPeriodsAction, [] as PeriodRow[]);
+  const [periodsRaw, periodsLoading, periodsError, refetchPeriods] = useLoadAction(loadPeriodsAction, [] as PeriodRow[]);
+
+  // A failed period load used to leave the dropdown empty until a full reload (Saul, 2026-10-19).
+  // Try again up to 3 times, 2 s apart; a success resets the count.
+  const periodRetries = useRef(0);
+  useEffect(() => {
+    if (!periodsError) {
+      if (!periodsLoading) periodRetries.current = 0;
+      return;
+    }
+    if (periodsLoading || periodRetries.current >= 3) return;
+    periodRetries.current += 1;
+    const t = setTimeout(() => refetchPeriods(), 2000);
+    return () => clearTimeout(t);
+  }, [periodsError, periodsLoading, refetchPeriods]);
   const [empsRaw]    = useLoadAction(loadAttendanceEmployeesAction, [] as EmpInfo[], { viewAs });
 
   type CountsRow = { red_count: number; yellow_count: number };
@@ -161,6 +175,9 @@ export default function FilterBar({ stacked = false, onDefaultPeriod }: Props) {
             <select value={period} onChange={e => setPeriod(e.target.value)} className={bareSel}>
               <option value="">{location.pathname === '/payroll-master' ? 'Choose A Period' : 'All periods'}</option>
               {location.pathname === '/payroll-master' && <option value="__all__">All Periods</option>}
+              {periods.length === 0 && (periodsLoading || periodsError) && (
+                <option value="" disabled>{periodsError ? "Couldn't load periods, retrying…" : 'Loading periods…'}</option>
+              )}
               {periods.map(p => (
                 <option key={p.period_name} value={p.period_name}>{p.period_name}</option>
               ))}
