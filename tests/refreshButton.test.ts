@@ -32,12 +32,19 @@ test('RB3: the page remounts on refreshVersion while the background syncs stay o
   assert.match(ctx, /arVersion, refreshVersion, period,/, 'a bump must reach the consumers');
 });
 
-test('RB4: a sync registers for the button only after the super-user check', () => {
+// 2026-10-20: Monday and Teramind also register for users flagged can_refresh_sync; Access stays super-only.
+const GATES: Record<string, string> = {
+  AccessAutoSync: 'if (!isSuper) return;',
+  TeramindAutoSync: 'if (!canRefreshSync) return;',
+  MondayAutoSync: 'if (!canRefreshSync) return;',
+};
+
+test('RB4: a sync registers for the button only after the access check', () => {
   for (const name of SYNCS) {
     const src = read(`src/app/components/${name}.tsx`);
-    const gate = src.indexOf('if (!isSuper) return;');
+    const gate = src.indexOf(GATES[name]);
     const reg = src.indexOf('registerSync(');
-    assert.ok(gate > 0 && reg > gate, `${name}: registerSync must come after the isSuper gate`);
+    assert.ok(gate > 0 && reg > gate, `${name}: registerSync must come after the ${GATES[name]} gate`);
     assert.match(src, /async function maybeSync\(force = false\)/, `${name}: timers must keep running unforced`);
     assert.match(src, /unregister\(\); \};/, `${name}: must unregister on cleanup`);
     assert.match(src, /document\.hidden/, `${name}: a background tab must still not sync`);
@@ -47,7 +54,7 @@ test('RB4: a sync registers for the button only after the super-user check', () 
 test('RB5: a forced Monday run still claims each board in the database', () => {
   const src = read('src/app/components/MondayAutoSync.tsx');
   assert.match(src, /intervalMinutes: force \? 1 : intervalMinutes/);
-  assert.match(src, /const due = force \? BOARDS : BOARDS\.filter/);
+  assert.ok(src.includes('const due = force ? boards : boards.filter('), 'due list comes from the allowed boards');
 });
 
 test('RB6: the refresh interval was moved to 5 minutes by a migration, not by code', () => {
@@ -56,4 +63,22 @@ test('RB6: the refresh interval was moved to 5 minutes by a migration, not by co
   const sql = read(`src/migrations/${file}`);
   assert.match(sql, /SET value = '5'/);
   assert.match(sql, /WHERE key = 'sync_every_minutes'/);
+});
+
+test('RB7: a flagged non-super user syncs data boards on Refresh only, never directory, roster or timer', () => {
+  for (const name of ['TeramindAutoSync', 'MondayAutoSync']) {
+    const src = read(`src/app/components/${name}.tsx`);
+    const reg = src.indexOf('registerSync(');
+    const stop = src.indexOf('if (!isSuper) return unregister;');
+    const timer = src.indexOf('setInterval(maybeSync');
+    assert.ok(reg > 0 && stop > reg && timer > stop, `${name}: timers start only after the super-user check`);
+    assert.ok(src.includes("}, [isSuper, canRefreshSync]);"), "}, [isSuper, canRefreshSync]);");
+  }
+  const mon = read('src/app/components/MondayAutoSync.tsx');
+  assert.ok(mon.includes("const boards = isSuper ? BOARDS : BOARDS.filter(b => b.kind !== 'directory');"), "const boards = isSuper ? BOARDS : BOARDS.filter(b => b.kind !== 'directory');");
+  assert.ok(mon.includes("if (isSuper && !lastRosterRun) {"), "if (isSuper && !lastRosterRun) {");
+  assert.doesNotMatch(read('src/app/components/AccessAutoSync.tsx'), /canRefreshSync/);
+  const ctx = read('src/app/context/ViewerContext.tsx');
+  assert.ok(ctx.includes("canRefreshSync: status === 'ready' && (row?.role === 'super_user' || row?.can_refresh_sync === true),"), "canRefreshSync: status === 'ready' && (row?.role === 'super_user' || row?.can_refresh_sync === true),");
+  assert.ok(read('src/actions/loadCurrentViewer.ts').includes("u.active, u.can_refresh_sync"), "u.active, u.can_refresh_sync");
 });
