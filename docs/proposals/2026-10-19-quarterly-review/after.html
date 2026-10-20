@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quarterly Employee Review</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; color: #1a1a2e; }
+  .page { max-width: 860px; margin: 30px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); overflow: hidden; }
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%); color: #fff; padding: 32px 40px 24px; }
+  .header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 0.5px; }
+  .header .subtitle { font-size: 0.85rem; color: #a0b4c8; margin-top: 4px; }
+  .quarter-badges { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .qbadge { padding: 5px 16px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 2px solid rgba(255,255,255,0.25); color: #cdd; background: transparent; }
+  .qbadge.active { background: #e94560; border-color: #e94560; color: #fff; }
+  .section { padding: 28px 40px; border-bottom: 1px solid #e8ecf2; }
+  .section-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #e94560; margin-bottom: 18px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .info-field label { display: block; font-size: 0.72rem; font-weight: 600; color: #7a8499; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+  .info-field input, .info-field select { width: 100%; border: 1.5px solid #dde2ec; border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; color: #1a1a2e; background:#fff; }
+  .info-field input[readonly] { background: #f8f9fc; color: #4a5468; }
+  .rating-item { display: flex; align-items: flex-start; gap: 20px; padding: 14px 0; border-bottom: 1px solid #f0f2f7; }
+  .rating-item:last-child { border-bottom: none; }
+  .rating-text { flex: 1; }
+  .rating-text strong { font-size: 0.92rem; color: #1a1a2e; display: block; margin-bottom: 3px; }
+  .rating-text span { font-size: 0.8rem; color: #7a8499; line-height: 1.4; }
+  .rating-stars { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+  .star-btn { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #dde2ec; background: #f8f9fc; font-size: 0.75rem; font-weight: 700; color: #aab; display: flex; align-items: center; justify-content: center; }
+  .star-btn.selected { color: #fff; border-color: transparent; }
+  .star-btn.sel-3 { background: #81c784; border-color: #81c784; color: #1a1a2e; }
+  .star-btn.sel-4 { background: #388e3c; border-color: #388e3c; }
+  .rating-label { font-size: 0.7rem; color: #aab; width: 105px; text-align: right; white-space: nowrap; }
+  textarea { width: 100%; border: 1.5px solid #dde2ec; border-radius: 6px; padding: 10px 12px; font-size: 0.88rem; color: #1a1a2e; font-family: inherit; resize: vertical; min-height: 70px; }
+  .kpi-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .kpi-table th { background: #1a1a2e; color: #fff; padding: 10px 12px; text-align: left; font-size: 0.72rem; letter-spacing: 0.8px; text-transform: uppercase; }
+  .kpi-table td { padding: 10px 12px; border-bottom: 1px solid #eef0f6; vertical-align: top; }
+  .kpi-table tr:nth-child(even) td { background: #f8f9fc; }
+  .kpi-table input { width: 100%; border: 1px solid #dde2ec; border-radius: 4px; padding: 4px 6px; font-size: 0.85rem; }
+  .add-row-btn { margin-top: 10px; padding: 7px 18px; background: transparent; border: 2px dashed #0f3460; color: #0f3460; border-radius: 6px; font-size: 0.82rem; font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #7a8499; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .score-banner { background: linear-gradient(135deg, #1a1a2e, #0f3460); border-radius: 10px; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; color: #fff; }
+  .score-banner .score-val { font-size: 2.2rem; font-weight: 800; }
+  .score-banner .score-label { font-size: 0.85rem; color: #a0b4c8; }
+  .score-banner .score-desc { font-size: 1rem; font-weight: 600; }
+  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .sig-box { border-top: 2px solid #1a1a2e; padding-top: 8px; }
+  .sig-box label { font-size: 0.75rem; color: #7a8499; }
+  .print-btn { padding: 12px 36px; background: #e94560; color: #fff; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.5px; }
+  .ghost-btn { padding: 12px 28px; background: #fff; color: #0f3460; border: 2px solid #0f3460; border-radius: 8px; font-size: 0.95rem; font-weight: 700; }
+
+  /* ---- the only new bits, marked in yellow for this mockup ---- */
+  .new { outline: 2px dashed #f2b705; outline-offset: 4px; border-radius: 6px; position: relative; }
+  .new-tag { display:inline-block; background:#f2b705; color:#1a1a2e; font-size:0.62rem; font-weight:800; letter-spacing:1px; padding:2px 7px; border-radius:4px; margin-left:8px; vertical-align:middle; }
+  .prev { font-size: 0.72rem; color: #7a8499; background:#f0f2f7; border-radius: 12px; padding: 3px 10px; white-space: nowrap; }
+  .carried { font-size: 0.75rem; color: #0f3460; background: #eef6ff; border-left: 3px solid #0f3460; padding: 8px 12px; border-radius: 4px; margin-bottom: 14px; }
+  .history { display:flex; gap:10px; flex-wrap:wrap; }
+  .hchip { border:1.5px solid #dde2ec; border-radius:8px; padding:8px 14px; font-size:0.8rem; background:#fafbfd; }
+  .hchip b { color:#0f3460; }
+  .saved { font-size:0.75rem; color:#a0b4c8; margin-top:6px; }
+  .legend-box { max-width:860px; margin:20px auto 0; background:#fff8dc; border:1px solid #f2b705; border-radius:8px; padding:10px 16px; font-size:0.85rem; }
+</style>
+</head>
+<body>
+
+<div class="legend-box"><b>Proposed: the same Quarterly Review form, online.</b> Everything outlined in yellow with a <span class="new-tag">NEW</span> tag is added. Everything else stays exactly as it is today. (Names and scores are sample data.)</div>
+
+<div class="page">
+
+  <div class="header">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h1>Employee Performance Review</h1>
+        <div class="subtitle">Quarterly Evaluation &nbsp;·&nbsp; Confidential</div>
+        <div class="saved new" style="display:inline-block;padding:2px 6px">✓ Draft saved 2 min ago <span class="new-tag">NEW</span></div>
+      </div>
+      <div class="quarter-badges">
+        <button class="qbadge">Q1</button>
+        <button class="qbadge">Q2</button>
+        <button class="qbadge">Q3</button>
+        <button class="qbadge active">Q4</button>
+        <button class="qbadge">Annual</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Employee Information</div>
+    <div class="info-grid">
+      <div class="info-field new"><label>Employee Name <span class="new-tag">NEW: pick from your list</span></label>
+        <select><option>Maria Rodriguez</option><option>Carlos Pérez</option><option>+ Add someone new…</option></select></div>
+      <div class="info-field new"><label>Manager / Reviewer <span class="new-tag">NEW: filled from login</span></label><input readonly value="Jane Smith · Jane.S@vitasyahc.com"></div>
+      <div class="info-field"><label>Job Title</label><input value="Patient Care Coordinator"></div>
+      <div class="info-field"><label>Department</label><input value="Intake"></div>
+      <div class="info-field"><label>Evaluation Date</label><input value="10/28/2026"></div>
+      <div class="info-field"><label>Review Type</label><select><option>Manager Evaluation</option></select></div>
+    </div>
+
+    <div class="new" style="margin-top:22px;padding:4px">
+      <label style="font-size:0.72rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:8px;">Maria's previous reviews <span class="new-tag">NEW</span></label>
+      <div class="history">
+        <div class="hchip">Q2 2026 · <b>3.00</b> Meets · <u>open</u> · <u>PDF</u></div>
+        <div class="hchip">Q3 2026 · <b>3.40</b> Meets · <u>open</u> · <u>PDF</u></div>
+        <div class="hchip" style="border-color:#e94560">Q4 2026 · writing now</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Competency Ratings</div>
+    <div style="margin-bottom:18px;"><button style="padding:8px 20px;background:transparent;border:2px solid #aab;color:#7a8499;border-radius:6px;font-size:0.82rem;font-weight:600;">↺ Reset All Ratings</button></div>
+    <div class="rating-item">
+      <div class="rating-text"><strong>Functional Excellence &amp; Execution</strong><span>Demonstrates deep expertise in core role responsibilities and consistently delivers high-quality outputs…</span></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <span class="prev new">Q3: 3 <span class="new-tag">NEW</span></span>
+        <div class="rating-stars"><span class="star-btn selected sel-4">1</span><span class="star-btn selected sel-4">2</span><span class="star-btn selected sel-4">3</span><span class="star-btn selected sel-4">4</span><span class="star-btn">5</span></div>
+        <div class="rating-label">Exceeds Expectations</div>
+      </div>
+    </div>
+    <div class="rating-item">
+      <div class="rating-text"><strong>Strategic Thinking &amp; Problem Solving</strong><span>Connects individual work to broader organizational goals…</span></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <span class="prev">Q3: 2</span>
+        <div class="rating-stars"><span class="star-btn selected sel-3">1</span><span class="star-btn selected sel-3">2</span><span class="star-btn selected sel-3">3</span><span class="star-btn">4</span><span class="star-btn">5</span></div>
+        <div class="rating-label">Meets Expectations</div>
+      </div>
+    </div>
+    <div class="rating-item">
+      <div class="rating-text"><strong>Communication, Collaboration &amp; Influence</strong><span>Conveys complex ideas with clarity across written and verbal channels…</span></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <span class="prev">Q3: 4</span>
+        <div class="rating-stars"><span class="star-btn">1</span><span class="star-btn">2</span><span class="star-btn">3</span><span class="star-btn">4</span><span class="star-btn">5</span></div>
+        <div class="rating-label">Not rated</div>
+      </div>
+    </div>
+    <div class="rating-item">
+      <div class="rating-text"><strong>Agility, Innovation &amp; Continuous Improvement</strong><span>Adapts effectively to shifting priorities, ambiguity, or setbacks…</span></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <span class="prev">Q3: 3</span>
+        <div class="rating-stars"><span class="star-btn">1</span><span class="star-btn">2</span><span class="star-btn">3</span><span class="star-btn">4</span><span class="star-btn">5</span></div>
+        <div class="rating-label">Not rated</div>
+      </div>
+    </div>
+    <div class="rating-item">
+      <div class="rating-text"><strong>Values, Integrity &amp; Ethical Conduct</strong><span>Acts with transparency and integrity in all interactions…</span></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <span class="prev">Q3: 5</span>
+        <div class="rating-stars"><span class="star-btn">1</span><span class="star-btn">2</span><span class="star-btn">3</span><span class="star-btn">4</span><span class="star-btn">5</span></div>
+        <div class="rating-label">Not rated</div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#d32f2f"></div>1 – Does Not Meet Expectations</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e07b2a"></div>2 – Needs Improvement</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#81c784"></div>3 – Meets Expectations</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#388e3c"></div>4 – Exceeds Expectations</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1b5e20"></div>5 – Outstanding Impact</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Overall Score</div>
+    <div class="score-banner">
+      <div><div class="score-label">Average Rating</div><div class="score-val">3.50</div></div>
+      <div style="text-align:right;"><div class="score-desc" style="margin-bottom:8px">Meets Expectations</div><div class="score-label">Based on 2 of 5 competencies rated &nbsp;·&nbsp; <span class="new" style="padding:0 4px;outline-offset:1px">Q3 was 3.40 <span class="new-tag">NEW</span></span></div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Overall Evaluation</div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:0.75rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Strengths &amp; Accomplishments</label>
+      <textarea placeholder="Describe key achievements and strengths demonstrated this quarter..."></textarea>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:0.75rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Areas for Development</label>
+      <div class="carried new">Last quarter (Q3) you wrote: <i>"Needs to escalate issues earlier instead of waiting."</i> <span class="new-tag">NEW</span></div>
+      <textarea placeholder="Describe areas where growth or improvement is needed..."></textarea>
+    </div>
+    <div>
+      <label style="font-size:0.75rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:10px;">Development Plan / Action Items</label>
+      <div class="new" style="border:1.5px solid #dde2ec;border-radius:8px;padding:14px 16px;margin-bottom:12px;background:#fafbfd;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label style="font-size:0.72rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;">Action Plan from Q3 <span class="new-tag">NEW: CARRIED OVER</span></label>
+        </div>
+        <div style="font-size:0.88rem;margin-bottom:6px;">Complete escalation-process training with team lead.</div>
+        <div style="font-size:0.8rem;color:#7a8499;margin-bottom:10px;">Timeline: by end of Q4, biweekly check-ins</div>
+        <div style="display:flex;gap:8px;align-items:center;font-size:0.8rem;color:#4a5468;">Was it done?
+          <span class="qbadge" style="color:#0f3460;border-color:#0f3460;background:#eef6ff">Yes</span>
+          <span class="qbadge" style="color:#7a8499;border-color:#dde2ec">Partly</span>
+          <span class="qbadge" style="color:#7a8499;border-color:#dde2ec">No</span>
+        </div>
+      </div>
+      <div style="border:1.5px solid #dde2ec;border-radius:8px;padding:14px 16px;margin-bottom:12px;background:#fafbfd;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label style="font-size:0.72rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;">Action Plan</label><span style="color:#e94560">✕</span>
+        </div>
+        <textarea placeholder="Describe the specific action, training, or support needed..." style="margin-bottom:10px;"></textarea>
+        <label style="font-size:0.72rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Timeline</label>
+        <textarea placeholder="e.g. Complete by end of Q4, monthly check-ins..." style="min-height:44px"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+        <button class="add-row-btn">+ Add Action Plan</button>
+        <button class="add-row-btn">+ Add Comments</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Current Quarter KPIs &amp; MBOs</div>
+    <div class="carried new">These 3 objectives were filled in automatically from the "Next Quarter KPIs" in Maria's Q3 review. Just fill in the Actual Result and Score. <span class="new-tag">NEW</span></div>
+    <table class="kpi-table">
+      <thead><tr><th style="width:28%">Objective / KPI</th><th style="width:16%">Target</th><th style="width:16%">Actual Result</th><th style="width:9%">Weight %</th><th style="width:10%">Score (1–5)</th><th style="width:21%">Comments</th></tr></thead>
+      <tbody>
+        <tr><td>Answer patient calls within 2 rings</td><td>95%</td><td><input placeholder="e.g. 91%"></td><td>40</td><td><input placeholder="1–5"></td><td><input placeholder="Notes..."></td></tr>
+        <tr><td>Finish Medicare billing training</td><td>by Nov 30</td><td><input placeholder=""></td><td>30</td><td><input placeholder="1–5"></td><td><input placeholder="Notes..."></td></tr>
+        <tr><td>Zero missed follow-ups</td><td>0</td><td><input placeholder=""></td><td>30</td><td><input placeholder="1–5"></td><td><input placeholder="Notes..."></td></tr>
+      </tbody>
+    </table>
+    <button class="add-row-btn">+ Add Objective</button>
+    <div style="margin-top:20px; display:flex; gap:24px; flex-wrap:wrap;">
+      <div style="background:#f8f9fc;border-radius:8px;padding:14px 20px;min-width:160px;">
+        <div style="font-size:0.72rem;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Weighted KPI Score</div>
+        <div style="font-size:1.8rem;font-weight:800;color:#0f3460;margin-top:4px;">—</div>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <label style="font-size:0.75rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">KPI Summary</label>
+        <textarea placeholder="Summarize KPI performance for the current quarter..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Next Quarter KPIs &amp; MBOs</div>
+    <p style="font-size:0.82rem;color:#7a8499;margin-bottom:16px;">Define measurable objectives for the upcoming quarter. <span class="new" style="padding:0 4px">These will show up automatically in Maria's Q1 2027 review. <span class="new-tag">NEW</span></span></p>
+    <table class="kpi-table">
+      <thead><tr><th style="width:28%">Objective / KPI</th><th style="width:16%">Target</th><th style="width:16%">Actual Result</th><th style="width:9%">Weight %</th><th style="width:10%">Score (1–5)</th><th style="width:21%">Comments</th></tr></thead>
+      <tbody><tr><td><input placeholder="e.g. Increase customer satisfaction score"></td><td><input placeholder="e.g. > 90%"></td><td><input placeholder="e.g. TBD"></td><td><input placeholder="%"></td><td><input placeholder="1–5"></td><td><input placeholder="Notes..."></td></tr></tbody>
+    </table>
+    <button class="add-row-btn">+ Add Objective</button>
+    <div style="margin-top:20px; display:flex; gap:24px; flex-wrap:wrap;">
+      <div style="background:#f8f9fc;border-radius:8px;padding:14px 20px;min-width:160px;">
+        <div style="font-size:0.72rem;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Weighted KPI Score</div>
+        <div style="font-size:1.8rem;font-weight:800;color:#0f3460;margin-top:4px;">—</div>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <label style="font-size:0.75rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Next Quarter Goals Summary</label>
+        <textarea placeholder="Outline key objectives and expectations for the next quarter..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Acknowledgment &amp; Signatures</div>
+    <p style="font-size:0.8rem;color:#7a8499;margin-bottom:18px;font-style:italic;">By signing, both parties confirm this review has been discussed and the employee has had the opportunity to provide input.</p>
+    <div class="sig-grid">
+      <div class="sig-box"><label>Employee Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Date</label></div>
+      <div class="sig-box"><label>Manager Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Date</label></div>
+    </div>
+  </div>
+</div>
+
+<div style="display:flex;gap:14px;justify-content:center;margin:0 auto 40px;max-width:860px;">
+  <button class="ghost-btn new">💾 Save Draft <span class="new-tag">NEW</span></button>
+  <button class="print-btn new">Submit &amp; Email Me the PDF <span class="new-tag">NEW</span></button>
+</div>
+<p style="text-align:center;font-size:0.8rem;color:#7a8499;margin:-28px auto 40px;">(replaces today's "Print / Save as PDF" button)</p>
+
+</body>
+</html>

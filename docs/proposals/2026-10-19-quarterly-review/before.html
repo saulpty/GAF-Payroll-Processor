@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quarterly Employee Review</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; color: #1a1a2e; }
+  .page { max-width: 860px; margin: 30px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); overflow: hidden; }
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%); color: #fff; padding: 32px 40px 24px; }
+  .header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 0.5px; }
+  .header .subtitle { font-size: 0.85rem; color: #a0b4c8; margin-top: 4px; }
+  .quarter-badges { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .qbadge { padding: 5px 16px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 2px solid rgba(255,255,255,0.25); color: #cdd; background: transparent; transition: all 0.2s; }
+  .qbadge.active, .qbadge:hover { background: #e94560; border-color: #e94560; color: #fff; }
+  .section { padding: 28px 40px; border-bottom: 1px solid #e8ecf2; }
+  .section:last-child { border-bottom: none; }
+  .section-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #e94560; margin-bottom: 18px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .info-field label { display: block; font-size: 0.72rem; font-weight: 600; color: #7a8499; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+  .info-field input, .info-field select { width: 100%; border: 1.5px solid #dde2ec; border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; color: #1a1a2e; outline: none; transition: border 0.2s; }
+  .info-field input:focus, .info-field select:focus { border-color: #0f3460; }
+  .rating-item { display: flex; align-items: flex-start; gap: 20px; padding: 14px 0; border-bottom: 1px solid #f0f2f7; }
+  .rating-item:last-child { border-bottom: none; }
+  .rating-text { flex: 1; }
+  .rating-text strong { font-size: 0.92rem; color: #1a1a2e; display: block; margin-bottom: 3px; }
+  .rating-text span { font-size: 0.8rem; color: #7a8499; line-height: 1.4; }
+  .rating-stars { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+  .star-btn { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #dde2ec; background: #f8f9fc; font-size: 0.75rem; font-weight: 700; color: #aab; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+  .star-btn:hover { transform: scale(1.1); }
+  .star-btn.selected { color: #fff; border-color: transparent; }
+  .star-btn.sel-1 { background: #d32f2f; border-color: #d32f2f; }
+  .star-btn.sel-2 { background: #e07b2a; border-color: #e07b2a; }
+  .star-btn.sel-3 { background: #81c784; border-color: #81c784; color: #1a1a2e; }
+  .star-btn.sel-4 { background: #388e3c; border-color: #388e3c; }
+  .star-btn.sel-5 { background: #1b5e20; border-color: #1b5e20; }
+  .rating-label { font-size: 0.7rem; color: #aab; width: 105px; text-align: right; white-space: nowrap; }
+  textarea { width: 100%; border: 1.5px solid #dde2ec; border-radius: 6px; padding: 10px 12px; font-size: 0.88rem; color: #1a1a2e; font-family: inherit; resize: vertical; min-height: 70px; outline: none; transition: border 0.2s; }
+  textarea:focus { border-color: #0f3460; }
+  .kpi-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .kpi-table th { background: #1a1a2e; color: #fff; padding: 10px 12px; text-align: left; font-size: 0.72rem; letter-spacing: 0.8px; text-transform: uppercase; }
+  .kpi-table td { padding: 10px 12px; border-bottom: 1px solid #eef0f6; vertical-align: middle; }
+  .kpi-table tr:nth-child(even) td { background: #f8f9fc; }
+  .kpi-ta { width: 100%; border: none; background: transparent; font-size: 0.85rem; color: #1a1a2e; font-family: inherit; outline: none; resize: vertical; min-height: 80px; white-space: pre-wrap; word-wrap: break-word; padding: 2px 0; line-height: 1.4; }
+  .kpi-table input:focus { background: #eef6ff; border-radius: 4px; }
+  .add-row-btn { margin-top: 10px; padding: 7px 18px; background: transparent; border: 2px dashed #0f3460; color: #0f3460; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: all 0.2s; }
+  .add-row-btn:hover { background: #0f3460; color: #fff; }
+  .del-btn { color: #e94560; border: none; background: none; cursor: pointer; font-size: 1rem; padding: 0 4px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #7a8499; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .score-banner { background: linear-gradient(135deg, #1a1a2e, #0f3460); border-radius: 10px; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; color: #fff; }
+  .score-banner .score-val { font-size: 2.2rem; font-weight: 800; }
+  .score-banner .score-label { font-size: 0.85rem; color: #a0b4c8; }
+  .score-banner .score-desc { font-size: 1rem; font-weight: 600; }
+  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .sig-box { border-top: 2px solid #1a1a2e; padding-top: 8px; }
+  .sig-box label { font-size: 0.75rem; color: #7a8499; }
+  .action-bar { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .reset-btn { padding: 8px 20px; background: transparent; border: 2px solid #aab; color: #7a8499; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: all 0.2s; }
+  .reset-btn:hover { border-color: #d32f2f; color: #d32f2f; }
+  .print-btn { display: block; margin: 0 auto 30px; padding: 12px 36px; background: #e94560; color: #fff; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 700; cursor: pointer; letter-spacing: 0.5px; transition: background 0.2s; }
+  .print-btn:hover { background: #c73652; }
+  @media print {
+    .print-btn, .reset-btn, .add-row-btn, .del-btn, .action-bar { display: none; }
+    body { background: #fff; }
+    .page { box-shadow: none; }
+    .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h1>Employee Performance Review</h1>
+        <div class="subtitle">Quarterly Evaluation &nbsp;·&nbsp; Confidential</div>
+      </div>
+      <div class="quarter-badges">
+        <button class="qbadge" onclick="setQ(this)">Q1</button>
+        <button class="qbadge" onclick="setQ(this)">Q2</button>
+        <button class="qbadge active" onclick="setQ(this)">Q3</button>
+        <button class="qbadge" onclick="setQ(this)">Annual</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Employee Information</div>
+    <div class="info-grid">
+      <div class="info-field"><label>Employee Name</label><input type="text" placeholder="Full name"></div>
+      <div class="info-field"><label>Manager / Reviewer</label><input type="text" placeholder="Full name"></div>
+      <div class="info-field"><label>Job Title</label><input type="text" placeholder="Title"></div>
+      <div class="info-field"><label>Department</label><input type="text" placeholder="Department"></div>
+      <div class="info-field"><label>Evaluation Date</label><input type="date"></div>
+      <div class="info-field"><label>Review Type</label>
+        <select><option>Manager Evaluation</option></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Competency Ratings</div>
+    <div class="action-bar">
+      <button class="reset-btn" onclick="resetRatings()">↺ Reset All Ratings</button>
+    </div>
+    <div id="ratings-container"></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#d32f2f"></div>1 – Does Not Meet Expectations</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e07b2a"></div>2 – Needs Improvement</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#81c784"></div>3 – Meets Expectations</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#388e3c"></div>4 – Exceeds Expectations</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1b5e20"></div>5 – Outstanding Impact</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Overall Score</div>
+    <div class="score-banner">
+      <div>
+        <div class="score-label">Average Rating</div>
+        <div class="score-val" id="avg-score">—</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="score-desc" id="score-desc">Rate the competencies above</div>
+        <div class="score-label" id="score-sub"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Overall Evaluation</div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:0.75rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Strengths &amp; Accomplishments</label>
+      <textarea placeholder="Describe key achievements and strengths demonstrated this quarter..."></textarea>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:0.75rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Areas for Development</label>
+      <textarea placeholder="Describe areas where growth or improvement is needed..."></textarea>
+    </div>
+    <div>
+      <label style="font-size:0.75rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:10px;">Development Plan / Action Items</label>
+      <div id="action-plans-container"></div>
+      <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+        <button class="add-row-btn" onclick="addActionPlan()">+ Add Action Plan</button>
+        <button class="add-row-btn" onclick="addCommentBox()">+ Add Comments</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="current-kpi-section">
+    <div class="section-title">Current Quarter KPIs &amp; MBOs</div>
+    <p style="font-size:0.82rem;color:#7a8499;margin-bottom:16px;">Track measurable objectives set at the start of the quarter. Score achievement 1–5.</p>
+    <table class="kpi-table" id="kpi-table">
+      <thead>
+        <tr>
+          <th style="width:28%">Objective / KPI</th>
+          <th style="width:16%">Target</th>
+          <th style="width:16%">Actual Result</th>
+          <th style="width:9%">Weight %</th>
+          <th style="width:10%">Score (1–5)</th>
+          <th style="width:17%">Comments</th>
+          <th style="width:4%"></th>
+        </tr>
+      </thead>
+      <tbody id="kpi-body"></tbody>
+    </table>
+    <button class="add-row-btn" onclick="addKPI()">+ Add Objective</button>
+    <div style="margin-top:20px; display:flex; gap:24px; flex-wrap:wrap;">
+      <div style="background:#f8f9fc;border-radius:8px;padding:14px 20px;min-width:160px;">
+        <div style="font-size:0.72rem;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Weighted KPI Score</div>
+        <div style="font-size:1.8rem;font-weight:800;color:#0f3460;margin-top:4px;" id="kpi-score">—</div>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <label style="font-size:0.75rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">KPI Summary</label>
+        <textarea placeholder="Summarize KPI performance for the current quarter..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="next-kpi-section">
+    <div class="section-title">Next Quarter KPIs &amp; MBOs</div>
+    <p style="font-size:0.82rem;color:#7a8499;margin-bottom:16px;">Define measurable objectives for the upcoming quarter. Score target 1–5.</p>
+    <table class="kpi-table" id="nq-kpi-table">
+      <thead>
+        <tr>
+          <th style="width:28%">Objective / KPI</th>
+          <th style="width:16%">Target</th>
+          <th style="width:16%">Actual Result</th>
+          <th style="width:9%">Weight %</th>
+          <th style="width:10%">Score (1–5)</th>
+          <th style="width:17%">Comments</th>
+          <th style="width:4%"></th>
+        </tr>
+      </thead>
+      <tbody id="nq-kpi-body"></tbody>
+    </table>
+    <button class="add-row-btn" onclick="addNqKPI()">+ Add Objective</button>
+    <div style="margin-top:20px; display:flex; gap:24px; flex-wrap:wrap;">
+      <div style="background:#f8f9fc;border-radius:8px;padding:14px 20px;min-width:160px;">
+        <div style="font-size:0.72rem;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Weighted KPI Score</div>
+        <div style="font-size:1.8rem;font-weight:800;color:#0f3460;margin-top:4px;" id="nq-kpi-score">—</div>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <label style="font-size:0.75rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Next Quarter Goals Summary</label>
+        <textarea placeholder="Outline key objectives and expectations for the next quarter..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Acknowledgment &amp; Signatures</div>
+    <p style="font-size:0.8rem;color:#7a8499;margin-bottom:18px;font-style:italic;">By signing, both parties confirm this review has been discussed and the employee has had the opportunity to provide input.</p>
+    <div class="sig-grid">
+      <div class="sig-box"><label>Employee Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Date</label></div>
+      <div class="sig-box"><label>Manager Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Date</label></div>
+    </div>
+  </div>
+</div>
+
+<button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+
+<script>
+const competencies = [
+  {
+    title: "Functional Excellence & Execution",
+    desc: "Demonstrates deep expertise in core role responsibilities and consistently delivers high-quality outputs; takes full ownership of commitments—meeting timelines, holding themselves accountable for outcomes, and requiring minimal rework."
+  },
+  {
+    title: "Strategic Thinking & Problem Solving",
+    desc: "Connects individual work to broader organizational goals and makes decisions with awareness of business impact and trade-offs; identifies root causes, develops well-reasoned data-informed solutions, and anticipates downstream consequences before acting."
+  },
+  {
+    title: "Communication, Collaboration & Influence",
+    desc: "Conveys complex ideas with clarity across written and verbal channels, tailoring messaging to the audience; builds productive working relationships across teams, contributes constructively to shared goals, and navigates differing perspectives with professionalism."
+  },
+  {
+    title: "Agility, Innovation & Continuous Improvement",
+    desc: "Adapts effectively to shifting priorities, ambiguity, or setbacks while maintaining a constructive mindset; proactively identifies inefficiencies, challenges the status quo with evidence-based ideas, and proposes scalable improvements that add measurable value."
+  },
+  {
+    title: "Values, Integrity & Ethical Conduct",
+    desc: "Acts with transparency and integrity in all interactions; upholds organizational values—Accountability, Integrity, Humility, Teamwork, and 1% Better Every Day—and models ethical behavior consistently, even under pressure."
+  }
+];
+
+const ratingLabels = ['', 'Does Not Meet Expectations', 'Needs Improvement', 'Meets Expectations', 'Exceeds Expectations', 'Outstanding Impact'];
+const ratings = {};
+
+function buildRatings() {
+  const c = document.getElementById('ratings-container');
+  c.innerHTML = '';
+  competencies.forEach((comp, i) => {
+    const div = document.createElement('div');
+    div.className = 'rating-item';
+    div.innerHTML = `
+      <div class="rating-text">
+        <strong>${comp.title}</strong>
+        <span>${comp.desc}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <div class="rating-stars" id="stars-${i}">
+          ${[1,2,3,4,5].map(n => `<button class="star-btn" onclick="setRating(${i},${n})" title="${ratingLabels[n]}">${n}</button>`).join('')}
+        </div>
+        <div class="rating-label" id="lbl-${i}">Not rated</div>
+      </div>`;
+    c.appendChild(div);
+  });
+}
+
+function setRating(idx, val) {
+  ratings[idx] = val;
+  refreshRow(idx);
+  updateScore();
+}
+
+function refreshRow(idx) {
+  const val = ratings[idx];
+  const stars = document.querySelectorAll(`#stars-${idx} .star-btn`);
+  stars.forEach((b, i) => {
+    b.className = 'star-btn' + (val && i < val ? ` selected sel-${val}` : '');
+  });
+  document.getElementById(`lbl-${idx}`).textContent = val ? ratingLabels[val] : 'Not rated';
+}
+
+function resetRatings() {
+  competencies.forEach((_, i) => {
+    delete ratings[i];
+    refreshRow(i);
+  });
+  document.getElementById('avg-score').textContent = '—';
+  document.getElementById('score-desc').textContent = 'Rate the competencies above';
+  document.getElementById('score-sub').textContent = '';
+}
+
+function updateScore() {
+  const vals = Object.values(ratings);
+  if (!vals.length) return;
+  const avg = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2);
+  document.getElementById('avg-score').textContent = avg;
+  const avgNum = parseFloat(avg);
+  let scoreDesc = '';
+  if (avgNum >= 1 && avgNum < 2) scoreDesc = 'Does Not Meet Expectations';
+  else if (avgNum >= 2 && avgNum < 3) scoreDesc = 'Needs Improvement';
+  else if (avgNum >= 3 && avgNum < 4) scoreDesc = 'Meets Expectations';
+  else if (avgNum >= 4 && avgNum < 5) scoreDesc = 'Exceeds Expectations';
+  else if (avgNum === 5) scoreDesc = 'Outstanding Impact';
+  document.getElementById('score-desc').textContent = scoreDesc;
+  document.getElementById('score-sub').textContent = `Based on ${vals.length} of ${competencies.length} competencies rated`;
+}
+
+let actionPlanCount = 0;
+function addActionPlan() {
+  actionPlanCount++;
+  const id = actionPlanCount;
+  const div = document.createElement('div');
+  div.id = `action-plan-${id}`;
+  div.style.cssText = 'border:1.5px solid #dde2ec;border-radius:8px;padding:14px 16px;margin-bottom:12px;background:#fafbfd;';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <label style="font-size:0.72rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;">Action Plan</label>
+      <button class="del-btn" onclick="removeActionPlan(${id})" title="Remove">✕</button>
+    </div>
+    <textarea placeholder="Describe the specific action, training, or support needed..." style="width:100%;border:1.5px solid #dde2ec;border-radius:6px;padding:10px 12px;font-size:0.88rem;color:#1a1a2e;font-family:inherit;resize:vertical;min-height:70px;outline:none;transition:border 0.2s;margin-bottom:10px;" onfocus="this.style.borderColor='#0f3460'" onblur="this.style.borderColor='#dde2ec'"></textarea>
+    <label style="font-size:0.72rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:6px;">Timeline</label>
+    <textarea placeholder="e.g. Complete by end of Q4, monthly check-ins..." style="width:100%;border:1.5px solid #dde2ec;border-radius:6px;padding:8px 12px;font-size:0.85rem;color:#1a1a2e;font-family:inherit;resize:vertical;min-height:44px;outline:none;transition:border 0.2s;" onfocus="this.style.borderColor='#0f3460'" onblur="this.style.borderColor='#dde2ec'"></textarea>`;
+  document.getElementById('action-plans-container').appendChild(div);
+}
+function removeActionPlan(id) {
+  document.getElementById(`action-plan-${id}`)?.remove();
+}
+
+let commentBoxCount = 0;
+function addCommentBox() {
+  commentBoxCount++;
+  const id = commentBoxCount;
+  const div = document.createElement('div');
+  div.id = `comment-box-${id}`;
+  div.style.cssText = 'border:1.5px solid #dde2ec;border-radius:8px;padding:14px 16px;margin-bottom:12px;background:#fafbfd;';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <label style="font-size:0.72rem;font-weight:600;color:#7a8499;text-transform:uppercase;letter-spacing:0.8px;">Comments</label>
+      <button class="del-btn" onclick="removeCommentBox(${id})" title="Remove">✕</button>
+    </div>
+    <textarea placeholder="Add any additional comments or notes..." style="width:100%;border:1.5px solid #dde2ec;border-radius:6px;padding:10px 12px;font-size:0.88rem;color:#1a1a2e;font-family:inherit;resize:vertical;min-height:70px;outline:none;transition:border 0.2s;" onfocus="this.style.borderColor='#0f3460'" onblur="this.style.borderColor='#dde2ec'"></textarea>`;
+  document.getElementById('action-plans-container').appendChild(div);
+}
+function removeCommentBox(id) {
+  document.getElementById(`comment-box-${id}`)?.remove();
+}
+
+let nqKpiCount = 0;
+function addNqKPI() {
+  nqKpiCount++;
+  const id = nqKpiCount;
+  const tr = document.createElement('tr');
+  tr.id = `nq-kpi-row-${id}`;
+  tr.innerHTML = `
+    <td><textarea class="kpi-ta" placeholder="e.g. Increase customer satisfaction score"></textarea></td>
+    <td><textarea class="kpi-ta" placeholder="e.g. > 90%"></textarea></td>
+    <td><textarea class="kpi-ta" placeholder="e.g. TBD"></textarea></td>
+    <td><input type="number" min="0" max="100" placeholder="%" id="nw-${id}" oninput="updateNqKPIScore()"></td>
+    <td><input type="number" min="1" max="5" placeholder="1–5" id="ns-${id}" oninput="updateNqKPIScore()"></td>
+    <td><textarea class="kpi-ta" placeholder="Notes..."></textarea></td>
+    <td><button class="del-btn" onclick="delNqKPI(${id})" title="Remove">✕</button></td>`;
+  document.getElementById('nq-kpi-body').appendChild(tr);
+}
+function delNqKPI(id) {
+  document.getElementById(`nq-kpi-row-${id}`)?.remove();
+  updateNqKPIScore();
+}
+function updateNqKPIScore() {
+  let wSum = 0, wsSum = 0;
+  for (let i = 1; i <= nqKpiCount; i++) {
+    const wEl = document.getElementById(`nw-${i}`);
+    const sEl = document.getElementById(`ns-${i}`);
+    if (!wEl || !sEl) continue;
+    const w = parseFloat(wEl.value) || 0;
+    const s = parseFloat(sEl.value) || 0;
+    wSum += w; wsSum += w * s;
+  }
+  document.getElementById('nq-kpi-score').textContent = wSum > 0 ? (wsSum / wSum).toFixed(2) : '—';
+}
+
+let kpiCount = 0;
+function addKPI() {
+  kpiCount++;
+  const id = kpiCount;
+  const tr = document.createElement('tr');
+  tr.id = `kpi-row-${id}`;
+  tr.innerHTML = `
+    <td><textarea class="kpi-ta" placeholder="e.g. Reduce ticket resolution time"></textarea></td>
+    <td><textarea class="kpi-ta" placeholder="e.g. < 24 hrs"></textarea></td>
+    <td><textarea class="kpi-ta" placeholder="e.g. 20 hrs avg"></textarea></td>
+    <td><input type="number" min="0" max="100" placeholder="%" id="w-${id}" oninput="updateKPIScore()"></td>
+    <td><input type="number" min="1" max="5" placeholder="1–5" id="s-${id}" oninput="updateKPIScore()"></td>
+    <td><textarea class="kpi-ta" placeholder="Notes..."></textarea></td>
+    <td><button class="del-btn" onclick="delKPI(${id})" title="Remove">✕</button></td>`;
+  document.getElementById('kpi-body').appendChild(tr);
+}
+
+function delKPI(id) {
+  document.getElementById(`kpi-row-${id}`)?.remove();
+  updateKPIScore();
+}
+
+function updateKPIScore() {
+  let wSum = 0, wsSum = 0;
+  for (let i = 1; i <= kpiCount; i++) {
+    const wEl = document.getElementById(`w-${i}`);
+    const sEl = document.getElementById(`s-${i}`);
+    if (!wEl || !sEl) continue;
+    const w = parseFloat(wEl.value) || 0;
+    const s = parseFloat(sEl.value) || 0;
+    wSum += w; wsSum += w * s;
+  }
+  document.getElementById('kpi-score').textContent = wSum > 0 ? (wsSum / wSum).toFixed(2) : '—';
+}
+
+function setQ(btn) {
+  document.querySelectorAll('.qbadge').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const isAnnual = btn.textContent.trim() === 'Annual';
+  document.getElementById('current-kpi-section').style.display = isAnnual ? 'none' : '';
+  document.getElementById('next-kpi-section').style.display = isAnnual ? 'none' : '';
+}
+
+buildRatings();
+addActionPlan(); addActionPlan();
+addKPI(); addKPI(); addKPI();
+addNqKPI(); addNqKPI(); addNqKPI();
+</script>
+</body>
+</html>
