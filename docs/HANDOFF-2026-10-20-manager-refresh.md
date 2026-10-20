@@ -1,11 +1,14 @@
 # Handoff 2026-10-20: Arelis + Marcela's Refresh pulls fresh data
 
-## State: on the draft (/dev, v8.28.5). NOT yet released
+## RELEASED 2026-10-20 (Saul's go-ahead): staging 8.29.0 at 9:14, prod 8.30.0 at ~9:18
 
-The Release click was blocked by the session's auto-mode safety check. Saul to release
-(staging first, then prod) or approve the click. The database part (migration 1782020000)
-is already live, because the draft and prod share the GAF Planilla DB. It is harmless on its own:
-prod's code doesn't read the new column yet.
+Same draft (v8.28.5), numbered separately by UIB. The migration (1782020000) ran on the shared
+GAF Planilla DB before the release.
+
+- Staging, full reload: super 44 employees. View As Arelis: 13, no Payroll; Refresh called
+  Teramind x1 + Monday x6, all 200, no console errors.
+- Prod, full reload: super 44. View As Arelis: 13; Refresh called Teramind x1 + Monday x5, all 200.
+  Monday cards afterwards read 9:19–9:20.
 
 ## What changed (prompts `docs/superpowers/prompts/2026-10-20-manager-refresh/01-02`)
 
