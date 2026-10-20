@@ -19,7 +19,7 @@ function upsertTeramindPullLog() {
         {{params.truncated}}::boolean,
         NULLIF({{params.error}}::text, ''),
         COALESCE(NULLIF({{params.source}}::text, ''), 'login_session')
-      WHERE public.assert_super({{ user.email }}::text)
+      WHERE public.assert_sync_writer({{ user.email }}::text)
       RETURNING id;
     `,
   });

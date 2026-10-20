@@ -11,7 +11,7 @@ function claimSyncRun() {
         WHERE kind = {{params.kind}}::text
           AND ran_at > NOW() - ({{params.intervalMinutes}}::int * INTERVAL '1 minute')
       )
-        AND public.assert_super({{ user.email }}::text)
+        AND public.assert_sync_writer({{ user.email }}::text)
       RETURNING id;
     `,
   });

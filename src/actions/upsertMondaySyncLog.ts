@@ -12,7 +12,7 @@ function upsertMondaySyncLog() {
         {{params.matched_count}},
         {{params.unmatched_count}},
         {{params.last_error}}
-      WHERE public.assert_super({{ user.email }}::text)
+      WHERE public.assert_sync_writer({{ user.email }}::text)
       ON CONFLICT (board_key) DO UPDATE SET
         last_synced_at   = EXCLUDED.last_synced_at,
         item_count       = EXCLUDED.item_count,

@@ -53,7 +53,7 @@ let inFlight = false;
  * Renders nothing. Fires only for super users; managers are never involved.
  */
 export default function MondayAutoSync() {
-  const { isSuper } = useViewer();
+  const { isSuper, canRefreshSync } = useViewer();
   const { syncAgents } = useTeramindPull();
   const syncAccess = useAccessSync();
 
@@ -77,7 +77,7 @@ export default function MondayAutoSync() {
   const [writeMondayLog]        = useMutateAction(upsertMondaySyncLogAction);
 
   useEffect(() => {
-    if (!isSuper) return;
+    if (!canRefreshSync) return;
 
     async function maybeSync(force = false) {
       if (document.hidden) return;
@@ -123,7 +123,9 @@ export default function MondayAutoSync() {
         { kind: 'contracts' },
       ];
 
-      const due = force ? BOARDS : BOARDS.filter(b => {
+      // A flagged non-super user never runs the directory: its writes stay super-user only.
+      const boards = isSuper ? BOARDS : BOARDS.filter(b => b.kind !== 'directory');
+      const due = force ? boards : boards.filter(b => {
         const last = lastSuccessMs(b.kind);
         return last === 0 || Date.now() - last >= intervalMs;
       });
@@ -264,7 +266,7 @@ export default function MondayAutoSync() {
           .map(r => r.ran_at ? r.ran_at.slice(0, 10) : '')
           .find(d => d === todayStr);
 
-        if (!lastRosterRun) {
+        if (isSuper && !lastRosterRun) {
           let rosterClaimId: number | null = null;
           try {
             const claimResp = await claimRun({ kind: 'teramind_roster', ranBy: 'auto', intervalMinutes: 1440 });
@@ -298,12 +300,14 @@ export default function MondayAutoSync() {
       }
     }
 
+    const unregister = registerSync('monday', maybeSync);
+    // A flagged non-super user syncs only when they press Refresh, never on the timer.
+    if (!isSuper) return unregister;
     const first = setTimeout(maybeSync, 20_000);
     const timer = setInterval(maybeSync, 60_000);
-    const unregister = registerSync('monday', maybeSync);
     return () => { clearTimeout(first); clearInterval(timer); unregister(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSuper]);
+  }, [isSuper, canRefreshSync]);
 
   return null;
 }

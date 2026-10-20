@@ -32,6 +32,8 @@ export interface Viewer {
   email: string;
   name: string;
   isSuper: boolean;
+  /** Super user, or a user flagged can_refresh_sync: Refresh pulls fresh Monday / Teramind data. */
+  canRefreshSync: boolean;
   allEmployees: boolean;
   viewAs: string;
   isViewingAs: boolean;
@@ -72,6 +74,7 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
       email,
       name: row?.display_name || email,
       isSuper: status === 'ready' && row?.role === 'super_user',
+      canRefreshSync: status === 'ready' && (row?.role === 'super_user' || row?.can_refresh_sync === true),
       allEmployees: status === 'ready' && (row?.role === 'super_user' || row?.all_employees === true),
       viewAs,
       isViewingAs: viewAs !== '' && viewAs !== realEmail,

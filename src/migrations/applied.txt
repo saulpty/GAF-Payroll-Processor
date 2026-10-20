@@ -53,3 +53,4 @@ Applied migrations:
 1782017000_activity_trend_minimums at 2026-10-12T20:38:25.892Z
 1782018000_employee_country at 2026-10-16T17:35:53.943Z
 1782019000_seed_international_agents at 2026-10-16T17:42:32.657Z
+1782020000_refresh_sync_users at 2026-10-20T13:55:34.781Z

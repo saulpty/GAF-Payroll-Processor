@@ -10,6 +10,7 @@ export type ViewerRow = {
   role: string | null;
   all_employees: boolean | null;
   active: boolean | null;
+  can_refresh_sync?: boolean | null;
 };
 
 export type AccessUser = {

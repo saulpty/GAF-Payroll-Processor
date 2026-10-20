@@ -17,14 +17,14 @@ let lastFailureMs = 0;
  * Renders nothing. Fires only for super users; managers are never involved.
  */
 export default function TeramindAutoSync() {
-  const { isSuper } = useViewer();
+  const { isSuper, canRefreshSync } = useViewer();
   const { pullRange } = useTeramindPull();
 
   const [fetchConfig]  = useMutateAction(loadClassificationConfigAction);
   const [fetchPullLog] = useMutateAction(loadTeramindPullLogAction);
 
   useEffect(() => {
-    if (!isSuper) return;
+    if (!canRefreshSync) return;
 
     async function maybeSync(force = false) {
       // Skip when the tab is hidden
@@ -82,13 +82,15 @@ export default function TeramindAutoSync() {
       }
     }
 
+    const unregister = registerSync('teramind', maybeSync);
+    // A flagged non-super user syncs only when they press Refresh, never on the timer.
+    if (!isSuper) return unregister;
     // Check on mount and then every 60 seconds
     const first = setTimeout(maybeSync, 20_000);
     const timer = setInterval(maybeSync, 60_000);
-    const unregister = registerSync('teramind', maybeSync);
     return () => { clearTimeout(first); clearInterval(timer); unregister(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSuper]);
+  }, [isSuper, canRefreshSync]);
 
   return null;
 }

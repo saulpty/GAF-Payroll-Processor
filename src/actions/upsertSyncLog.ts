@@ -9,7 +9,7 @@ function upsertSyncLog() {
           updated = {{params.updated}}::int,
           error   = {{params.error}}
       WHERE id = {{params.id}}::bigint
-        AND public.assert_super({{ user.email }}::text);
+        AND public.assert_sync_writer({{ user.email }}::text);
     `,
   });
 }

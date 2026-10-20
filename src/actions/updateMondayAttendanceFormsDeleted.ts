@@ -10,7 +10,7 @@ function updateMondayAttendanceFormsDeleted() {
           SELECT (jsonb_array_elements_text({{params.seen_ids}}::jsonb))::bigint
         )
       )
-      WHERE public.assert_super({{ user.email }}::text);
+      WHERE public.assert_sync_writer({{ user.email }}::text);
     `,
   });
 }
