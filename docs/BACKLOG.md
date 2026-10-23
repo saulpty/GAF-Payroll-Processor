@@ -543,6 +543,16 @@ Still open:
 
 Full inventory: `docs/findings/2026-09-23-write-action-inventory.md`.
 
+### 28. "Live" badge next to stale data (2026-10-22, from a screenshot, not yet checked)
+A Today screenshot showed the green **Live** badge beside the banner "Data is 156 minutes old —
+statuses are as of 11:20 AM". The badge should not read Live when the data is that old.
+Check which component draws it and what it keys on before writing a prompt.
+
+### 29. L2 red: `loadEmployeeCalendar.ts` quotes `{{params.x}}` (known since 2026-10-20)
+`url: 'v1.0/users/{{params.email}}/calendarView'`, `startDateTime: '{{params.start}}'`,
+`endDateTime: '{{params.end}}'`. This is recurring bug #1's shape. Confirm whether the calendar
+actually loads (it may not), then fix it or record why this action is the exception.
+
 ## Structural
 
 ### 27. Activity trend follow-ups (2026-10-12, updated 2026-10-13)

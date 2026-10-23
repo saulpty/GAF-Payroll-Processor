@@ -6,6 +6,11 @@ session once started work without knowing the loop and nearly hand-edited `src/`
 **Saul is not a coder.** Explain in plain language. Never assume he'll read code
 to understand what you did.
 
+**Since 2026-10-22 most work happens in Claude Enterprise chat** (no Claude Code there).
+That loop, with a zip-based check script in place of git, is in `docs/claude-enterprise/`.
+A Claude Code session here should read `docs/claude-enterprise/03-HUB-KIT.md` and treat the
+newest export in Saul's `HR Hub\GOOD\` folder as newer than `src/` until it's synced.
+
 ---
 
 ## The one rule that matters most
@@ -52,7 +57,8 @@ Full version in `docs/CHANGE-LOOP.md`. The short form:
    the export never happened, not that the prompt changed nothing.
 6. **`git status --short`** must show only the files the prompt allowed.
    Anything else is collateral: revert in UIB, re-export, re-prompt.
-7. **`node --test "tests/*.test.ts"`** — all pass. Baseline is 752 (2026-10-13).
+7. **`node --test "tests/*.test.ts"`** — no new failures. Baseline is 957/958 (2026-10-20); the one
+   red is L2, `loadEmployeeCalendar.ts` (BACKLOG #29).
 8. **Load the page in the browser and look at it.** Mandatory for any change
    touching `src/actions/` or a page. TypeScript-clean is not the same as runs.
 9. **Commit**, with a message that says what changed and what was verified.
