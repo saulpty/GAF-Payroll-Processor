@@ -20,8 +20,9 @@ Since 2026-10-22 Saul works from Claude Enterprise: chat only, no Claude Code, n
 | Python 3.12 + Node 22.22 sandbox; unzip, hash, diff | Network from the sandbox (no npm install, no fetching URLs) |
 | Files persist between messages in one chat | Persistence across chats |
 | Downloadable files; reading screenshots | GitHub, M365/OneDrive, Monday, Drive connectors |
-| Connectors: gaf-portal-elementor, wordpress-siteground | Not tested: whether code can read Project files (the self-check covers it) |
+| Connectors: gaf-portal-elementor, wordpress-siteground | |
+| Project files readable from code at `/mnt/project/`; git installed (self-check, 2026-10-23) | |
 
-The test suite needs no npm packages, so the full 958 tests run in the chat sandbox (checked here on 2026-10-23 in a bare workspace: same 957/958 as the repo).
+Self-check in the real Project (2026-10-23): 957/958 with only L2 red, matching this repo. The test suite needs no npm packages, so the full 958 tests run in the chat sandbox (checked here on 2026-10-23 in a bare workspace: same 957/958 as the repo).
 
 Rebuild the kit after changing tests, tools or a knowledge file: `python3 docs/claude-enterprise/build_kit.py hr-hub-kit.zip`.

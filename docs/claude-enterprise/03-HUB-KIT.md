@@ -25,18 +25,17 @@ Step 5 is mandatory whenever `src/actions/` or a page changed. On 2026-08-11 a c
 
 ## 2. Start of every chat
 
-Saul attaches (from `HR Hub\GOOD\` and `HR Hub\kit\`):
+Saul attaches (from `HR Hub\GOOD\` and `HR Hub\kit\`). Project files are already on disk at `/mnt/project/` (checked 2026-10-23), so the script never needs attaching:
 
 | File | Why |
 |---|---|
 | Newest `… hub.zip` from GOOD | The current app: what you read and diff against |
 | Newest `… form.zip` from GOOD | The Disciplinary Form app. The tests read both apps |
-| `hub-harness.zip` | `tests/`, `tools/`, `.gitattributes`, `.gitignore`, and the one doc a test reads |
-| `verify_export.py` | Only if you can't open it from Project files from code (see the self-check in `01-SETUP.md`) |
+| `hub-harness.zip` | `tests/`, `tools/`, `.gitattributes`, `.gitignore`, and the one doc a test reads. Only if it isn't already at `/mnt/project/hub-harness.zip` |
 
 Then you:
 
-1. Copy the uploads into a work folder: `mkdir -p ~/w && cp /mnt/user-data/uploads/* ~/w/`
+1. Gather everything in one work folder: `mkdir -p ~/w && cp /mnt/user-data/uploads/* /mnt/project/verify_export.py ~/w/` (plus `/mnt/project/hub-harness.zip` if it's there). The sandbox has git, node 22 and python3.
 2. Run the baseline:
    `python3 -I verify_export.py --harness hub-harness.zip --new "<GOOD hub>.zip" --other "<GOOD form>.zip" --out base`
    Expected: 957/958 pass, the one red is **L2** (`loadEmployeeCalendar.ts` quoting `{{params.email/start/end}}`, known since 2026-10-20). Anything else red: tell Saul before starting new work.
@@ -108,7 +107,7 @@ After the script:
 Some tests pin file hashes or exact text from earlier prompts (e.g. "MP3: the files this prompt only uses are byte for byte what they were"). A legitimate change can trip them. Then:
 1. Show Saul which test, what it guards, and why this change is allowed to move it.
 2. Edit the test in `~/w/harness/tests/` and re-run until green.
-3. Hand back a new `hub-harness.zip` for `HR Hub\kit\` (and the Project, if it's stored there).
+3. Hand back a new `hub-harness.zip` for `HR Hub\kit\` (and Project files, if it's stored there).
 
 Never weaken or delete a test just to get green. If unsure, the test is right.
 
@@ -152,7 +151,7 @@ Create these as downloads, then one table telling Saul where each goes:
 | `HANDOFF-<YYYY-MM-DD>-<topic>.md`: what's live, on draft, waiting on Saul; tests count; known reds | `HR Hub\handoffs\` + replace the old handoff in Project files |
 | Prompt files | `HR Hub\prompts\<date>-<topic>\` |
 | `LESSONS.md` / `BACKLOG.md`, full file, edited, only if something was learned | Replace in Project files + `HR Hub\kit\` |
-| `hub-harness.zip`, only if tests changed | Replace in `HR Hub\kit\` |
+| `hub-harness.zip`, only if tests changed | Replace in `HR Hub\kit\` (+ Project files, if it's stored there) |
 | `AGENTS.md`, only if UIB changed it | Replace in Project files |
 
 ---
@@ -179,4 +178,5 @@ Create these as downloads, then one table telling Saul where each goes:
 | `BACKLOG.md` | Roadmap and known issues, ranked by payroll risk |
 | `DESIGN-SYSTEM.md` | Colors, formats, components |
 | `HANDOFF-*.md` (newest) | Current state |
-| `verify_export.py` | The check script |
+| `verify_export.py` | The check script (`/mnt/project/verify_export.py`) |
+| `hub-harness.zip` (optional) | The tests. If it's here, Saul doesn't attach it |

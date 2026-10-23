@@ -4,7 +4,7 @@ Two Chrome tabs. **Tab 1** = UIB builder (prompts only). **Tab 2** = `/dev` app 
 
 ```
  START A CHAT in Project "GAF HR Hub"
- Attach: newest GOOD hub zip + newest GOOD form zip + hub-harness.zip (+ verify_export.py)
+ Attach: newest GOOD hub zip + newest GOOD form zip (+ hub-harness.zip, unless it's in Project files)
  Claude runs the baseline → "957/958, L2 known" → asks what to work on
         │
         ▼

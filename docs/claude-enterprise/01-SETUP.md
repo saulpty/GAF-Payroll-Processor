@@ -40,6 +40,7 @@ Documents\HR Hub\                          Project "GAF HR Hub"
 2. **Instructions** (or *Set project instructions*): open `kit\02-project-instructions.md`, copy everything **below the line**, paste, save.
 3. **Files** (or *Add content* / *Upload*): drag in everything from `kit\knowledge\`:
    `03-HUB-KIT.md`, `AGENTS.md`, `LESSONS.md`, `BACKLOG.md`, `DESIGN-SYSTEM.md`, `HANDOFF-2026-10-20-manager-refresh.md`, `verify_export.py`.
+   - Also try `kit\hub-harness.zip`. If the Project accepts it, you never attach it in a chat again. If it refuses, you attach it each time (it's in `kit\`).
    - If it refuses `verify_export.py`, skip it. You'll attach it in each chat instead (it's in `kit\`).
 4. Delete the old `HR Hub TEST` project, if you made one.
 
@@ -62,7 +63,8 @@ What the answer means:
 | Claude says | Do |
 |---|---|
 | Baseline 957/958, only **L2** red | ✅ Setup works |
-| "verify_export.py not reachable from code" | Normal. Attach `kit\verify_export.py` in every chat, along with the zips |
+| "verify_export.py not reachable from code" | Attach `kit\verify_export.py` in every chat, along with the zips. (On 2026-10-23 it *was* reachable at `/mnt/project/`, so this shouldn't happen) |
+| "CANNOT RUN: file not found: hub-harness.zip" | Attach `kit\hub-harness.zip` (or add it to Project files) and ask Claude to run step 4 again |
 | No Project files listed | The files didn't upload. Redo step 3.3 |
 | Tests 0 / "CANNOT RUN" | Paste the answer into the Claude Code chat (if you still have one) or send me a screenshot. Don't start work yet |
 | Other reds besides L2 | Your live app differs from the last check (2026-10-20). Ask Claude what each red means before any change |
